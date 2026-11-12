@@ -97,7 +97,7 @@
     for(const [key,title] of tableColumns){const th=node("th"),button=node("button",title+(order===key?(direction===1?" ↑":" ↓"):""));th.scope="col";th.setAttribute("aria-sort",order===key?(direction===1?"ascending":"descending"):"none");button.onclick=()=>{ascending=sortField===key?!ascending:true;sortField=key;page=0;render();};th.append(button);header.append(th);}head.append(header);
     for(const r of shown.slice(page*pageSize,(page+1)*pageSize)){const tr=node("tr");for(const [field,,numeric] of tableColumns){const td=node("td",undefined,numeric?"numeric":"");
       if(field==="title" || field==="label"){const button=node("button",r[field] || "Untitled track","cell-link");button.onclick=()=>category?go("tracks",{...state,[category]:r.key}):details(r);td.append(button);}
-      else td.textContent=field==="duration"?(category?hours(r[field]):duration(r[field])):field==="rating"?rating(r[field]):empty(r[field])?"Unknown":typeof r[field]==="number"?number.format(r[field]):r[field];tr.append(td);
+      else td.textContent=field==="duration"?(category?hours(r[field]):duration(r[field])):field==="rating"?rating(r[field]):empty(r[field])?"Unknown":field==="year"?String(r[field]):typeof r[field]==="number"?number.format(r[field]):r[field];tr.append(td);
     }body.append(tr);}
     if(!shown.length){const tr=node("tr"),td=node("td","No metadata matches these filters. Reset filters to see the full snapshot.");td.colSpan=tableColumns.length;tr.append(td);body.append(tr);}
     $("#results").textContent=shown.length?number.format(page*pageSize+1)+"–"+number.format(Math.min((page+1)*pageSize,shown.length))+" of "+number.format(shown.length)+(category?" categories":" tracks"):"0 results";
@@ -119,6 +119,6 @@
   let debounce;$("#search").oninput=()=>{clearTimeout(debounce);debounce=setTimeout(applyFilters,180);};
   for(const id of ["rating-filter","format-filter","bpm-min","bpm-max","duration-min","duration-max"])$("#"+id).onchange=applyFilters;
   $("#reset").onclick=()=>go(view,{});$("#page-size").onchange=()=>{pageSize=Number($("#page-size").value);page=0;render();};$("#previous").onclick=()=>{page--;render();};$("#next").onclick=()=>{page++;render();};$("#close-detail").onclick=()=>$("#track-detail").close();
-  $("#download-csv").onclick=()=>{const safe=v=>{let s=empty(v)?"":String(v);if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};const csv="\ufeff"+[tableColumns.map(c=>safe(c[1])).join(","),...shown.map(r=>tableColumns.map(([key])=>safe(r[key])).join(","))].join("\r\n");const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));const a=node("a");a.href=url;a.download="library-"+view+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};
+  $("#download-csv").onclick=()=>{const safe=v=>{let s=empty(v)?"":String(v);if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};const csv="\ufeff"+[tableColumns.map(c=>safe(c[0]==="duration"?"Duration (seconds)":c[1])).join(","),...shown.map(r=>tableColumns.map(([key])=>safe(r[key])).join(","))].join("\r\n");const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));const a=node("a");a.href=url;a.download="library-"+view+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};
   window.addEventListener("hashchange",route);route();
 })();

@@ -25,7 +25,7 @@ The tag template prevents deletion and force updates of `v*` tags but allows new
 | Private vulnerability reporting | Enabled; use the private advisory link in SECURITY.md |
 | Dependency graph and Dependabot alerts | Keep enabled; alerts were already enabled |
 | Dependabot security updates | Enable in Settings → Advanced Security; observed disabled before this change |
-| CodeQL | Merge the pinned security workflow, then inspect the first scan; the rule template can add a CodeQL high-severity gate afterward |
+| CodeQL | Existing default setup is enabled for Python, JavaScript/TypeScript and Actions; retain it. Do not add an advanced CodeQL workflow concurrently. A CodeQL high-severity ruleset gate can follow successful scans. |
 | Actions token permissions | Keep the repository default read-only; individual jobs request only the access they need |
 | Actions approval | Require approval for first-time external contributors; never run untrusted PR code with release credentials |
 | Action SHA pinning | All project actions are pinned; repository-wide SHA pinning enforcement can also be enabled after checking all workflows |
