@@ -1,4 +1,5 @@
 from hashlib import sha256
+from contextlib import closing
 import json
 from pathlib import Path
 import sqlite3
@@ -37,10 +38,11 @@ class AnalyzerTests(unittest.TestCase):
         self.output=self.root/"workbench"/"report-id"
 
     def test_read_only_health_and_footprint_leave_every_source_byte_unchanged(self):
-        with sqlite3.connect(self.source/"master.db") as db:
+        with closing(sqlite3.connect(self.source/"master.db")) as db:
             schema(db);add_track(db);add_track(db,"b");add_track(db,"retired",1)
             db.executemany("INSERT INTO djmdCue VALUES (?,?,?,0)",[("1","a","CUE(Auto)"),("2","a","My transition"),("3","b","1.1Bars"),("4","retired","Old cue")])
             db.executemany("INSERT INTO djmdPlaylist VALUES (?,?,0)",[("playlist",0),("folder",1)])
+            db.commit()
         for name in ("PIONEER/USBANLZ/P001/A/ANLZ.DAT","PIONEER/USBANLZ/P001/unlinked/ANLZ.EXT"):
             path=self.source/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b"analysis")
         before=hashes(self.source)
@@ -89,7 +91,7 @@ class AnalyzerTests(unittest.TestCase):
         self.assertEqual(report["read_status"],"inventory_only")
 
     def test_unknown_schema_reports_its_limit_instead_of_empty_track_counters(self):
-        with sqlite3.connect(self.source/"master.db") as db:db.execute("CREATE TABLE unrelated(value TEXT)")
+        with closing(sqlite3.connect(self.source/"master.db")) as db:db.execute("CREATE TABLE unrelated(value TEXT)")
         report=analyze_folder(str(self.source),self.output,lambda *_:None)
         self.assertEqual(report["read_status"],"needs_review")
         self.assertTrue(report["database"]["missing_core_columns"])

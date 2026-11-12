@@ -78,7 +78,7 @@ def main():
                 else:raise RuntimeError("Desktop startup timed out: "+(work/"process.log").read_text())
                 token=status["token"]
                 workspace=request("/api/workspace")
-                assert Path(workspace["root"])==data
+                assert Path(workspace["root"])==data.resolve()
                 with urllib.request.urlopen(base,timeout=10) as response:
                     assert b"Source analyzer" in response.read()
                 if args.application or args.macos_app:

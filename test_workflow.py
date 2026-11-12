@@ -29,7 +29,7 @@ class WorkflowTests(unittest.TestCase):
     def test_existing_input_selection_creates_no_copy(self):
         before={p.name:p.read_bytes() for p in self.root.iterdir()}
         selected=select_inputs({"zip":'"'+str(self.zip)+'"',"xml":str(self.xml)})
-        self.assertEqual(selected,{"zip":self.zip,"xml":self.xml})
+        self.assertEqual(selected,{"zip":self.zip.resolve(),"xml":self.xml.resolve()})
         self.assertEqual(before,{p.name:p.read_bytes() for p in self.root.iterdir()})
         with self.assertRaises(ValueError):select_inputs({"zip":"relative.zip","xml":str(self.xml)})
 

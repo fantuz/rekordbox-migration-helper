@@ -21,7 +21,7 @@ class PlatformPathTests(unittest.TestCase):
             tree=Element('PROPERTIES');SubElement(tree,'VALUE',name='masterDbDirectory',val=str(library))
             settings=folder/'rekordbox3.settings';settings.write_bytes(tostring(tree));before=settings.read_bytes()
             result=discover_sources('win32',{'APPDATA':str(appdata)},root)
-            self.assertEqual(result['found'][0]['path'],str(library))
+            self.assertEqual(result['found'][0]['path'],str(library.resolve()))
             self.assertIn('saved',result['found'][0]['origin'])
             self.assertEqual(settings.read_bytes(),before)
 

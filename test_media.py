@@ -12,8 +12,9 @@ class InventoryTests(unittest.TestCase):
     def test_case_collisions_remain_ambiguous(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
-            (root/"Song.mp3").write_bytes(b"abc")
-            (root/"song.mp3").write_bytes(b"def")
+            (root/"one").mkdir();(root/"two").mkdir()
+            (root/"one/Song.mp3").write_bytes(b"abc")
+            (root/"two/song.mp3").write_bytes(b"def")
             result=scan({"a":track("C:/Old/Song.mp3",3)},[{"root":tmp}],lambda *_:None)
             self.assertEqual(result["matches"]["a"]["status"],"ambiguous")
 
