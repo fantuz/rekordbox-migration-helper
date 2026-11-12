@@ -44,4 +44,3 @@ jobs:
         with:
           fail-on-severity: high
           license-check: false
-
