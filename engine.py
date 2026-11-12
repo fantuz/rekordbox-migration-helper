@@ -517,9 +517,11 @@ def export_xml(catalog, decisions, relocations, destination, progress):
     """Export supported XML metadata while keeping the source archive as evidence."""
     from lxml import etree
     from xml.sax.saxutils import quoteattr
+    from metadata_overrides import plan as override_plan,apply_xml
     xml = Path(catalog.metadata["xml_path"])
     backup = Path(catalog.metadata["zip_path"])
     mapping, results = decision_map(catalog, decisions)
+    field_edits=override_plan(catalog,mapping)
     in_xml = {i for i,t in catalog.tracks.items() if t["october_xml"]}
     result_ids = {mapping.get(i,i) for i in in_xml}
     replacements = {donor:keeper for donor,keeper in mapping.items() if donor in in_xml and keeper not in in_xml}
@@ -578,6 +580,7 @@ def export_xml(catalog, decisions, relocations, destination, progress):
                            PlayCount=row["DJPlayCount"] or 0,SampleRate=row["SampleRate"] or 0,BitRate=row["BitRate"] or 0,
                            Tonality=row["Tonality"] or "")
                 element=etree.Element("TRACK",{k:str(v) for k,v in attrs.items()})
+                if row.get('ReleaseYear'):element.set('Year',str(row['ReleaseYear']))
                 member=member_index.get(asset_key(t["analysis_path"]))
                 if member:
                     grid=read_tags(archive,member).get(b"PQTZ",b"")
@@ -587,6 +590,7 @@ def export_xml(catalog, decisions, relocations, destination, progress):
                             raise ValueError("A saved grid has an unsupported beat entry")
                         etree.SubElement(element,"TEMPO",Inizio=f"{ms/1000:.3f}",Bpm=f"{bpm/100:.2f}",Metro="4/4",Battito=str(beat))
                 apply_cues(element, results.get(i,{"cues":catalog.cues[i],"rating":row["Rating"] or 0}))
+                apply_xml(element,field_edits.get(i,{}))
                 return element
 
             def apply_cues(element,result):
@@ -630,6 +634,7 @@ def export_xml(catalog, decisions, relocations, destination, progress):
                                     apply_cues(element,results[i])
                             if i in relocations:
                                 element.set("Location",relocations[i])
+                            apply_xml(element,field_edits.get(i,{}))
                             stream.write(etree.tostring(element,encoding="UTF-8"))
                             emitted.add(i)
                         e.clear()
@@ -652,4 +657,6 @@ def export_xml(catalog, decisions, relocations, destination, progress):
     if set(checked)!=result_ids or any(i not in checked for i in playlists):
         raise ValueError("Export failed track or playlist validation")
     return {"track_count":len(result_ids),"merges":len(mapping),"playlist_tracks_recovered":len(needed),
+            "metadata_fields":sum(len(fields) for i,fields in field_edits.items() if i in result_ids),
+            "metadata_tracks_outside_xml":len(field_edits.keys()-result_ids),
             "relocations":len(relocations),"sha256":digest,"native_backup_status":"Windows restore validation required"}

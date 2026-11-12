@@ -53,9 +53,14 @@ def alert(text):
 def smoke_test():
     import tempfile
     import lxml.etree
+    from tinytag import TinyTag
+    import wave
     from engine import open_master
     from native_export import mutable_copy
     with tempfile.TemporaryDirectory() as tmp:
+        audio=Path(tmp)/'synthetic.wav'
+        with wave.open(str(audio),'wb') as out:out.setparams((1,2,8000,0,'NONE','not compressed'));out.writeframes(b'\0\0'*80)
+        assert TinyTag.get(str(audio),image=False).duration>0
         path=Path(tmp)/"smoke.db"
         db=mutable_copy(path)
         db.execute("CREATE TABLE smoke(value TEXT)")

@@ -23,7 +23,8 @@ Ordinary feature requests and non-sensitive bugs can use public issues. If you a
 - Imported databases and XML/ZIP files are untrusted inputs. The source analyzer queries a private snapshot. Transformations write new copies, never the running rekordbox library.
 - Offline HTML contains the selected metadata and, only when explicitly requested, recorded paths. It includes no credentials or native database. Check what you share; an HTML explorer is not encrypted.
 - The explorer uses embedded/local assets and blocks network connections. Exported tag values are serialized as data and rendered as text.
-- This release does not send library metadata to online rating services. Any future lookup feature must be opt-in, disclose the provider and query fields, and keep external scores separate from personal stars.
+- The experimental MusicBrainz pilot is disabled by default. Enabling it and confirming a sample sends selected public artist/title or ISRC queries to MusicBrainz. It sends no audio, file paths or credentials. Community scores remain separate from personal stars. Set `LIBRARY_WORKBENCH_MUSICBRAINZ=0` to force retrieval off; existing reports remain usable.
+- Library lab snapshots, edit history and provider cache live in a separate local SQLite sidecar. Editing starts locked after application startup. Unlocked field changes affect generated copies only; they never write the source database or audio tags.
 - Source control, CI and release packaging exclude personal library inputs, music, snapshots and review state. Public CI uses synthetic fixtures.
 
 ## Build and release security

@@ -6,6 +6,7 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 
@@ -14,6 +15,16 @@ release=importlib.util.module_from_spec(spec);spec.loader.exec_module(release)
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_native_artifact_layouts_are_collected_without_private_or_unexpected_files(self):
+        import sys
+        with patch.object(sys,'path',[str(Path(__file__).parent/'packaging'),*sys.path]):
+            from collect_release_assets import collect
+            self.packages();destination=self.root/'flat';windows=next(self.root.glob('*windows*.zip'))
+            nested=self.root/'releases';nested.mkdir();windows.rename(nested/windows.name)
+            (self.root/'private.db').write_bytes(b'never a release input')
+            names=collect(self.root,destination,self.version)
+            self.assertEqual(len(names),8);self.assertFalse((destination/'private.db').exists())
+            self.assertEqual(len(release.verify_assets(destination,self.version,self.commit)),4)
     def setUp(self):
         temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup);self.root=Path(temporary.name)
         self.commit='a'*40;self.version='0.4.0';self.source=b'# synthetic source\n'

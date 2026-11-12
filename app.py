@@ -67,7 +67,7 @@ def task_progress(job, amount, text):
         tasks[job].update(progress=amount,message=text)
 
 
-def launch(work, message):
+def launch(work, message, pool=None):
     job = uuid4().hex
     tasks[job] = {"id":job,"status":"running","progress":0,"message":message}
     def run():
@@ -78,7 +78,7 @@ def launch(work, message):
         except Exception as error:
             with lock:
                 tasks[job].update(status="error",message=str(error),progress=0)
-    executor.submit(run)
+    (pool or executor).submit(run)
     return job
 
 
@@ -627,9 +627,12 @@ def export():
         if kind in ("zip","pair") and str(catalog.metadata.get("version","")).split(".")[0]!="7":
             raise ValueError("Native ZIP generation is currently available for v7 inputs only. Older libraries can be inspected with Source analyzer; native round-trip validation for v6 is pending.")
         check_inputs(catalog.metadata)
+        from lab_routes import workspace_overrides
+        catalog.metadata['field_overrides']=workspace_overrides(DATA,session)
         decisions=deepcopy(session["decisions"])
         relocations=dict(session["relocations"])
         snapshot=deepcopy(summary(session))
+        snapshot['metadata_overrides']=deepcopy(catalog.metadata['field_overrides'])
     export_id=uuid4().hex
     def work(progress):
         result=prepare_export(catalog,decisions,relocations,snapshot,DATA/"exports",export_id,kind,progress)
@@ -950,6 +953,10 @@ def stop_desktop():
     from threading import Thread
     Thread(target=callback,daemon=True).start()
     return jsonify(stopped=True)
+
+
+from lab_routes import register as register_lab
+register_lab(sys.modules[__name__])
 
 
 if __name__=="__main__":

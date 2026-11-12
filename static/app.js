@@ -109,6 +109,7 @@ async function refresh() {
   await loadAnalyzer();
   await loadStorageInfo();
   await loadQuickExports();
+  if (typeof loadLab === 'function') await loadLab();
 }
 
 async function loadQuickExports() {
@@ -258,11 +259,13 @@ function showView(view) {
   if (view==="analyzer") loadAnalyzer().catch(error=>notify(error.message,true));
   if (view==="storage") loadStorageInfo().catch(error=>notify(error.message,true));
   if (view==="quick") loadQuickExports().catch(error=>notify(error.message,true));
+  if (view==="lab") loadLab().catch(error=>notify(error.message,true));
   if (view==="files" || view==="exports") loadWorkspace().catch(error=>notify(error.message,true));
-  $("#collection-metrics").hidden=["files","analyzer","storage","quick"].includes(view);
-  $(".dataset-bar").hidden=["analyzer","storage","quick"].includes(view);
+  $("#collection-metrics").hidden=["files","analyzer","storage","quick","lab"].includes(view);
+  $(".dataset-bar").hidden=["analyzer","storage","quick","lab"].includes(view);
   $("#page-title").textContent={files:"From backups to a review copy.",analyzer:"Understand the source library.",storage:"See the space behind the library.",quick:"Take your collection with you.",review:"A clearer collection.",reference:"Find the right home.",activity:"Every decision, recorded.",statistics:"Know your collection.",inventory:"Locate the music.",exports:"Ready for the next session."}[view];
   window.scrollTo(0,0);
+  if (view==='lab') $('#page-title').textContent='Evidence for a better collection.';
 }
 async function example() {
   if (busy) return;

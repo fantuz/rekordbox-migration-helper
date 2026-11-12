@@ -13,6 +13,7 @@ import zipfile
 from xml.etree import ElementTree
 
 from engine import decision_map, open_master, position
+from metadata_overrides import plan as override_plan,apply_native
 
 
 def mutable_copy(path):
@@ -100,6 +101,7 @@ def rewrite_archive(source_path, destination, replacements, progress):
 
 def export_native(catalog,decisions,relocations,destination,progress):
     mapping,results=decision_map(catalog,decisions)
+    field_edits=override_plan(catalog,mapping)
     folder=destination.parent
     master=folder/"native-master.db"
     backup=Path(catalog.metadata["zip_path"])
@@ -118,6 +120,10 @@ def export_native(catalog,decisions,relocations,destination,progress):
             raise ValueError("Unsupported update registry; native export was stopped")
         usn=registry[0] or 0
         changed=0
+        def next_usn():
+            nonlocal usn,changed
+            usn+=1;changed+=1
+            return usn
 
         def update(table,where,params,values):
             nonlocal usn,changed
@@ -215,6 +221,7 @@ def export_native(catalog,decisions,relocations,destination,progress):
                     raise ValueError("Cloud-associated references need a verified cloud relocation workflow")
                 if track in mapping:raise ValueError("Relocate the chosen keeper rather than a retired donor")
                 update("djmdContent","ID=?",(track,),{"FolderPath":path.replace("\\","/")})
+            new_metadata_rows=apply_native(db,tables,field_edits,update,timestamp,next_usn)
             db.execute("UPDATE agentRegistry SET int_1=?,updated_at=? WHERE registry_id='localUpdateCount'",(usn,timestamp))
 
             after=db.execute("SELECT count(*) FROM djmdContent WHERE rb_local_deleted=0").fetchone()[0]
@@ -241,6 +248,7 @@ def export_native(catalog,decisions,relocations,destination,progress):
     progress(30,"Database validated; copying compressed backup data")
     rewrite_archive(backup,destination,{"master.db":master,"contents.xml":contents},progress)
     return {"active_tracks_before":before,"active_tracks_after":after,"merges":len(mapping),"changed_rows":changed,
-            "relocations":len(relocations),"bytes":destination.stat().st_size,"local_update_count":usn,
+            "relocations":len(relocations),"metadata_fields":sum(len(v) for v in field_edits.values()),"new_metadata_rows":new_metadata_rows,
+            "bytes":destination.stat().st_size,"local_update_count":usn,
             "format":"Experimental native rekordbox Backup Library ZIP",
             "restore_validation":"Verify in an isolated Windows library with Cloud Library Sync paused before replacing your working library."}

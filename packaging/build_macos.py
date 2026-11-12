@@ -26,7 +26,7 @@ def main():
              "--osx-bundle-identifier","org.fantuz.rekordbox-migration-helper",
              "--add-data",str(ROOT/"static")+":static","--collect-all","pyrekordbox",
              "--collect-all","sqlcipher3","--copy-metadata","sqlcipher3-wheels",
-             "--hidden-import","sqlcipher3.dbapi2",str(ROOT/"desktop_launcher.py")]
+             "--hidden-import","sqlcipher3.dbapi2","--collect-all","tinytag",str(ROOT/"desktop_launcher.py")]
     # Insert data arguments before the entry point; Python's -m invocation stays intact.
     for name in ("LICENSE","THIRD-PARTY-NOTICES.txt"):
         if (ROOT/name).is_file():command[-1:-1]=["--add-data",str(ROOT/name)+":."]

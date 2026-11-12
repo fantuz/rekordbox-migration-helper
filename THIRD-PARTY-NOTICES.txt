@@ -6,10 +6,16 @@ license is supplied in runtime/LICENSE.txt. Third-party Python package metadata
 and license files are retained under runtime/Lib/site-packages/*.dist-info.
 macOS app bundles retain dependency license metadata collected by PyInstaller.
 
-Core dependencies include Flask, Werkzeug, lxml, pyrekordbox, SQLAlchemy, NumPy,
+Core dependencies include Flask, Werkzeug, lxml, pyrekordbox, TinyTag (MIT), SQLAlchemy, NumPy,
 psutil and sqlcipher3-wheels, with their transitive dependencies. Build manifests
 record the exact versions and, for the Windows wheel assembly, source URLs and
 SHA-256 digests. Consult each included package license for its terms.
 
 This project is independent of AlphaTheta, Pioneer DJ, Dropbox and Google.
 Product names identify supported data sources or workflow documentation.
+
+The optional MusicBrainz pilot retrieves third-party data into a private local
+cache. MusicBrainz core data is CC0; supplementary community ratings and tags
+are CC BY-NC-SA 3.0. Retrieved data is not bundled with MIT project source or
+application releases. Proposals retain source URLs, retrieval times, vote counts
+and license attribution. See https://musicbrainz.org/doc/About/Data_License.

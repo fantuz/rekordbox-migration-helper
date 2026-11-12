@@ -102,6 +102,23 @@ def main():
                 assert sha256((source/"master.db").read_bytes()).hexdigest()==original
                 saved=request("/api/analyzer/"+result["id"]+"/report")
                 assert saved["database"]["counters"]["tracks"]==1
+                lab=request('/api/lab')
+                assert lab['musicbrainz_enabled'] is False
+                started=request('/api/lab/snapshots',{'source':result['id'],'label':'Synthetic CI lab'})
+                deadline=time.monotonic()+30
+                while time.monotonic()<deadline:
+                    captured=request('/api/tasks/'+started['job'])
+                    if captured['status']=='error':raise RuntimeError(captured['message'])
+                    if captured['status']=='complete':break
+                    time.sleep(.2)
+                else:raise RuntimeError('Library lab capture timed out')
+                sid=captured['result']['id']
+                assert request('/api/lab/tracks?snapshot='+sid)['unlocked'] is False
+                request('/api/lab/unlock',{'snapshot':sid,'unlocked':True})
+                request('/api/lab/overrides',{'snapshot':sid,'track_id':'synthetic-1','field':'genre','value':'Synthetic House'})
+                assert request('/api/lab/tracks?snapshot='+sid)['override_fields']==1
+                preview=request('/api/lab/musicbrainz/preview',{'snapshot':sid,'speed':'gentle'})
+                assert preview['summary']['seconds_per_request']==3 and preview['summary']['requests']==0
                 started=request("/api/quick-export",{"source":result["id"],"title":"Synthetic offline CI explorer"})
                 deadline=time.monotonic()+30
                 while time.monotonic()<deadline:
@@ -122,7 +139,7 @@ def main():
                 checks={"status":"passed","platform":platform.platform(),"launcher":"portable executable" if args.application else "macOS app bundle" if args.macos_app else "Python source",
                         "encrypted_sqlcipher_read_write":"passed","http_startup":"passed","unicode_workspace_path":"passed",
                         "read_only_analyzer":"passed","source_sha256_unchanged":True,"json_report_download":"passed",
-                        "offline_html_and_minisite_export":"passed",
+                        "offline_html_and_minisite_export":"passed","library_lab_capture_and_staged_edit":"passed","musicbrainz_local_preview_no_network":"passed",
                         "repeat_launch":"passed" if args.application or args.macos_app else "not exercised","rekordbox_restore":"not exercised"}
             finally:
                 if base and token:

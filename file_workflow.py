@@ -79,7 +79,8 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
         for name in ("export-master.db","native-master.db"):
             (pending/name).unlink(missing_ok=True)
         created=datetime.now(timezone.utc).isoformat()
-        review={"session":snapshot,"decisions":decisions,"reference_edits":relocations,"inputs":expected}
+        review={"session":snapshot,"decisions":decisions,"reference_edits":relocations,"inputs":expected,
+                "metadata_overrides":deepcopy(catalog.metadata.get('field_overrides',{}))}
         digest=sha256(json.dumps(review,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
         report={**review,"review_sha256":digest,"export_id":export_id,"created":created,"format":kind,"validation":validations}
         (pending/"report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
