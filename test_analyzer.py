@@ -57,6 +57,12 @@ class AnalyzerTests(unittest.TestCase):
         self.assertEqual(report["database"]["health"]["duplicate_recorded_path_groups"],1)
         self.assertEqual(report["database"]["health"]["unlinked_analysis_folders"],1)
         self.assertEqual(report["footprint"]["files"],3)
+        self.assertTrue(report["metadata_available"])
+        metadata=json.loads((self.output/"metadata.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(metadata["tracks"]),2)
+        self.assertEqual(metadata["tracks"][0]["manual_cues"],1)
+        self.assertIsNone(metadata["tracks"][0]["bpm"])
+        self.assertNotIn("metadata_snapshot",report["database"])
         self.assertEqual(hashes(self.source),before)
 
     def test_encrypted_wal_commits_are_read_from_the_private_copy(self):

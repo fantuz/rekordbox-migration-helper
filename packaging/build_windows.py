@@ -14,9 +14,10 @@ import sys
 import tempfile
 import urllib.request
 import zipfile
+from release_tools import build_version
 
 APP=Path(__file__).resolve().parents[1]
-VERSION="0.3.0"
+VERSION=build_version()
 
 
 def fetch(url,path):
@@ -125,6 +126,7 @@ def main():
     for file in APP.glob("*.py"):
         if not file.name.startswith("test_"):shutil.copy2(file,app_folder/file.name)
     shutil.copytree(APP/"static",app_folder/"static")
+    (folder/"VERSION").write_text(VERSION+"\n",encoding="utf-8")
     for name in ("LICENSE","THIRD-PARTY-NOTICES.txt"):
         if (APP/name).is_file():shutil.copy2(APP/name,folder/name)
     exe=folder/"Library Workbench.exe"

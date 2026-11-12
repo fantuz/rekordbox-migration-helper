@@ -1,5 +1,13 @@
 # rekordbox Migration Helper · Library Workbench
 
+[![Build and native runtime checks](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml/badge.svg?branch=main)](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml)
+[![Security checks](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/security.yml)
+[![Latest preview](https://img.shields.io/github/v/release/fantuz/rekordbox-migration-helper?include_prereleases&label=release)](https://github.com/fantuz/rekordbox-migration-helper/releases)
+[![MIT license](https://img.shields.io/github/license/fantuz/rekordbox-migration-helper)](LICENSE)
+[![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-507269)](#start)
+[![Security policy](https://img.shields.io/badge/security-private%20reporting-507269)](SECURITY.md)
+[![GitHub stars](https://img.shields.io/github/stars/fantuz/rekordbox-migration-helper?style=flat)](https://github.com/fantuz/rekordbox-migration-helper/stargazers)
+
 A local browser application for understanding a rekordbox library, reviewing duplicates and preparing edited copies. Linux is the primary development platform. Windows and macOS portable previews are built and exercised by CI.
 
 **Keep a fresh, untouched backup created by rekordbox Backup Library outside this workspace before generating transformed files. Preserve the audio separately when it is excluded from the backup. Native ZIP restoration in rekordbox remains experimental.**
@@ -44,6 +52,16 @@ The major desktop conversion was v5 → v6. AlphaTheta documents that v6 → v7 
 
 Copy/Move/Unknown is a user-supplied history hint. An optional source-analyzer report links original/current database paths to physical locations, including renamed cloud files. Multiple database records pointing at one file are distinguished from multiple physical files. Exact filename and size are candidate evidence; explicit SHA-256 verification confirms content. Hard-link aliases and overlapping roots do not count as extra physical copies. Changed files and detected Windows/Mac cloud placeholders are held before hashing. No file removal is performed. Real-world cloud-enabled fixture validation remains pending; synthetic tests exercise both single-track/multiple-file and multiple-record/single-file cases.
 
+## Quick export: an offline metadata explorer
+
+Choose **Quick export**, select the loaded XML/ZIP workspace or a saved source snapshot, and generate a standalone HTML file plus a minisite ZIP. Double-click the HTML file, or extract the complete ZIP and open `index.html`. The application can be closed; neither output needs a server, internet connection or installed dependencies.
+
+Browse genre, year, artist, album, BPM range, personal rating, duration, format and playlist pages. Search and combine numeric filters, drill into category tables, sort and paginate, inspect individual metadata, switch themes and save filtered tables as CSV. Unknown tags remain visible. Playlists can overlap, so playlist totals are not additive.
+
+The export freezes captured source metadata. Staged merges and reference edits are not applied. It contains no audio, artwork, waveforms, cue timestamps, native database or cloud credentials. File paths are excluded unless explicitly selected. This read-only export does not require backup acknowledgement and is not a native backup. Older analyzer reports need a fresh capture to gain a metadata snapshot.
+
+External community ratings remain a proposal; no library metadata is sent to an internet service. See [the ratings feasibility study](docs/COMMUNITY-RATINGS.md) and [the library-analysis roadmap](docs/LIBRARY-ROADMAP.md).
+
 ## Workspace locations
 
 - Linux source: `.data/` beside the application.
@@ -63,3 +81,9 @@ Windows assembly: `python packaging/build_windows.py` on Linux with MinGW. The a
 Mac assembly: install `requirements-build.txt`, then run `python packaging/build_macos.py` on a native Mac. Separate Intel and Apple Silicon jobs package and smoke-test the self-contained app. Linux source archive: `python packaging/build_source.py`.
 
 See [the Windows restore procedure](docs/RESTORE-TEST.md) before testing transformed backups. The project uses the existing [MIT license](LICENSE); bundled dependency licenses remain separate.
+
+## Releases and security
+
+Maintainers can use **Actions → Create release → Run workflow** on `main`, enter a version and choose draft or publication. The workflow builds and validates all four archives before attaching them to a GitHub release, and creates the version tag automatically. No local push/tag or personal token is needed. See [web release instructions](docs/RELEASING.md).
+
+[SECURITY.md](SECURITY.md) explains private reporting and local trust boundaries. Weekly dependency checks, pinned actions, CodeQL and Dependabot configuration are included. [Repository security guidance](docs/REPOSITORY-SECURITY.md) compares DNSProxy/entropy-service and provides importable branch/tag ruleset templates. Merge-policy changes remain a maintainer choice.

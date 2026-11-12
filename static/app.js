@@ -94,6 +94,7 @@ function renderSession() {
 }
 async function refresh() {
   const state=await api("/api/status"); token=state.token;session=state.session;
+  $(".version").textContent="EARLY WORKING VERSION · "+(state.version || "development");
   renderSession();
   $("#stop-desktop").hidden=!state.desktop;
   $("#load-example").hidden=!state.example_available;
@@ -107,7 +108,33 @@ async function refresh() {
   await loadWorkspace();
   await loadAnalyzer();
   await loadStorageInfo();
+  await loadQuickExports();
 }
+
+async function loadQuickExports() {
+  const info=await api("/api/quick-export"),select=$("#quick-source"),old=select.value;
+  const options=[];
+  if(session) options.push('<option value="session">Loaded XML/ZIP workspace · '+num(session.counts.tracks)+' tracks</option>');
+  options.push(...info.sources.map(s=>'<option value="'+esc(s.id)+'">Source snapshot · '+esc(new Date(s.created).toLocaleString())+' · '+num(s.tracks)+' tracks</option>'));
+  select.innerHTML=options.join("") || '<option value="">Load a workspace or analyze a source folder first</option>';
+  if([...select.options].some(o=>o.value===old))select.value=old;
+  updateQuickSource();
+  $("#quick-directory").textContent=info.directory;
+  $("#quick-history").innerHTML=info.exports.map(e=>'<article class="export-record"><div class="export-record-heading"><strong>'+esc(e.title)+'</strong><span>'+esc(new Date(e.created).toLocaleString())+'</span></div><p>'+num(e.tracks)+' tracks · '+esc(e.source_kind)+' · '+(e.includes_paths?'recorded paths included':'file paths excluded')+'</p><div class="download-links">'+e.files.map(f=>'<a class="button secondary small" href="'+esc(f.download)+'">'+(f.kind==='html'?'Standalone HTML':'Minisite ZIP')+' ↓</a>').join("")+'<a class="text-button" href="/api/quick-export/'+esc(e.id)+'/report">Export details ↓</a></div><div class="folder-row"><span>Saved explorer folder</span><code>'+esc(e.directory)+'</code><button class="text-button" data-export-path="'+esc(e.directory)+'">Copy path</button></div></article>').join("") || '<p class="subtle">No offline explorers generated yet.</p>';
+  bindExportCopies();
+}
+function updateQuickSource() {
+  const source=$("#quick-source").value;
+  $("#quick-generate").disabled=!source || busy;
+  $("#quick-scope").disabled=source!=="session";
+  if(source!=="session")$("#quick-scope").value="all";
+}
+$("#quick-source").onchange=updateQuickSource;
+$("#quick-export-form").onsubmit=wrap(async event=>{
+  event.preventDefault();if(busy)return;
+  const result=await api("/api/quick-export",{method:"POST",body:JSON.stringify({source:$("#quick-source").value,title:$("#quick-title").value,scope:$("#quick-scope").value,include_paths:$("#quick-paths").checked})});
+  await poll(result.job);await loadQuickExports();notify("Standalone HTML and offline minisite saved");
+});
 
 function renderWorkflow() {
   $("#continue-review").disabled=!session;
@@ -230,10 +257,11 @@ function showView(view) {
   if (view==="inventory") loadInventory().catch(error=>notify(error.message,true));
   if (view==="analyzer") loadAnalyzer().catch(error=>notify(error.message,true));
   if (view==="storage") loadStorageInfo().catch(error=>notify(error.message,true));
+  if (view==="quick") loadQuickExports().catch(error=>notify(error.message,true));
   if (view==="files" || view==="exports") loadWorkspace().catch(error=>notify(error.message,true));
-  $("#collection-metrics").hidden=["files","analyzer","storage"].includes(view);
-  $(".dataset-bar").hidden=["analyzer","storage"].includes(view);
-  $("#page-title").textContent={files:"From backups to a review copy.",analyzer:"Understand the source library.",storage:"See the space behind the library.",review:"A clearer collection.",reference:"Find the right home.",activity:"Every decision, recorded.",statistics:"Know your collection.",inventory:"Locate the music.",exports:"Ready for the next session."}[view];
+  $("#collection-metrics").hidden=["files","analyzer","storage","quick"].includes(view);
+  $(".dataset-bar").hidden=["analyzer","storage","quick"].includes(view);
+  $("#page-title").textContent={files:"From backups to a review copy.",analyzer:"Understand the source library.",storage:"See the space behind the library.",quick:"Take your collection with you.",review:"A clearer collection.",reference:"Find the right home.",activity:"Every decision, recorded.",statistics:"Know your collection.",inventory:"Locate the music.",exports:"Ready for the next session."}[view];
   window.scrollTo(0,0);
 }
 async function example() {
