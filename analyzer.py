@@ -11,6 +11,7 @@ import sqlite3
 
 from engine import is_auto
 from media import cloud_placeholder
+from metadata_export import capture_database
 
 
 COMPATIBILITY=[
@@ -184,6 +185,8 @@ def inspect_database(path,asset_folders):
             "Repeated recorded paths are review candidates, not proof that files are identical.",
             "Analysis-folder absence is scoped to the selected folder; the analysis data may be stored elsewhere.",
             "Music-file existence and cloud download state are not established by database records."])
+        if result["integrity_ok"]:
+            result["metadata_snapshot"] = capture_database(db, columns)
         return result
 
 
@@ -216,6 +219,11 @@ def analyze_folder(source,output,progress,version_hint=""):
         try:
             result["database"]=inspect_database(output/"snapshot/master.db",assets)
             db=result["database"]
+            metadata=db.pop("metadata_snapshot",None)
+            result["metadata_available"]=metadata is not None
+            if metadata is not None:
+                metadata["version"]=version_hint or None
+                (output/"metadata.json").write_text(json.dumps(metadata,ensure_ascii=False,separators=(",",":")),encoding="utf-8")
             paths=db.pop("track_paths",[])
             result["track_paths_available"]=bool(paths)
             if paths:(output/"track-paths.json").write_text(json.dumps(paths,ensure_ascii=False),encoding="utf-8")

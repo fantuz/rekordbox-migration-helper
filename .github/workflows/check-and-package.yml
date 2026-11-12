@@ -5,9 +5,19 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_version:
+        description: Version embedded in release archives
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
+
+env:
+  LIBRARY_WORKBENCH_VERSION: ${{ inputs.release_version || '' }}
 
 concurrency:
   group: workbench-${{ github.workflow }}-${{ github.ref }}
@@ -35,7 +45,9 @@ jobs:
       - run: python packaging/smoke_desktop.py --source . --report ci-output/source-smoke.json
       - name: Check browser JavaScript syntax
         if: runner.os == 'Linux'
-        run: node --check static/app.js
+        run: |
+          node --check static/app.js
+          node --check static/explorer.js
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: source-validation-${{ matrix.os }}
@@ -131,3 +143,24 @@ jobs:
           path: |
             releases/*macos*.zip
             releases/*macos*.sha256
+
+  pr-checks:
+    name: Workbench PR checks
+    if: always()
+    needs: [test, windows-build, windows-portable, macos-app]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every source and native package check
+        env:
+          CHECK_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json,os,sys
+          results=json.loads(os.environ['CHECK_RESULTS'])
+          failed=[name for name,result in results.items() if result['result']!='success']
+          if failed:
+              print('Required checks did not pass:',', '.join(failed))
+              sys.exit(1)
+          print('All source and native package checks passed')
+          PY

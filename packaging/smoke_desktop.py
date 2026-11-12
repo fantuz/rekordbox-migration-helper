@@ -1,5 +1,6 @@
 """Exercise source startup or an extracted Windows portable application."""
 import argparse
+from io import BytesIO
 from hashlib import sha256
 import json
 import os
@@ -10,6 +11,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import zipfile
 
 
 FIXTURE='''
@@ -100,9 +102,27 @@ def main():
                 assert sha256((source/"master.db").read_bytes()).hexdigest()==original
                 saved=request("/api/analyzer/"+result["id"]+"/report")
                 assert saved["database"]["counters"]["tracks"]==1
+                started=request("/api/quick-export",{"source":result["id"],"title":"Synthetic offline CI explorer"})
+                deadline=time.monotonic()+30
+                while time.monotonic()<deadline:
+                    quick=request("/api/tasks/"+started["job"])
+                    if quick["status"]=="error":raise RuntimeError(quick["message"])
+                    if quick["status"]=="complete":break
+                    time.sleep(.2)
+                else:raise RuntimeError("Offline explorer export timed out")
+                assert quick["result"]["tracks"]==1
+                for file in quick["result"]["files"]:
+                    with urllib.request.urlopen(base+file["download"],timeout=10) as response:content=response.read()
+                    if file["kind"]=="html":
+                        assert b"Synthetic CI track" in content and b"C:/Smoke/track.mp3" not in content
+                    else:
+                        with zipfile.ZipFile(BytesIO(content)) as archive:
+                            assert archive.testzip() is None and "index.html" in archive.namelist()
+                assert sha256((source/"master.db").read_bytes()).hexdigest()==original
                 checks={"status":"passed","platform":platform.platform(),"launcher":"portable executable" if args.application else "macOS app bundle" if args.macos_app else "Python source",
                         "encrypted_sqlcipher_read_write":"passed","http_startup":"passed","unicode_workspace_path":"passed",
                         "read_only_analyzer":"passed","source_sha256_unchanged":True,"json_report_download":"passed",
+                        "offline_html_and_minisite_export":"passed",
                         "repeat_launch":"passed" if args.application or args.macos_app else "not exercised","rekordbox_restore":"not exercised"}
             finally:
                 if base and token:

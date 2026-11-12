@@ -11,6 +11,7 @@ import json
 import os
 import secrets
 import sqlite3
+import sys
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
 from werkzeug.utils import secure_filename
@@ -21,6 +22,7 @@ from file_workflow import select_inputs, fingerprint_inputs, check_inputs, prepa
 from analyzer import analyze_folder, COMPATIBILITY
 from platform_paths import default_data_directory, discover_sources, discover_cloud_roots
 from storage_audit import scan_storage, verify_group
+from metadata_export import capture_catalog, export_metadata, list_metadata_exports
 
 ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT.parent
@@ -35,6 +37,14 @@ executor = ThreadPoolExecutor(max_workers=1)
 lock = RLock()
 sessions, tasks = {}, {}
 active = None
+
+
+def application_version():
+    candidates=[ROOT/"VERSION",ROOT.parent/"VERSION"]
+    if getattr(sys,"frozen",False):candidates.insert(0,Path(sys.executable).parent.parent/"Resources/VERSION")
+    for path in candidates:
+        if path.is_file():return path.read_text(encoding="utf-8").strip()
+    return "development"
 
 
 def persist(session):
@@ -138,7 +148,7 @@ def home():
 
 @app.get("/api/status")
 def status():
-    return jsonify(app_id="library-workbench",token=TOKEN,desktop=bool(app.config.get("SHUTDOWN_CALLBACK")),example_available=bool(configured_example()),session=summary(sessions[active]) if active in sessions else None)
+    return jsonify(app_id="library-workbench",version=application_version(),token=TOKEN,desktop=bool(app.config.get("SHUTDOWN_CALLBACK")),example_available=bool(configured_example()),session=summary(sessions[active]) if active in sessions else None)
 
 
 @app.get("/api/workspace")
@@ -159,7 +169,8 @@ def analyzer_info():
         try:
             record=json.loads(path.read_text(encoding="utf-8"))
             reports.append({**{key:record.get(key) for key in ("id","created","source","format","read_status")},
-                            "track_paths_available":(path.parent/"track-paths.json").is_file()})
+                            "track_paths_available":(path.parent/"track-paths.json").is_file(),
+                            "metadata_available":(path.parent/"metadata.json").is_file()})
         except (OSError,ValueError):continue
     discovery=discover_sources()
     return jsonify(compatibility=COMPATIBILITY,suggestions=[row["path"] for row in discovery["found"]],discovery=discovery,
@@ -184,6 +195,49 @@ def analyzer_report(report_id):
     if not path.is_file():return jsonify(error="Report not found"),404
     if request.path.endswith("/report"):return send_file(path,as_attachment=True,download_name="read-only-library-report.json")
     return jsonify(json.loads(path.read_text(encoding="utf-8")))
+
+
+@app.get("/api/quick-export")
+def quick_export_info():
+    sources=[]
+    for path in (DATA/"analyzers").glob("*/report.json"):
+        if not (path.parent/"metadata.json").is_file():continue
+        try:
+            report=json.loads(path.read_text(encoding="utf-8"))
+            sources.append({"id":report["id"],"created":report["created"],"tracks":report["database"]["counters"]["tracks"]})
+        except (OSError,ValueError,KeyError,TypeError):continue
+    return jsonify(directory=str(DATA/"quick-exports"),sources=sorted(sources,key=lambda r:r["created"],reverse=True)[:20],
+                   exports=list_metadata_exports(DATA/"quick-exports"))
+
+
+@app.post("/api/quick-export")
+def quick_export():
+    body=request.get_json() or {}
+    source=body.get("source","session")
+    scope=body.get("scope","all")
+    if source=="session":
+        with lock:snapshot=capture_catalog(current()["catalog"],scope)
+    else:
+        if not isinstance(source,str) or not re_uuid(source):raise ValueError("Choose a loaded workspace or saved source snapshot")
+        if scope!="all":raise ValueError("XML collection scope is available only for an imported XML/ZIP workspace")
+        path=DATA/"analyzers"/source/"metadata.json"
+        if not path.is_file():raise ValueError("This report has no metadata snapshot. Run Source analyzer again to enable quick export.")
+        snapshot=json.loads(path.read_text(encoding="utf-8"))
+    export_id=uuid4().hex
+    title=body.get("title") or "My library"
+    include_paths=body.get("include_paths") is True
+    return jsonify(job=launch(lambda progress:export_metadata(snapshot,DATA/"quick-exports",export_id,ROOT/"static",progress,
+                                                             title=title,include_paths=include_paths),"Building your offline metadata explorer"))
+
+
+@app.get("/api/quick-export/<export_id>/<kind>")
+def quick_download(export_id,kind):
+    if not re_uuid(export_id) or kind not in ("html","zip","report"):return jsonify(error="Offline export not found"),404
+    folder=DATA/"quick-exports"/export_id
+    if not (folder/"export.json").is_file():return jsonify(error="Offline export not found"),404
+    path=folder/{"html":"library.html","zip":"metadata-explorer.zip","report":"export.json"}[kind]
+    if not path.is_file():return jsonify(error="Offline export not found"),404
+    return send_file(path,as_attachment=True)
 
 
 def save_storage(audit):

@@ -7,10 +7,11 @@ from pathlib import Path
 import platform
 import subprocess
 import sys
+from release_tools import build_version
 
 
 ROOT=Path(__file__).resolve().parents[1]
-VERSION="0.3.0"
+VERSION=build_version()
 
 
 def main():
@@ -40,6 +41,7 @@ def main():
               "dependencies":[{"name":d.metadata["Name"],"version":d.version} for d in importlib.metadata.distributions()],
               "application_sources":{str(path.relative_to(ROOT)):sha256(path.read_bytes()).hexdigest() for path in [*ROOT.glob("*.py"),*list((ROOT/"static").glob("*"))] if path.is_file() and not path.name.startswith("test_")}}
     resources=app/"Contents/Resources"
+    (resources/"VERSION").write_text(VERSION+"\n",encoding="utf-8")
     (resources/"BUILD-MANIFEST.json").write_text(json.dumps(manifest,indent=2),encoding="utf-8")
     (resources/"START HERE.txt").write_text(
         "LIBRARY WORKBENCH "+VERSION+" — macOS "+architecture+" PREVIEW\n\n"
