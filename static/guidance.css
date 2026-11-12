@@ -1,0 +1,36 @@
+.backup-notice {
+  border: 1px solid var(--accent);
+  border-left-width: 4px;
+  border-radius: 6px;
+  padding: 18px 21px;
+  margin: 22px 0;
+  background: var(--panel);
+}
+.backup-notice > strong { font-size: 14px; color: var(--accent); font-weight: 500; }
+.backup-notice p { font-size: 11px; line-height: 1.9; margin: 9px 0 0; }
+.backup-acknowledgement { display: flex; gap: 9px; align-items: flex-start; font-size: 12px; margin-top: 17px; line-height: 1.7; }
+.backup-acknowledgement input { accent-color: var(--accent); margin-top: 5px; }
+.backup-notice small { display: block; color: var(--muted); font-size: 10px; margin-top: 12px; }
+.cloud-banner { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 17px 20px; margin: 20px 0 24px; }
+.cloud-banner summary { cursor: pointer; font-size: 12px; line-height: 1.8; }
+.cloud-banner summary > strong { font-weight: 500; margin: 0 10px; }
+.cloud-banner summary > span:last-child { font-size: 10px; color: var(--muted); }
+.cloud-providers { display: inline-block; white-space: nowrap; font-size: 11px; color: var(--green); border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; }
+.cloud-providers i { font-style: normal; color: var(--muted); padding: 0 5px; font-size: 10px; }
+.cloud-banner ol { font-size: 12px; color: var(--muted); line-height: 1.9; padding-left: 20px; margin: 20px 0 12px; }
+.cloud-banner li { padding: 4px 0; }
+.cloud-banner p { font-size: 10px; line-height: 1.8; border-top: 1px solid var(--line); padding-top: 13px; }
+.cloud-banner a { color: var(--accent); }
+.cloud-source-note { display: flex; align-items: flex-start; gap: 17px; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 17px 20px; margin: 20px 0; }
+.cloud-source-note strong { font-size: 12px; font-weight: 500; }
+.cloud-source-note p { font-size: 11px; line-height: 1.8; margin: 5px 0 0; }
+.detected-source { background: var(--bg); padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; margin: 10px 0; }
+.detected-source code { display: block; font-size: 10px; overflow-wrap: anywhere; }
+.detected-source small { display: block; font-size: 9px; color: var(--muted); margin: 5px 0; }
+#refresh-source-locations { margin: 0 0 23px; padding-left: 0; }
+@media (max-width: 700px) {
+  .cloud-source-note { flex-direction: column; }
+  .cloud-banner summary > strong { display: block; margin: 9px 0; }
+  .backup-notice { padding: 16px; }
+  .backup-acknowledgement { font-size: 11px; }
+}

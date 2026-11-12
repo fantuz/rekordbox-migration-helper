@@ -1,0 +1,15 @@
+Library Workbench includes or depends on third-party software.
+
+The project source is provided under the MIT license in LICENSE.
+Portable Windows packages include the official CPython embeddable runtime; its
+license is supplied in runtime/LICENSE.txt. Third-party Python package metadata
+and license files are retained under runtime/Lib/site-packages/*.dist-info.
+macOS app bundles retain dependency license metadata collected by PyInstaller.
+
+Core dependencies include Flask, Werkzeug, lxml, pyrekordbox, SQLAlchemy, NumPy,
+psutil and sqlcipher3-wheels, with their transitive dependencies. Build manifests
+record the exact versions and, for the Windows wheel assembly, source URLs and
+SHA-256 digests. Consult each included package license for its terms.
+
+This project is independent of AlphaTheta, Pioneer DJ, Dropbox and Google.
+Product names identify supported data sources or workflow documentation.

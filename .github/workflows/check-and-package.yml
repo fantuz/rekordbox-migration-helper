@@ -1,0 +1,133 @@
+name: Check and package
+
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workbench-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Source checks · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-15, macos-15-intel]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m unittest discover -v
+      - run: python packaging/smoke_desktop.py --source . --report ci-output/source-smoke.json
+      - name: Check browser JavaScript syntax
+        if: runner.os == 'Linux'
+        run: node --check static/app.js
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: source-validation-${{ matrix.os }}
+          path: ci-output/*.json
+
+  windows-build:
+    name: Assemble Windows portable and Linux source
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - name: Install launcher compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64
+      - run: python packaging/build_windows.py
+      - run: python packaging/build_source.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: windows-portable-assembly
+          path: |
+            releases/*windows*.zip
+            releases/*windows*.sha256
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: linux-source
+          path: releases/*linux-source.tar.gz*
+
+  windows-portable:
+    name: Test actual Windows portable executable
+    needs: windows-build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows-portable-assembly
+          path: .artifacts
+      - name: Extract into a path containing spaces and Unicode
+        shell: python
+        run: |
+          from pathlib import Path
+          import zipfile
+          archive=next(Path('.artifacts').glob('*.zip'))
+          with zipfile.ZipFile(archive) as package:
+              package.extractall('portable 日本 é')
+      - run: python packaging/smoke_desktop.py --application "portable 日本 é/Library Workbench" --report ci-output/windows-portable.json
+      - run: python packaging/record_windows_validation.py "portable 日本 é/Library Workbench" ci-output/windows-portable.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: windows-x64-preview
+          path: |
+            releases/*windows*.zip
+            releases/*windows*.sha256
+            ci-output/windows-portable.json
+
+  macos-app:
+    name: Build and test macOS · ${{ matrix.os }}
+    needs: test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: python -m pip install -r requirements.txt -r requirements-build.txt
+      - run: python packaging/build_macos.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: macos-preview-${{ matrix.os }}
+          path: |
+            releases/*macos*.zip
+            releases/*macos*.sha256
