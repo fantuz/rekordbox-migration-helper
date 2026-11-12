@@ -19,7 +19,8 @@ from native_export import export_native
 from media import scan as scan_media, verify_pair
 from file_workflow import select_inputs, fingerprint_inputs, check_inputs, prepare_export, list_exports
 from analyzer import analyze_folder, COMPATIBILITY
-from platform_paths import default_data_directory, discover_sources
+from platform_paths import default_data_directory, discover_sources, discover_cloud_roots
+from storage_audit import scan_storage, verify_group
 
 ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT.parent
@@ -157,7 +158,8 @@ def analyzer_info():
     for path in (DATA/"analyzers").glob("*/report.json"):
         try:
             record=json.loads(path.read_text(encoding="utf-8"))
-            reports.append({key:record.get(key) for key in ("id","created","source","format","read_status")})
+            reports.append({**{key:record.get(key) for key in ("id","created","source","format","read_status")},
+                            "track_paths_available":(path.parent/"track-paths.json").is_file()})
         except (OSError,ValueError):continue
     discovery=discover_sources()
     return jsonify(compatibility=COMPATIBILITY,suggestions=[row["path"] for row in discovery["found"]],discovery=discovery,
@@ -182,6 +184,84 @@ def analyzer_report(report_id):
     if not path.is_file():return jsonify(error="Report not found"),404
     if request.path.endswith("/report"):return send_file(path,as_attachment=True,download_name="read-only-library-report.json")
     return jsonify(json.loads(path.read_text(encoding="utf-8")))
+
+
+def save_storage(audit):
+    folder=DATA/"storage"/audit["id"]
+    folder.mkdir(parents=True,exist_ok=True)
+    path=folder/"audit.json"
+    temp=path.with_suffix(".tmp")
+    temp.write_text(json.dumps(audit,ensure_ascii=False),encoding="utf-8")
+    os.replace(temp,path)
+    summary={key:audit[key] for key in ("id","created","policy_hint","file_locations","totals")}
+    (folder/"summary.json").write_text(json.dumps(summary),encoding="utf-8")
+
+
+def load_storage(audit_id):
+    if not re_uuid(audit_id):raise ValueError("Unknown storage audit")
+    path=DATA/"storage"/audit_id/"audit.json"
+    if not path.is_file():raise ValueError("Storage audit is unavailable")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@app.get("/api/storage")
+def storage_info():
+    reports=[]
+    for path in (DATA/"storage").glob("*/summary.json"):
+        try:reports.append(json.loads(path.read_text(encoding="utf-8")))
+        except (OSError,ValueError):continue
+    return jsonify(suggestions=discover_cloud_roots(),reports=sorted(reports,key=lambda row:row["created"],reverse=True)[:20])
+
+
+@app.post("/api/storage/scan")
+def start_storage():
+    body=request.get_json() or {}
+    roots=deepcopy(body.get("roots",[]))
+    policy=body.get("policy","unknown")
+    report_id=str(body.get("source_report") or "")
+    if report_id and not re_uuid(report_id):raise ValueError("Unknown source report")
+    audit_id=uuid4().hex
+    def work(progress):
+        paths=DATA/"analyzers"/report_id/"track-paths.json" if report_id else None
+        if paths and not paths.is_file():raise ValueError("This source report has no track-path index. Capture it again, or choose folder comparison without a source report.")
+        track_paths=json.loads(paths.read_text(encoding="utf-8")) if paths and paths.is_file() else []
+        audit=scan_storage(roots,progress,policy,track_paths)
+        audit.update(id=audit_id,source_report=report_id or None)
+        if track_paths and not audit["matched_database_tracks"]:
+            audit["warnings"].append("No database paths matched these folders. Set recorded-prefix mappings if this copy uses different drive paths.")
+            audit["warning_count"]+=1
+        save_storage(audit)
+        return {"id":audit_id,"totals":audit["totals"]}
+    return jsonify(job=launch(work,"Comparing local and cloud-visible folders without reading audio"))
+
+
+@app.get("/api/storage/<audit_id>")
+def storage_details(audit_id):
+    audit=load_storage(audit_id)
+    rows=audit["groups"]
+    if request.args.get("scope")=="cloud_local":rows=[row for row in rows if row["cloud_local"]]
+    offset=max(0,int(request.args.get("offset",0)))
+    return jsonify(**{key:value for key,value in audit.items() if key!="groups"},groups=rows[offset:offset+30],group_total=len(rows),offset=offset)
+
+
+@app.get("/api/storage/<audit_id>/report")
+def storage_report(audit_id):
+    if not re_uuid(audit_id):return jsonify(error="Report not found"),404
+    path=DATA/"storage"/audit_id/"audit.json"
+    if not path.is_file():return jsonify(error="Report not found"),404
+    return send_file(path,as_attachment=True,download_name="cloud-local-storage-report.json")
+
+
+@app.post("/api/storage/<audit_id>/verify")
+def verify_storage(audit_id):
+    if not re_uuid(audit_id):raise ValueError("Unknown storage audit")
+    group=str((request.get_json() or {}).get("group",""))
+    def work(progress):
+        audit=load_storage(audit_id)
+        result=verify_group(audit,group,progress)
+        save_storage(audit)
+        return result
+    return jsonify(job=launch(work,"Verifying explicitly selected local file bytes"))
 
 
 @app.post("/api/example")

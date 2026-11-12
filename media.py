@@ -5,6 +5,7 @@ from pathlib import Path
 from urllib.parse import quote
 import os
 import ntpath
+import stat as stat_constants
 
 from engine import path_key
 
@@ -13,7 +14,8 @@ CLOUD_FLAGS = 0x1000 | 0x40000 | 0x400000
 
 
 def cloud_placeholder(stat):
-    return bool(getattr(stat,"st_file_attributes",0) & CLOUD_FLAGS)
+    return bool(getattr(stat,"st_file_attributes",0) & CLOUD_FLAGS or
+                getattr(stat,"st_flags",0) & getattr(stat_constants,"SF_DATALESS",0x40000000))
 
 
 def file_record(path):
@@ -53,7 +55,7 @@ def scan(tracks,mappings,progress):
         def on_error(error):
             warnings.append(str(error))
         for directory,dirs,names in os.walk(root,followlinks=False,onerror=on_error):
-            dirs[:]=[d for d in dirs if not Path(directory,d).is_symlink()]
+            dirs[:]=[d for d in dirs if not Path(directory,d).is_symlink() and not Path(directory,d).is_junction()]
             for name in names:
                 path=Path(directory,name)
                 if path.suffix.casefold() not in AUDIO or path.is_symlink():

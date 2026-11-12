@@ -10,6 +10,7 @@ import re
 import sqlite3
 
 from engine import is_auto
+from media import cloud_placeholder
 
 
 COMPATIBILITY=[
@@ -18,9 +19,9 @@ COMPATIBILITY=[
     {"version":"6","format":"SQLCipher SQLite · master.db","status":"Schema-based read-only checks",
      "detail":"The reader targets this format family. Validation against a genuine v6 sample is pending."},
     {"version":"7","format":"SQLCipher SQLite · master.db","status":"Reader checked with v7.2.19 backup data",
-     "detail":"Source-folder checks run on a private copy. Execution against a Windows installation remains pending."},
+     "detail":"Source-folder checks run on a private copy. A restore and live-library check in Windows rekordbox remain pending."},
     {"version":"USB / device export","format":"export.pdb or exportLibrary.db","status":"Detected separately",
-     "detail":"A device export is not the desktop master library. Its database is not decoded by this analyzer."},
+     "detail":"Classic Device Library and OneLibrary (formerly Device Library Plus) are device formats. Their records are not decoded here."},
 ]
 
 
@@ -85,7 +86,7 @@ def footprint(root,progress):
             totals[extension]["files"]+=1
             totals[extension]["bytes"]+=stat.st_size
             files+=1;total+=stat.st_size
-            if getattr(stat,"st_file_attributes",0)&(0x1000|0x40000|0x400000):cloud+=1
+            if cloud_placeholder(stat):cloud+=1
             key=analysis_folder(path.relative_to(root))
             if key:directories.add(key)
             if files%5000==0:progress(40,f"Counted {files:,} files in the selected source folder")
@@ -170,6 +171,9 @@ def inspect_database(path,asset_folders):
                 "analysis_folders_found":len(asset_folders),"unlinked_analysis_folders":len(asset_folders-owners),
                 "analysis_folders_not_found_here":len(owners-asset_folders),"audio_availability":None}
         result.update(counters=counters,health=health,metadata_records=metadata_records)
+        result["track_paths"]=[{"id":t["ID"],"current_path":t["FolderPath"],"original_path":t["OrgFolderPath"],"size":t["FileSize"]} for t in tracks]
+        result["health"]["different_original_paths"]=sum(bool(t["OrgFolderPath"] and str(t["OrgFolderPath"]).replace("\\","/").casefold()!=str(t["FolderPath"] or "").replace("\\","/").casefold()) for t in tracks)
+        result["cloud_related_columns_present"]=sorted(columns["djmdContent"] & {"CloudID","ServiceID","DeviceID","OrgFolderPath","FileID","MasterDBID"})
         result["notes"].extend(["Cue origin is inferred from CUE(Auto) and 1.1Bars labels; labels can be edited.",
             "Cue counters use active djmdCue rows. Mirrored cue JSON is not counted a second time.",
             "Album and artist counters count distinct names referenced by active tracks, not unused metadata rows.",
@@ -208,6 +212,9 @@ def analyze_folder(source,output,progress,version_hint=""):
         try:
             result["database"]=inspect_database(output/"snapshot/master.db",assets)
             db=result["database"]
+            paths=db.pop("track_paths",[])
+            result["track_paths_available"]=bool(paths)
+            if paths:(output/"track-paths.json").write_text(json.dumps(paths,ensure_ascii=False),encoding="utf-8")
             result["read_status"]="checked" if db["integrity_ok"] and not db["missing_core_columns"] else "needs_review"
             if not db["integrity_ok"]:result["messages"].append({"level":"warning","text":"The private database copy failed its integrity check. Review the report before attempting any conversion or restore."})
             if db["missing_core_columns"]:result["messages"].append({"level":"warning","text":"The schema differs from the recognized desktop format. Detailed library counters are unavailable."})
@@ -219,7 +226,7 @@ def analyze_folder(source,output,progress,version_hint=""):
         elif version_hint.startswith("5"):
             result["messages"].append({"level":"warning","text":"The supplied v5 version conflicts with the modern master.db format. Check which library folder is selected."})
         else:
-            result["messages"].append({"level":"info","text":"master.db identifies the v6/v7 format family, not the exact rekordbox application version. Windows source-folder execution remains to be validated."})
+            result["messages"].append({"level":"info","text":"master.db identifies the v6/v7 format family, not the exact application version. A restore or live-library check in Windows rekordbox remains to be validated."})
         if source_stamps(root)!=stamps:
             raise ValueError("The source database changed while the report was running. Close rekordbox, pause sync and capture again.")
         result["source_unchanged"]=True

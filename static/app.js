@@ -7,7 +7,7 @@ const autoCue = c => ["cue(auto)", "1.1bars"].includes((c.Comment || "").trim().
 let token = "", session = null, filter = "all", offset = 0, total = 0, selected = null, chosen = null, batchMode = null, busy = false;
 let searchTimer;
 let currentGroup=null, groupMode=false;
-let workspace=null;
+let workspace=null,analyzerInfo=null,storageAudit=null,storageOffset=0;
 const metadataFields=["album","artist","genre","label","format","bpm_min","bpm_max","bitrate_min","playlist","availability"];
 function scopeValues() {return {q:$("#search").value,feature:$("#feature-filter").value,min:$("#stats-min").value || "0",max:$("#stats-max").value,cohort:$("#stats-cohort").value,evidence:evidenceValue(),...Object.fromEntries(metadataFields.map(k=>[k,$("#filter-"+k).value]))};}
 const evidenceLabels={
@@ -106,6 +106,7 @@ async function refresh() {
   await loadPresets();
   await loadWorkspace();
   await loadAnalyzer();
+  await loadStorageInfo();
 }
 
 function renderWorkflow() {
@@ -228,10 +229,11 @@ function showView(view) {
   if (view==="statistics") renderStatistics().catch(error=>notify(error.message,true));
   if (view==="inventory") loadInventory().catch(error=>notify(error.message,true));
   if (view==="analyzer") loadAnalyzer().catch(error=>notify(error.message,true));
+  if (view==="storage") loadStorageInfo().catch(error=>notify(error.message,true));
   if (view==="files" || view==="exports") loadWorkspace().catch(error=>notify(error.message,true));
-  $("#collection-metrics").hidden=view==="files" || view==="analyzer";
-  $(".dataset-bar").hidden=view==="analyzer";
-  $("#page-title").textContent={files:"From backups to a review copy.",analyzer:"Understand the source library.",review:"A clearer collection.",reference:"Find the right home.",activity:"Every decision, recorded.",statistics:"Know your collection.",inventory:"Locate the music.",exports:"Ready for the next session."}[view];
+  $("#collection-metrics").hidden=["files","analyzer","storage"].includes(view);
+  $(".dataset-bar").hidden=["analyzer","storage"].includes(view);
+  $("#page-title").textContent={files:"From backups to a review copy.",analyzer:"Understand the source library.",storage:"See the space behind the library.",review:"A clearer collection.",reference:"Find the right home.",activity:"Every decision, recorded.",statistics:"Know your collection.",inventory:"Locate the music.",exports:"Ready for the next session."}[view];
 }
 async function example() {
   if (busy) return;
@@ -484,6 +486,7 @@ $("#stop-desktop").onclick=wrap(async()=>{
 });
 async function loadAnalyzer() {
   const data=await api("/api/analyzer");
+  analyzerInfo=data;
   $("#analyzer-directory").textContent=data.directory;
   $("#analyzer-sources").innerHTML=data.suggestions.map(path=>'<option value="'+esc(path)+'"></option>').join("");
   $("#analyzer-location-guide").innerHTML='<p class="subtle">'+esc(data.discovery.help)+'</p>'+data.discovery.found.map(row=>'<div class="detected-source"><code>'+esc(row.path)+'</code><small>'+esc(row.origin)+'</small><button class="text-button" data-use-source="'+esc(row.path)+'">Use this folder</button></div>').join("")+(data.discovery.found.length?"":'<p class="subtle">No local database was detected in the standard locations. Enter any accessible source-folder path below.</p>');
@@ -501,7 +504,10 @@ function renderAnalysis(report) {
   const health=db?.health || {};
   target.innerHTML='<article class="wide-card analysis-report"><div class="section-heading"><div><span class="eyebrow">READ-ONLY REPORT · '+esc(status)+'</span><h2>'+esc(report.format)+'</h2><p>'+esc(new Date(report.created).toLocaleString())+' · '+(report.version_hint?'User-supplied version '+esc(report.version_hint):'Exact application version not inferred')+'</p></div><a class="button secondary" href="/api/analyzer/'+esc(report.id)+'/report">Download JSON report ↓</a></div><code class="report-source">'+esc(report.source)+'</code><p class="read-only-confirmation">No changes were written to the source folder. Database queries ran on the private snapshot.</p><div class="analyzer-messages">'+report.messages.map(message=>'<p class="analysis-message '+esc(message.level)+'">'+esc(message.text)+'</p>').join("")+'</div>'+
     (db?'<div class="database-status"><span>Database integrity <b>'+esc(db.integrity_ok?'Passed':db.integrity.join('; '))+'</b></span><span>Storage <b>'+esc(db.encryption)+'</b></span><span>Schema <b>'+num(db.table_count)+' tables</b></span></div><div class="stats-cards">'+[['Tracks','tracks'],['Analyzed tracks','analysed'],['Starred tracks','rated'],['Playlists','playlists'],['Albums','albums'],['Artists','artists'],['Native cue rows','cue_rows'],['Only auto cues','only_auto'],['Full manual cues','full_manual'],['Half-automated cues','mixed'],['No cues','no_cues'],['No cues · zero plays','no_cues_no_plays']].map(([label,key])=>metric(label,counters[key])).join("")+'</div><h3>References and candidate issues</h3><div class="stats-cards">'+[['Broken track links','broken_track_links'],['Repeated recorded-path groups','duplicate_recorded_path_groups'],['Tracks in repeated paths','tracks_in_duplicate_paths'],['Analysis folders found','analysis_folders_found'],['Analysis folders without active links','unlinked_analysis_folders'],['Referenced analysis folders absent here','analysis_folders_not_found_here']].map(([label,key])=>metric(label,health[key])).join("")+'</div><ul class="analysis-notes">'+db.notes.map(note=>'<li>'+esc(note)+'</li>').join("")+'</ul>':"")+
-    '<h3>Selected-folder footprint</h3><div class="footprint-summary"><strong>'+esc(bytes(inventory.bytes))+'</strong><span>'+num(inventory.files)+' files · logical file sizes · '+num(inventory.cloud_placeholders)+' cloud placeholders</span></div><div class="footprint-table"><div class="footprint-row footprint-header"><span>File type</span><span>Files</span><span>Size</span><span>Share of footprint</span></div>'+inventory.extensions.map(row=>'<div class="footprint-row"><code>'+esc(row.extension)+'</code><span>'+num(row.files)+'</span><span>'+esc(bytes(row.bytes))+'</span><div class="hist-bar"><i style="width:'+Math.max(0,Math.min(100,100*row.bytes/Math.max(1,inventory.bytes)))+'%"></i></div></div>').join("")+'</div></article>';
+    '<h3>Selected-folder footprint</h3><div class="footprint-summary"><strong>'+esc(bytes(inventory.bytes))+'</strong><span>'+num(inventory.files)+' files · logical file sizes · '+num(inventory.cloud_placeholders)+' cloud placeholders</span></div><div class="footprint-table"><div class="footprint-row footprint-header"><span>File type</span><span>Files</span><span>Size</span><span>Share of footprint</span></div>'+inventory.extensions.map(row=>'<div class="footprint-row"><code>'+esc(row.extension)+'</code><span>'+num(row.files)+'</span><span>'+esc(bytes(row.bytes))+'</span><div class="hist-bar"><i style="width:'+Math.max(0,Math.min(100,100*row.bytes/Math.max(1,inventory.bytes)))+'%"></i></div></div>').join("")+'</div>'+(report.track_paths_available?'<button class="button secondary" id="audit-report-storage">Compare music locations for this report →</button>':'')+'</article>';
+  if ($("#audit-report-storage")) $("#audit-report-storage").onclick=wrap(async()=>{
+    await loadAnalyzer();await loadStorageInfo();$("#storage-source-report").value=report.id;showView("storage");
+  });
 }
 $("#analyzer-form").onsubmit=wrap(async event=>{
   event.preventDefault();if (busy) return;
@@ -513,4 +519,56 @@ $("#analyzer-form").onsubmit=wrap(async event=>{
   } finally {button.disabled=false;}
 });
 $("#refresh-source-locations").onclick=wrap(async()=>{await loadAnalyzer();notify("Default locations and saved database paths checked");});
+
+const storageNames={local:"Other local folders",dropbox:"Dropbox-visible files",google_drive:"Google Drive-visible files"};
+function addStorageRoot(value={}) {
+  const row=document.createElement("div");row.className="storage-root";
+  row.innerHTML='<label>Folder on this computer<input class="storage-root-path" value="'+esc(value.root || "")+'" placeholder="Full path to a music folder"></label><label>Location type<select class="storage-root-kind"><option value="local">Other local folder</option><option value="dropbox">Dropbox folder</option><option value="google_drive">Google Drive folder</option></select></label><label>Recorded prefix · optional<input class="storage-root-prefix" value="'+esc(value.recorded_prefix || "")+'" placeholder="Old database path, e.g. C:/Music"></label><button type="button" class="text-button" aria-label="Remove music folder">Remove</button>';
+  row.querySelector("select").value=value.kind || "local";
+  row.querySelector("button").onclick=()=>row.remove();$("#storage-roots").append(row);
+}
+addStorageRoot();addStorageRoot({kind:"dropbox"});
+$("#add-storage-root").onclick=()=>addStorageRoot();
+async function loadStorageInfo() {
+  const data=await api("/api/storage");
+  const selected=$("#storage-source-report").value;
+  $("#storage-source-report").innerHTML='<option value="">Compare folders without a source report</option>'+(analyzerInfo?.reports || []).filter(row=>row.track_paths_available).map(row=>'<option value="'+esc(row.id)+'">'+esc(new Date(row.created).toLocaleString()+" · "+row.source)+'</option>').join("");
+  $("#storage-source-report").value=selected;
+  $("#storage-suggestions").innerHTML=data.suggestions.length?'<p class="subtle">Detected cloud folders · choose only those containing the music you want to compare</p>'+data.suggestions.map((row,index)=>'<button class="button secondary small" type="button" data-storage-suggestion="'+index+'">'+esc(row.kind==="dropbox"?"Dropbox":"Google Drive")+' · '+esc(row.root)+'</button>').join(""): '<p class="subtle">You can enter any accessible cloud or local folder. Google Drive may use a custom drive letter or mount point.</p>';
+  $$("[data-storage-suggestion]").forEach(button=>button.onclick=()=>addStorageRoot(data.suggestions[Number(button.dataset.storageSuggestion)]));
+  $("#storage-history").innerHTML=data.reports.map(row=>'<article class="analyzer-history-record"><div><strong>'+num(row.file_locations)+' file locations · '+num(row.totals.cloud_local_candidate_groups)+' cloud/local candidate groups</strong><span>'+esc(new Date(row.created).toLocaleString())+' · policy hint: '+esc(row.policy_hint)+'</span></div><button class="button secondary small" data-storage-open="'+esc(row.id)+'">Open comparison</button></article>').join("") || '<p class="subtle">No saved comparisons yet.</p>';
+  $$("[data-storage-open]").forEach(button=>button.onclick=wrap(async()=>{storageOffset=0;await loadStorageAudit(button.dataset.storageOpen);$("#storage-result").scrollIntoView({behavior:"smooth",block:"start"});}));
+}
+function storageBar(locations,key) {
+  const total=locations.reduce((sum,row)=>sum+row[key],0);
+  return '<div class="storage-bar">'+locations.map(row=>'<span class="storage-color-'+row.kind+'" style="width:'+100*row[key]/Math.max(1,total)+'%" title="'+esc(storageNames[row.kind]+": "+bytes(row[key]))+'"></span>').join("")+'</div><div class="storage-legend">'+locations.map(row=>'<span><i class="storage-color-'+row.kind+'"></i>'+esc(storageNames[row.kind])+' · '+esc(bytes(row[key]))+'</span>').join("")+'</div>';
+}
+async function loadStorageAudit(id) {
+  const scope=$("#storage-scope")?.value || "all";
+  storageAudit=await api("/api/storage/"+id+"?"+new URLSearchParams({offset:storageOffset,scope}));
+  const audit=storageAudit,t=audit.totals,target=$("#storage-result");target.hidden=false;
+  const cloudBytes=audit.locations.filter(row=>row.kind!=="local").reduce((sum,row)=>sum+row.logical_bytes,0);
+  const allocated=audit.locations.reduce((sum,row)=>sum+row.known_allocated_bytes,0);
+  target.innerHTML='<article class="wide-card storage-overview"><div class="section-heading"><div><span class="eyebrow">READ-ONLY COMPARISON · '+esc(new Date(audit.created).toLocaleString())+'</span><h2>Visible files and possible copies</h2><p>User policy hint: '+esc(audit.policy_hint)+' · '+num(audit.matched_database_tracks)+' database tracks matched'+(audit.source_report?'':' · no database report linked')+'</p></div><a class="button secondary" href="/api/storage/'+esc(id)+'/report">Download JSON report ↓</a></div><div class="storage-metrics">'+[['Cloud-folder logical bytes',bytes(cloudBytes)],['Known local disk allocation',bytes(allocated)],['Cloud/local candidate groups',num(t.cloud_local_candidate_groups)],['Possible extra logical bytes',bytes(t.potential_extra_logical_bytes)],['Last verified extra identical bytes',bytes(t.last_verified_extra_logical_bytes)],['Repeated DB reference groups',num(t.database_reference_groups)]].map(([label,value])=>'<article class="stat-card"><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></article>').join("")+'</div><h3>Logical media size by visible location</h3>'+storageBar(audit.locations,"logical_bytes")+'<h3>Known disk allocation by location</h3>'+storageBar(audit.locations,"known_allocated_bytes")+'<p class="subtle">Cloud-folder logical bytes can also occupy local disk. These measures overlap; they are not account quota usage. Allocation is OS-reported and may be partial on some filesystems.</p><div class="storage-location-table"><div class="storage-location-row storage-location-header"><span>Location</span><span>Files</span><span>Logical size</span><span>Known disk allocation</span><span>Detected placeholders</span></div>'+audit.locations.map(row=>'<div class="storage-location-row"><strong>'+esc(storageNames[row.kind])+'</strong><span>'+num(row.files)+'</span><span>'+esc(bytes(row.logical_bytes))+'</span><span>'+esc(bytes(row.known_allocated_bytes))+(row.unknown_allocation_files?' · '+num(row.unknown_allocation_files)+' unknown':'')+'</span><span>'+num(row.cloud_placeholders)+'</span></div>').join("")+'</div>'+audit.warnings.map(warning=>'<p class="analysis-message warning">'+esc(warning)+'</p>').join("")+'<ul class="analysis-notes">'+audit.notes.map(note=>'<li>'+esc(note)+'</li>').join("")+'</ul></article><div class="section-heading storage-group-heading"><div><h2>Evidence to review</h2><p>Hash verification reads the selected group’s local bytes. No file is deleted or moved.</p></div><select id="storage-scope" aria-label="Storage group scope"><option value="all">All candidate and reference groups</option><option value="cloud_local">Cloud / local groups only</option></select></div><div class="storage-groups">'+audit.groups.map(group=>{
+    const verified=group.verification;
+    const label=verified?(verified.same_file_bytes?'Identical bytes verified':'Hash differences found'):group.physical_files===1?(group.files.length>1?'Link aliases · one physical file':'Repeated DB references · one file'):group.cloud_local?'Possible cloud/local copies':'Possible extra files';
+    const held=group.files.some(file=>file.cloud_only);
+    return '<article class="wide-card storage-group"><div class="storage-group-header"><strong>'+esc(label)+'</strong><span>'+num(group.physical_files)+' physical files · '+num(group.track_ids.length)+' matched DB records</span></div><p class="subtle">'+esc(group.evidence.join(" + ").replaceAll("_"," ") || "Multiple database references to one scanned path")+'</p>'+group.files.map(file=>'<div class="storage-file"><span>'+esc(file.kind==="local"?"Local":file.kind==="dropbox"?"Dropbox":"Google Drive")+'</span><code>'+esc(file.path)+'</code><span>'+esc(bytes(file.size))+(file.cloud_only?' · placeholder':'')+'</span></div>').join("")+'<div class="storage-group-actions"><button class="button secondary small" data-storage-verify="'+esc(group.id)+'" '+(held || group.physical_files<2?'disabled':'')+'>Verify this group’s file bytes</button><span class="subtle">'+(held?'Download cloud-only files outside this tool first.':verified?'Last checked '+esc(new Date(verified.created).toLocaleString())+'. Re-scan after file changes.':'Filename/size and path evidence remain unverified until hashing.')+'</span></div></article>';
+  }).join("")+'</div><div class="pagination"><span>'+num(audit.group_total?storageOffset+1:0)+'–'+num(Math.min(storageOffset+30,audit.group_total))+' of '+num(audit.group_total)+' groups</span><div><button class="button secondary small" id="storage-prev" '+(storageOffset?'':'disabled')+'>← Previous</button><button class="button secondary small" id="storage-next" '+(storageOffset+30<audit.group_total?'':'disabled')+'>Next →</button></div></div>';
+  $("#storage-scope").value=scope;
+  $("#storage-scope").onchange=wrap(async()=>{storageOffset=0;await loadStorageAudit(id);});
+  $("#storage-prev").onclick=wrap(async()=>{storageOffset=Math.max(0,storageOffset-30);await loadStorageAudit(id);});
+  $("#storage-next").onclick=wrap(async()=>{storageOffset+=30;await loadStorageAudit(id);});
+  $$("[data-storage-verify]").forEach(button=>button.onclick=wrap(async()=>{
+    if (busy) return;
+    const started=await api("/api/storage/"+id+"/verify",{method:"POST",body:JSON.stringify({group:button.dataset.storageVerify})});
+    await poll(started.job);await loadStorageAudit(id);await loadStorageInfo();notify("File verification saved to this comparison");
+  }));
+}
+$("#storage-form").onsubmit=wrap(async event=>{
+  event.preventDefault();if (busy) return;
+  const roots=$$(".storage-root").map(row=>({root:row.querySelector("input").value.trim(),kind:row.querySelector("select").value,recorded_prefix:row.querySelector(".storage-root-prefix").value.trim()})).filter(row=>row.root);
+  const started=await api("/api/storage/scan",{method:"POST",body:JSON.stringify({roots,policy:$("#storage-policy").value,source_report:$("#storage-source-report").value})});
+  const result=await poll(started.job);storageOffset=0;await loadStorageAudit(result.id);await loadStorageInfo();$("#storage-result").scrollIntoView({behavior:"smooth",block:"start"});notify("Folder comparison saved · no media content read");
+});
 refresh().catch(error=>notify(error.message,true));

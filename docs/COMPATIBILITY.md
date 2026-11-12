@@ -14,3 +14,10 @@ Real-world validation currently uses v7.2.19 backup data on Linux. Earlier-versi
 Source analysis opens original database files only as byte streams for a private snapshot. Database queries and journal recovery operate on that copy. Source database/journal timestamps, sizes and identities must remain stable across capture and inspection. Automated tests compare source hashes as well. Folder scans inspect metadata without reading audio contents. Analysis-folder absence is scoped to the selected source folder and is not proof of missing music.
 
 The preparation workflow writes new copies. Native ZIP generation remains experimental, is gated to v7 inputs and requires an untouched-backup acknowledgement. It is not an in-place source-folder editor.
+
+## Device-format roadmap
+
+Classic USB Device Library uses `export.pdb`. OneLibrary is the new name for Device Library Plus; AlphaTheta documents full compatibility between them. It is a device-export family separate from the desktop `datafile.edb` → `master.db` transition. Current detection does not imply record decoding or conversion. A future device reader/comparator needs genuine fixtures for both classic and OneLibrary exports, including USBs containing both formats.
+
+- [AlphaTheta: relationship between OneLibrary and Device Library Plus](https://support.alphatheta.com/en-US/articles/51301232380185)
+- [Official USB export guide](https://cdn.rekordbox.com/files/20251021171528/USB_export_guide_en_251007.pdf)
