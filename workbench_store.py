@@ -118,6 +118,8 @@ class Store:
     def effective(self,snapshot):
         result=deepcopy(snapshot);overrides=self.overrides(snapshot['scope_key']);count=0
         for track in result['tracks']:
-            for field,edit in overrides.get(track['id'],{}).items():track[field]=edit['value'];count+=1
+            for field,edit in overrides.get(track['id'],{}).items():
+                track[field]=edit['value'];count+=1
+                if field in track.get('raw_tags',{}):track['raw_tags'][field]=edit['value']
         result['metadata_overrides_applied']=count
         return result

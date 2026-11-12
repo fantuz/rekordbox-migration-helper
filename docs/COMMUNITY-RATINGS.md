@@ -32,4 +32,4 @@ The main risks are incorrect remix matches, poor rating coverage, small-vote bia
 
 MusicBrainz normally limits a client IP to approximately one request per second. One request for each of 33,000 tracks is already about 9.2 hours; a search plus a lookup can roughly double that before retries. Batch selection, persistent matching and deduplication matter more than raw CPU. A local pilot need not have a hosting bill, but future commercial use or provider licensing can change costs.
 
-Recommendation: build a small MusicBrainz-only, user-confirmed pilot later; keep community scores in the sidecar and personal stars untouched. Treat no available rating as a normal outcome.
+The 0.5 preview implements the bounded MusicBrainz-only, user-confirmed pilot in [Library lab](LIBRARY-LAB.md), with public retrieval code, local-only working data, a force-off flag and selectable pacing. Community scores stay in the sidecar; personal stars remain an explicit manual choice. Treat no available rating as a normal outcome. The estimates above describe engineering/maintenance scope, not a guarantee of match or rating coverage.

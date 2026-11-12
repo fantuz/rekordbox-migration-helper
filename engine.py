@@ -656,6 +656,13 @@ def export_xml(catalog, decisions, relocations, destination, progress):
     checked,playlists,_,digest=parse_xml(destination,lambda *_:None)
     if set(checked)!=result_ids or any(i not in checked for i in playlists):
         raise ValueError("Export failed track or playlist validation")
+    for identity,fields in field_edits.items():
+        if identity not in checked:continue
+        expected=etree.Element('TRACK');apply_xml(expected,fields)
+        for field in fields:
+            from metadata_overrides import XML_FIELDS
+            key=XML_FIELDS[field]
+            if checked[identity]['attrs'].get(key)!=expected.get(key):raise ValueError('XML metadata verification failed: '+identity+' / '+field)
     return {"track_count":len(result_ids),"merges":len(mapping),"playlist_tracks_recovered":len(needed),
             "metadata_fields":sum(len(fields) for i,fields in field_edits.items() if i in result_ids),
             "metadata_tracks_outside_xml":len(field_edits.keys()-result_ids),

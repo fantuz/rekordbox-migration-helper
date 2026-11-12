@@ -9,7 +9,7 @@ from threading import Event,RLock
 from flask import jsonify,request
 from engine import open_master
 from workbench_store import Store,encoded,now
-from research_capture import capture_private_database,capture_workspace
+from research_capture import capture_private_database,capture_workspace,open_capture
 from library_checks import compare_snapshots,metadata_consistency,collection_coverage
 from analysis_audit import audit_assets
 from metadata_overrides import FIELDS,comparable
@@ -36,6 +36,10 @@ def register(owner):
     gate=RateGate();cancellations={};network_lock=RLock()
     def store():return Store(owner.DATA/'workbench-sidecar.sqlite3')
     def enabled():return os.environ.get('LIBRARY_WORKBENCH_MUSICBRAINZ','1')!='0' and store().setting('musicbrainz_enabled',False) is True
+    def cancel_all():
+        with network_lock:
+            for event in cancellations.values():event.set()
+    owner.cancel_lab_jobs=cancel_all
     def snapshot(body):return store().snapshot(body.get('snapshot',''))
     def unlocked(s):
         if s['scope_key'] not in edit_unlocked:raise ValueError('Metadata is read-only. Unlock edits for this snapshot first.')
@@ -75,9 +79,10 @@ def register(owner):
         def work(progress):
             progress(10,'Reading the already detached private database copy')
             if private.is_file():
-                with closing(open_master(private.resolve())) as db:s=capture_private_database(db,scope)
+                with closing(open_capture(private.resolve())) as db:s=capture_private_database(db,scope)
             else:s=capture_workspace(session['catalog'],scope)
             s.update(captured=now(),source_kind='Loaded XML + ZIP' if source=='session' else 'Saved source-folder capture',source_capture=source)
+            if source!='session':s['source_captured']=json.loads((private.parent.parent/'report.json').read_text(encoding='utf-8')).get('created')
             return store().save_snapshot(s,label)
         return jsonify(job=owner.launch(work,'Capturing an immutable Library lab snapshot'))
 
@@ -143,8 +148,7 @@ def register(owner):
         if requested and os.environ.get('LIBRARY_WORKBENCH_MUSICBRAINZ')=='0':raise ValueError('MusicBrainz is disabled by the application environment')
         store().set_setting('musicbrainz_enabled',requested)
         if not requested:
-            with network_lock:
-                for event in cancellations.values():event.set()
+            cancel_all()
         return jsonify(musicbrainz_enabled=enabled())
 
     @app.post('/api/lab/musicbrainz/preview')
@@ -162,6 +166,7 @@ def register(owner):
         if not enabled():raise ValueError('Enable the experimental MusicBrainz feature first')
         if b.get('query_consent') is not True:raise ValueError('Review and confirm sending selected public tags/identifiers to MusicBrainz')
         record=batch_record(store(),identity)
+        if record['status']=='complete':raise ValueError('This batch is complete. Preview a new sample to run another batch.')
         with network_lock:
             if any(not e.is_set() for e in cancellations.values()):raise ValueError('A pilot is already running. Cancel it or wait until it finishes.')
             event=Event();cancellations[identity]=event
@@ -190,6 +195,20 @@ def register(owner):
             result['reviewed_at']=now()
             db.execute('UPDATE mb_results SET payload=? WHERE batch_id=? AND track_id=?',(encoded(result),identity,track_id))
         return jsonify(match_approved=result['match_approved'],note='Approval records identity only. Stage each metadata field separately in the editor.')
+
+    @app.post('/api/lab/musicbrainz/<identity>/stage')
+    def lab_pilot_stage(identity):
+        b=body();field=b.get('field');track_id=str(b.get('track_id',''))
+        if field not in ('year','genre'):raise ValueError('Stage a proposed year or genre; personal stars remain a manual choice')
+        record=batch_record(store(),identity);s=store().snapshot(record['snapshot_id']);unlocked(s)
+        with store().connection() as db:r=db.execute('SELECT payload FROM mb_results WHERE batch_id=? AND track_id=?',(identity,track_id)).fetchone()
+        result=json.loads(r[0]) if r else {}
+        if not result.get('match_approved') or result.get('proposal',{}).get(field) is None:raise ValueError('Approve this retrieved identity before staging its available metadata')
+        t=next((t for t in s['tracks'] if t['id']==track_id),None)
+        if not t:raise ValueError('The retrieved track is outside the selected snapshot')
+        origin='MusicBrainz '+result['candidates'][0]['mbid']+' '+result['proposal']['retrieved_at']
+        value=store().save_override(s['scope_key'],track_id,field,result['proposal'][field],t.get(field),origin)
+        return jsonify(value=value,origin=origin)
 
     @app.post('/api/lab/offline-export')
     def lab_offline_export():

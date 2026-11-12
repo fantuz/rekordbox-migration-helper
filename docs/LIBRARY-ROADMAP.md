@@ -1,5 +1,7 @@
 # Further library checks worth building
 
+The 0.5 preview now implements snapshot cue/rating/playlist comparisons, conservative metadata variant suggestions, analysis asset audits and configurable genre/BPM preparation coverage in **Library lab**. See [the implementation guide](LIBRARY-LAB.md). The table also includes future work; it is not a list of fully implemented features.
+
 Official support documentation and release notes describe missing files, inconsistent device playlists and analysis issues. These are useful problem families, not a measured ranking of issue frequency. The proposals below do not diagnose a particular library from symptoms alone.
 
 | Problem or question | Evidence the tool can use | Useful result | Priority / effort |

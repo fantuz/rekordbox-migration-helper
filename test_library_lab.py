@@ -124,6 +124,52 @@ class StoreAndOverrideTests(unittest.TestCase):
         self.assertEqual(self.store.report(r['id'],query="' OR 1=1 --")['total'],0)
         with self.assertRaises(ValueError):self.store.save_bulk(snapshot(),['outside'],'genre','House')
 
+    def test_real_xml_and_encrypted_zip_writers_share_field_edits_and_keep_sources(self):
+        from native_export import mutable_copy,export_native
+        from engine import export_xml,open_master,parse_xml
+        from hashlib import sha256
+        from contextlib import closing
+        master=self.root/'fixture.db'
+        with closing(mutable_copy(master)) as db:
+            db.executescript('''
+              CREATE TABLE djmdContent(ID TEXT PRIMARY KEY,Title TEXT,ReleaseYear INTEGER,Rating INTEGER,ArtistID TEXT,AlbumID TEXT,GenreID TEXT,rb_local_deleted INTEGER,rb_local_synced INTEGER,rb_local_usn INTEGER,updated_at TEXT);
+              INSERT INTO djmdContent VALUES ('one','Original',2000,1,NULL,NULL,NULL,0,1,0,'old');
+              CREATE TABLE agentRegistry(registry_id TEXT,int_1 INTEGER,updated_at TEXT);
+              INSERT INTO agentRegistry VALUES ('localUpdateCount',0,'old');
+            ''')
+            for table in ('djmdArtist','djmdAlbum','djmdGenre'):db.execute('CREATE TABLE '+table+'(ID TEXT PRIMARY KEY,Name TEXT,UUID TEXT,rb_local_deleted INTEGER,rb_local_synced INTEGER,rb_local_usn INTEGER,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)')
+            db.commit()
+        backup=self.root/'source.zip';xml=self.root/'source.xml'
+        with zipfile.ZipFile(backup,'w') as z:
+            z.write(master,'master.db');z.writestr('contents.xml','<ROOT><VALUE name="CONTENT_NUM" val="1"/></ROOT>');z.writestr('USBANLZ/a/b/ANLZ0000.DAT',b'unchanged analysis')
+        xml.write_text('<DJ_PLAYLISTS><PRODUCT Version="7.0.0"/><COLLECTION Entries="1"><TRACK TrackID="one" Name="Original" Artist="" Year="2000" Rating="51"><TEMPO Inizio="0" Bpm="120" Metro="4/4" Battito="1"/><POSITION_MARK Name="Drop" Num="0" Type="0" Start="1.000"/></TRACK></COLLECTION><PLAYLISTS><NODE><TRACK Key="one"/></NODE></PLAYLISTS></DJ_PLAYLISTS>',encoding='utf-8')
+        original=[sha256(p.read_bytes()).hexdigest() for p in (backup,xml)]
+        edits={'one':{'title':'Edited title','artist':'Edited artist','album':'Edited album','genre':'Edited genre','year':2024,'rating':4}}
+        c=SimpleNamespace(tracks={'one':{'october_xml':True}},metadata={'xml_path':str(xml),'zip_path':str(backup),'version':'7.0.0','field_overrides':edits})
+        outxml=self.root/'edited.xml';outzip=self.root/'edited.zip'
+        x=export_xml(c,{}, {},outxml,lambda *_:None);n=export_native(c,{}, {},outzip,lambda *_:None)
+        self.assertEqual((x['metadata_fields'],n['metadata_fields']),(6,6))
+        checked=parse_xml(outxml,lambda *_:None)[0]['one'];self.assertEqual(checked['attrs']['Genre'],'Edited genre');self.assertEqual(checked['attrs']['Rating'],'204')
+        self.assertEqual(checked['tempo'],1);self.assertEqual(checked['marks'][0]['Name'],'Drop')
+        with zipfile.ZipFile(outzip) as z:
+            extracted=self.root/'check.db';extracted.write_bytes(z.read('master.db'));self.assertEqual(z.read('USBANLZ/a/b/ANLZ0000.DAT'),b'unchanged analysis')
+        with closing(open_master(extracted.resolve())) as db:
+            self.assertEqual(tuple(db.execute('SELECT Title,ReleaseYear,Rating FROM djmdContent').fetchone()),('Edited title',2024,4))
+            self.assertEqual(db.execute('SELECT Name FROM djmdGenre').fetchone()[0],'Edited genre')
+        self.assertEqual([sha256(p.read_bytes()).hexdigest() for p in (backup,xml)],original)
+
+    def test_plaintext_private_wal_capture_keeps_committed_rows(self):
+        import shutil
+        from research_capture import open_capture
+        from contextlib import closing
+        source=self.root/'source';source.mkdir();private=self.root/'detached';private.mkdir()
+        with closing(sqlite3.connect(source/'master.db')) as db:
+            db.execute('PRAGMA journal_mode=WAL');db.execute('PRAGMA wal_autocheckpoint=0')
+            db.execute('CREATE TABLE synthetic(value TEXT)');db.execute("INSERT INTO synthetic VALUES ('committed in WAL')");db.commit()
+            for p in source.iterdir():
+                if p.name!='master.db-shm':shutil.copyfile(p,private/p.name)
+            with closing(open_capture(private/'master.db')) as captured:self.assertEqual(captured.execute('SELECT value FROM synthetic').fetchone()[0],'committed in WAL')
+
 
 class AssetAndOrphanTests(unittest.TestCase):
     def test_candidates_are_not_verified_until_requested_and_scope_is_explicit(self):
@@ -195,9 +241,20 @@ class MusicBrainzTests(unittest.TestCase):
     def test_provider_failures_are_not_local_tag_failures_and_matches_not_approved(self):
         s=snapshot();record=create_batch(self.store,s)
         client=SimpleNamespace(requests=0,cache_hits=0,get=lambda *a:(_ for _ in ()).throw(ValueError('provider JSON malformed')))
-        self.assertEqual(run_batch(self.store,record['id'],client,lambda *_:None)['status'],'complete')
+        self.assertEqual(run_batch(self.store,record['id'],client,lambda *_:None)['status'],'complete_with_errors')
         with self.store.connection() as db:r=db.execute('SELECT status FROM mb_results').fetchone()
         self.assertEqual(r[0],'service_error')
+
+    def test_resuming_does_not_erase_reviewed_matches_or_query_them_again(self):
+        from workbench_store import encoded
+        s=snapshot();record=create_batch(self.store,s)
+        previous={'status':'candidate_needs_review','match_approved':True,'proposal':{'community_score':4.1,'genre':'house','year':2001}}
+        with self.store.connection() as db:db.execute('INSERT INTO mb_results VALUES (?,?,?,?)',(record['id'],'one',previous['status'],encoded(previous)))
+        client=SimpleNamespace(requests=0,cache_hits=0,get=lambda *a:(_ for _ in ()).throw(AssertionError('Reviewed tracks must not be queried again')))
+        result=run_batch(self.store,record['id'],client,lambda *_:None)
+        self.assertEqual(result['summary']['rating_available'],1)
+        with self.store.connection() as db:saved=json.loads(db.execute('SELECT payload FROM mb_results').fetchone()[0])
+        self.assertTrue(saved['match_approved'])
 
 
 class LabApiTests(unittest.TestCase):
@@ -225,6 +282,21 @@ class LabApiTests(unittest.TestCase):
         self.assertEqual(start.status_code,400)
         with patch.dict('os.environ',{'LIBRARY_WORKBENCH_MUSICBRAINZ':'0'}):
             self.assertEqual(self.client.post('/api/lab/features',json={'musicbrainz_enabled':True},headers=self.headers).status_code,400)
+
+    def test_provider_proposals_require_unlock_and_identity_approval(self):
+        from workbench_store import encoded
+        record=create_batch(self.store,self.store.snapshot(self.sid))
+        result={'status':'candidate_needs_review','match_approved':False,'candidates':[{'mbid':'01234567-89ab-cdef-0123-456789abcdef'}],
+                'proposal':{'year':2001,'genre':'deep house','retrieved_at':'2026-01-01'}}
+        with self.store.connection() as db:db.execute('INSERT INTO mb_results VALUES (?,?,?,?)',(record['id'],'one',result['status'],encoded(result)))
+        endpoint='/api/lab/musicbrainz/'+record['id'];data={'track_id':'one','field':'year'}
+        self.assertEqual(self.client.post(endpoint+'/stage',json=data,headers=self.headers).status_code,400)
+        self.client.post('/api/lab/unlock',json={'snapshot':self.sid,'unlocked':True},headers=self.headers)
+        self.assertEqual(self.client.post(endpoint+'/stage',json=data,headers=self.headers).status_code,400)
+        self.client.post(endpoint+'/review',json={'track_id':'one','approved':True},headers=self.headers)
+        response=self.client.post(endpoint+'/stage',json=data,headers=self.headers)
+        self.assertEqual(response.json['value'],2001);self.assertIn('MusicBrainz',response.json['origin'])
+        self.assertEqual(self.client.post(endpoint+'/stage',json={'track_id':'one','field':'rating'},headers=self.headers).status_code,400)
 
 
 if __name__=='__main__':unittest.main()

@@ -4,9 +4,18 @@ from copy import deepcopy
 from datetime import datetime,timezone
 from hashlib import sha256
 import json
+import sqlite3
 
 from engine import is_auto
 from metadata_export import capture_database,capture_catalog
+
+
+def open_capture(path):
+    """Open only a detached app-owned copy, including its private WAL recovery."""
+    with path.open('rb') as stream:plaintext=stream.read(16)==b'SQLite format 3\x00'
+    if plaintext:return sqlite3.connect(path)
+    from native_export import mutable_copy
+    return mutable_copy(path)
 
 
 def capture_private_database(db,scope_key):

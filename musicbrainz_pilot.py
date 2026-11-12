@@ -178,36 +178,41 @@ def run_batch(store,identity,client,progress):
         r=db.execute('SELECT * FROM mb_batches WHERE id=?',(identity,)).fetchone()
         if not r:raise ValueError('Pilot batch not found')
         sample=json.loads(r['sample']);summary=json.loads(r['summary'])
+        previous={r['track_id']:json.loads(r['payload']) for r in db.execute('SELECT track_id,payload FROM mb_results WHERE batch_id=?',(identity,))}
         db.execute('UPDATE mb_batches SET status=? WHERE id=?',('running',identity))
-    consecutive_errors=0;status='complete';totals=Counter(rating_available=0,genre_available=0,year_available=0)
+    prior_requests=summary.get('requests',0);prior_hits=summary.get('cache_hits',0)
+    consecutive_errors=0;status='complete';totals=Counter(rating_available=0,genre_available=0,year_available=0,service_errors=0,needs_local_tags=0,candidate_matches=0,no_match=0)
     summary.update(done=0,**totals);summary.pop('message',None)
     for n,t in enumerate(sample):
         try:
-            try:query=public_query(t)
-            except ValueError as error:
-                result={'status':'needs_local_tags','error':str(error)}
-                query=None
-            if query is None:
-                with store.connection() as db:db.execute('INSERT OR REPLACE INTO mb_results VALUES (?,?,?,?)',(identity,t['id'],result['status'],encoded(result)))
-                summary['done']=n+1
-                continue
-            search=client.get('recording/',{'query':query['query'],'limit':5})
-            candidates=candidates_for(t,search.get('recordings',[]));proposal=None
-            if candidates:
-                detail=client.get('recording/'+candidates[0]['mbid'],{'inc':'ratings+genres+releases+isrcs+artist-credits'})
-                proposal=proposals(detail);totals['rating_available']+=proposal['community_score'] is not None
-                totals['genre_available']+=bool(proposal['genre']);totals['year_available']+=proposal['year'] is not None
-            result={'status':'candidate_needs_review' if candidates else 'no_match','query':query,'candidates':candidates,'proposal':proposal,'match_approved':False}
+            if getattr(client,'cancel',None) and client.cancel.is_set():raise InterruptedError('Pilot cancelled')
+            if t['id'] in previous and previous[t['id']]['status']!='service_error':result=previous[t['id']]
+            else:
+                try:query=public_query(t)
+                except ValueError as error:query=None;result={'status':'needs_local_tags','error':str(error)}
+                if query is not None:
+                    search=client.get('recording/',{'query':query['query'],'limit':5})
+                    candidates=candidates_for(t,search.get('recordings',[]));proposal=None
+                    if candidates:
+                        detail=client.get('recording/'+candidates[0]['mbid'],{'inc':'ratings+genres+releases+isrcs+artist-credits'})
+                        if not detail.get('id'):raise ValueError('Candidate details are unavailable; retry later')
+                        proposal=proposals(detail)
+                    result={'status':'candidate_needs_review' if candidates else 'no_match','query':query,'candidates':candidates,'proposal':proposal,'match_approved':False}
             consecutive_errors=0
         except InterruptedError as error:status='cancelled';summary['message']=str(error);break
         except Exception as error:
             consecutive_errors+=1;result={'status':'service_error','error':type(error).__name__+': '+str(error)[:200]}
+        totals[{'service_error':'service_errors','candidate_needs_review':'candidate_matches'}.get(result['status'],result['status'])]+=1
+        proposal=result.get('proposal') or {}
+        totals['rating_available']+=proposal.get('community_score') is not None
+        totals['genre_available']+=bool(proposal.get('genre'));totals['year_available']+=proposal.get('year') is not None
         with store.connection() as db:
             db.execute('INSERT OR REPLACE INTO mb_results VALUES (?,?,?,?)',(identity,t['id'],result['status'],encoded(result)))
-            summary.update(done=n+1,requests=client.requests,cache_hits=client.cache_hits,**totals)
+            summary.update(done=n+1,requests=prior_requests+client.requests,cache_hits=prior_hits+client.cache_hits,**totals)
             db.execute('UPDATE mb_batches SET summary=? WHERE id=?',(encoded(summary),identity))
         progress(100*(n+1)/max(1,len(sample)),f"MusicBrainz {n+1}/{len(sample)} · {client.requests} requests · {client.cache_hits} cached")
         if consecutive_errors>=5:status='service_paused';summary['message']='Stopped after five consecutive service errors; partial results retained';break
-    summary.update(requests=client.requests,cache_hits=client.cache_hits)
+    if status=='complete' and totals['service_errors']:status='complete_with_errors'
+    summary.update(requests=prior_requests+client.requests,cache_hits=prior_hits+client.cache_hits,**totals)
     with store.connection() as db:db.execute('UPDATE mb_batches SET status=?,summary=? WHERE id=?',(status,encoded(summary),identity))
     return {'batch_id':identity,'status':status,'summary':summary}

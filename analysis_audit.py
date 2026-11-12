@@ -56,9 +56,12 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                         if not archive and file_record(Path(f['source']))!=f['stamp']:raise ValueError('An analysis file changed after inventory; capture again')
                         stream=archive.open(f['source']) if archive else Path(f['source']).open('rb')
                         with stream:
-                            while chunk:=stream.read(2*1024**2):digest.update(chunk);hash_bytes+=len(chunk)
+                            while chunk:=stream.read(min(2*1024**2,max_hash_bytes-hash_bytes+1)):
+                                if hash_bytes+len(chunk)>max_hash_bytes:reason='Explicit verification byte budget reached';skipped+=1;break
+                                digest.update(chunk);hash_bytes+=len(chunk)
                         if not archive and file_record(Path(f['source']))!=f['stamp']:raise ValueError('An analysis file changed during verification; capture again')
                         progress(50,'Verifying selected candidate analysis bytes')
+                        if reason:break
                     if reason:break
                     digests[key]=digest.hexdigest()
             identical=verify and not reason and len(set(digests.values()))==1

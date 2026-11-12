@@ -114,7 +114,10 @@ def current():
 
 def summary(session):
     decisions=session["decisions"]
+    from workbench_store import Store
+    fields=Store(DATA/'workbench-sidecar.sqlite3').overrides('session:'+session['id']) if (DATA/'workbench-sidecar.sqlite3').is_file() else {}
     return {"id":session["id"],"name":session.get("name",session["metadata"]["name"]),"metadata":session["metadata"],"counts":session["catalog"].counts,
+            "metadata_override_fields":sum(len(v) for v in fields.values()),
             "policy":session["policy"],"backup_acknowledged":session.get("backup_acknowledged"),"staged":sum(d["action"]=="merge" for d in decisions.values()),
             "skipped":sum(d["action"]=="skip" for d in decisions.values()),
             "relocations":len(session["relocations"]),"events":session["events"][-60:]}
@@ -633,6 +636,8 @@ def export():
         relocations=dict(session["relocations"])
         snapshot=deepcopy(summary(session))
         snapshot['metadata_overrides']=deepcopy(catalog.metadata['field_overrides'])
+        from workbench_store import Store
+        snapshot['metadata_override_evidence']=Store(DATA/'workbench-sidecar.sqlite3').overrides('session:'+session['id'])
     export_id=uuid4().hex
     def work(progress):
         result=prepare_export(catalog,decisions,relocations,snapshot,DATA/"exports",export_id,kind,progress)
@@ -948,6 +953,7 @@ def stage_recording_group():
 
 @app.post("/api/desktop/stop")
 def stop_desktop():
+    cancel_lab_jobs()
     callback=app.config.get("SHUTDOWN_CALLBACK")
     if not callback:raise ValueError("Stop the command-line server from its terminal")
     from threading import Thread

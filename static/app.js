@@ -148,7 +148,7 @@ function renderWorkflow() {
   $("#backup-ack").disabled=!session || busy;
   $("#backup-ack-state").textContent=acknowledged?"Acknowledged for this workspace · "+new Date(session.backup_acknowledged).toLocaleString():session?"Acknowledge your separate backup to enable export. This records your statement; it does not verify restorability.":"Load a workspace to acknowledge your backup.";
   $("#native-version-note").hidden=!session || nativeVersion;
-  $("#paired-export-summary").textContent=session ? num(session.staged)+" staged merges · "+num(session.relocations)+" reference edits · "+session.name : "Load a library pair to begin.";
+  $("#paired-export-summary").textContent=session ? num(session.staged)+" staged merges · "+num(session.relocations)+" reference edits · "+num(session.metadata_override_fields)+" metadata fields · "+session.name : "Load a library pair to begin.";
   if (!session) return;
   $("#workflow-session-title").textContent=session.name;
   const mode=session.metadata.import_mode;

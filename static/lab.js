@@ -119,14 +119,21 @@ async function labLoadPilot() {
   $$('[data-lab-approve]').forEach(b=>b.onclick=wrap(async()=>{await labPost('musicbrainz/'+labBatch+'/review',{track_id:b.dataset.labApprove,approved:b.dataset.approved==='true'});await labLoadPilot();}));
   $$('[data-lab-proposal]').forEach(b=>b.onclick=wrap(async()=>{
     const t=r.rows.find(t=>t.id===b.dataset.labProposal);if(r.snapshot_id!==labSnapshot())throw new Error('Select the snapshot used for this pilot before staging suggestions');
-    await labPost('overrides',{snapshot:r.snapshot_id,track_id:t.id,field:b.dataset.field,value:t.proposal[b.dataset.field]});notify('Proposed '+b.dataset.field+' staged after identity approval');await labLoadTracks();
+    await labPost('musicbrainz/'+labBatch+'/stage',{track_id:t.id,field:b.dataset.field});notify('Proposed '+b.dataset.field+' staged after identity approval');await labLoadTracks();
   }));
   return r;
 }
 $('#lab-pilot-start').onclick=wrap(async()=>{
   const r=await labPost('musicbrainz/'+labBatch+'/start',{query_consent:$('#lab-pilot-consent').checked});$('#lab-pilot-cancel').disabled=false;$('#lab-pilot-start').disabled=true;
   clearInterval(labPilotTimer);labPilotTimer=setInterval(()=>labLoadPilot().catch(error=>notify(error.message,true)),2500);
-  try{const result=await poll(r.job);notify('MusicBrainz pilot '+result.status);}finally{clearInterval(labPilotTimer);await labLoadPilot();$('#lab-pilot-cancel').disabled=true;labPilotButtons();}
+  try{
+    while(true){
+      const task=await api('/api/tasks/'+r.job);
+      if(task.status==='error')throw new Error(task.message);
+      if(task.status==='complete'){notify('MusicBrainz pilot '+task.result.status);break;}
+      await new Promise(resolve=>setTimeout(resolve,1500));
+    }
+  }finally{clearInterval(labPilotTimer);await labLoadPilot();$('#lab-pilot-cancel').disabled=true;labPilotButtons();}
 });
 $('#lab-pilot-cancel').onclick=wrap(async()=>{if(labBatch)await labPost('musicbrainz/'+labBatch+'/cancel',{});});
 $('#lab-pilot-prev').onclick=wrap(async()=>{labPilotOffset=Math.max(0,labPilotOffset-50);await labLoadPilot();});
