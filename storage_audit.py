@@ -3,6 +3,7 @@ from collections import defaultdict
 from datetime import datetime,timezone
 from hashlib import sha256
 import os
+import stat as stat_constants
 from pathlib import Path
 
 from engine import path_key
@@ -56,7 +57,7 @@ def scan_storage(mappings,progress,policy="unknown",track_paths=None):
         if root==Path(root.anchor):raise ValueError("Choose a music folder rather than an entire system drive")
         if any(row["root"]==str(root) for row in validated):raise ValueError("The same folder was selected more than once")
         validated.append({"root":str(root),"kind":kind,"recorded_prefix":str(mapping.get("recorded_prefix","")).strip()})
-    records=[];seen_paths=set();allocated_inodes=set();index=defaultdict(list)
+    records=[];seen_paths={};allocated_inodes=set();index=defaultdict(list)
     # More specific roots get first attribution when selected folders overlap.
     for mapping in sorted(validated,key=lambda row:len(Path(row["root"]).parts),reverse=True):
         root=Path(mapping["root"])
@@ -67,13 +68,19 @@ def scan_storage(mappings,progress,policy="unknown",track_paths=None):
                 path=Path(folder)/name
                 if path.suffix.casefold() not in AUDIO or path.is_symlink():continue
                 identity_path=os.path.normcase(str(path.resolve()))
-                if identity_path in seen_paths:continue
+                if identity_path in seen_paths:
+                    record=records[seen_paths[identity_path]]
+                    if mapping["recorded_prefix"]:
+                        recorded=mapping["recorded_prefix"].rstrip("/\\")+"/"+path.relative_to(root).as_posix()
+                        index[path_key(recorded),record["size"]].append(record["id"])
+                    continue
                 try:
                     stat=path.stat()
+                    if not stat_constants.S_ISREG(stat.st_mode):continue
                     physical=str(stat.st_dev)+":"+str(stat.st_ino) if stat.st_ino else identity_path
                     used=allocation(path,stat)
                 except OSError as error:warnings.append(str(error));continue
-                seen_paths.add(identity_path)
+                seen_paths[identity_path]=len(records)
                 counted=physical not in allocated_inodes
                 allocated_inodes.add(physical)
                 record={"id":len(records),"path":str(path),"name":name,"kind":mapping["kind"],
@@ -129,7 +136,7 @@ def scan_storage(mappings,progress,policy="unknown",track_paths=None):
                           "unknown_allocation_files":sum(r["allocated_bytes"] is None for r in selected),
                           "cloud_placeholders":sum(r["cloud_only"] for r in selected)})
     result={"created":datetime.now(timezone.utc).isoformat(),"policy_hint":policy,"roots":validated,
-            "file_locations":len(records),"physical_files":len(allocated_inodes),"locations":locations,
+            "file_locations":len(records),"physical_files":len(allocated_inodes),"locations":locations,"media_extensions":sorted(AUDIO),
             "matched_database_tracks":matched_tracks,"groups":sorted(groups,key=lambda g:(not g["cloud_local"],-g["potential_extra_logical_bytes"])),
             "warnings":warnings[:100],"warning_count":len(warnings),"source_writes":False,
             "notes":["Copy/Move is a user-supplied hint. This audit reports observed files, not the historical rekordbox setting.",

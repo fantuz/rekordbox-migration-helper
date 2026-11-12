@@ -234,6 +234,7 @@ function showView(view) {
   $("#collection-metrics").hidden=["files","analyzer","storage"].includes(view);
   $(".dataset-bar").hidden=["analyzer","storage"].includes(view);
   $("#page-title").textContent={files:"From backups to a review copy.",analyzer:"Understand the source library.",storage:"See the space behind the library.",review:"A clearer collection.",reference:"Find the right home.",activity:"Every decision, recorded.",statistics:"Know your collection.",inventory:"Locate the music.",exports:"Ready for the next session."}[view];
+  window.scrollTo(0,0);
 }
 async function example() {
   if (busy) return;
@@ -562,7 +563,7 @@ async function loadStorageAudit(id) {
   $$("[data-storage-verify]").forEach(button=>button.onclick=wrap(async()=>{
     if (busy) return;
     const started=await api("/api/storage/"+id+"/verify",{method:"POST",body:JSON.stringify({group:button.dataset.storageVerify})});
-    await poll(started.job);await loadStorageAudit(id);await loadStorageInfo();notify("File verification saved to this comparison");
+    const verified=await poll(started.job);await loadStorageAudit(id);await loadStorageInfo();notify(verified.same_file_bytes?"Identical file bytes confirmed":"File contents differ · review this group");
   }));
 }
 $("#storage-form").onsubmit=wrap(async event=>{

@@ -5,6 +5,7 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from analyzer import analyze_folder, snapshot_database
 
@@ -112,6 +113,24 @@ class AnalyzerTests(unittest.TestCase):
     def test_source_cannot_contain_the_analysis_destination(self):
         with self.assertRaisesRegex(ValueError,"parent"):
             analyze_folder(str(self.source),self.source/"nested-workbench",lambda *_:None)
+
+    def test_online_only_source_database_is_held_before_reading_bytes(self):
+        (self.source/'master.db').write_bytes(b'synthetic database placeholder')
+        with patch('analyzer.cloud_placeholder',return_value=True):
+            with self.assertRaisesRegex(ValueError,'online-only'):
+                snapshot_database(self.source,self.output,lambda *_:None)
+        self.assertFalse((self.output/'master.db').exists())
+
+    def test_partial_schema_does_not_invent_zero_for_missing_statistics(self):
+        with closing(sqlite3.connect(self.source/'master.db')) as db:
+            db.execute('CREATE TABLE djmdContent(ID TEXT,Title TEXT,FolderPath TEXT)')
+            db.execute("INSERT INTO djmdContent VALUES ('1','Track','C:/track.mp3')")
+            db.commit()
+        report=analyze_folder(str(self.source),self.output,lambda *_:None)
+        self.assertEqual(report['database']['counters']['tracks'],1)
+        self.assertIsNone(report['database']['counters']['cue_rows'])
+        self.assertIsNone(report['database']['counters']['playlists'])
+        self.assertIsNone(report['database']['health']['unlinked_analysis_folders'])
 
 
 if __name__=="__main__":unittest.main()

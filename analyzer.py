@@ -48,6 +48,8 @@ def snapshot_database(root,destination,progress):
     copied=[]
     for name,stamp in before.items():
         if not stamp:continue
+        if cloud_placeholder((root/name).stat()):
+            raise ValueError("A source database or journal file is online-only. Make it available locally before capturing a snapshot.")
         digest=sha256()
         with (root/name).open("rb") as src,(destination/name).open("xb") as out:
             while chunk:=src.read(2*1024**2):
@@ -137,9 +139,10 @@ def inspect_database(path,asset_folders):
             if cue["ContentID"] in ids:cue_groups[cue["ContentID"]].append(cue)
         counters={"tracks":len(tracks),"rated":sum(bool(t["Rating"]) for t in tracks) if "Rating" in columns["djmdContent"] else None,
                   "analysed":sum(bool(t["Analysed"]) for t in tracks) if "Analysed" in columns["djmdContent"] else None,
-                  "cue_rows":len(cues),"full_manual":None,"mixed":None,"only_auto":None,"no_cues":None,"no_cues_no_plays":None}
+                  "cue_rows":len(cues) if "djmdCue" in tables else None,"full_manual":None,"mixed":None,"only_auto":None,"no_cues":None,"no_cues_no_plays":None}
         if {"ContentID","Comment"}<=columns.get("djmdCue",set()):
             for name in ("full_manual","mixed","only_auto","no_cues","no_cues_no_plays"):counters[name]=0
+            if "DJPlayCount" not in columns["djmdContent"]:counters["no_cues_no_plays"]=None
             for track in tracks:
                 saved=cue_groups[track["ID"]]
                 automated=sum(is_auto(cue) for cue in saved)
@@ -148,15 +151,15 @@ def inspect_database(path,asset_folders):
                 counters["mixed"]+=other>0 and automated>0
                 counters["only_auto"]+=automated>0 and other==0
                 counters["no_cues"]+=not saved
-                counters["no_cues_no_plays"]+=not saved and not track["DJPlayCount"]
+                if counters["no_cues_no_plays"] is not None:counters["no_cues_no_plays"]+=not saved and not track["DJPlayCount"]
         metadata_records={}
         for name,table,field in (("artists","djmdArtist","ArtistID"),("albums","djmdAlbum","AlbumID")):
             records=rows(table,["ID","Name"])
             used={t[field] for t in tracks if t[field]}
-            counters[name]=len({str(r["Name"]).strip().casefold() for r in records if r["ID"] in used and r["Name"] and str(r["Name"]).strip()}) if table in tables else None
+            counters[name]=len({str(r["Name"]).strip().casefold() for r in records if r["ID"] in used and r["Name"] and str(r["Name"]).strip()}) if {"ID","Name"}<=columns.get(table,set()) else None
             metadata_records[name+"_rows"]=len(records) if table in tables else None
         playlists=rows("djmdPlaylist",["ID","Attribute"])
-        counters["playlists"]=sum((p["Attribute"] or 0)!=1 for p in playlists) if "djmdPlaylist" in tables else None
+        counters["playlists"]=sum((p["Attribute"] or 0)!=1 for p in playlists) if "Attribute" in columns.get("djmdPlaylist",set()) else None
         links={}
         for table in tables:
             if "ContentID" not in columns[table]:continue
@@ -168,12 +171,13 @@ def inspect_database(path,asset_folders):
         health={"broken_track_links":sum(links.values()),"broken_links_by_table":links,
                 "duplicate_recorded_path_groups":sum(count>1 for count in paths.values()),
                 "tracks_in_duplicate_paths":sum(count for count in paths.values() if count>1),
-                "analysis_folders_found":len(asset_folders),"unlinked_analysis_folders":len(asset_folders-owners),
-                "analysis_folders_not_found_here":len(owners-asset_folders),"audio_availability":None}
+                "analysis_folders_found":len(asset_folders),"unlinked_analysis_folders":len(asset_folders-owners) if "AnalysisDataPath" in columns["djmdContent"] else None,
+                "analysis_folders_not_found_here":len(owners-asset_folders) if "AnalysisDataPath" in columns["djmdContent"] else None,"audio_availability":None}
         result.update(counters=counters,health=health,metadata_records=metadata_records)
         result["track_paths"]=[{"id":t["ID"],"current_path":t["FolderPath"],"original_path":t["OrgFolderPath"],"size":t["FileSize"]} for t in tracks]
         result["health"]["different_original_paths"]=sum(bool(t["OrgFolderPath"] and str(t["OrgFolderPath"]).replace("\\","/").casefold()!=str(t["FolderPath"] or "").replace("\\","/").casefold()) for t in tracks)
         result["cloud_related_columns_present"]=sorted(columns["djmdContent"] & {"CloudID","ServiceID","DeviceID","OrgFolderPath","FileID","MasterDBID"})
+        if any(value is None for value in counters.values()):result["notes"].append("Some optional tables or columns are absent. Their statistics are shown as unavailable rather than zero.")
         result["notes"].extend(["Cue origin is inferred from CUE(Auto) and 1.1Bars labels; labels can be edited.",
             "Cue counters use active djmdCue rows. Mirrored cue JSON is not counted a second time.",
             "Album and artist counters count distinct names referenced by active tracks, not unused metadata rows.",

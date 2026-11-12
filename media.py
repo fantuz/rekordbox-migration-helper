@@ -20,6 +20,7 @@ def cloud_placeholder(stat):
 
 def file_record(path):
     stat=path.stat()
+    if not stat_constants.S_ISREG(stat.st_mode):raise OSError("Not a regular media file: "+str(path))
     return {"path":str(path),"size":stat.st_size,"mtime_ns":stat.st_mtime_ns,
             "cloud_only":cloud_placeholder(stat)}
 

@@ -95,5 +95,19 @@ class StorageAuditTests(unittest.TestCase):
         self.assertEqual(audit['warning_count'],1)
         self.assertEqual(audit['file_locations'],0)
 
+    def test_overlapping_roots_keep_both_prefix_maps_without_counting_files_twice(self):
+        (self.local/'original.mp3').write_bytes(b'abc');(self.cloud/'renamed.mp3').write_bytes(b'abc')
+        roots=[{'root':str(self.root),'kind':'local','recorded_prefix':'C:/Base'},
+               {'root':str(self.cloud),'kind':'dropbox','recorded_prefix':'D:/Dropbox'}]
+        tracks=[{'id':'track','current_path':'C:/Base/cloud/renamed.mp3','original_path':'C:/Base/originals/original.mp3','size':3}]
+        audit=scan_storage(roots,lambda *_:None,track_paths=tracks)
+        self.assertEqual(audit['file_locations'],2)
+        self.assertEqual(audit['totals']['cloud_local_candidate_groups'],1)
+
+    def test_ordinary_files_have_a_known_allocation_on_supported_platforms(self):
+        (self.local/'song.mp3').write_bytes(b'abc')
+        audit=self.scan()
+        self.assertEqual(audit['locations'][0]['unknown_allocation_files'],0)
+
 
 if __name__=='__main__':unittest.main()
