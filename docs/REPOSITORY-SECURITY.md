@@ -31,6 +31,7 @@ The tag template prevents deletion and force updates of `v*` tags but allows new
 | Action SHA pinning | All project actions are pinned; repository-wide SHA pinning enforcement can also be enabled after checking all workflows |
 | Secret scanning / push protection | Enable if available for the repository; do not upload personal libraries as test fixtures |
 | Releases | Prefer prereleases until native restore validation; add signing/notarization later, with protected signing credentials |
+| Bundled native runtimes | Review CPython, SQLCipher/SQLite and libxml2 advisories when updating packages; a Python dependency audit is not a complete audit of embedded native code |
 | Owner access | MFA/passkeys, minimal collaborators and periodic token/app review |
 
 Badges are navigation and visibility aids, not a security certification. Neither a policy file nor a green scanner badge guarantees library restoration or absence of vulnerabilities.

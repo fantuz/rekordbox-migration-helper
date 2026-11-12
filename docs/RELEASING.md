@@ -13,6 +13,8 @@ The release version is embedded in the package manifests and source archive's `V
 
 The checked source commit is fixed for the whole run, even if `main` advances. Release validation compares archive digests, package versions, native runtime evidence, source commits and application-source hashes across all four archives. It never picks an artifact from an unrelated prior run.
 
+The final job creates the tag atomically at that checked commit and refuses an existing ref, including one created while the packages were building. The release then requires that tag to exist. It does not silently attach new packages to somebody else's version tag.
+
 Do not copy entropy-service's tag-creation restrictions unchanged: those can block `GITHUB_TOKEN` from creating the new release tag. The recommended tag rules protect existing tags against deletion/rewriting while allowing the web workflow to create a new version.
 
 Workflow configuration and dry validation are tested in PR CI. A real release is not published as a side effect of a pull request. The first default-branch manual run is the final end-to-end publication check.

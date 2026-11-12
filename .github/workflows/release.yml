@@ -87,7 +87,8 @@ jobs:
       - name: Create the release with all four packages
         shell: bash
         run: |
-          args=(--draft --target "$GITHUB_SHA" --title "Library Workbench $REQUESTED_RELEASE_VERSION" --notes-file release-assets/RELEASE-NOTES.md)
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" --method POST -f ref="refs/tags/$RELEASE_TAG" -f sha="$GITHUB_SHA" --silent
+          args=(--draft --verify-tag --target "$GITHUB_SHA" --title "Library Workbench $REQUESTED_RELEASE_VERSION" --notes-file release-assets/RELEASE-NOTES.md)
           if [[ "$PRERELEASE_REQUESTED" == true ]]; then args+=(--prerelease); fi
           gh release create "$RELEASE_TAG" release-assets/Library-Workbench-*.zip release-assets/Library-Workbench-*.tar.gz release-assets/SHA256SUMS "${args[@]}"
           if [[ "$PUBLISH_REQUESTED" == true ]]; then gh release edit "$RELEASE_TAG" --draft=false; fi
