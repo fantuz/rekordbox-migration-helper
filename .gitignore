@@ -1,0 +1,15 @@
+.data/
+.venv/
+.build/
+releases/
+ci-output/
+portable*/
+__pycache__/
+*.py[cod]
+*.db
+*.db-*
+*.edb
+*.sqlite3
+*.zip
+*.xml
+.env*
