@@ -136,6 +136,11 @@ def main():
                         with zipfile.ZipFile(BytesIO(content)) as archive:
                             assert archive.testzip() is None and "index.html" in archive.namelist()
                 assert sha256((source/"master.db").read_bytes()).hexdigest()==original
+                disposable=request('/api/import',{'zip':'synthetic.zip','xml':'synthetic.xml'})
+                req=urllib.request.Request(base+'/api/upload/'+disposable['session']+'/zip',data=b'synthetic disposable copy',method='PUT',headers={'X-Workbench-Token':token})
+                with urllib.request.urlopen(req,timeout=10) as response:assert json.load(response)['bytes']>0
+                temporary_info=request('/api/cleanup')
+                assert temporary_info['bytes']>0
                 checks={"status":"passed","platform":platform.platform(),"launcher":"portable executable" if args.application else "macOS app bundle" if args.macos_app else "Python source",
                         "encrypted_sqlcipher_read_write":"passed","http_startup":"passed","unicode_workspace_path":"passed",
                         "read_only_analyzer":"passed","source_sha256_unchanged":True,"json_report_download":"passed",
@@ -143,7 +148,7 @@ def main():
                         "repeat_launch":"passed" if args.application or args.macos_app else "not exercised","rekordbox_restore":"not exercised"}
             finally:
                 if base and token:
-                    try:request("/api/desktop/stop",{})
+                    try:request("/api/desktop/stop",{'acknowledged':True})
                     except OSError:pass
                 if process:
                     try:process.wait(timeout=15)
@@ -151,6 +156,13 @@ def main():
                 deadline=time.monotonic()+15
                 while (data/"instance.json").exists() and time.monotonic()<deadline:time.sleep(.2)
                 if (data/"instance.json").exists():raise RuntimeError("Desktop did not stop cleanly")
+        assert not Path(temporary_info['directory']).exists(),'Temporary analysis copies survived acknowledged shutdown'
+        assert (data/'analyzers'/result['id']/'report.json').is_file()
+        assert (data/'analyzers'/result['id']/'comparison.json').is_file()
+        assert (data/'workbench-sidecar.sqlite3').is_file()
+        assert list((data/'quick-exports').glob('*/library.html'))
+        assert json.loads((data/'cleanup-last.json').read_text())['phase']=='complete'
+        checks.update(temporary_file_cleanup='passed',reports_decisions_and_exports_preserved='passed')
         args.report.parent.mkdir(parents=True,exist_ok=True)
         args.report.write_text(json.dumps(checks,indent=2),encoding="utf-8")
         print(json.dumps(checks,indent=2))

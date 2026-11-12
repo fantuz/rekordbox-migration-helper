@@ -51,7 +51,7 @@ def register(owner):
     def lab_info():
         sources=[]
         for p in (owner.DATA/'analyzers').glob('*/report.json'):
-            if not (p.parent/'snapshot/master.db').is_file():continue
+            if not (p.parent/'comparison.json').is_file() and not (p.parent/'snapshot/master.db').is_file():continue
             try:
                 r=json.loads(p.read_text(encoding='utf-8'));sources.append({'id':r['id'],'created':r['created'],'label':str(r.get('source','Source capture'))})
             except (OSError,ValueError,KeyError):continue
@@ -64,7 +64,7 @@ def register(owner):
     def lab_capture():
         b=body();source=b.get('source','session');label=b.get('label','Library snapshot')
         if source=='session':
-            session=owner.current();scope='session:'+session['id'];private=owner.DATA/session['id']/'master.db'
+            session=owner.current();scope='session:'+session['id'];private=owner.TEMPORARY.path/session['id']/'master.db'
         elif source=='orphans':
             session=owner.current();inventory=deepcopy(session.get('inventory'))
             if not inventory or 'orphans' not in inventory:raise ValueError('Scan Media inventory again to capture unreferenced file tags')
@@ -75,14 +75,16 @@ def register(owner):
         else:
             if not isinstance(source,str) or not owner.re_uuid(source):raise ValueError('Choose a saved source capture')
             private=owner.DATA/'analyzers'/source/'snapshot/master.db';scope='capture:'+source
-            if not private.is_file():raise ValueError('Capture this source folder with Source analyzer first')
+            comparison=owner.DATA/'analyzers'/source/'comparison.json'
+            if not private.is_file() and not comparison.is_file():raise ValueError('Capture this source folder with Source analyzer first')
         def work(progress):
             progress(10,'Reading the already detached private database copy')
-            if private.is_file():
+            if source!='session' and comparison.is_file():s=json.loads(comparison.read_text(encoding='utf-8'))
+            elif private.is_file():
                 with closing(open_capture(private.resolve())) as db:s=capture_private_database(db,scope)
             else:s=capture_workspace(session['catalog'],scope)
             s.update(captured=now(),source_kind='Loaded XML + ZIP' if source=='session' else 'Saved source-folder capture',source_capture=source)
-            if source!='session':s['source_captured']=json.loads((private.parent.parent/'report.json').read_text(encoding='utf-8')).get('created')
+            if source!='session':s['source_captured']=json.loads((owner.DATA/'analyzers'/source/'report.json').read_text(encoding='utf-8')).get('created')
             return store().save_snapshot(s,label)
         return jsonify(job=owner.launch(work,'Capturing an immutable Library lab snapshot'))
 
@@ -217,4 +219,4 @@ def register(owner):
         b=body();s=snapshot(b)
         if b.get('working') is True:s=store().effective(s)
         identity=uuid4().hex
-        return jsonify(job=owner.launch(lambda p:export_metadata(s,owner.DATA/'quick-exports',identity,owner.ROOT/'static',p,title=b.get('title') or s['label'],include_paths=False),'Exporting the selected snapshot as offline HTML'))
+        return jsonify(job=owner.launch(lambda p:export_metadata(s,owner.DATA/'quick-exports',identity,owner.ROOT/'static',p,title=b.get('title') or s['label'],include_paths=False,temporary_root=owner.TEMPORARY.folder('exports')),'Exporting the selected snapshot as offline HTML'))

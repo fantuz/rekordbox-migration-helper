@@ -130,9 +130,10 @@ def script_json(value):
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
 
-def export_metadata(snapshot, root, export_id, assets, progress, title="My library", include_paths=False):
+def export_metadata(snapshot, root, export_id, assets, progress, title="My library", include_paths=False,temporary_root=None):
     root, assets = Path(root), Path(assets)
-    pending, final = root/(".pending-"+export_id), root/export_id
+    root.mkdir(parents=True,exist_ok=True)
+    pending, final = Path(temporary_root or root)/(".pending-"+export_id), root/export_id
     pending.mkdir(parents=True)
     try:
         data = payload(snapshot, title, include_paths)

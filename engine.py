@@ -321,9 +321,10 @@ def parse_xml(path, progress):
     return tracks, playlists, version, digest.hexdigest()
 
 
-def analyze(backup, xml, folder, progress):
+def analyze(backup, xml, folder, progress, scratch=None):
     progress(5, "Reading backup directory")
-    master = folder / "master.db"
+    scratch=Path(scratch or folder);scratch.mkdir(parents=True,exist_ok=True)
+    master = scratch / "master.db"
     with zipfile.ZipFile(backup) as archive:
         infos = archive.infolist()
         names = {i.filename for i in infos}
@@ -427,7 +428,9 @@ def analyze(backup, xml, folder, progress):
                         continue
                     db.execute("INSERT INTO match_candidate VALUES (?,?,?)",(a,b,1 if shared else 2))
         db.commit()
+    from file_workflow import pair_signature
     return {"name": backup.name, "zip_path": str(backup), "xml_path": str(xml), "source": str(output),
+            "pair_signature":pair_signature(backup,xml,xml_hash,master),
             "version": version, "xml_sha256": xml_hash, "zip_bytes": backup.stat().st_size,
             "unpacked_bytes": sum(i.file_size for i in infos), "file_count": len(infos),
             "input_check": "XML IDs and declared file sizes match the backup",

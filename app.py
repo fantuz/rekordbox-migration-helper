@@ -18,7 +18,7 @@ from werkzeug.utils import secure_filename
 from engine import Catalog, analyze, enrich_usage, decision_map, export_xml
 from native_export import export_native
 from media import scan as scan_media, verify_pair
-from file_workflow import select_inputs, fingerprint_inputs, check_inputs, prepare_export, list_exports
+from file_workflow import select_inputs, fingerprint_inputs, check_inputs, prepare_export, list_exports,pair_signature
 from analyzer import analyze_folder, COMPATIBILITY
 from platform_paths import default_data_directory, discover_sources, discover_cloud_roots
 from storage_audit import scan_storage, verify_group
@@ -28,6 +28,9 @@ ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT.parent
 DATA = Path(os.environ.get("LIBRARY_WORKBENCH_DATA_DIR",str(default_data_directory(ROOT)))).expanduser().resolve()
 DATA.mkdir(mode=0o700, parents=True, exist_ok=True)
+from temporary_files import TemporaryWorkspace
+from shutdown_cleanup import ShutdownController
+TEMPORARY=TemporaryWorkspace(DATA)
 INPUTS=DATA/"inputs"
 INPUTS.mkdir(exist_ok=True)
 app = Flask(__name__, static_folder="static")
@@ -37,6 +40,18 @@ executor = ThreadPoolExecutor(max_workers=1)
 lock = RLock()
 sessions, tasks = {}, {}
 active = None
+
+
+def clean_provider_cache():
+    path=DATA/'workbench-sidecar.sqlite3'
+    if path.is_file():
+        with closing(sqlite3.connect(path,timeout=30)) as db:
+            if not db.execute("SELECT 1 FROM sqlite_schema WHERE name='mb_cache'").fetchone():return
+            db.execute('DELETE FROM mb_cache');db.commit();db.execute('VACUUM');db.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+
+
+shutdown=ShutdownController(TEMPORARY,lambda:cancel_lab_jobs(),clean_provider_cache,lambda:app.config['SHUTDOWN_CALLBACK']())
+app.config['REQUEST_SHUTDOWN']=shutdown.request
 
 
 def application_version():
@@ -63,16 +78,18 @@ def log(session, text):
 
 
 def task_progress(job, amount, text):
+    if shutdown.requested.is_set():raise InterruptedError('Stopping: temporary analysis copies are being cleaned')
     with lock:
         tasks[job].update(progress=amount,message=text)
 
 
 def launch(work, message, pool=None):
+    if shutdown.requested.is_set():raise ValueError('The application is stopping')
     job = uuid4().hex
     tasks[job] = {"id":job,"status":"running","progress":0,"message":message}
     def run():
         try:
-            result=work(lambda n,s:task_progress(job,n,s))
+            with TEMPORARY.operation():result=work(lambda n,s:task_progress(job,n,s))
             with lock:
                 tasks[job].update(status="complete",progress=100,result=result,message="Complete")
         except Exception as error:
@@ -89,7 +106,8 @@ def load_session(metadata, sid, progress):
     catalog=Catalog(metadata["source"],metadata)
     session_dir=DATA/sid
     session_dir.mkdir(parents=True,exist_ok=True)
-    enrich_usage(catalog,Path(metadata["zip_path"]),session_dir,progress)
+    enrich_usage(catalog,Path(metadata["zip_path"]),TEMPORARY.folder(sid),progress)
+    if not metadata.get('pair_signature'):metadata['pair_signature']=pair_signature(Path(metadata['zip_path']),Path(metadata['xml_path']),metadata.get('xml_sha256'),TEMPORARY.folder(sid)/'master.db')
     state=session_dir/"state.json"
     saved=json.loads(state.read_text(encoding="utf-8")) if state.exists() else {}
     inventory=saved.get("inventory")
@@ -135,6 +153,8 @@ def configured_example():
 
 @app.before_request
 def protect():
+    if shutdown.requested.is_set() and request.path not in ('/api/cleanup','/api/desktop/stop','/api/status') and not request.path.startswith('/api/tasks/'):
+        return jsonify(error='The app is stopping and cleaning its temporary copies'),503
     if request.method in ("POST","PUT","DELETE") and request.headers.get("X-Workbench-Token")!=TOKEN:
         return jsonify(error="Reload the local page to authorize this action"),403
 
@@ -151,7 +171,11 @@ def home():
 
 @app.get("/api/status")
 def status():
-    return jsonify(app_id="library-workbench",version=application_version(),token=TOKEN,desktop=bool(app.config.get("SHUTDOWN_CALLBACK")),example_available=bool(configured_example()),session=summary(sessions[active]) if active in sessions else None)
+    return jsonify(app_id="library-workbench",version=application_version(),token=TOKEN,desktop=bool(app.config.get("SHUTDOWN_CALLBACK")),example_available=bool(configured_example()),cleanup=shutdown.status(),session=summary(sessions[active]) if active in sessions and not shutdown.requested.is_set() else None)
+
+
+@app.get('/api/cleanup')
+def cleanup_info():return jsonify(shutdown.status(inventory=True))
 
 
 @app.get("/api/workspace")
@@ -161,7 +185,7 @@ def workspace():
         if path.suffix.lower() in (".zip",".xml") and path.is_file():
             files.append({"name":path.name,"path":str(path.resolve()),"kind":path.suffix.lower()[1:],"bytes":path.stat().st_size})
     session=sessions.get(active)
-    return jsonify(root=str(DATA),inputs=str(INPUTS),exports_root=str(DATA/"exports"),files=files,
+    return jsonify(root=str(DATA),inputs=str(INPUTS),temporary_root=str(TEMPORARY.path),exports_root=str(DATA/"exports"),files=files,
                    session_directory=str(DATA/session["id"]) if session else None,exports=list_exports(DATA/"exports"))
 
 
@@ -186,7 +210,7 @@ def start_analyzer():
     source=str(body.get("path","")).strip()
     version=str(body.get("version","")).strip()
     report_id=uuid4().hex
-    return jsonify(job=launch(lambda progress:analyze_folder(source,DATA/"analyzers"/report_id,progress,version),
+    return jsonify(job=launch(lambda progress:analyze_folder(source,DATA/"analyzers"/report_id,progress,version,snapshot_root=TEMPORARY.folder('analyzers',report_id)),
                              "Capturing a read-only source-folder snapshot"),report_id=report_id)
 
 
@@ -207,7 +231,8 @@ def quick_export_info():
         if not (path.parent/"metadata.json").is_file():continue
         try:
             report=json.loads(path.read_text(encoding="utf-8"))
-            sources.append({"id":report["id"],"created":report["created"],"tracks":report["database"]["counters"]["tracks"]})
+            counters=(report.get('database') or report.get('xml') or {}).get('counters',{})
+            sources.append({"id":report["id"],"created":report["created"],"tracks":counters.get('tracks')})
         except (OSError,ValueError,KeyError,TypeError):continue
     return jsonify(directory=str(DATA/"quick-exports"),sources=sorted(sources,key=lambda r:r["created"],reverse=True)[:20],
                    exports=list_metadata_exports(DATA/"quick-exports"))
@@ -230,7 +255,7 @@ def quick_export():
     title=body.get("title") or "My library"
     include_paths=body.get("include_paths") is True
     return jsonify(job=launch(lambda progress:export_metadata(snapshot,DATA/"quick-exports",export_id,ROOT/"static",progress,
-                                                             title=title,include_paths=include_paths),"Building your offline metadata explorer"))
+                                                             title=title,include_paths=include_paths,temporary_root=TEMPORARY.folder('exports')),"Building your offline metadata explorer"))
 
 
 @app.get("/api/quick-export/<export_id>/<kind>")
@@ -640,7 +665,7 @@ def export():
         snapshot['metadata_override_evidence']=Store(DATA/'workbench-sidecar.sqlite3').overrides('session:'+session['id'])
     export_id=uuid4().hex
     def work(progress):
-        result=prepare_export(catalog,decisions,relocations,snapshot,DATA/"exports",export_id,kind,progress)
+        result=prepare_export(catalog,decisions,relocations,snapshot,DATA/"exports",export_id,kind,progress,temporary_root=TEMPORARY.folder('exports'))
         log(session,f"Exported {('XML + ZIP' if kind=='pair' else kind.upper())} with {result['merges']:,} staged merges")
         return result
     return jsonify(job=launch(work,"Preparing "+("matching XML + ZIP" if kind=="pair" else kind.upper())))
@@ -675,24 +700,28 @@ def start_import():
         if not str(body.get(key,"")).lower().endswith(ext):
             raise ValueError("Choose one ZIP library backup and one XML collection")
     sid=uuid4().hex
-    folder=DATA/sid
-    folder.mkdir(mode=0o700)
-    info={"zip":secure_filename(body["zip"]),"xml":secure_filename(body["xml"])}
+    folder=TEMPORARY.folder(sid)
+    target=str(body.get('resume_session') or '')
+    if target:resume_state(target)
+    info={"zip":secure_filename(body["zip"]),"xml":secure_filename(body["xml"]),'resume_session':target}
     (folder/"upload.json").write_text(json.dumps(info),encoding="utf-8")
     return jsonify(session=sid)
 
 
 @app.post("/api/import/local")
 def import_local():
-    paths=select_inputs(request.get_json() or {})
+    body=request.get_json() or {};paths=select_inputs(body)
+    target=str(body.get('resume_session') or '')
+    if target:resume_state(target)
     sid=uuid4().hex
     folder=DATA/sid
-    folder.mkdir(mode=0o700)
+    if not target:folder.mkdir(mode=0o700)
     inputs={"zip_path":str(paths["zip"]),"xml_path":str(paths["xml"])}
     inputs["input_fingerprints"]=fingerprint_inputs(inputs)
     def work(progress):
         check_inputs(inputs)
-        metadata=analyze(paths["zip"],paths["xml"],folder,progress)
+        if target:return reattach_inputs(target,paths,progress,'linked')
+        metadata=analyze(paths["zip"],paths["xml"],folder,progress,scratch=TEMPORARY.folder(sid))
         metadata.update(inputs,import_mode="linked")
         check_inputs(metadata)
         return load_session(metadata,sid,progress)
@@ -703,15 +732,16 @@ def import_local():
 def upload(sid,kind):
     if not re_uuid(sid) or kind not in ("zip","xml"):
         raise ValueError("Unknown upload")
-    folder=DATA/sid
+    folder=TEMPORARY.folder(sid)
     info=json.loads((folder/"upload.json").read_text(encoding="utf-8"))
     final=folder/info[kind]
     if final.exists():
         raise ValueError("File has already been uploaded")
     temp=folder/(kind+".part")
     done=0
-    with temp.open("xb") as stream:
+    with TEMPORARY.operation(),temp.open("xb") as stream:
         while chunk:=request.stream.read(2*1024*1024):
+            if shutdown.requested.is_set():raise InterruptedError('Upload cancelled for temporary-file cleanup')
             done+=len(chunk)
             stream.write(chunk)
     if done==0:
@@ -725,18 +755,40 @@ def upload(sid,kind):
 def run_import(sid):
     if not re_uuid(sid):
         raise ValueError("Unknown import")
-    folder=DATA/sid
+    folder=TEMPORARY.folder(sid)
     info=json.loads((folder/"upload.json").read_text(encoding="utf-8"))
     backup,xml=folder/info["zip"],folder/info["xml"]
     if not backup.exists() or not xml.exists():
         raise ValueError("Finish uploading both files first")
     def work(progress):
+        if info.get('resume_session'):return reattach_inputs(info['resume_session'],{'zip':backup,'xml':xml},progress,'uploaded')
         stamps=fingerprint_inputs({"zip_path":str(backup),"xml_path":str(xml)})
-        metadata=analyze(backup,xml,folder,progress)
+        saved=DATA/sid;saved.mkdir(parents=True,exist_ok=True)
+        metadata=analyze(backup,xml,saved,progress,scratch=TEMPORARY.folder(sid))
         metadata.update(input_fingerprints=stamps,import_mode="uploaded")
         check_inputs(metadata)
         return load_session(metadata,sid,progress)
     return jsonify(job=launch(work,"Analyzing the imported pair"))
+
+
+def resume_state(sid):
+    if sid!='october' and not re_uuid(sid):raise ValueError('Choose a saved workspace')
+    path=DATA/sid/'state.json'
+    if not path.is_file():raise ValueError('Saved workspace not found')
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+def reattach_inputs(sid,paths,progress,mode):
+    saved=resume_state(sid);metadata=deepcopy(saved['metadata'])
+    if not metadata.get('pair_signature'):raise ValueError('This older workspace has no input identity. Restore its recorded paths once to upgrade it, or start a new workspace.')
+    if not Path(metadata['source']).is_file():raise ValueError('Saved review metadata is unavailable; import as a new workspace')
+    inputs={'zip_path':str(paths['zip']),'xml_path':str(paths['xml'])};inputs['input_fingerprints']=fingerprint_inputs(inputs)
+    progress(5,'Verifying the selected originals before restoring saved decisions')
+    identity=pair_signature(paths['zip'],paths['xml'])
+    check_inputs(inputs)
+    if identity!=metadata['pair_signature']:raise ValueError('These files differ from the saved workspace. Select the matching original XML/ZIP pair; saved decisions were kept unchanged.')
+    metadata.update(inputs,import_mode=mode)
+    return load_session(metadata,sid,progress)
 
 
 @app.get("/api/statistics")
@@ -886,7 +938,7 @@ def resume_session(sid):
     saved=json.loads(state.read_text(encoding="utf-8"))
     metadata=saved["metadata"]
     if not all(Path(metadata[k]).is_file() for k in ("source","zip_path","xml_path")):
-        raise ValueError("A saved source file has moved. Restore its recorded location before resuming.")
+        raise ValueError("The temporary inputs were cleaned or originals moved. Use Reattach originals for this saved workspace.")
     check_inputs(metadata)
     return jsonify(job=launch(lambda p:load_session(metadata,sid,p),"Resuming the saved workspace"))
 
@@ -953,12 +1005,9 @@ def stage_recording_group():
 
 @app.post("/api/desktop/stop")
 def stop_desktop():
-    cancel_lab_jobs()
     callback=app.config.get("SHUTDOWN_CALLBACK")
     if not callback:raise ValueError("Stop the command-line server from its terminal")
-    from threading import Thread
-    Thread(target=callback,daemon=True).start()
-    return jsonify(stopped=True)
+    return jsonify(shutdown.request((request.get_json() or {}).get('acknowledged') is True))
 
 
 from lab_routes import register as register_lab
@@ -969,4 +1018,5 @@ if __name__=="__main__":
     parser=argparse.ArgumentParser(description="Local rekordbox preparation workbench")
     parser.add_argument("--port",type=int,default=8765)
     args=parser.parse_args()
-    app.run(host="127.0.0.1",port=args.port,threaded=True,debug=False)
+    from desktop_launcher import serve_application
+    serve_application(app,args.port,True)

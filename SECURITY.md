@@ -25,6 +25,7 @@ Ordinary feature requests and non-sensitive bugs can use public issues. If you a
 - The explorer uses embedded/local assets and blocks network connections. Exported tag values are serialized as data and rendered as text.
 - The experimental MusicBrainz pilot is disabled by default. Enabling it and confirming a sample sends selected public artist/title or ISRC queries to MusicBrainz. It sends no audio, file paths or credentials. Community scores remain separate from personal stars. Set `LIBRARY_WORKBENCH_MUSICBRAINZ=0` to force retrieval off; existing reports remain usable.
 - Library lab snapshots, edit history and provider cache live in a separate local SQLite sidecar. Editing starts locked after application startup. Unlocked field changes affect generated copies only; they never write the source database or audio tags.
+- Uploaded inputs and extracted native databases use marked per-run temporary directories. Acknowledged shutdown cancels workers before deleting those copies; reports, decisions and completed exports stay. Recovery cleans only marked, unlocked stale directories. Original paths and unmarked pre-existing data are excluded. See [cleanup behavior](docs/TEMPORARY-FILES.md).
 - Source control, CI and release packaging exclude personal library inputs, music, snapshots and review state. Public CI uses synthetic fixtures.
 
 ## Build and release security
