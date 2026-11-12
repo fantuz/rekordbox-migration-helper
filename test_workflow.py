@@ -6,7 +6,7 @@ import tempfile
 import unittest
 import zipfile
 
-from workflow import check_inputs, fingerprint_inputs, list_exports, prepare_export, select_inputs
+from file_workflow import check_inputs, fingerprint_inputs, list_exports, prepare_export, select_inputs
 
 
 class WorkflowTests(unittest.TestCase):

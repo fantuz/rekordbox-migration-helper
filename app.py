@@ -17,7 +17,7 @@ from werkzeug.utils import secure_filename
 from engine import Catalog, analyze, enrich_usage, decision_map, export_xml
 from native_export import export_native
 from media import scan as scan_media, verify_pair
-from workflow import select_inputs, fingerprint_inputs, check_inputs, prepare_export, list_exports
+from file_workflow import select_inputs, fingerprint_inputs, check_inputs, prepare_export, list_exports
 from analyzer import analyze_folder, COMPATIBILITY
 from platform_paths import default_data_directory, discover_sources
 

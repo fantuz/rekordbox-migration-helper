@@ -1,4 +1,4 @@
-"""Local input references and publication of validated export sets."""
+"""Local input references and publication of validated XML/ZIP export sets."""
 from copy import deepcopy
 from datetime import datetime, timezone
 from hashlib import sha256
