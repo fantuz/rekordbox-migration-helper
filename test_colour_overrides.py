@@ -110,6 +110,8 @@ class ColourSidecarAPITests(unittest.TestCase):
         self.identity=self.store.save_snapshot(self.s,'Test')['id']
         p=patch.object(application,'DATA',self.root);p.start();self.addCleanup(p.stop)
         self.client=application.app.test_client();self.headers={'X-Workbench-Token':application.TOKEN}
+        # The app keeps unlocks in memory; each synthetic test starts locked.
+        self.client.post('/api/lab/unlock',json={'snapshot':self.identity,'unlocked':False},headers=self.headers)
 
     def test_colour_and_comments_are_free_separately_logged_and_reset_returns_saved_recap(self):
         body={'snapshot':self.identity,'track_id':'t','field':'colour','value':'#00FF00'}
