@@ -2,7 +2,7 @@
 
 The interface supports English, German, French, Italian, Spanish, Greek, Polish, Czech and Russian. Choose a language in the header. The browser remembers it where local storage is available; otherwise the choice lasts for the page session. Initial selection uses a supported browser language, with English as the fallback. No translation service or internet connection is used.
 
-Controls, short guidance, confirmations, accessibility labels and offline-explorer controls use the same bundled catalogue. Routine pages use technical wording. Import/export and destructive-cleanup confirmations retain explicit scope and backup instructions. Longer procedures are in collapsed help or the Documentation page, which reads the project's bundled Markdown. Full documentation, legal text and raw diagnostics currently retain their source language, usually English.
+Controls, short guidance, confirmations, accessibility labels and offline-explorer controls use the same bundled catalogue. Routine pages use technical wording. Import/export and destructive-cleanup confirmations retain explicit scope and backup instructions. Longer procedures are in collapsed help or the Documentation page, which reads the project's bundled Markdown. Full documentation, legal text and raw diagnostics currently retain their source language, usually English. Native file-picker controls and operating-system dialogs follow the browser or operating-system language.
 
 ## Preserve the source data
 

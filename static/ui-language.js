@@ -29,14 +29,16 @@ window.addEventListener('workbench-language',async()=>{
     if(loaders[view])await loaders[view]();
     if(track)await openTrackDetails(track.snapshot,track.trackId);
     const titles={files:'Library preparation',analyzer:'Source analysis',storage:'Cloud and local storage',quick:'Offline metadata export',review:'Duplicate review',reference:'File references',activity:'Activity and reports',statistics:'Collection statistics',inventory:'Media inventory',exports:'Library export',lab:'Library lab',history:'Play history',insights:'DJ insights',bubbles:'Library bubbles',tonality:'Tonality and tempo',docs:'Documentation'};
-    $('#page-title').textContent=I18n.t(titles[view] || 'Library preparation');
+    const activeView=document.querySelector('.nav.active')?.dataset.view || 'files';
+    $('#page-title').textContent=I18n.t(titles[activeView] || 'Library preparation');
   }catch(error){notify(error.message,true);}
   finally{
     if(revision===languageRevision){
       for(const [key,saved] of fields){const node=document.querySelector(key);if(!node)continue;if(node.type==='checkbox'||node.type==='radio')node.checked=saved.checked;else if(!node.matches('[data-language-select],#language'))node.value=saved.value;}
       for(const [id,open] of panels){const node=document.getElementById(id);if(node)node.open=open;}
-      if(focusKey){const node=document.querySelector(focusKey);node?.focus({preventScroll:true});if(node && selection && selection[0]!==null)try{node.setSelectionRange(...selection);}catch{}}
-      I18n.apply();window.scrollTo(...scroll);languageWorkingFields=null;document.documentElement.dataset.languageBusy='false';
+      const sameView=document.querySelector('.nav.active')?.dataset.view===view;
+      if(focusKey && sameView){const node=document.querySelector(focusKey);node?.focus({preventScroll:true});if(node && selection && selection[0]!==null)try{node.setSelectionRange(...selection);}catch{}}
+      I18n.apply();if(sameView)window.scrollTo(...scroll);languageWorkingFields=null;document.documentElement.dataset.languageBusy='false';
     }
   }
 });

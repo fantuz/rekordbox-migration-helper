@@ -72,7 +72,10 @@ def main():
                 assert page.locator('#track-detail-unlock').is_checked() is False
                 assert page.locator('#track-detail-save').is_disabled()
                 page.locator('#track-detail-dialog .close-dialog').click()
-                page.locator('.nav[data-view="docs"]').click();page.wait_for_selector('#docs-content h1');assert page.locator('#docs-content').inner_text()
+                page.select_option('#language','de');page.locator('.nav[data-view="docs"]').click()
+                page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"');page.wait_for_selector('#docs-content h1')
+                assert page.locator('#docs-content').inner_text()
+                assert page.locator('#page-title').inner_text()==messages['de']['Documentation']
                 assert not any(r['method']!='GET' for r in requests), 'Language changes submitted a mutation'
                 assert all(r['url'].startswith(base) or r['url'].startswith('blob:') for r in requests), 'Unexpected external request'
                 assert store.snapshot(sid)==before
@@ -82,6 +85,8 @@ def main():
                     page.locator('#navigation a[data-view="tracks"]').click();page.wait_for_selector('#metadata-table tbody tr')
                     assert page.locator('#metadata-table').inner_text().find(titles[9])>=0
                     assert page.locator('img[src="x"]').count()==0
+                    assert messages[code]['tracks'] in page.locator('#snapshot-info').inner_text()
+                    assert messages[code]['Merge and relocation decisions are not applied.'] in page.locator('#scope-note').inner_text()
                     report['languages'][list(LANGUAGES).index(code)]['offline']='passed'
                 with page.expect_download() as download:
                     page.locator('#download-csv').click()
