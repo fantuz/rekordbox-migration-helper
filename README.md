@@ -59,7 +59,7 @@ Prominent tool cards open **Snapshot comparison**, **Metadata editor** and **Mus
 
 <!-- project-downloads:end -->
 
-The buttons open the latest stable release’s **Downloads** section. New releases include an automatically generated platform table; existing downloads are also available under Assets. Choose your platform; older and prerelease builds remain under [Releases](https://github.com/fantuz/rekordbox-migration-helper/releases). See [what changed in 1.0.1](CHANGELOG.md).
+The buttons open the latest stable release’s **Downloads** section. New releases include an automatically generated platform table; existing downloads are also available under Assets. Choose your platform; older and prerelease builds remain under [Releases](https://github.com/fantuz/rekordbox-migration-helper/releases). See [what changed in 1.0.2](CHANGELOG.md).
 
 Linux x86-64 users can extract the complete portable TAR.GZ, open the extracted **Library Workbench** folder and double-click **Library Workbench**. Python and dependencies are bundled. Keep the `_internal` folder beside the executable. The package targets desktop Linux with glibc 2.28+ and a browser; CI checks it on Ubuntu 22.04. ARM and Alpine/musl users can use the source version. Older releases may offer Linux source only; current development binaries are under **Actions → Check and package → Artifacts**.
 

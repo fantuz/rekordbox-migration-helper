@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.0.2 — 2026-11-13
+
+This update adds guided library workflows, clearer access to advanced tools and shareable offline summaries with explicit privacy choices.
 
 - Add resumable migration and integrity journeys with explicit evidence states and shared collection context.
 - Promote offline sharing with public aggregate, selected-list and private presets, field disclosure and XML-only input.
@@ -8,6 +10,7 @@
 - Add playlist-overlap, saved-session progression, collection-evolution and staged-duplicate-impact views.
 - Add per-operation cooperative cancellation, cached duplicate pagination and 33k/100k GitHub performance checks.
 - Reuse verified release artifacts only for the exact trusted main commit and version, and cache the pinned Linux runtime.
+- Add 139 translated interface messages across German, French, Italian, Spanish, Greek, Polish, Czech and Russian, keeping all nine interface languages complete.
 - Refresh validation guidance and distinguish user-reported success from unverified compatibility.
 
 ## 1.0.1 — 2026-11-13
