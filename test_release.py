@@ -36,8 +36,8 @@ class ReleaseTests(unittest.TestCase):
             nested=self.root/'releases';nested.mkdir();windows.rename(nested/windows.name)
             (self.root/'private.db').write_bytes(b'never a release input')
             names=collect(self.root,destination,self.version)
-            self.assertEqual(len(names),8);self.assertFalse((destination/'private.db').exists())
-            self.assertEqual(len(release.verify_assets(destination,self.version,self.commit)),4)
+            self.assertEqual(len(names),10);self.assertFalse((destination/'private.db').exists())
+            self.assertEqual(len(release.verify_assets(destination,self.version,self.commit)),5)
     def setUp(self):
         temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup);self.root=Path(temporary.name)
         self.commit='a'*40;self.version='0.4.0';self.source=b'# synthetic source\n'
@@ -53,6 +53,15 @@ class ReleaseTests(unittest.TestCase):
                 path='Library Workbench.app/Contents/Resources/BUILD-MANIFEST.json'
             file=self.root/('Library-Workbench-'+self.version+'-'+platform+'.zip')
             with zipfile.ZipFile(file,'w') as archive:archive.writestr(path,json.dumps(manifest))
+        file=self.root/('Library-Workbench-'+self.version+'-linux-x86_64.tar.gz')
+        manifest={'version':self.version,'platform':'linux-x86_64','linux_runtime_test':'passed',
+                  'commit':self.commit,'application_sources':{'app.py':sha256(self.source).hexdigest()}}
+        with tarfile.open(file,'w:gz') as archive:
+            content=json.dumps(manifest).encode()
+            member=tarfile.TarInfo('Library Workbench/BUILD-MANIFEST.json');member.size=len(content)
+            archive.addfile(member,BytesIO(content))
+            link=tarfile.TarInfo('Library Workbench/libpython.so');link.type=tarfile.SYMTYPE;link.linkname='_internal/libpython.so'
+            archive.addfile(link)
         file=self.root/('Library-Workbench-'+self.version+'-linux-source.tar.gz')
         with tarfile.open(file,'w:gz') as archive:
             for name,content in [('app.py',self.source),('.gitattributes',b'static/vendor.js -text\n'),('VERSION',(self.version+'\n').encode()),*([('.data/private.db',b'private')] if private_source else [])]:
@@ -141,7 +150,7 @@ class ReleaseTests(unittest.TestCase):
             self.assertNotIn('library-workbench/.data/private.db',packed.getnames())
         for output in (source/'releases').iterdir():
             (self.root/output.name).write_bytes(output.read_bytes())
-        self.assertEqual(len(release.verify_assets(self.root,self.version,self.commit)),4)
+        self.assertEqual(len(release.verify_assets(self.root,self.version,self.commit)),5)
 
     def test_download_table_links_exact_versioned_assets_without_preview_suffixes(self):
         names=release.archive_names('0.4.6-rc.1')
@@ -149,9 +158,10 @@ class ReleaseTests(unittest.TestCase):
             'Library-Workbench-0.4.6-rc.1-windows-x64.zip',
             'Library-Workbench-0.4.6-rc.1-macos-x86_64.zip',
             'Library-Workbench-0.4.6-rc.1-macos-arm64.zip',
+            'Library-Workbench-0.4.6-rc.1-linux-x86_64.tar.gz',
             'Library-Workbench-0.4.6-rc.1-linux-source.tar.gz'])
         with patch.dict('os.environ',{'GITHUB_REPOSITORY':'example/workbench'}):notes=release.release_notes('0.4.6-rc.1',self.commit)
-        self.assertEqual(notes.count('[Download now]('),4)
+        self.assertEqual(notes.count('[Download now]('),5)
         for name in names:self.assertIn('https://github.com/example/workbench/releases/download/v0.4.6-rc.1/'+name,notes)
         self.assertNotIn('-preview.zip',notes)
         self.assertTrue(release.release_is_preview('0.4.6-rc.1'))
@@ -160,7 +170,7 @@ class ReleaseTests(unittest.TestCase):
         self.packages()
         windows=self.root/('Library-Workbench-'+self.version+'-windows-x64.zip')
         windows.rename(windows.with_name(windows.stem+'-preview.zip'))
-        with self.assertRaisesRegex(ValueError,'exactly the four'):release.verify_assets(self.root,self.version,self.commit)
+        with self.assertRaisesRegex(ValueError,'exactly the five'):release.verify_assets(self.root,self.version,self.commit)
 
     def test_full_history_includes_merged_features_and_complete_unicode_messages(self):
         repo=self.root/'history';repo.mkdir()
@@ -196,20 +206,38 @@ class ReleaseTests(unittest.TestCase):
         for ref in ('--all','main','a'*40+'\nextra'):
             with self.assertRaisesRegex(ValueError,'checked release commit'):release.commit_history(ref,self.root)
 
-    def test_four_native_validated_archives_must_share_release_source(self):
+    def test_five_validated_archives_must_share_release_source(self):
         self.packages()
-        self.assertEqual(len(release.verify_assets(self.root,self.version,self.commit)),4)
-        self.assertEqual(len((self.root/'SHA256SUMS').read_text().splitlines()),4)
+        self.assertEqual(len(release.verify_assets(self.root,self.version,self.commit)),5)
+        self.assertEqual(len((self.root/'SHA256SUMS').read_text().splitlines()),5)
 
     def test_existing_checksum_does_not_excuse_a_different_build_commit(self):
         self.packages(wrong_commit=True)
         with self.assertRaisesRegex(ValueError,'commit'):release.verify_assets(self.root,self.version,self.commit)
 
+    def test_linux_bundle_without_successful_native_evidence_cannot_be_released(self):
+        for field,value,message in (('linux_runtime_test','pending','runtime validation'),
+                                    ('platform','linux-aarch64','platform'),
+                                    ('commit','b'*40,'commit'),
+                                    ('application_sources',{'app.py':'0'*64},'source mismatch')):
+            with self.subTest(field=field):
+                self.packages()
+                file=self.root/release.archive_name(self.version,'linux-x86_64')
+                with tarfile.open(file) as archive:
+                    members=[(m,archive.extractfile(m).read() if m.isfile() else None) for m in archive.getmembers()]
+                with tarfile.open(file,'w:gz') as archive:
+                    for member,content in members:
+                        if member.name.endswith('/BUILD-MANIFEST.json'):
+                            manifest=json.loads(content);manifest[field]=value;content=json.dumps(manifest).encode();member.size=len(content)
+                        archive.addfile(member,BytesIO(content) if content is not None else None)
+                file.with_suffix('.gz.sha256').write_text(sha256(file.read_bytes()).hexdigest()+'  '+file.name+'\n',encoding='utf-8')
+                with self.assertRaisesRegex(ValueError,message):release.verify_assets(self.root,self.version,self.commit)
+
     def test_private_source_inputs_and_extra_archives_are_rejected(self):
         self.packages(private_source=True)
         with self.assertRaisesRegex(ValueError,'Unexpected source'):release.verify_assets(self.root,self.version,self.commit)
         extra=self.root/'Library-Workbench-9.9.9-surprise.zip';extra.write_bytes(b'not validated')
-        with self.assertRaisesRegex(ValueError,'exactly the four'):release.verify_assets(self.root,self.version,self.commit)
+        with self.assertRaisesRegex(ValueError,'exactly the five'):release.verify_assets(self.root,self.version,self.commit)
 
     def test_corrupt_or_replaced_download_is_rejected(self):
         self.packages()

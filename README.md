@@ -20,7 +20,7 @@
 </p>
 <!-- project-badges:end -->
 
-A local browser application for understanding a rekordbox library, reviewing duplicates and preparing edited copies. Use it to prepare a move to a new computer or compare a library before and after a version change: inspect references, preparation and history, then verify the target collection. Linux is the primary development platform. Windows and macOS portable applications are built and exercised by CI.
+A local browser application for understanding a rekordbox library, reviewing duplicates and preparing edited copies. Use it to prepare a move to a new computer or compare a library before and after a version change: inspect references, preparation and history, then verify the target collection. Linux is the primary development platform. Windows, macOS and Linux x86-64 portable applications are built and exercised by CI.
 
 **DJ insights** adds explainable rotation/discovery views, seeded genre-balanced random picks, a clickable bubble explorer and **Colour cloud**. **Tonality & tempo** inspects saved keys, BPM distributions and duration statistics. The per-track file view opens Comments directly and provides a quick colour palette; both stage local working edits without unlocking other metadata. Everything runs locally over retained snapshots. See the [DJ insights guide](docs/DJ-INSIGHTS.md) for evidence sources, unknown values, grouping rules, colour meanings, privacy and copy-export limits.
 
@@ -46,16 +46,28 @@ See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XM
 </p>
 
 <p align="center">
-  <a href="https://github.com/fantuz/rekordbox-migration-helper/releases/latest#downloads"><img src="https://img.shields.io/badge/Download%20now-Linux%20source%20%7C%20Python%203.13%2B-2e7d32?style=for-the-badge" alt="Download now — Linux" height="28"></a>
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/releases/latest#downloads"><img src="https://img.shields.io/badge/Download%20now-Linux%20x86--64%20portable%20TAR.GZ-2e7d32?style=for-the-badge" alt="Download now — Linux" height="28"></a>
 </p>
 
 <!-- project-downloads:end -->
 
 The buttons open the latest stable release’s **Downloads** section. New releases include an automatically generated platform table; existing downloads are also available under Assets. Choose your platform; older and prerelease builds remain under [Releases](https://github.com/fantuz/rekordbox-migration-helper/releases). See [what changed in 1.0.0](CHANGELOG.md).
 
-On Linux, use Python 3.13 or newer and run `./start.sh` from this directory. The first launch installs requirements into a local virtual environment. The application opens your browser and binds only to loopback. Use **Stop local application** in its footer when finished.
+Linux x86-64 users can extract the complete portable TAR.GZ, open the extracted **Library Workbench** folder and double-click **Library Workbench**. Python and dependencies are bundled. Keep the `_internal` folder beside the executable. The package targets desktop Linux with glibc 2.28+ and a browser; CI checks it on Ubuntu 22.04. ARM and Alpine/musl users can use the source version. Older releases may offer Linux source only; current development binaries are under **Actions → Check and package → Artifacts**.
+
+For the Linux source version, use Python 3.13 or newer and run `./start.sh`. The first launch installs requirements into a local virtual environment. The application opens your browser and binds only to loopback. Use **Stop and clean up** in its footer when finished.
 
 Windows users extract the complete portable ZIP and double-click **Library Workbench.exe**. Python and dependencies are included. Mac users choose the Apple Silicon (`arm64`) or Intel (`x86_64`) archive, extract it and open **Library Workbench.app**. Mac applications are ad-hoc signed, not Developer ID signed or notarized; macOS may restrict opening them. Source checkout remains available for developers.
+
+## Prepare your ZIP and XML
+
+**Create both files in rekordbox, one after the other, without changing the collection between them.**
+
+1. **ZIP:** open **File → Library → Backup Library**. Choose **No** when asked to include music for a smaller analysis backup; **Yes** is also accepted. Keep the audio backed up separately.
+2. **XML:** open **File → Export Collection in xml format** and save the XML beside the ZIP.
+3. In Workbench, choose **Import XML + ZIP** and select both files. Keep untouched originals outside the workspace.
+
+To test a generated native backup, use **File → Library → Restore Library** in a separate rekordbox library and select **edited-library.zip** without extracting it. Restoring can replace the current collection. The XML is an alternative import route, not a second step after restoring the ZIP. See the [in-app and step-by-step input and restore guide](docs/INPUTS-AND-RESTORE.md) for the complete procedure.
 
 ## Two workflows
 
@@ -76,7 +88,7 @@ Cloud Library Sync supports **Dropbox or Google Drive**. The cloud music folder 
 | --- | --- | --- |
 | v5 and earlier `.edb` | Format detection and file footprint | Legacy records are not decoded or converted |
 | v6 `master.db` | Schema-based read-only checks | Same modern SQLCipher family; genuine v6 sample validation pending |
-| v7 `master.db` | Read-only checks and experimental copy preparation | Reader/writers checked with v7.2.19 backup data on Linux; rekordbox restore test pending |
+| v7 `master.db` | Read-only checks and experimental copy preparation | Reader/writers checked with v7.2.19 data on Linux; user reports a successful Windows 11 restore, with version recalled approximately as 7.2.19 |
 | USB `export.pdb` / `exportLibrary.db` | Detected as a device export | Not treated as the desktop master library |
 
 The major desktop conversion was v5 → v6. AlphaTheta documents that v6 → v7 needs no library conversion. This tool does not implement version downgrading. A format match or successful CI run does not establish that rekordbox will restore a generated backup correctly. See [compatibility and validation](docs/COMPATIBILITY.md).
@@ -84,7 +96,7 @@ The major desktop conversion was v5 → v6. AlphaTheta documents that v6 → v7 
 ## Review features
 
 - Manual or mixed cues take keeper priority over automatic-only cues. Newest-added, last-played or play-count policies break ties. Cue origin is inferred from editable labels.
-- Connected recording groups support one keeper across multiple siblings, with accumulated cue checks, held conflicts and undo.
+- Connected recording groups show every member with one keeper, donor include/exclude controls and a read-only combined plan. Compatible copies stage together; cue/rating conflicts and indirect-only matches stay held. Batch undo restores earlier choices.
 - Evidence filters include recorded paths, saved preview waveforms, cue/grid agreement, ratings, usage, XML membership and optional local file hashes.
 - Filters cover track length, cue category, album, artist, genre, label, format, BPM, bitrate, playlist and media availability. Saved views and resumable workspaces retain work locally.
 - Media inventory scans only selected roots. SHA-256 reads audio only on explicit request, and unavailable cloud placeholders are held.
@@ -107,7 +119,8 @@ The optional MusicBrainz proof of concept sends selected metadata queries only a
 
 ## Workspace locations
 
-- Linux source: `.data/` beside the application.
+- Linux portable: `$XDG_DATA_HOME/LibraryWorkbench`, or `~/.local/share/LibraryWorkbench`.
+- Linux source: `.data/` beside the application (existing source workspaces stay there).
 - Windows: `%LOCALAPPDATA%/LibraryWorkbench`.
 - macOS: `~/Library/Application Support/LibraryWorkbench`.
 
@@ -117,18 +130,18 @@ A private precomputed example can be configured in `.data/example.json` or throu
 
 ## Development and packaging
 
-Run `python -m unittest discover -v` after installing `requirements.txt`. The suite covers keeper/cue rules, raw ZIP64 copying, media matching, read-only encrypted/WAL snapshots, source mutation checks, paired-export isolation, backup acknowledgement and platform discovery. CI also checks desktop HTTP startup, Unicode paths and source preservation using synthetic fixtures. No personal library data is uploaded to CI.
+Run `python -m unittest discover -v` after installing `requirements.txt`. The suite covers keeper/cue rules, raw ZIP64 copying, media matching, read-only encrypted/WAL snapshots, source mutation checks, paired-export isolation, backup acknowledgement and platform discovery. CI also checks desktop HTTP startup, Unicode paths and source preservation using synthetic fixtures. No personal library data is uploaded to CI. A pinned English spell-check checks display messages, the README and Markdown documentation; it does not rewrite track metadata or translations.
 
 Windows assembly: `python packaging/build_windows.py` on Linux with MinGW. The archive contains official embedded CPython and matching Windows wheels, checked against publisher/package digests. A Windows CI job launches the actual packaged executable, runs the analyzer and records validation in the artifact.
 
-Mac assembly: install `requirements-build.txt`, then run `python packaging/build_macos.py` on a native Mac. Separate Intel and Apple Silicon jobs package and smoke-test the self-contained app. Linux source archive: `python packaging/build_source.py`.
+Mac assembly: install `requirements-build.txt`, then run `python packaging/build_macos.py` on a native Mac. Separate Intel and Apple Silicon jobs package and smoke-test the self-contained app. Linux source archive: `python packaging/build_source.py`. The self-contained Linux build runs `packaging/build_linux.py` inside the pinned manylinux glibc 2.28 image, then tests the bundled ELF on Ubuntu 22.04 with external Python unavailable. See [Linux portable packaging](docs/LINUX-PORTABLE.md).
 
 See [the Windows restore procedure](docs/RESTORE-TEST.md) before testing transformed backups. The project uses the existing [MIT license](LICENSE); bundled dependency licenses remain separate.
 
 ## Releases and security
 
-Every pull request and push to `main` automatically tests and builds Windows x64, Mac Intel, Mac Apple Silicon and Linux source archives. Download development packages from the run's **Artifacts** section; the final check summary lists the correct artifact for each platform. Development artifacts are retained for 14 days.
+Every pull request and push to `main` automatically tests and builds Windows x64, Mac Intel, Mac Apple Silicon, Linux x86-64 portable and Linux source archives. Download development packages from the run's **Artifacts** section; the final check summary lists the correct artifact for each platform. Development artifacts are retained for 14 days.
 
-For a release, use **Actions → Create release → Run workflow** on `main`, enter a version and choose draft or publication. The workflow builds and validates all four archives, adds the matching changelog entry, direct-download table, complete commit log and installation guidance, then creates the version tag automatically. No local push/tag or personal token is needed. Pushing a `v<version>` tag for a commit already merged into `main` also builds and publishes automatically, as in entropy-service. Plain versions become the latest stable release; alpha/beta/rc versions remain previews. Release downloads remain available separately from temporary CI artifacts. See [release instructions](docs/RELEASING.md).
+For a release, use **Actions → Create release → Run workflow** on `main`, enter a version and choose draft or publication. The workflow builds and validates all five archives, adds the matching changelog entry, direct-download table, complete commit log and installation guidance, then creates the version tag automatically. No local push/tag or personal token is needed. Pushing a `v<version>` tag for a commit already merged into `main` also builds and publishes automatically, as in entropy-service. Plain versions become the latest stable release; alpha/beta/rc versions remain previews. Release downloads remain available separately from temporary CI artifacts. See [release instructions](docs/RELEASING.md).
 
 [SECURITY.md](SECURITY.md) explains private reporting and local trust boundaries. Weekly dependency checks, pinned actions and Dependabot configuration complement the repository's existing default CodeQL setup. [Repository security guidance](docs/REPOSITORY-SECURITY.md) compares DNSProxy/entropy-service and provides importable branch/tag ruleset templates. Merge-policy changes remain a maintainer choice.

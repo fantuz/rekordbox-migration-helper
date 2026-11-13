@@ -92,11 +92,11 @@ jobs:
         with:
           name: linux-source
           path: release-staging
-      - name: Collect the four archives from native artifact layouts
+      - name: Collect the five archives from native artifact layouts
         run: python3 packaging/collect_release_assets.py release-staging release-assets "$REQUESTED_RELEASE_VERSION"
       - name: Verify versions, commit, native runtime evidence and all checksums
         run: python3 packaging/prepare_release.py --assets release-assets
-      - name: Create the release with all four packages
+      - name: Create the release with all five packages
         shell: bash
         run: |
           if [[ "$GITHUB_REF" != refs/tags/* ]]; then

@@ -13,11 +13,13 @@ For global statistics without converting a v5 library, select its standalone col
 - [pyrekordbox: desktop database format](https://pyrekordbox.readthedocs.io/en/latest/formats/db6.html)
 - [Official Cloud Library Sync guide](https://cdn.rekordbox.com/files/20251202174725/rekordbox7.2.8_cloud_library_sync_operation_guide_EN.pdf)
 
-Real-world validation currently uses v7.2.19 backup data on Linux. Earlier-version behavior and changes across newer versions need genuine sample fixtures. Synthetic SQLCipher/WAL fixtures establish implementation properties, not historical-format compatibility. CI runtime checks establish packaged startup and analyzer behavior on their runners; they do not run the licensed rekordbox application or test cloud reconciliation.
+Real-world validation uses v7.2.19 backup data on Linux. The maintainer also reports a successful restore on Windows 11, recalling the rekordbox version approximately as 7.2.19. The restore route (native ZIP or XML) and detailed feature checklist were not specified, so this is user-reported evidence, not a certified compatibility result. Earlier-version behavior and changes across newer versions need genuine sample fixtures. Synthetic SQLCipher/WAL fixtures establish implementation properties, not historical-format compatibility. CI runtime checks establish packaged startup and analyzer behavior on their runners; they do not run the licensed rekordbox application or test cloud reconciliation.
 
 Source analysis opens original database files only as byte streams for a private snapshot. Database queries and journal recovery operate on that copy. Source database/journal timestamps, sizes and identities must remain stable across capture and inspection. Automated tests compare source hashes as well. Folder scans inspect metadata without reading audio contents. Analysis-folder absence is scoped to the selected source folder and is not proof of missing music.
 
 The preparation workflow writes new copies. Native ZIP generation remains experimental, is gated to v7 inputs and requires an untouched-backup acknowledgement. It is not an in-place source-folder editor.
+
+Native package CI currently exercises Ubuntu 22.04 (Linux portable), Windows x64, macOS 15 Intel and macOS 26 Apple Silicon. Source checks also run on Linux, Windows and both Mac architectures. Moving Apple Silicon CI to the current stable macOS 26 pool avoids the observed macOS 15 ARM runner-allocation failures; all architecture and runtime gates remain required. Build manifests record the actual runner/runtime. These checks do not certify every older operating-system version.
 
 ## Device-format roadmap
 

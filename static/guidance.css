@@ -76,3 +76,12 @@
   .storage-file > span:last-child { grid-column: 2; }
 }
 #quick-export-form{display:grid;gap:16px;margin-top:20px}#quick-export-form>label:not(.backup-acknowledgement){display:grid;gap:7px;font-size:12px;color:var(--muted)}#quick-export-form select,#quick-export-form input:not([type=checkbox]){width:100%;max-width:100%}
+
+/* Clear input/restore procedures for users who do not manage database files. */
+.file-preparation-guide,.restore-file-guide,.import-file-guide{padding:18px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:7px;background:var(--soft-blue);margin:16px 0}
+.file-preparation-guide h2{font-size:18px;margin:0 0 10px}.file-preparation-guide .workflow-steps{margin:14px 0 8px;gap:12px}.file-preparation-guide .workflow-steps article{padding:14px;background:var(--panel)}
+.file-preparation-guide p,.restore-file-guide p,.restore-file-guide li,.import-file-guide p{font-size:14px;line-height:1.65;color:var(--text)}
+.file-preparation-guide .workflow-steps p{font-size:13px;line-height:1.6}.file-preparation-guide .step-number{font-size:13px}.menu-path{display:block;white-space:normal;overflow-wrap:anywhere;font-size:13px;margin:10px 0;padding:9px;background:var(--panel2);border-radius:4px;color:var(--text)}
+.restore-file-guide{background:var(--soft-green)}.restore-file-guide h3{margin:0 0 8px;font-size:17px}.restore-file-guide ol{padding-left:22px;margin:10px 0}.restore-file-guide li{padding-left:4px;margin-bottom:10px}
+.import-file-guide{padding:14px}.import-file-guide strong{font-size:15px}.import-file-guide p{margin:8px 0;font-size:13px}.import-file-guide code{overflow-wrap:anywhere;font-size:12px}
+.file-preparation-guide .text-button,.restore-file-guide .text-button,.import-file-guide .text-button{font-size:13px;line-height:1.5;text-align:left}

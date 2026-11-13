@@ -1354,14 +1354,15 @@
       "ru": "Ветвь:"
     },
     "Bring the matching pair.": {
-      "de": "Passendes Dateipaar auswählen.",
-      "fr": "Sélectionnez la paire correspondante.",
-      "it": "Seleziona la coppia corrispondente.",
-      "es": "Selecciona el par correspondiente.",
-      "el": "Επιλέξτε το αντίστοιχο ζεύγος.",
-      "pl": "Wybierz pasującą parę plików.",
-      "cs": "Vyberte odpovídající dvojici souborů.",
-      "ru": "Выберите соответствующую пару файлов."
+      "en": "Select the library ZIP and XML",
+      "de": "ZIP und XML der Bibliothek auswählen",
+      "fr": "Sélectionner le ZIP et le XML de la bibliothèque",
+      "it": "Seleziona ZIP e XML della libreria",
+      "es": "Selecciona el ZIP y el XML de la biblioteca",
+      "el": "Επιλογή ZIP και XML της βιβλιοθήκης",
+      "pl": "Wybierz ZIP i XML biblioteki",
+      "cs": "Vyberte ZIP a XML knihovny",
+      "ru": "Выберите ZIP и XML библиотеки"
     },
     "Broken XML playlist targets": {
       "de": "Ungültige XML-Playlistziele",
@@ -13022,6 +13023,303 @@
       "pl": "Żółty",
       "cs": "Žlutá",
       "ru": "Жёлтый"
+    },
+    "Checking the combined cue and rating choices…": {
+      "en": "Checking the combined cue and rating choices…",
+      "de": "Kombinierte Cue- und Bewertungswahl wird geprüft…",
+      "fr": "Vérification des choix de repères et de notes combinés…",
+      "it": "Verifica delle scelte combinate di cue e valutazioni…",
+      "es": "Comprobando las decisiones combinadas de cues y valoraciones…",
+      "el": "Έλεγχος συνδυασμένων επιλογών cue και βαθμολογίας…",
+      "pl": "Sprawdzanie połączonych wyborów punktów cue i ocen…",
+      "cs": "Kontrola společných voleb cue bodů a hodnocení…",
+      "ru": "Проверка совместимости выбранных cue и оценок…"
+    },
+    "Keeper": {
+      "en": "Keeper",
+      "de": "Behalten",
+      "fr": "À conserver",
+      "it": "Da conservare",
+      "es": "Conservar",
+      "el": "Διατήρηση",
+      "pl": "Zachowaj",
+      "cs": "Ponechat",
+      "ru": "Сохранить"
+    },
+    "Ready to stage": {
+      "en": "Ready to stage",
+      "de": "Zur Vormerkung bereit",
+      "fr": "Prêt à préparer",
+      "it": "Pronto da preparare",
+      "es": "Listo para preparar",
+      "el": "Έτοιμο για προετοιμασία",
+      "pl": "Gotowe do przygotowania",
+      "cs": "Připraveno k zařazení",
+      "ru": "Готово к подготовке"
+    },
+    "Held for review": {
+      "en": "Held for review",
+      "de": "Zur Prüfung zurückgestellt",
+      "fr": "À vérifier",
+      "it": "Da verificare",
+      "es": "Pendiente de revisión",
+      "el": "Αναμονή για έλεγχο",
+      "pl": "Do sprawdzenia",
+      "cs": "Čeká na kontrolu",
+      "ru": "Требует проверки"
+    },
+    "Excluded": {
+      "en": "Excluded",
+      "de": "Ausgeschlossen",
+      "fr": "Exclu",
+      "it": "Escluso",
+      "es": "Excluido",
+      "el": "Εξαιρέθηκε",
+      "pl": "Wykluczone",
+      "cs": "Vyloučeno",
+      "ru": "Исключено"
+    },
+    "Already staged": {
+      "en": "Already staged",
+      "de": "Bereits vorgemerkt",
+      "fr": "Déjà préparé",
+      "it": "Già preparato",
+      "es": "Ya preparado",
+      "el": "Ήδη προετοιμασμένο",
+      "pl": "Już przygotowane",
+      "cs": "Již zařazeno",
+      "ru": "Уже подготовлено"
+    },
+    "Recording group members": {
+      "en": "Recording group members",
+      "de": "Einträge der Aufnahmegruppe",
+      "fr": "Exemplaires du groupe",
+      "it": "Elementi del gruppo",
+      "es": "Miembros del grupo",
+      "el": "Εγγραφές ομάδας ηχογράφησης",
+      "pl": "Elementy grupy nagrania",
+      "cs": "Členové skupiny nahrávky",
+      "ru": "Записи в группе"
+    },
+    "Choose one keeper and include the copies to merge. Leave alternate mixes separate. Existing staged merges are unchanged by exclusions.": {
+      "en": "Choose one keeper and include the copies to merge. Leave alternate mixes separate. Existing staged merges are unchanged by exclusions.",
+      "de": "Wählen Sie einen Eintrag zum Behalten und die zusammenzuführenden Kopien. Andere Mixe bleiben getrennt. Ausschlüsse ändern keine bereits vorgemerkten Zusammenführungen.",
+      "fr": "Choisissez un exemplaire à conserver et les copies à fusionner. Gardez les autres mix séparés. Les exclusions ne modifient pas les fusions déjà préparées.",
+      "it": "Scegli una copia da conservare e le copie da unire. Lascia separati i mix alternativi. Le esclusioni non cambiano le unioni già preparate.",
+      "es": "Elige una copia para conservar y las copias que se fusionarán. Mantén separadas las mezclas alternativas. Las exclusiones no cambian las fusiones ya preparadas.",
+      "el": "Επιλέξτε μία εγγραφή για διατήρηση και τα αντίγραφα για συγχώνευση. Κρατήστε ξεχωριστές τις εναλλακτικές μίξεις. Οι εξαιρέσεις δεν αλλάζουν ήδη προετοιμασμένες συγχωνεύσεις.",
+      "pl": "Wybierz kopię do zachowania i kopie do scalenia. Inne miksy pozostaw osobno. Wykluczenia nie zmieniają już przygotowanych scaleń.",
+      "cs": "Vyberte kopii k ponechání a kopie ke sloučení. Alternativní mixy ponechte odděleně. Vyloučení nemění již připravená sloučení.",
+      "ru": "Выберите основную копию и копии для объединения. Альтернативные миксы оставьте отдельно. Исключение не отменяет уже подготовленные объединения."
+    },
+    "Keep the group keeper’s cue when a donor cue is automatic": {
+      "en": "Keep the group keeper’s cue when a donor cue is automatic",
+      "de": "Cue des behaltenen Eintrags bei automatischem Cue der anderen Kopie verwenden",
+      "fr": "Garder le repère de l’exemplaire conservé si celui de la copie est automatique",
+      "it": "Mantieni il cue della copia conservata se quello della copia da unire è automatico",
+      "es": "Conservar el cue de la copia principal si el de la otra copia es automático",
+      "el": "Διατήρηση του cue της κύριας εγγραφής όταν το cue του αντιγράφου είναι αυτόματο",
+      "pl": "Zachowaj cue kopii głównej, gdy cue drugiej kopii jest automatyczne",
+      "cs": "Ponechat cue hlavní kopie, pokud je cue druhé kopie automatické",
+      "ru": "Сохранять cue основной копии, если cue другой копии создан автоматически"
+    },
+    "Keep the group keeper’s rating when stars disagree": {
+      "en": "Keep the group keeper’s rating when stars disagree",
+      "de": "Bewertung des behaltenen Eintrags bei abweichenden Sternen verwenden",
+      "fr": "Garder la note de l’exemplaire conservé si les étoiles diffèrent",
+      "it": "Mantieni la valutazione della copia conservata se le stelle differiscono",
+      "es": "Conservar la valoración de la copia principal si las estrellas difieren",
+      "el": "Διατήρηση βαθμολογίας της κύριας εγγραφής όταν τα αστέρια διαφέρουν",
+      "pl": "Zachowaj ocenę kopii głównej, gdy liczba gwiazdek się różni",
+      "cs": "Ponechat hodnocení hlavní kopie při rozdílném počtu hvězdiček",
+      "ru": "Сохранять оценку основной копии при несовпадении звёзд"
+    },
+    "Group plan: {ready} ready · {held} held · {excluded} excluded · {staged} already staged": {
+      "en": "Group plan: {ready} ready · {held} held · {excluded} excluded · {staged} already staged",
+      "de": "Gruppenplan: {ready} bereit · {held} zur Prüfung · {excluded} ausgeschlossen · {staged} bereits vorgemerkt",
+      "fr": "Plan du groupe : {ready} prêts · {held} à vérifier · {excluded} exclus · {staged} déjà préparés",
+      "it": "Piano del gruppo: {ready} pronti · {held} da verificare · {excluded} esclusi · {staged} già preparati",
+      "es": "Plan del grupo: {ready} listos · {held} pendientes · {excluded} excluidos · {staged} ya preparados",
+      "el": "Σχέδιο ομάδας: {ready} έτοιμα · {held} για έλεγχο · {excluded} εξαιρέθηκαν · {staged} ήδη προετοιμασμένα",
+      "pl": "Plan grupy: {ready} gotowe · {held} do sprawdzenia · {excluded} wykluczone · {staged} już przygotowane",
+      "cs": "Plán skupiny: {ready} připraveno · {held} ke kontrole · {excluded} vyloučeno · {staged} již zařazeno",
+      "ru": "План группы: {ready} готовы · {held} требуют проверки · {excluded} исключены · {staged} уже подготовлены"
+    },
+    "Create a recent ZIP and XML before you import": {
+      "en": "Create a recent ZIP and XML before you import",
+      "de": "Vor dem Import aktuelle ZIP- und XML-Dateien erstellen",
+      "fr": "Créez un ZIP et un XML récents avant l’import",
+      "it": "Crea ZIP e XML recenti prima di importare",
+      "es": "Crea un ZIP y un XML recientes antes de importar",
+      "el": "Δημιουργήστε πρόσφατα ZIP και XML πριν την εισαγωγή",
+      "pl": "Utwórz aktualne pliki ZIP i XML przed importem",
+      "cs": "Před importem vytvořte aktuální ZIP a XML",
+      "ru": "Перед импортом создайте свежие ZIP и XML"
+    },
+    "Keep an untouched copy of both files outside this workspace. Do not change the collection between exports.": {
+      "en": "Keep an untouched copy of both files outside this workspace. Do not change the collection between exports.",
+      "de": "Bewahren Sie unveränderte Kopien beider Dateien außerhalb dieses Arbeitsbereichs auf. Ändern Sie die Sammlung zwischen den Exporten nicht.",
+      "fr": "Gardez une copie intacte des deux fichiers hors de cet espace de travail. Ne modifiez pas la collection entre les exports.",
+      "it": "Conserva una copia intatta di entrambi i file fuori da questo spazio di lavoro. Non modificare la raccolta tra le esportazioni.",
+      "es": "Guarda una copia intacta de ambos archivos fuera de este espacio de trabajo. No cambies la colección entre las exportaciones.",
+      "el": "Κρατήστε ανέπαφο αντίγραφο και των δύο αρχείων έξω από αυτόν τον χώρο εργασίας. Μην αλλάξετε τη συλλογή μεταξύ των εξαγωγών.",
+      "pl": "Zachowaj nienaruszone kopie obu plików poza tym obszarem roboczym. Nie zmieniaj kolekcji między eksportami.",
+      "cs": "Uchovejte nedotčené kopie obou souborů mimo tento pracovní prostor. Mezi exporty kolekci neměňte.",
+      "ru": "Сохраните нетронутые копии обоих файлов вне этой рабочей папки. Не меняйте коллекцию между экспортами."
+    },
+    "Create the library backup": {
+      "en": "Create the library backup",
+      "de": "Bibliothek sichern",
+      "fr": "Sauvegarder la bibliothèque",
+      "it": "Crea il backup della libreria",
+      "es": "Crear la copia de seguridad",
+      "el": "Δημιουργία αντιγράφου βιβλιοθήκης",
+      "pl": "Utwórz kopię zapasową biblioteki",
+      "cs": "Záloha knihovny",
+      "ru": "Создать резервную копию"
+    },
+    "When asked to include music, choose No for a smaller analysis backup. Yes is also accepted. Keep your audio backed up separately.": {
+      "en": "When asked to include music, choose No for a smaller analysis backup. Yes is also accepted. Keep your audio backed up separately.",
+      "de": "Wählen Sie bei der Frage nach Musikdateien Nein, um die Sicherung für die Analyse klein zu halten. Ja wird ebenfalls unterstützt. Sichern Sie Ihre Audiodateien separat.",
+      "fr": "À la question sur les fichiers musicaux, choisissez Non pour une sauvegarde d’analyse plus petite. Oui est aussi accepté. Sauvegardez votre audio séparément.",
+      "it": "Alla richiesta di includere la musica, scegli No per un backup di analisi più piccolo. Anche Sì è accettato. Conserva un backup separato dei file audio.",
+      "es": "Cuando se pregunte si se incluye música, elige No para una copia de análisis más pequeña. También se acepta Sí. Guarda una copia de seguridad del audio por separado.",
+      "el": "Όταν ζητηθεί να συμπεριληφθεί μουσική, επιλέξτε Όχι για μικρότερο αντίγραφο ανάλυσης. Γίνεται δεκτό και το Ναι. Κρατήστε ξεχωριστό αντίγραφο ασφαλείας του ήχου.",
+      "pl": "Gdy pojawi się pytanie o dołączenie muzyki, wybierz Nie, aby kopia do analizy była mniejsza. Tak również jest obsługiwane. Zachowaj osobną kopię zapasową plików audio.",
+      "cs": "Na dotaz na zahrnutí hudby zvolte Ne pro menší zálohu k analýze. Podporováno je i Ano. Zvukové soubory zálohujte zvlášť.",
+      "ru": "При запросе на включение музыки выберите Нет для небольшой копии для анализа. Вариант Да также поддерживается. Отдельно сохраните резервную копию аудиофайлов."
+    },
+    "Export the collection": {
+      "en": "Export the collection",
+      "de": "Sammlung exportieren",
+      "fr": "Exporter la collection",
+      "it": "Esporta la raccolta",
+      "es": "Exportar la colección",
+      "el": "Εξαγωγή συλλογής",
+      "pl": "Wyeksportuj kolekcję",
+      "cs": "Export kolekce",
+      "ru": "Экспортировать коллекцию"
+    },
+    "Save the XML immediately after the ZIP, with no library edits in between. Use a folder you can find again.": {
+      "en": "Save the XML immediately after the ZIP, with no library edits in between. Use a folder you can find again.",
+      "de": "Speichern Sie die XML direkt nach der ZIP, ohne Änderungen an der Bibliothek dazwischen. Wählen Sie einen leicht auffindbaren Ordner.",
+      "fr": "Enregistrez le XML juste après le ZIP, sans modifier la bibliothèque entre les deux. Choisissez un dossier facile à retrouver.",
+      "it": "Salva l’XML subito dopo lo ZIP, senza modifiche alla libreria nel frattempo. Usa una cartella facile da ritrovare.",
+      "es": "Guarda el XML justo después del ZIP, sin editar la biblioteca entre ambos. Usa una carpeta fácil de encontrar.",
+      "el": "Αποθηκεύστε το XML αμέσως μετά το ZIP, χωρίς ενδιάμεσες αλλαγές στη βιβλιοθήκη. Χρησιμοποιήστε φάκελο που θα βρείτε εύκολα.",
+      "pl": "Zapisz XML od razu po ZIP, bez zmian w bibliotece pomiędzy nimi. Wybierz łatwy do odnalezienia folder.",
+      "cs": "XML uložte hned po ZIP, bez mezilehlých úprav knihovny. Použijte složku, kterou snadno najdete.",
+      "ru": "Сохраните XML сразу после ZIP, не меняя библиотеку между операциями. Выберите папку, которую легко найти."
+    },
+    "Load both copies": {
+      "en": "Load both copies",
+      "de": "Beide Kopien laden",
+      "fr": "Charger les deux copies",
+      "it": "Carica entrambe le copie",
+      "es": "Cargar ambas copias",
+      "el": "Φόρτωση και των δύο αντιγράφων",
+      "pl": "Wczytaj obie kopie",
+      "cs": "Načtení obou kopií",
+      "ru": "Загрузить обе копии"
+    },
+    "Choose Import XML + ZIP here and select both files. Your original files remain unchanged.": {
+      "en": "Choose Import XML + ZIP here and select both files. Your original files remain unchanged.",
+      "de": "Wählen Sie hier XML + ZIP importieren und beide Dateien aus. Ihre Originaldateien bleiben unverändert.",
+      "fr": "Choisissez ici Importer XML + ZIP et sélectionnez les deux fichiers. Vos originaux restent inchangés.",
+      "it": "Scegli Importa XML + ZIP e seleziona entrambi i file. I file originali restano invariati.",
+      "es": "Elige Importar XML + ZIP y selecciona ambos archivos. Los originales no cambian.",
+      "el": "Επιλέξτε Εισαγωγή XML + ZIP και επιλέξτε και τα δύο αρχεία. Τα πρωτότυπα παραμένουν αμετάβλητα.",
+      "pl": "Wybierz Importuj XML + ZIP i wskaż oba pliki. Oryginały pozostaną bez zmian.",
+      "cs": "Zvolte Importovat XML + ZIP a vyberte oba soubory. Originály zůstanou beze změny.",
+      "ru": "Выберите Импорт XML + ZIP и укажите оба файла. Оригиналы останутся без изменений."
+    },
+    "rekordbox menu names are shown in English; translated labels may differ.": {
+      "en": "rekordbox menu names are shown in English; translated labels may differ.",
+      "de": "rekordbox-Menüs werden auf Englisch gezeigt; übersetzte Bezeichnungen können abweichen.",
+      "fr": "Les menus rekordbox sont indiqués en anglais ; les libellés traduits peuvent différer.",
+      "it": "I nomi dei menu rekordbox sono in inglese; le etichette tradotte possono differire.",
+      "es": "Los menús de rekordbox se muestran en inglés; los nombres traducidos pueden variar.",
+      "el": "Τα μενού του rekordbox εμφανίζονται στα αγγλικά· οι μεταφρασμένες ετικέτες μπορεί να διαφέρουν.",
+      "pl": "Nazwy menu rekordbox podano po angielsku; tłumaczenia mogą się różnić.",
+      "cs": "Názvy nabídek rekordbox jsou uvedeny anglicky; přeložené názvy se mohou lišit.",
+      "ru": "Названия меню rekordbox приведены на английском; переведённые названия могут отличаться."
+    },
+    "Step-by-step export and restore guide": {
+      "en": "Step-by-step export and restore guide",
+      "de": "Anleitung für Export und Wiederherstellung",
+      "fr": "Guide d’export et de restauration pas à pas",
+      "it": "Guida passo passo a esportazione e ripristino",
+      "es": "Guía de exportación y restauración paso a paso",
+      "el": "Οδηγός εξαγωγής και επαναφοράς βήμα προς βήμα",
+      "pl": "Eksport i przywracanie krok po kroku",
+      "cs": "Podrobný návod k exportu a obnovení",
+      "ru": "Пошаговое руководство по экспорту и восстановлению"
+    },
+    "Two files from the same library state": {
+      "en": "Two files from the same library state",
+      "de": "Zwei Dateien desselben Bibliotheksstands",
+      "fr": "Deux fichiers du même état de la bibliothèque",
+      "it": "Due file dallo stesso stato della libreria",
+      "es": "Dos archivos del mismo estado de la biblioteca",
+      "el": "Δύο αρχεία από την ίδια κατάσταση βιβλιοθήκης",
+      "pl": "Dwa pliki z tego samego stanu biblioteki",
+      "cs": "Dva soubory ze stejného stavu knihovny",
+      "ru": "Два файла с одним состоянием библиотеки"
+    },
+    "Use the generated ZIP to restore in rekordbox": {
+      "en": "Use the generated ZIP to restore in rekordbox",
+      "de": "Erzeugte ZIP zur Wiederherstellung in rekordbox verwenden",
+      "fr": "Restaurer dans rekordbox avec le ZIP généré",
+      "it": "Usa lo ZIP generato per ripristinare in rekordbox",
+      "es": "Restaurar en rekordbox con el ZIP generado",
+      "el": "Χρήση του ZIP που δημιουργήθηκε για επαναφορά στο rekordbox",
+      "pl": "Przywróć w rekordbox z wygenerowanego ZIP",
+      "cs": "Obnovení v rekordbox z vytvořeného ZIP",
+      "ru": "Восстановление в rekordbox из созданного ZIP"
+    },
+    "Keep a fresh, untouched backup of the current library. Test in a separate rekordbox library with cloud sync paused.": {
+      "en": "Keep a fresh, untouched backup of the current library. Test in a separate rekordbox library with cloud sync paused.",
+      "de": "Bewahren Sie eine aktuelle, unveränderte Sicherung der Bibliothek auf. Testen Sie in einer getrennten rekordbox-Bibliothek bei pausierter Cloud-Synchronisierung.",
+      "fr": "Gardez une sauvegarde récente et intacte de la bibliothèque actuelle. Testez dans une bibliothèque rekordbox séparée, avec la synchronisation cloud en pause.",
+      "it": "Conserva un backup recente e intatto della libreria attuale. Prova in una libreria rekordbox separata con la sincronizzazione cloud sospesa.",
+      "es": "Guarda una copia reciente e intacta de la biblioteca actual. Prueba en una biblioteca rekordbox separada con la sincronización en la nube pausada.",
+      "el": "Κρατήστε πρόσφατο, ανέπαφο αντίγραφο της τρέχουσας βιβλιοθήκης. Δοκιμάστε σε ξεχωριστή βιβλιοθήκη rekordbox με παύση συγχρονισμού cloud.",
+      "pl": "Zachowaj aktualną, nienaruszoną kopię obecnej biblioteki. Testuj w osobnej bibliotece rekordbox przy wstrzymanej synchronizacji chmury.",
+      "cs": "Uchovejte aktuální nedotčenou zálohu současné knihovny. Testujte v oddělené knihovně rekordbox s pozastavenou synchronizací cloudu.",
+      "ru": "Сохраните свежую нетронутую копию текущей библиотеки. Проверяйте в отдельной библиотеке rekordbox с приостановленной облачной синхронизацией."
+    },
+    "In rekordbox, choose the following menu and select edited-library.zip. Do not extract the ZIP.": {
+      "en": "In rekordbox, choose the following menu and select edited-library.zip. Do not extract the ZIP.",
+      "de": "Wählen Sie in rekordbox das folgende Menü und edited-library.zip. Entpacken Sie die ZIP nicht.",
+      "fr": "Dans rekordbox, ouvrez le menu suivant et sélectionnez edited-library.zip. Ne décompressez pas le ZIP.",
+      "it": "In rekordbox, apri il menu seguente e seleziona edited-library.zip. Non estrarre lo ZIP.",
+      "es": "En rekordbox, abre el siguiente menú y selecciona edited-library.zip. No extraigas el ZIP.",
+      "el": "Στο rekordbox, επιλέξτε το παρακάτω μενού και το edited-library.zip. Μην αποσυμπιέσετε το ZIP.",
+      "pl": "W rekordbox wybierz poniższe menu i plik edited-library.zip. Nie rozpakowuj ZIP.",
+      "cs": "V rekordbox otevřete následující nabídku a vyberte edited-library.zip. ZIP nerozbalujte.",
+      "ru": "В rekordbox откройте следующее меню и выберите edited-library.zip. Не распаковывайте ZIP."
+    },
+    "Restoring can replace the current collection. Follow the prompts, then check playlists, cues, ratings, file paths and playback.": {
+      "en": "Restoring can replace the current collection. Follow the prompts, then check playlists, cues, ratings, file paths and playback.",
+      "de": "Die Wiederherstellung kann die aktuelle Sammlung ersetzen. Folgen Sie den Hinweisen und prüfen Sie danach Playlists, Cues, Bewertungen, Dateipfade und Wiedergabe.",
+      "fr": "La restauration peut remplacer la collection actuelle. Suivez les instructions, puis vérifiez playlists, repères, notes, chemins et lecture.",
+      "it": "Il ripristino può sostituire la raccolta attuale. Segui le istruzioni, poi verifica playlist, cue, valutazioni, percorsi e riproduzione.",
+      "es": "La restauración puede reemplazar la colección actual. Sigue las indicaciones y revisa listas, cues, valoraciones, rutas y reproducción.",
+      "el": "Η επαναφορά μπορεί να αντικαταστήσει την τρέχουσα συλλογή. Ακολουθήστε τις οδηγίες και ελέγξτε λίστες, cue, βαθμολογίες, διαδρομές και αναπαραγωγή.",
+      "pl": "Przywracanie może zastąpić obecną kolekcję. Postępuj zgodnie z instrukcjami, a potem sprawdź playlisty, cue, oceny, ścieżki i odtwarzanie.",
+      "cs": "Obnovení může nahradit současnou kolekci. Postupujte podle pokynů a pak zkontrolujte playlisty, cue body, hodnocení, cesty a přehrávání.",
+      "ru": "Восстановление может заменить текущую коллекцию. Следуйте подсказкам, затем проверьте плейлисты, cue, оценки, пути и воспроизведение."
+    },
+    "The XML is an alternative import, not a second restore step. Do not import it after restoring the ZIP.": {
+      "en": "The XML is an alternative import, not a second restore step. Do not import it after restoring the ZIP.",
+      "de": "Die XML ist ein alternativer Importweg, kein zweiter Wiederherstellungsschritt. Importieren Sie sie nicht nach der ZIP-Wiederherstellung.",
+      "fr": "Le XML est une autre méthode d’import, pas une deuxième étape de restauration. Ne l’importez pas après avoir restauré le ZIP.",
+      "it": "L’XML è un’importazione alternativa, non un secondo passo del ripristino. Non importarlo dopo aver ripristinato lo ZIP.",
+      "es": "El XML es una importación alternativa, no un segundo paso de restauración. No lo importes después de restaurar el ZIP.",
+      "el": "Το XML είναι εναλλακτική εισαγωγή, όχι δεύτερο βήμα επαναφοράς. Μην το εισάγετε μετά την επαναφορά του ZIP.",
+      "pl": "XML to alternatywny sposób importu, nie drugi etap przywracania. Nie importuj go po przywróceniu ZIP.",
+      "cs": "XML je alternativní způsob importu, ne druhý krok obnovení. Po obnovení ZIP jej neimportujte.",
+      "ru": "XML — альтернативный способ импорта, а не второй этап восстановления. Не импортируйте его после восстановления ZIP."
     }
   }
 }

@@ -10,6 +10,24 @@ from check_track_details_ui import check_track_details_ui
 def check_workspace_ui(browser,page,base,sid,output,offline):
     with urllib.request.urlopen(base+'/api/lab') as response:lab=json.load(response)
     page.select_option('#language','en');page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
+    page.locator('.nav[data-view="files"]').click()
+    guide=page.locator('.file-preparation-guide');assert guide.is_visible()
+    assert 'File → Library → Backup Library' in guide.inner_text()
+    assert 'File → Export Collection in xml format' in guide.inner_text()
+    assert guide.locator('p').evaluate_all('(els)=>els.every(el=>parseFloat(getComputedStyle(el).fontSize)>=13)')
+    page.screenshot(path=str(output/'input-file-guide.png'))
+    page.locator('#view-files [data-open-import]').click();page.wait_for_selector('#import-dialog[open]')
+    assert page.locator('#import-dialog .import-file-guide').is_visible()
+    page.screenshot(path=str(output/'import-file-guide.png'))
+    page.locator('#import-dialog [data-help-doc="inputs-and-restore"]').click()
+    page.wait_for_selector('#import-dialog',state='hidden')
+    page.wait_for_function('document.querySelector("#docs-source").textContent.startsWith("docs/INPUTS-AND-RESTORE.md")')
+    assert page.locator('#docs-content h1').inner_text()=='Create your input files and restore an edited copy'
+    page.locator('.nav[data-view="exports"]').click()
+    restore=page.locator('.restore-file-guide');restore.scroll_into_view_if_needed()
+    assert 'File → Library → Restore Library' in restore.inner_text()
+    assert 'Do not import it after restoring the ZIP.' in restore.inner_text()
+    page.screenshot(path=str(output/'restore-file-guide.png'))
     assert page.locator('.nav-group').count()==4
     for size in ('compact','standard','wide'):
         page.select_option('#sidebar-size',size)

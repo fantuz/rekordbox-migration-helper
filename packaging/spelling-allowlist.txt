@@ -1,0 +1,6 @@
+# Vendor names and technical identifiers are retained exactly.
+rekordbox
+sqlcipher
+
+# Literal rekordbox XML attribute name, not a display label.
+commnt

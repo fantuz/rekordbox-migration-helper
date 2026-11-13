@@ -1,9 +1,10 @@
 from pathlib import Path
+import json
 import tempfile
 import unittest
 from xml.etree.ElementTree import Element,SubElement,tostring
 
-from platform_paths import default_data_directory,discover_sources
+from platform_paths import default_data_directory,discover_sources,configure_packaged_certificates
 
 
 class PlatformPathTests(unittest.TestCase):
@@ -18,7 +19,7 @@ class PlatformPathTests(unittest.TestCase):
             root=Path(temporary);appdata=root/'Roaming'
             folder=appdata/'Pioneer/rekordbox6';folder.mkdir(parents=True)
             library=root/'custom cloud library';library.mkdir();(library/'master.db').write_bytes(b'fixture')
-            tree=Element('PROPERTIES');SubElement(tree,'VALUE',name='masterDbDirectory',val=str(library))
+            tree=Element('PROPERTIES');SubElement(tree,'VALUE',name='masterDbDirectory',val=str(library.resolve()))
             settings=folder/'rekordbox3.settings';settings.write_bytes(tostring(tree));before=settings.read_bytes()
             result=discover_sources('win32',{'APPDATA':str(appdata)},root)
             self.assertEqual(result['found'][0]['path'],str(library.resolve()))
@@ -38,6 +39,56 @@ class PlatformPathTests(unittest.TestCase):
         self.assertEqual(result['found'],[])
         self.assertEqual(result['standard_locations'],[])
         self.assertIn('enter the path',result['help'])
+
+    def test_agent_pointer_precedes_old_default_and_keeps_unrelated_options_private(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);appdata=root/'Roaming';base=appdata/'Pioneer'
+            old=base/'rekordbox';old.mkdir(parents=True);(old/'master.db').write_bytes(b'old database')
+            current=root/'Cloud library';current.mkdir();(current/'master.db').write_bytes(b'current database')
+            analysis=root/'Analysis assets';analysis.mkdir()
+            options=base/'rekordboxAgent/storage/options.json';options.parent.mkdir(parents=True)
+            options.write_text(json.dumps({'options':[['db-path',str(current/'master.db')],['analysis-data-root-path',str(analysis)],['dp','private-device-value']]}))
+            before=options.read_bytes();result=discover_sources('win32',{'APPDATA':str(appdata)},root)
+            self.assertEqual(result['found'][0]['path'],str(current.resolve()));self.assertEqual(len(result['found']),2)
+            self.assertEqual(str(Path(result['analysis_locations'][0]['path']).resolve()),str(analysis.resolve()))
+            self.assertNotIn('private-device-value',json.dumps(result));self.assertEqual(options.read_bytes(),before)
+
+    def test_mac_agent_dictionary_and_nested_master_location(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);external=root/'External/PIONEER/Master';external.mkdir(parents=True)
+            (external/'master.db').write_bytes(b'discovery does not open SQL')
+            options=root/'Library/Application Support/Pioneer/rekordboxAgent/storage/options.json';options.parent.mkdir(parents=True)
+            options.write_text(json.dumps({'options':{'db-path':str(external.parent.parent)}}))
+            self.assertEqual(discover_sources('darwin',{},root)['found'][0]['path'],str(external.resolve()))
+
+    def test_malformed_and_relative_agent_paths_do_not_break_other_candidates(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);base=root/'Pioneer';library=base/'rekordbox';library.mkdir(parents=True)
+            (library/'master.db').write_bytes(b'fixture');options=base/'rekordboxAgent/storage/options.json';options.parent.mkdir(parents=True)
+            for content in ('not JSON',json.dumps({'options':[['db-path','relative/master.db']]})):
+                options.write_text(content)
+                result=discover_sources('win32',{'APPDATA':str(root)},root)
+                self.assertEqual(result['found'][0]['path'],str(library.resolve()))
+
+    def test_linux_binary_data_uses_xdg_without_moving_source_workspace(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            user=Path(temporary).resolve();data=user/'custom data'
+            self.assertEqual(default_data_directory('/application','linux',{},user,True),user/'.local/share/LibraryWorkbench')
+            self.assertEqual(default_data_directory('/application','linux',{'XDG_DATA_HOME':str(data)},user,True),data/'LibraryWorkbench')
+            self.assertEqual(default_data_directory('/application','linux',{'XDG_DATA_HOME':'relative'},user,True),user/'.local/share/LibraryWorkbench')
+            self.assertEqual(default_data_directory('/application','linux',{},user,False),Path('/application/.data'))
+
+    def test_bundled_runtime_uses_os_certificates_and_honours_explicit_trust_settings(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path=Path(temporary)/'ca.pem';path.write_text('synthetic CA path only; never used for TLS')
+            env={};configure_packaged_certificates('linux',env,True,[path])
+            self.assertEqual(env,{'SSL_CERT_FILE':str(path)})
+            for key in ('SSL_CERT_FILE','SSL_CERT_DIR'):
+                env={key:'user-managed'};configure_packaged_certificates('darwin',env,True,[path])
+                self.assertEqual(env,{key:'user-managed'})
+            for platform,packaged in (('linux',False),('win32',True)):
+                env={};configure_packaged_certificates(platform,env,packaged,[path]);self.assertEqual(env,{})
+
 
 
 if __name__=='__main__':unittest.main()

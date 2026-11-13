@@ -11,7 +11,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION_PATTERN = re.compile(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:alpha|beta|rc)\.(?:0|[1-9]\d*))?")
-PACKAGE_FORMATS = {'windows-x64': '.zip', 'macos-x86_64': '.zip', 'macos-arm64': '.zip', 'linux-source': '.tar.gz'}
+PACKAGE_FORMATS = {'windows-x64': '.zip', 'macos-x86_64': '.zip', 'macos-arm64': '.zip', 'linux-x86_64': '.tar.gz', 'linux-source': '.tar.gz'}
 
 
 def normalized_version(value):
@@ -89,8 +89,9 @@ def release_notes(version, commit, changelog="", history=None, previous_tag=None
             ('windows-x64','Windows x64','Extract ZIP; open **Library Workbench.exe**'),
             ('macos-x86_64','Mac Intel','Extract ZIP; open **Library Workbench.app**'),
             ('macos-arm64','Mac Apple Silicon / ARM64','Extract ZIP; open **Library Workbench.app**'),
+            ('linux-x86_64','Linux x86-64 portable','Extract TAR.GZ; open **Library Workbench** (Python included)'),
             ('linux-source','Linux source','Extract TAR.GZ; run **start.sh** with Python 3.13+')))
-    downloads+='| Checksums | [SHA256SUMS]('+asset+'SHA256SUMS) | Verify the four archives |\n'
+    downloads+='| Checksums | [SHA256SUMS]('+asset+'SHA256SUMS) | Verify the five archives |\n'
     history_notes=''
     if history is not None:
         downloads+='| Complete commit history | [COMMIT-LOG.txt]('+asset+'COMMIT-LOG.txt) | All '+str(len(history))+' commits and full messages |\n'
@@ -108,8 +109,9 @@ def release_notes(version, commit, changelog="", history=None, previous_tag=None
             "### Downloads\n\n"+downloads+"\n"
             "- Windows x64: extract the complete ZIP and open Library Workbench.exe. Python and dependencies are bundled.\n"
             "- macOS: choose arm64 (Apple Silicon) or x86_64 (Intel), extract and open Library Workbench.app. These applications are ad-hoc signed, not notarized.\n"
-            "- Linux: extract the source archive and run start.sh with Python 3.13 or newer.\n\n"
-            "All packages passed their native CI runtime checks and share the release source. SHA256SUMS lists the four archives.\n\n"
+            "- Linux x86-64: extract the complete portable TAR.GZ and open Library Workbench. Requires glibc 2.28+ and a browser; Python is bundled. Tested on Ubuntu 22.04. ARM and Alpine/musl need the source version.\n"
+            "- Linux source: extract the source archive and run start.sh with Python 3.13 or newer.\n\n"
+            "All packages passed their native CI runtime checks and share the release source. SHA256SUMS lists the five archives.\n\n"
             "Keep an untouched rekordbox Backup Library backup before transformation. Native ZIP restore inside rekordbox remains experimental; validate in an isolated library first.\n\n"
             "Source commit: [`"+commit[:7]+"`]("+base+"/commit/"+commit+")\n"+history_notes)
 
@@ -122,7 +124,15 @@ def verify_assets(directory, version, commit):
     sources={}
     checksums=[]
     present={p.name for p in directory.glob("Library-Workbench-*") if p.name.endswith((".zip",".tar.gz"))}
-    if present!=set(names):raise ValueError("The release must contain exactly the four expected archives")
+    if present!=set(names):raise ValueError("The release must contain exactly the five expected archives")
+    def validate_manifest(manifest, runtime_key):
+        built_commit=manifest.get('commit') or manifest.get('windows_validation',{}).get('commit')
+        if manifest.get('version')!=version or manifest.get(runtime_key)!='passed' or built_commit!=commit:
+            raise ValueError('Package version, commit or runtime validation does not match this release')
+        if not manifest.get('application_sources'):raise ValueError('Package has no source digests')
+        for source,digest_value in manifest['application_sources'].items():
+            if source in sources and sources[source]!=digest_value:raise ValueError('Package source mismatch: '+source)
+            sources[source]=digest_value
     for name in names:
         path=directory/name
         if not path.is_file() or path.is_symlink():raise ValueError("Missing release artifact: "+name)
@@ -137,14 +147,14 @@ def verify_assets(directory, version, commit):
                 manifest_names=[n for n in archive.namelist() if n.endswith("/BUILD-MANIFEST.json")]
                 if len(manifest_names)!=1:raise ValueError("Missing or ambiguous build manifest")
                 manifest=json.loads(archive.read(manifest_names[0]))
-                runtime=manifest.get("windows_runtime_test") or manifest.get("macos_runtime_test")
-                built_commit=manifest.get("commit") or manifest.get("windows_validation",{}).get("commit")
-                if manifest["version"]!=version or runtime!="passed" or built_commit!=commit:
-                    raise ValueError("Package version, commit or runtime validation does not match this release")
-                if not manifest.get("application_sources"):raise ValueError("Package has no source digests")
-                for source,digest_value in manifest["application_sources"].items():
-                    if source in sources and sources[source]!=digest_value:raise ValueError("Package source mismatch: "+source)
-                    sources[source]=digest_value
+                validate_manifest(manifest,'windows_runtime_test' if name.endswith('-windows-x64.zip') else 'macos_runtime_test')
+        elif name.endswith('-linux-x86_64.tar.gz'):
+            with tarfile.open(path) as archive:
+                manifests=[m for m in archive.getmembers() if m.name.endswith('/BUILD-MANIFEST.json')]
+                if len(manifests)!=1 or not manifests[0].isfile():raise ValueError('Missing or ambiguous build manifest')
+                manifest=json.load(archive.extractfile(manifests[0]))
+                if manifest.get('platform')!='linux-x86_64':raise ValueError('Unexpected Linux package platform')
+                validate_manifest(manifest,'linux_runtime_test')
         else:
             with tarfile.open(path) as archive:
                 available={}

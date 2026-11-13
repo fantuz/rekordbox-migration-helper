@@ -4,6 +4,20 @@
 
 Source analyzer checks normal Windows AppData and macOS Library locations plus saved database-directory settings. Cloud music can be stored elsewhere; Dropbox/Google Drive folders are not necessarily the database location. Custom absolute paths remain available on every platform.
 
+| Platform / source | Locations checked | Meaning |
+| --- | --- | --- |
+| Windows desktop data | `%APPDATA%\Pioneer\rekordbox` | Usual master database location; `%APPDATA%` normally expands to the current user's `AppData\Roaming` |
+| macOS desktop data | `~/Library/Pioneer/rekordbox` | Usual master database location; `~` means the current user's home folder |
+| Preferences / Agent | Windows `%APPDATA%\Pioneer`, macOS `~/Library/Application Support/Pioneer` | `rekordbox3.settings` and `rekordboxAgent/storage/options.json` can point to a different active database |
+| External database | Saved directory, its `Master` or `PIONEER/Master` subfolder | Candidate locations; inspect the actual database rather than assuming an entire drive is the library |
+| Mounted Windows/Mac volume | Standard profile paths under `Users`, saved paths mapped within that volume, and `PIONEER/Master` | Linux can read an accessible mounted copy; drive-letter mappings must be checked by the user |
+
+The official [rekordbox troubleshooting guide](https://forums.pioneerdj.com/hc/en-us/articles/205021519-Read-this-article-before-posting-for-help-with-rekordbox) documents the usual Windows and Mac data directories. The official [external database guide](https://forums.pioneerdj.com/hc/en-us/articles/205021549-Moving-your-rekordbox-database-Video) confirms that the master database may be moved. [pyrekordbox's configuration reader](https://pyrekordbox.readthedocs.io/en/stable/_modules/pyrekordbox/config.html) is the community implementation reference for Agent `db-path` discovery. It is not an official native-format specification.
+
+Discovery checks the original Pioneer namespace first, then AlphaTheta and version-suffixed folders as additional candidates. The extra names are fallback probes, not a claim that every version uses them. Agent database pointers take priority over standard-folder guesses; old files can remain after migration. The optional `analysis-data-root-path` hint supplies analysis candidates when present. Only location fields are returned; unrelated Agent options, authentication/device values and configuration contents are not included in discovery reports. Settings are never edited.
+
+Automatic suggestions skip network-share pointers and relative paths. Enter a deliberate manual path for an unusual setup. Discovery uses fixed database-name probes instead of listing all files in a large music directory. A suggested folder is still a candidate: the analyzer checks its format and schema after you explicitly choose capture.
+
 **Find libraries in custom folders or mounted volumes** performs a user-triggered, bounded search. Pick one or more roots, choose depth and search. Results only populate the source-path field when selected. Analysis starts separately, after you close rekordbox and pause library synchronization. Database queries always run on a detached temporary copy.
 
 Linux users can select a real Windows library on a filesystem they have already mounted with their own tools. The app checks recognized mounted volumes and standard Windows profile paths, including relocated settings paths that can be mapped within the same volume. Verify candidates: a Windows drive letter does not establish which Linux mount represents it. The app does not mount, unlock, repair or write to Windows filesystems. Network homes, unusual installations and inaccessible mounts may need manual paths.

@@ -32,7 +32,7 @@ def review_fixture():
 def check_duplicate_review_ui(browser,base,output):
     """Exercise the real UI handlers; intercept every synthetic decision before HTTP."""
     with urllib.request.urlopen(base+'/api/status') as response:status=json.load(response)
-    session,pair=review_fixture();decisions=[];evidence_queries=[];errors=[];unexpected_mutations=[]
+    session,pair=review_fixture();decisions=[];group_previews=[];group_stages=[];evidence_queries=[];errors=[];unexpected_mutations=[]
     third={**deepcopy(pair['tracks'][0]),'track_id':'synthetic-c','title':'Synthetic third sibling'}
     alternate={**deepcopy(pair),'id':'synthetic-alternate','title':'Synthetic alternate comparison',
                'tracks':[deepcopy(pair['tracks'][1]),third],'keeper':'synthetic-c'}
@@ -61,6 +61,14 @@ def check_duplicate_review_ui(browser,base,output):
             ids=parse_qs(url.query)['ids'][0].split(',')
             tracks=[deepcopy(track) for track in [*pair['tracks'],third] if track['track_id'] in ids]
             route.fulfill(json={'keeper':'synthetic-a','tracks':tracks});return
+        if path=='/api/group/preview':
+            body=request.post_data_json;group_previews.append(body)
+            rows=[{'track_id':i,'status':'keeper' if i==body['keeper'] else 'excluded' if i in body.get('excluded',[]) else 'ready','reason':''} for i in body['track_ids']]
+            counts={name:sum(r['status']==name for r in rows) for name in ('ready','held','excluded','already_staged')}
+            route.fulfill(json={'keeper':body['keeper'],'rows':rows,'counts':counts,'held':{}});return
+        if path=='/api/group/stage':
+            body=request.post_data_json;group_stages.append(body)
+            route.fulfill(json={'session':deepcopy(session),'count':len(body['track_ids'])-1-len(body.get('excluded',[])),'held':{}});return
         if path=='/api/statistics':
             route.fulfill(json={'counters':{'total':2,'rated':2,'analysed':2},'histogram':[],
                                 'addition_dates':{'years':[{'year':2026,'tracks':2}],'unknown':0}});return
@@ -142,6 +150,11 @@ def check_duplicate_review_ui(browser,base,output):
         page.set_viewport_size({'width':1440,'height':1000})
         page.select_option('#review-mode','groups')
         page.wait_for_selector('#group-comparison option[value="synthetic-alternate"]',state='attached')
+        page.wait_for_selector('[data-group-status="synthetic-b"][data-status="ready"]')
+        assert page.locator('.group-member').count()==3
+        page.locator('[data-group-donor="synthetic-b"]').uncheck()
+        page.wait_for_selector('[data-group-status="synthetic-b"][data-status="excluded"]')
+        page.locator('#group-auto').check();page.locator('#group-rating').check()
         page.select_option('#group-keeper','synthetic-c')
         page.select_option('#group-comparison','synthetic-alternate')
         page.wait_for_selector('[data-keeper="synthetic-c"]')
@@ -153,6 +166,8 @@ def check_duplicate_review_ui(browser,base,output):
         assert page.locator('#detail-panel .detail-head h3').inner_text()==alternate['title']
         assert page.locator('[data-keeper="synthetic-c"]').count()==1 and page.locator('[data-keeper="synthetic-a"]').count()==0
         assert page.locator('#group-keeper').input_value()=='synthetic-c'
+        assert not page.locator('[data-group-donor="synthetic-b"]').is_checked()
+        assert page.locator('#group-auto').is_checked() and page.locator('#group-rating').is_checked()
         assert page.locator('[data-keeper="synthetic-b"]').evaluate('el=>el.classList.contains("chosen")')
         assert page.locator('#accept-auto').is_checked() and page.locator('#accept-rating').is_checked()
 
@@ -172,13 +187,21 @@ def check_duplicate_review_ui(browser,base,output):
         group_scope.update(id='synthetic-other-group',include_alternate=True,representative=alternate['id'])
         page.select_option('#feature-filter','mixed')
         page.wait_for_function('document.querySelector("#group-comparison")?.value==="synthetic-alternate" && document.querySelector("#detail-panel .detail-head h3")?.textContent==="Synthetic alternate comparison"')
+        page.wait_for_selector('[data-group-status="synthetic-c"][data-status="ready"]')
+        page.locator('.group-toolbar').scroll_into_view_if_needed()
+        page.screenshot(path=str(output/'duplicate-group-members.png'))
+        page.locator('#stage-group').click()
+        page.wait_for_function('document.querySelector("#toast")?.textContent.includes("2")')
+        assert len(group_stages)==1 and group_stages[0]['keeper']=='synthetic-a',group_stages
+        assert len(group_stages[0]['track_ids'])==3 and group_stages[0]['excluded']==[],group_stages
+        assert group_previews and any('synthetic-b' in body['excluded'] for body in group_previews)
         assert len(decisions)==1,decisions
         assert not errors,errors
         assert not unexpected_mutations,unexpected_mutations
-        assert page.locator('#toast').is_hidden() or page.locator('#toast').inner_text()=='Decision saved to this workspace',page.locator('#toast').inner_text()
+        assert page.locator('#toast').is_hidden() or '2' in page.locator('#toast').inner_text(),page.locator('#toast').inner_text()
         return {'readable_native_controls':True,'comparison_width_prioritized':True,'mouse_and_keyboard_keeper':True,
                 'decision_payload_preserved':True,'escaped_unicode_metadata':True,'responsive_german_layout':True,
-                'group_comparison_refresh_preserved':True,'removed_comparison_fallback':True,'different_group_uses_representative':True,
+                'group_comparison_refresh_preserved':True,'all_group_members_visible':True,'donor_exclusion_and_policy_preserved':True,'multi_donor_stage_payload':True,'removed_comparison_fallback':True,'different_group_uses_representative':True,
                 'transport':'synthetic browser responses; no source files or real decisions'}
     finally:
         context.close()

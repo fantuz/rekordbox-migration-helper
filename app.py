@@ -613,13 +613,16 @@ def undo_batch():
         session=current()
         count=0
         batch=session.get("batches",[]).pop() if session.get("batches") else session.get("last_batch",[])
+        previous_decisions={}
         if isinstance(batch,dict):
             session["held_pairs"]=batch["previous_held"]
+            previous_decisions=batch.get('previous_decisions',{})
             batch=batch["decisions"]
         for i in batch:
             if i in session["decisions"]:
                 session["decisions"].pop(i)
                 count+=1
+        session['decisions'].update(previous_decisions)
         session["last_batch"]=session["batches"][-1]["decisions"] if session.get("batches") and isinstance(session["batches"][-1],dict) else []
         log(session,f"Undid the last batch of {count:,} decisions")
         return jsonify(session=summary(session),count=count)
@@ -1012,35 +1015,62 @@ def filter_presets():
     return jsonify(presets=saved)
 
 
-@app.post("/api/group/stage")
-def stage_recording_group():
-    body=request.get_json()
+def recording_group_plan(session,body):
+    """Run the actual staging rules on separate decision dictionaries first."""
     ids=body.get("track_ids",[])
     keeper=body.get("keeper")
-    if not ids or len(ids)>100 or keeper not in ids:raise ValueError("Choose a keeper in this recording group")
-    session=current()
+    if not isinstance(ids,list) or not 1<=len(ids)<=100 or any(not isinstance(i,str) for i in ids):
+        raise ValueError("Choose between 1 and 100 known group members")
+    if len(set(ids))!=len(ids) or keeper not in ids:raise ValueError("Choose a keeper in this recording group")
+    excluded=body.get('excluded',[])
+    if not isinstance(excluded,list) or any(not isinstance(i,str) or i not in ids or i==keeper for i in excluded):
+        raise ValueError("Exclude only donor members of this group")
     if any(i not in session["catalog"].tracks for i in ids):raise ValueError("Unknown group member")
+    shadow={**session,'decisions':dict(session['decisions']),'held_pairs':dict(session['held_pairs'])}
+    state=decision_map(session['catalog'],session['decisions'])
+    rows=[];staged=[];held={}
+    for donor in ids:
+        row={'track_id':donor,'status':'keeper','reason':''}
+        rows.append(row)
+        if donor==keeper:continue
+        if state[0].get(donor)==keeper:
+            row['status']='already_staged';continue
+        if donor in excluded:
+            row['status']='excluded';continue
+        pair_id='~'.join(sorted((donor,keeper)))
+        if pair_id not in session['catalog'].pairs:
+            row.update(status='held',reason='No direct match to this keeper; inspect the supporting pair first')
+            held[donor]=row['reason'];continue
+        try:
+            stage(shadow,pair_id,{'action':'merge','keeper':keeper,'prefer_auto':bool(body.get('prefer_auto')),
+                                 'prefer_rating':bool(body.get('prefer_rating'))},state)
+            row['status']='ready';staged.append(pair_id)
+        except ValueError as error:
+            row.update(status='held',reason=str(error));held[donor]=str(error)
+            shadow['held_pairs'][pair_id]=str(error)
+    counts={name:sum(r['status']==name for r in rows) for name in ('ready','held','excluded','already_staged')}
+    return {'keeper':keeper,'rows':rows,'counts':counts,'decisions':staged,'held':held},shadow
+
+
+@app.post('/api/group/preview')
+def preview_recording_group():
+    with lock:
+        plan,_=recording_group_plan(current(),request.get_json() or {})
+    return jsonify(**plan)
+
+
+@app.post("/api/group/stage")
+def stage_recording_group():
+    session=current()
     with lock:
         previous_held=dict(session["held_pairs"])
-        state=decision_map(session["catalog"],session["decisions"])
-        staged=[]
-        held={}
-        for donor in ids:
-            if donor==keeper or state[0].get(donor)==keeper:continue
-            pair_id="~".join(sorted((donor,keeper)))
-            if pair_id not in session["catalog"].pairs:
-                held[donor]="No direct match to this keeper; review the supporting pair first"
-                continue
-            try:
-                stage(session,pair_id,{"action":"merge","keeper":keeper,"prefer_auto":bool(body.get("prefer_auto")),
-                                     "prefer_rating":bool(body.get("prefer_rating"))},state)
-                staged.append(pair_id)
-            except ValueError as error:
-                held[donor]=str(error)
-                session["held_pairs"][pair_id]=str(error)
-        session["batches"].append({"decisions":staged,"previous_held":previous_held})
+        plan,shadow=recording_group_plan(session,request.get_json() or {})
+        staged=plan['decisions'];held=plan['held']
+        previous_decisions={i:session['decisions'][i] for i in staged if i in session['decisions']}
+        session['decisions']=shadow['decisions'];session['held_pairs']=shadow['held_pairs']
+        session["batches"].append({"decisions":staged,"previous_held":previous_held,'previous_decisions':previous_decisions})
         session["last_batch"]=staged
-        log(session,f"Recording group staged {len(staged)} merges; {len(held)} siblings held for review")
+        log(session,f"Recording group staged {len(staged)} merges; {len(held)} siblings held for review; {plan['counts']['excluded']} excluded")
     return jsonify(session=summary(session),count=len(staged),held=held)
 
 
