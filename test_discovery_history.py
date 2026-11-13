@@ -136,6 +136,18 @@ class DiscoveryAndMultiScopeTests(unittest.TestCase):
         self.assertTrue(limited['partial']);self.assertTrue(limited['warnings'])
         shallow=scan_roots([str(self.root)],lambda *_:None,depth=0);self.assertEqual(shallow['libraries'],[])
 
+    def test_mounted_agent_options_and_mac_profiles_and_external_master(self):
+        win=self.root/'Users/DJ/AppData/Roaming/Pioneer/rekordboxAgent/storage';win.mkdir(parents=True)
+        library=self.root/'DJ Music/Library';library.mkdir(parents=True);(library/'master.db').write_bytes(b'Windows DB')
+        assets=self.root/'DJ Music/Assets/USBANLZ';assets.mkdir(parents=True)
+        options=win/'options.json';options.write_text(json.dumps({'options':[['db-path','D:\\DJ Music\\Library\\master.db'],['analysis-data-root-path','D:\\DJ Music\\Assets'],['dp','not returned']]}))
+        mac=self.root/'Users/Other/Library/Pioneer/rekordbox';mac.mkdir(parents=True);(mac/'master.db').write_bytes(b'Mac DB')
+        external=self.root/'PIONEER/Master';external.mkdir(parents=True);(external/'master.db').write_bytes(b'External DB')
+        before=options.read_bytes();result=suggestions('linux',{},self.root/'home',volumes=[{'path':str(self.root),'kind':'test'}])
+        self.assertEqual({r['path'] for r in result['found']},{str(library),str(mac),str(external)})
+        self.assertIn(str(assets),{r['path'] for r in result['analysis_paths']})
+        self.assertNotIn('not returned',json.dumps(result));self.assertEqual(options.read_bytes(),before)
+
     def test_multiple_asset_roots_keep_same_reference_copies_separate(self):
         roots=[]
         for name,data in [('local',b'same'),('cloud',b'same'),('different',b'else')]:

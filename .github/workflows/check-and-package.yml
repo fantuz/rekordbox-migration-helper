@@ -47,6 +47,9 @@ jobs:
           python-version: '3.13'
           cache: pip
       - run: python -m pip install -r requirements.txt -r requirements-test.txt
+      - name: Check English interface and documentation spelling
+        if: runner.os == 'Linux'
+        run: python packaging/check_english.py --output ci-output
       - run: python -m unittest discover -v
       - run: python packaging/smoke_desktop.py --source . --report ci-output/source-smoke.json
       - name: Check browser JavaScript syntax
@@ -55,6 +58,7 @@ jobs:
           for file in static/*.js; do node --check "$file"; done
           bash -n start.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
         with:
           name: source-validation-${{ matrix.os }}
           path: ci-output/*.json

@@ -7,7 +7,7 @@ import time
 from xml.etree import ElementTree
 from itertools import islice
 
-from platform_paths import discover_sources
+from platform_paths import discover_sources,location_hints,database_names
 from media import cloud_placeholder
 
 DATABASES={'master.db','datafile.edb','extdata.edb'}
@@ -75,35 +75,45 @@ def _case_path(base,*parts):
 
 
 def _mounted_candidates(volume):
-    """Check standard Windows profiles plus relocated same-volume settings."""
-    volume=Path(volume);candidates=[]
-    users=_case_path(volume,'Users')
+    """Check copied Windows/Mac profiles and bounded saved-location hints."""
+    volume=Path(volume);candidates=[];users=_case_path(volume,'Users')
     try:profiles=[p for p in islice(users.iterdir(),64) if p.is_dir() and not p.is_symlink() and not p.is_junction()] if users else []
     except OSError:profiles=[]
     for profile in profiles:
+        settings=[];agents=[]
         for owner in OWNERS:
-            for folder in LIBRARIES:
-                candidate=_case_path(profile,'AppData','Roaming',owner,folder)
-                if not candidate or not candidate.is_dir():continue
-                candidates.append((candidate,'Standard path in a mounted Windows profile'))
-                settings=candidate/'rekordbox3.settings'
-                try:
-                    if settings.is_symlink() or not settings.is_file() or settings.stat().st_size>2*1024**2:continue
-                    data=settings.read_bytes()
-                    if b'<!DOCTYPE' in data.upper().replace(b'\0',b'') or b'<!ENTITY' in data.upper().replace(b'\0',b''):continue
-                    for item in ElementTree.fromstring(data).iter('VALUE'):
-                        if item.get('name','').casefold()!='masterdbdirectory':continue
-                        saved=PureWindowsPath(item.get('val',''))
-                        if re.fullmatch('[A-Za-z]:',saved.drive) and saved.root and '..' not in saved.parts:
-                            path=_case_path(volume,*saved.parts[1:])
-                            if path and path.is_dir():candidates.append((path,'Saved Windows database path mapped within this mounted volume; verify the chosen library'))
-                except (OSError,ElementTree.ParseError):pass
+            bases=[_case_path(profile,'AppData','Roaming',owner),_case_path(profile,'Library',owner),
+                   _case_path(profile,'Library','Application Support',owner)]
+            for base in (p for p in bases if p):
+                agent=_case_path(base,'rekordboxAgent')
+                if agent:agents.append(agent)
+                for folder in LIBRARIES:
+                    candidate=_case_path(base,folder)
+                    if not candidate or not candidate.is_dir():continue
+                    settings.append(candidate);candidates.append((candidate,'Standard path in a mounted Windows or Mac profile'))
+                    nested=_case_path(candidate,'Master')
+                    if nested:candidates.append((nested,'Master subfolder in a mounted profile'))
+        hints,_=location_hints(list(reversed(settings)),agents)
+        for hint in hints:
+            raw=hint['value'];saved=PureWindowsPath(raw)
+            if re.fullmatch('[A-Za-z]:',saved.drive) and saved.root and '..' not in saved.parts:
+                parts=saved.parts[1:]
+            elif raw.startswith('/Users/') and '..' not in Path(raw).parts:
+                parts=Path(raw).parts[1:]
+            else:continue
+            path=_case_path(volume,*parts)
+            if path and path.name.casefold()=='master.db':path=path.parent
+            if path and path.is_dir():
+                kind='analysis' if hint['kind']=='analysis' else 'database'
+                candidates.append((path,'Saved '+kind+' path mapped within this mounted volume; verify the drive mapping and chosen library'))
+    external=_case_path(volume,'PIONEER','Master')
+    if external:candidates.append((external,'External master-database location on a mounted volume'))
     return candidates
 
 
 def _library(path,origin):
     try:
-        names=sorted(p.name for p in path.iterdir() if p.is_file() and not p.is_symlink() and p.name.casefold() in DATABASES)
+        names=database_names(path)
         if names:return {'path':str(path.resolve()),'origin':origin,'databases':names}
     except OSError:pass
     return None
@@ -118,6 +128,7 @@ def suggestions(platform_name=None,environ=None,home=None,volumes=None):
     volumes=mounted_roots(platform_name,home) if volumes is None else volumes
     libraries=list(native['found']);seen={r['path'] for r in libraries}
     candidates=[(Path(r['path']),'Detected library') for r in libraries]
+    candidates.extend((Path(r['path']),r['origin']) for r in native.get('analysis_locations',[]))
     for row in volumes:
         volume=Path(row['path']);candidates.extend(_mounted_candidates(volume));candidates.append((volume,'Selected mounted volume root'))
     assets=[];asset_seen=set()

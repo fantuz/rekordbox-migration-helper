@@ -1,0 +1,3 @@
+# Vendor names and technical identifiers are retained exactly.
+rekordbox
+sqlcipher
