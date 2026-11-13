@@ -19,7 +19,7 @@ class PlatformPathTests(unittest.TestCase):
             root=Path(temporary);appdata=root/'Roaming'
             folder=appdata/'Pioneer/rekordbox6';folder.mkdir(parents=True)
             library=root/'custom cloud library';library.mkdir();(library/'master.db').write_bytes(b'fixture')
-            tree=Element('PROPERTIES');SubElement(tree,'VALUE',name='masterDbDirectory',val=str(library))
+            tree=Element('PROPERTIES');SubElement(tree,'VALUE',name='masterDbDirectory',val=str(library.resolve()))
             settings=folder/'rekordbox3.settings';settings.write_bytes(tostring(tree));before=settings.read_bytes()
             result=discover_sources('win32',{'APPDATA':str(appdata)},root)
             self.assertEqual(result['found'][0]['path'],str(library.resolve()))
@@ -49,8 +49,8 @@ class PlatformPathTests(unittest.TestCase):
             options=base/'rekordboxAgent/storage/options.json';options.parent.mkdir(parents=True)
             options.write_text(json.dumps({'options':[['db-path',str(current/'master.db')],['analysis-data-root-path',str(analysis)],['dp','private-device-value']]}))
             before=options.read_bytes();result=discover_sources('win32',{'APPDATA':str(appdata)},root)
-            self.assertEqual(result['found'][0]['path'],str(current));self.assertEqual(len(result['found']),2)
-            self.assertEqual(result['analysis_locations'][0]['path'],str(analysis))
+            self.assertEqual(result['found'][0]['path'],str(current.resolve()));self.assertEqual(len(result['found']),2)
+            self.assertEqual(result['analysis_locations'][0]['path'],str(analysis.resolve()))
             self.assertNotIn('private-device-value',json.dumps(result));self.assertEqual(options.read_bytes(),before)
 
     def test_mac_agent_dictionary_and_nested_master_location(self):
@@ -59,7 +59,7 @@ class PlatformPathTests(unittest.TestCase):
             (external/'master.db').write_bytes(b'discovery does not open SQL')
             options=root/'Library/Application Support/Pioneer/rekordboxAgent/storage/options.json';options.parent.mkdir(parents=True)
             options.write_text(json.dumps({'options':{'db-path':str(external.parent.parent)}}))
-            self.assertEqual(discover_sources('darwin',{},root)['found'][0]['path'],str(external))
+            self.assertEqual(discover_sources('darwin',{},root)['found'][0]['path'],str(external.resolve()))
 
     def test_malformed_and_relative_agent_paths_do_not_break_other_candidates(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -68,7 +68,7 @@ class PlatformPathTests(unittest.TestCase):
             for content in ('not JSON',json.dumps({'options':[['db-path','relative/master.db']]})):
                 options.write_text(content)
                 result=discover_sources('win32',{'APPDATA':str(root)},root)
-                self.assertEqual(result['found'][0]['path'],str(library))
+                self.assertEqual(result['found'][0]['path'],str(library.resolve()))
 
     def test_linux_binary_data_uses_xdg_without_moving_source_workspace(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -170,6 +170,50 @@ jobs:
             releases/*macos*.zip
             releases/*macos*.sha256
 
+  linux-portable:
+    name: Build and test Linux portable executable
+    needs: test
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      LIBRARY_WORKBENCH_BUILD_IMAGE: quay.io/pypa/manylinux_2_28_x86_64@sha256:9555ba6c479fa69a2aa80ad1dc57154a60d562b19df159361d9379a02beb1e36
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - name: Bundle Python and dependencies on glibc 2.28
+        run: |
+          docker run --rm --volume "$PWD:/work" --workdir /work \
+            --env GITHUB_SHA --env LIBRARY_WORKBENCH_VERSION --env LIBRARY_WORKBENCH_BUILD_IMAGE \
+            "$LIBRARY_WORKBENCH_BUILD_IMAGE" /bin/bash -eu -c '
+              /opt/python/cp313-cp313/bin/python -m pip install -r requirements.txt -r requirements-build.txt
+              /opt/python/cp313-cp313/bin/python packaging/build_linux.py
+            '
+      - name: Extract into a path containing spaces and Unicode
+        shell: python
+        run: |
+          from pathlib import Path
+          import tarfile
+          archive=next(Path('releases').glob('*linux-x86_64.tar.gz'))
+          with tarfile.open(archive) as package:
+              package.extractall('portable 日本 é',filter='data')
+      - name: Test bundled executable on Ubuntu without external Python
+        run: python packaging/smoke_desktop.py --linux-application "portable 日本 é/Library Workbench" --report ci-output/linux-portable.json
+      - run: python packaging/record_linux_validation.py "portable 日本 é/Library Workbench" ci-output/linux-portable.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: linux-x86_64-portable
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            releases/*linux-x86_64.tar.gz*
+            ci-output/linux-portable.json
+
   browser-language:
     name: Language and Unicode UI · ${{ matrix.browser }}
     runs-on: ubuntu-24.04
@@ -200,7 +244,7 @@ jobs:
   pr-checks:
     name: Workbench PR checks
     if: always()
-    needs: [test, windows-build, windows-portable, macos-app, browser-language]
+    needs: [test, windows-build, windows-portable, macos-app, linux-portable, browser-language]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -221,5 +265,5 @@ jobs:
           with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a',encoding='utf-8') as summary:
               summary.write('### Validated downloads\n\nSource checks and packaged startup passed on Linux, Windows, Mac Intel and Mac Apple Silicon.\n\n')
               summary.write('[Download this run\'s artifacts]('+os.environ['RUN_URL']+'#artifacts). Development artifacts expire after 14 days; published release downloads are retained.\n\n')
-              summary.write('| Platform | Artifact |\n| --- | --- |\n| Windows x64 | `windows-x64-portable` |\n| Mac Apple Silicon | `macos-arm64-portable` |\n| Mac Intel | `macos-x86_64-portable` |\n| Linux source | `linux-source` |\n')
+              summary.write('| Platform | Artifact |\n| --- | --- |\n| Windows x64 | `windows-x64-portable` |\n| Mac Apple Silicon | `macos-arm64-portable` |\n| Mac Intel | `macos-x86_64-portable` |\n| Linux x86-64 | `linux-x86_64-portable` |\n| Linux source | `linux-source` |\n')
           PY
