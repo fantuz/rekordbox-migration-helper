@@ -9,6 +9,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION_PATTERN = re.compile(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:alpha|beta|rc)\.(?:0|[1-9]\d*))?")
+PACKAGE_FORMATS = {'windows-x64': '.zip', 'macos-x86_64': '.zip', 'macos-arm64': '.zip', 'linux-source': '.tar.gz'}
 
 
 def normalized_version(value):
@@ -24,6 +25,14 @@ def build_version():
 
 def release_is_preview(version, requested=False):
     return bool(requested) or '-' in normalized_version(version)
+
+
+def archive_name(version, platform):
+    return 'Library-Workbench-'+normalized_version(version)+'-'+platform+PACKAGE_FORMATS[platform]
+
+
+def archive_names(version):
+    return [archive_name(version, platform) for platform in PACKAGE_FORMATS]
 
 
 def release_plan(requested, ref, default_branch="main"):
@@ -49,10 +58,14 @@ def release_notes(version, commit, changelog=""):
         tail=changelog[match.end():]
         changes=re.split(r"(?m)^## ",tail,maxsplit=1)[0].strip()
     intro=changes or "A local library analyzer, duplicate-review utility and offline metadata explorer."
+    repository=os.environ.get('GITHUB_REPOSITORY','fantuz/rekordbox-migration-helper')
+    downloads='| Platform | Download |\n| --- | --- |\n'+''.join(
+        '| '+label+' | [Download now](https://github.com/'+repository+'/releases/download/v'+version+'/'+archive_name(version,platform)+') |\n'
+        for platform,label in (('windows-x64','Windows x64 portable'),('macos-x86_64','Mac Intel'),('macos-arm64','Mac Apple Silicon'),('linux-source','Linux source')))
     return ("Library Workbench "+version+"\n\n"+intro+"\n\n"
-            "### Downloads\n\n"
+            "### Downloads\n\n"+downloads+"\n"
             "- Windows x64: extract the complete ZIP and open Library Workbench.exe. Python and dependencies are bundled.\n"
-            "- macOS: choose arm64 (Apple Silicon) or x86_64 (Intel), extract and open Library Workbench.app. These previews are ad-hoc signed, not notarized.\n"
+            "- macOS: choose arm64 (Apple Silicon) or x86_64 (Intel), extract and open Library Workbench.app. These applications are ad-hoc signed, not notarized.\n"
             "- Linux: extract the source archive and run start.sh with Python 3.13 or newer.\n\n"
             "All packages passed their native CI runtime checks and share the release source. SHA256SUMS lists the four archives.\n\n"
             "Keep an untouched rekordbox Backup Library backup before transformation. Native ZIP restore inside rekordbox remains experimental; validate in an isolated library first.\n\n"
@@ -62,8 +75,8 @@ def release_notes(version, commit, changelog=""):
 def verify_assets(directory, version, commit):
     directory=Path(directory)
     version=normalized_version(version)
-    names=["Library-Workbench-"+version+"-"+suffix for suffix in
-           ("windows-x64-preview.zip","macos-arm64-preview.zip","macos-x86_64-preview.zip","linux-source.tar.gz")]
+    # Native source digests must be established before the Linux archive is checked.
+    names=archive_names(version)
     sources={}
     checksums=[]
     present={p.name for p in directory.glob("Library-Workbench-*") if p.name.endswith((".zip",".tar.gz"))}

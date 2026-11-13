@@ -27,7 +27,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='workbench-language-') as tmp:
         root=Path(tmp);data=root/'data';data.mkdir();store=Store(data/'workbench-sidecar.sqlite3')
         titles=['Unknown','Artist','Tracks','Ready','Most played','Copy','Grüße · Français · Città · Español','Ελληνικά · Łódź · Český · Русский','日本語 · 🎧 · cafe\u0301','</script><img src=x onerror="window.metadataExecuted=1">',' =1+1','\ufeff@SUM(1,1)']
-        tracks=[{**track({'id':'t'+str(i),'title':title,'artist':'Автор & Łódź 🎧','album':'Album {slot0} <mix>','genre':'House' if i%2 else 'Unknown','bpm':120+i,'duration':240,'play_count':i+1,'rating':4,'manual_cues':1,'auto_cues':0,'analysed':True,'comment':'Local comment Ελληνικά 🎧'}),'cues':[]} for i,title in enumerate(titles)]
+        tracks=[{**track({'id':'t'+str(i),'title':title,'artist':'Автор & Łódź 🎧','album':'Album {slot0} <mix>','genre':'House' if i%2 else 'Unknown','bpm':120+i,'duration':240,'play_count':i+1,'rating':4,'manual_cues':1,'auto_cues':0,'analysed':True,'comment':'Local comment Ελληνικά 🎧','color_status':'assigned','color_key':'blue' if i%2 else 'green','color_name':'Closing' if i%2 else 'Opening','color_hex':'#2478bc' if i%2 else '#27815b'}),'cues':[]} for i,title in enumerate(titles)]
         snapshot={'schema':1,'scope_key':'synthetic:browser','source_kind':'Synthetic Unicode fixture','tracks':tracks,'playlists':[],'asset_references':[],'capabilities':{'cue_positions':True,'playlist_order':False}}
         saved=store.save_snapshot(snapshot,'Synthetic Unicode fixture');sid=saved['id'];before=deepcopy(store.snapshot(sid))
         offline=export_metadata(snapshot,root/'offline','a'*32,ROOT/'static',lambda *_:None,title='Synthetic Unicode fixture')
@@ -70,7 +70,7 @@ def main():
                     report['languages'].append({'code':code,'app':'passed','metadata_unchanged':True})
                     if code in ('en','de','el','ru'):page.screenshot(path=str(args.output/(code+'-insights.png')),full_page=False)
                 page.locator('[data-insight-open="t0"]').click();page.wait_for_selector('#track-detail-dialog[open]')
-                page.locator('#track-comments-panel summary').click();note='Unsaved comment Σ Ł Č Русский 🎧 {slot0}'
+                assert page.locator('#track-comment-text').is_visible();note='Unsaved comment Σ Ł Č Русский 🎧 {slot0}'
                 page.fill('#track-comment-text',note);page.select_option('#language','fr');page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
                 assert page.locator('#track-comment-text').input_value()==note
                 assert page.locator('#track-detail-unlock').is_checked() is False
@@ -85,6 +85,8 @@ def main():
                 assert store.snapshot(sid)==before
                 assert not api_issues,api_issues
                 assert page.locator('#toast').is_hidden() or not page.locator('#toast').inner_text(), 'Unexpected caught UI error: '+page.locator('#toast').inner_text()
+                from check_workspace_ui import check_workspace_ui
+                report['workspace_ui']=check_workspace_ui(browser,page,base,sid,args.output,offline)
                 page.goto(Path(offline['directory']).joinpath('library.html').as_uri(),wait_until='load')
                 for code in LANGUAGES:
                     page.select_option('#language',code);page.wait_for_function('(code)=>document.documentElement.lang===code',arg=code)

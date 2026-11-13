@@ -42,7 +42,7 @@ Keys come from XML `Tonality` or native `djmdKey.ScaleName` through `KeyID`. Dif
 
 ## Track comments and responsible edits
 
-Open an individual **File view** from insight tables, a track bubble, Duplicate review or the Library lab editor. **Comments** is a collapsed section. Comments can be staged without unlocking other fields; they are not displayed in collection tables, CSV, insight reports or shareable HTML. Existing whitespace/newlines are preserved. The editor accepts up to 4,096 characters and rejects invalid XML/control characters. A blank working value explicitly clears the comment in generated copies; resetting removes the working override and restores the captured value.
+Open an individual **File view** from insight tables, a track bubble, Duplicate review or the Library lab editor. **Comments** opens directly. Save a comment or click a labelled colour in the palette without unlocking other metadata. Colour changes preserve unsaved comment text. The file view lists saved working edits, and the final private export report recaps their application. Comments are not displayed in collection tables, CSV, insight reports or shareable HTML. Existing whitespace/newlines are preserved. The editor accepts up to 4,096 characters and rejects invalid XML/control characters. A blank working value explicitly clears the comment in generated copies; resetting removes the working override and restores the captured value. The palette offers the eight standard colours and clear, displays configured native names, and disables unavailable native mappings with an explanation.
 
 Other metadata is behind a collapsed panel and an explicit unlock warning. Unlocking is for the same snapshot scope; title, artist, album, genre, year and personal stars use the existing guarded override workflow. Tonality, colour and BPM are inspection fields here. No original files or audio tags are changed.
 
@@ -57,3 +57,11 @@ Download the entire matching view as CSV, including its evidence label. Spreadsh
 Reports, decisions, comments, preferences and deliberate downloads survive temporary-input cleanup. Comments remain private to the file-view/working store and prepared library copies. Shareable metadata explorers add tonality and track-colour categories while excluding comments.
 
 Bubble layout uses a bundled, integrity-checked [d3-hierarchy 3.1.2](https://github.com/d3/d3-hierarchy) build under ISC, with license/provenance in `static`. It requires no CDN, JavaScript package installation or internet at runtime. The native packaging checks exercise the insight APIs and bundled chart asset on Windows and both Mac architectures; they do not exercise a licensed rekordbox restoration.
+
+## Starting the colour cloud
+
+Loading XML/ZIP files prepares the review workspace. If no analysis snapshot is selected, choose **Use loaded library** directly inside the graph or its source bar. This captures metadata from the existing local analysis copy, without writing to the source files, and the saved snapshot can be reused by the other insight views. Alternatively, select an existing saved snapshot.
+
+Grouping choices remain visible before a source is ready. The canvas distinguishes no source, loading, empty results and a failed request. **Colour cloud** starts with track count as area so unplayed tracks still appear; other area metrics can be selected afterward. Unknown and unassigned colours remain counted. Each chart page renders at most 60 categories; detailed group statistics are calculated for those visible groups, while collection totals cover the full branch.
+
+Select **Expand map** to use most of the viewport. The fixed category-detail panel stays above the circles and updates on hover or keyboard focus. Category paging remains alongside the map. Stable spacing separates the circles without changing their area ratios.

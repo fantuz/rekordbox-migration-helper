@@ -132,8 +132,10 @@ class StoreAndOverrideTests(unittest.TestCase):
         master=self.root/'fixture.db'
         with closing(mutable_copy(master)) as db:
             db.executescript('''
-              CREATE TABLE djmdContent(ID TEXT PRIMARY KEY,Title TEXT,ReleaseYear INTEGER,Rating INTEGER,ArtistID TEXT,AlbumID TEXT,GenreID TEXT,rb_local_deleted INTEGER,rb_local_synced INTEGER,rb_local_usn INTEGER,updated_at TEXT,Commnt TEXT);
-              INSERT INTO djmdContent VALUES ('one','Original',2000,1,NULL,NULL,NULL,0,1,0,'old','Original comment');
+              CREATE TABLE djmdContent(ID TEXT PRIMARY KEY,Title TEXT,ReleaseYear INTEGER,Rating INTEGER,ArtistID TEXT,AlbumID TEXT,GenreID TEXT,rb_local_deleted INTEGER,rb_local_synced INTEGER,rb_local_usn INTEGER,updated_at TEXT,Commnt TEXT,ColorID TEXT);
+              INSERT INTO djmdContent VALUES ('one','Original',2000,1,NULL,NULL,NULL,0,1,0,'old','Original comment','0');
+              CREATE TABLE djmdColor(ID TEXT PRIMARY KEY,ColorCode INTEGER,SortKey INTEGER,Commnt TEXT,rb_local_deleted INTEGER);
+              INSERT INTO djmdColor VALUES ('custom-red-row',NULL,2,'Peak time',0);
               CREATE TABLE agentRegistry(registry_id TEXT,int_1 INTEGER,updated_at TEXT);
               INSERT INTO agentRegistry VALUES ('localUpdateCount',0,'old');
             ''')
@@ -144,15 +146,17 @@ class StoreAndOverrideTests(unittest.TestCase):
             z.write(master,'master.db');z.writestr('contents.xml','<ROOT><VALUE name="CONTENT_NUM" val="1"/></ROOT>');z.writestr('USBANLZ/a/b/ANLZ0000.DAT',b'unchanged analysis')
         xml.write_text('<DJ_PLAYLISTS><PRODUCT Version="7.0.0"/><COLLECTION Entries="1"><TRACK TrackID="one" Name="Original" Artist="" Year="2000" Rating="51"><TEMPO Inizio="0" Bpm="120" Metro="4/4" Battito="1"/><POSITION_MARK Name="Drop" Num="0" Type="0" Start="1.000"/></TRACK></COLLECTION><PLAYLISTS><NODE><TRACK Key="one"/></NODE></PLAYLISTS></DJ_PLAYLISTS>',encoding='utf-8')
         original=[sha256(p.read_bytes()).hexdigest() for p in (backup,xml)]
-        edits={'one':{'title':'Łódź · Ελληνικά · Česky · Русский · 🎧','artist':'Grüße & Français','album':'Città più · Español ñ','genre':'House · Δοκιμή','year':2024,'rating':4,'comment':'First line\nGrüße Français Città Español Ελληνικά Łódź Český Русский 🎧 & <mix>'}}
+        edits={'one':{'title':'Łódź · Ελληνικά · Česky · Русский · 🎧','artist':'Grüße & Français','album':'Città più · Español ñ','genre':'House · Δοκιμή','year':2024,'rating':4,'comment':'First line\nGrüße Français Città Español Ελληνικά Łódź Český Русский 🎧 & <mix>','colour':'#FF0000'}}
         c=SimpleNamespace(tracks={'one':{'october_xml':True}},metadata={'xml_path':str(xml),'zip_path':str(backup),'version':'7.0.0','field_overrides':edits})
         outxml=self.root/'edited.xml';outzip=self.root/'edited.zip'
         x=export_xml(c,{}, {},outxml,lambda *_:None);n=export_native(c,{}, {},outzip,lambda *_:None)
-        self.assertEqual((x['metadata_fields'],n['metadata_fields']),(7,7))
+        self.assertEqual((x['metadata_fields'],n['metadata_fields']),(8,8))
         checked=parse_xml(outxml,lambda *_:None)[0]['one'];self.assertEqual(checked['attrs']['Genre'],edits['one']['genre']);self.assertEqual(checked['attrs']['Rating'],'204')
         self.assertEqual(checked['attrs']['Name'],edits['one']['title']);self.assertEqual(checked['attrs']['Artist'],edits['one']['artist']);self.assertEqual(checked['attrs']['Album'],edits['one']['album'])
         self.assertEqual(checked['tempo'],1);self.assertEqual(checked['marks'][0]['Name'],'Drop')
         self.assertEqual(checked['attrs']['Comments'],edits['one']['comment'])
+        self.assertEqual(checked['attrs']['Colour'],'0xFF0000')
+        self.assertEqual((x['metadata_changes_by_field']['comment'],n['metadata_changes_by_field']['colour']),(1,1))
         with zipfile.ZipFile(outzip) as z:
             extracted=self.root/'check.db';extracted.write_bytes(z.read('master.db'));self.assertEqual(z.read('USBANLZ/a/b/ANLZ0000.DAT'),b'unchanged analysis')
         with closing(open_master(extracted.resolve())) as db:
@@ -160,6 +164,7 @@ class StoreAndOverrideTests(unittest.TestCase):
             self.assertEqual(db.execute('SELECT Name FROM djmdGenre').fetchone()[0],edits['one']['genre'])
             self.assertEqual(db.execute('SELECT Name FROM djmdArtist').fetchone()[0],edits['one']['artist']);self.assertEqual(db.execute('SELECT Name FROM djmdAlbum').fetchone()[0],edits['one']['album'])
             self.assertEqual(db.execute('SELECT Commnt FROM djmdContent').fetchone()[0],edits['one']['comment'])
+            self.assertEqual(db.execute('SELECT ColorID FROM djmdContent').fetchone()[0],'custom-red-row')
         self.assertEqual([sha256(p.read_bytes()).hexdigest() for p in (backup,xml)],original)
 
     def test_plaintext_private_wal_capture_keeps_committed_rows(self):

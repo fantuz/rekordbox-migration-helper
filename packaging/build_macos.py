@@ -7,7 +7,7 @@ from pathlib import Path
 import platform
 import subprocess
 import sys
-from release_tools import build_version
+from release_tools import build_version,archive_name
 
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -18,6 +18,8 @@ def main():
     if sys.platform!="darwin":raise RuntimeError("Build this application on a macOS runner")
     architecture=platform.machine()
     if architecture not in ("arm64","x86_64"):raise RuntimeError("Unsupported macOS architecture")
+    expected=os.environ.get("LIBRARY_WORKBENCH_EXPECTED_ARCH")
+    if expected and architecture!=expected:raise RuntimeError("The native runner architecture does not match its package artifact")
     build=ROOT/".build/macos"/architecture
     dist=build/"dist"
     command=[sys.executable,"-m","PyInstaller","--noconfirm","--clean","--windowed","--onedir",
@@ -44,19 +46,19 @@ def main():
     (resources/"VERSION").write_text(VERSION+"\n",encoding="utf-8")
     (resources/"BUILD-MANIFEST.json").write_text(json.dumps(manifest,indent=2),encoding="utf-8")
     (resources/"START HERE.txt").write_text(
-        "LIBRARY WORKBENCH "+VERSION+" — macOS "+architecture+" PREVIEW\n\n"
+        "LIBRARY WORKBENCH "+VERSION+" — macOS "+architecture+"\n\n"
         "Extract the ZIP and open Library Workbench.app. The interface opens in\n"
         "your default browser. Python and application dependencies are bundled.\n"
         "Workspaces are saved under ~/Library/Application Support/LibraryWorkbench.\n"
         "Use Stop local application in the browser footer when finished.\n\n"
-        "This preview passed automated native macOS runtime checks. It is ad-hoc\n"
+        "This application passed automated native macOS runtime checks. It is ad-hoc\n"
         "signed, not Developer ID signed or notarized. macOS may restrict opening it.\n"
         "No rekordbox restore compatibility is claimed. Keep a separate untouched\n"
         "backup before generating transformed files and test restores in isolation.\n",encoding="utf-8")
     subprocess.run(["codesign","--force","--deep","--sign","-",str(app)],check=True)
     subprocess.run(["codesign","--verify","--deep","--strict",str(app)],check=True)
     output=ROOT/"releases";output.mkdir(exist_ok=True)
-    destination=output/("Library-Workbench-"+VERSION+"-macos-"+architecture+"-preview.zip")
+    destination=output/archive_name(VERSION,'macos-'+architecture)
     subprocess.run(["ditto","-c","-k","--sequesterRsrc","--keepParent",str(app),str(destination)],check=True)
     destination.with_suffix(".sha256").write_text(sha256(destination.read_bytes()).hexdigest()+"  "+destination.name+"\n",encoding="utf-8")
     print(destination)

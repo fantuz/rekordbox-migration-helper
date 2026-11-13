@@ -9,7 +9,7 @@ from xml.parsers import expat
 from engine import parse_xml,path_key,is_auto,HOT_NUMBERS
 from media import file_record
 from metadata_export import track
-from track_tags import xml_colour
+from track_tags import xml_colour,xml_colour_support
 
 
 def analyze_xml(source,output,progress):
@@ -58,7 +58,7 @@ def analyze_xml(source,output,progress):
     if file_record(source)!=before:raise ValueError('The XML changed while being read; capture it again')
     captured=datetime.now(timezone.utc).isoformat();output.mkdir(parents=True,exist_ok=True)
     metadata={'schema':1,'source_kind':'rekordbox XML metadata export','scope':'xml','version':version or None,'captured':captured,'scope_key':'capture:'+output.name,
-              'tracks':tracks,'playlists':playlists,'asset_references':[],'capabilities':{'cue_positions':False,'playlist_order':True,'analysis_references':False},
+              'colour_edit_support':xml_colour_support(),'tracks':tracks,'playlists':playlists,'asset_references':[],'capabilities':{'cue_positions':False,'playlist_order':True,'analysis_references':False},
               'cue_basis':'Counts of exported XML markers only; absence in XML does not establish absence in the native library.'}
     for name in ('metadata.json','comparison.json'):(output/name).write_text(json.dumps(metadata,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
     counters={'tracks':len(tracks),'artists':len({t['artist'].casefold() for t in tracks if t['artist']}),'albums':len({t['album'].casefold() for t in tracks if t['album']}),

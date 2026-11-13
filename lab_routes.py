@@ -13,7 +13,8 @@ from research_capture import capture_private_database,capture_workspace,open_cap
 from library_checks import compare_snapshots,metadata_consistency,collection_coverage
 from analysis_audit import audit_assets
 from history_browser import list_history,history_session
-from metadata_overrides import FIELDS,comparable
+from metadata_overrides import FIELDS,FREE_FIELDS,comparable,baseline,validate
+from track_tags import editable_colour,snapshot_colour_support
 from musicbrainz_pilot import MusicBrainzClient,RateGate,SPEEDS,create_batch,batch_record,run_batch
 
 
@@ -25,7 +26,7 @@ def workspace_overrides(data,session):
     for identity,fields in store.overrides('session:'+session['id']).items():
         if identity not in tracks:raise ValueError('An edited track no longer belongs to this workspace')
         for field,edit in fields.items():
-            if comparable(field,tracks[identity].get(field))!=comparable(field,edit['baseline']):
+            if comparable(field,baseline(field,tracks[identity]))!=comparable(field,edit['baseline']):
                 raise ValueError('Metadata baseline changed for '+identity+' / '+field+'. Capture again and review the edit.')
             result.setdefault(identity,{})[field]=edit['value']
     return result
@@ -59,7 +60,7 @@ def register(owner):
         current=owner.sessions.get(owner.active)
         return jsonify(snapshots=store().snapshots(),reports=store().reports(),sources=sources,
                        workspace=current['id'] if current else None,musicbrainz_enabled=enabled(),
-                       musicbrainz_forced_off=os.environ.get('LIBRARY_WORKBENCH_MUSICBRAINZ')=='0',speeds=SPEEDS,fields=[f for f in FIELDS if f!='comment'])
+                       musicbrainz_forced_off=os.environ.get('LIBRARY_WORKBENCH_MUSICBRAINZ')=='0',speeds=SPEEDS,fields=[f for f in FIELDS if f not in FREE_FIELDS])
 
     @app.post('/api/lab/snapshots')
     def lab_capture():
@@ -149,10 +150,16 @@ def register(owner):
         b=body();s=snapshot(b);identity=str(b.get('track_id',''));field=b.get('field')
         t=next((t for t in s['tracks'] if t['id']==identity),None)
         if t is None or field not in FIELDS:raise ValueError('Choose a track and editable field in this snapshot')
-        if field!='comment':unlocked(s)
-        if request.method=='DELETE':store().clear_override(s['scope_key'],identity,field);return jsonify(reset=True)
-        value=store().save_override(s['scope_key'],identity,field,b.get('value'),t.get(field))
-        return jsonify(value=value)
+        if field not in FREE_FIELDS:unlocked(s)
+        if request.method=='DELETE':
+            store().clear_override(s['scope_key'],identity,field)
+            return jsonify(reset=True,overrides=store().overrides(s['scope_key']).get(identity,{}))
+        if field=='colour':
+            proposed=validate(field,b.get('value'))
+            entry=next((p for p in snapshot_colour_support(s)['palette'] if p['value']==proposed),None)
+            if not entry or not entry['supported']:raise ValueError(entry['reason'] if entry else 'This colour cannot be represented by the source library')
+        value=store().save_override(s['scope_key'],identity,field,b.get('value'),baseline(field,t))
+        return jsonify(value=value,overrides=store().overrides(s['scope_key']).get(identity,{}))
 
     @app.get('/api/lab/track')
     def lab_track_detail():
@@ -160,14 +167,22 @@ def register(owner):
         t=next((t for t in s['tracks'] if t['id']==identity),None)
         if t is None:raise ValueError('Choose a track in this snapshot')
         fields=('id',*FIELDS,'bpm','duration','tonality','color_name','color_hex','color_status','color_basis','play_count','manual_cues','auto_cues','analysed')
-        return jsonify(original={f:t.get(f) for f in fields},overrides=store().overrides(s['scope_key']).get(identity,{}),
-                       editable_fields=[f for f in FIELDS if f!='comment'],unlocked=s['scope_key'] in edit_unlocked,
+        support=snapshot_colour_support(s);original={f:t.get(f) for f in fields};original['colour']=editable_colour(t)
+        return jsonify(original=original,overrides=store().overrides(s['scope_key']).get(identity,{}),
+                       editable_fields=[f for f in FIELDS if f not in FREE_FIELDS],unlocked=s['scope_key'] in edit_unlocked,
                        scope=s['scope_key'],comment_captured=t.get('comment') is not None,
-                       snapshot_label=s.get('label','Library snapshot'))
+                       snapshot_label=s.get('label','Library snapshot'),colour_palette=support['palette'],
+                       colour_editable=any(p['supported'] for p in support['palette']),
+                       colour_edit_reason='' if any(p['supported'] for p in support['palette']) else support['palette'][0]['reason'],
+                       export_scope='matching loaded workspace XML/ZIP' if s['scope_key'].startswith('session:') else 'snapshot sidecar only; not linked to a loaded XML/ZIP workspace')
 
     @app.post('/api/lab/normalize')
     def lab_normalize():
         b=body();s=snapshot(b);unlocked(s)
+        if b.get('field')=='colour':
+            proposed=validate('colour',b.get('value'))
+            entry=next((p for p in snapshot_colour_support(s)['palette'] if p['value']==proposed),None)
+            if not entry or not entry['supported']:raise ValueError(entry['reason'] if entry else 'This colour cannot be represented by the source library')
         return jsonify(count=store().save_bulk(s,b.get('track_ids',[]),b.get('field'),b.get('value')))
 
     @app.post('/api/lab/features')

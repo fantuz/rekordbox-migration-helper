@@ -1,3 +1,4 @@
+const preferences={get(key){try{return localStorage.getItem(key);}catch{return null;}},set(key,value){try{localStorage.setItem(key,value);}catch{}},remove(key){try{localStorage.removeItem(key);}catch{}}};
 const $ = s => document.querySelector(s);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num = n => I18n.number(Number(n || 0));
@@ -63,14 +64,25 @@ function notify(text, error=false) {
   toast.timeout = setTimeout(() => toast.hidden = true, error ? 9000 : 4500);
 }
 function wrap(fn) { return async e => {try {await fn(e);} catch(error) {notify(error.message,true);}}; }
-function progress(n, text) {
-  $("#progress").hidden=false;
+let progressCancel=null;
+function progress(n, text, cancel) {
+  const dialog=$("#progress"),value=Number.isFinite(n)?Math.max(0,Math.min(100,n)):null;
+  if(cancel){progressCancel=cancel;$("#progress-cancel").hidden=false;$("#progress-cancel").disabled=false;}
+  dialog.hidden=false;if(!dialog.open)dialog.showModal();
+  document.documentElement.dataset.operationBusy='true';
   $("#progress-label").textContent=text;
-  $("#progress-percent").textContent=Math.round(n)+"%";
-  $("#progress-bar").value=n;
+  $("#progress-percent").textContent=value===null?'—':I18n.number(Math.round(value))+'%';
+  if(value===null)$("#progress-bar").removeAttribute('value');else $("#progress-bar").value=value;
 }
+function finishProgress(){
+  const dialog=$("#progress");if(dialog.open)dialog.close();dialog.hidden=true;
+  document.documentElement.dataset.operationBusy='false';progressCancel=null;$("#progress-cancel").hidden=true;
+}
+$("#progress").addEventListener('cancel',event=>event.preventDefault());
+$("#progress-stop").onclick=()=>openCleanupDialog();
+$("#progress-cancel").onclick=wrap(async()=>{$("#progress-cancel").disabled=true;if(progressCancel)await progressCancel();});
 async function poll(job) {
-  busy=true;
+  const wasBusy=busy;busy=true;progress(null,I18n.t("Working"));
   try {
     while (true) {
       const state=await api("/api/tasks/"+job);
@@ -79,7 +91,7 @@ async function poll(job) {
       if (state.status==="complete") return state.result;
       await new Promise(resolve=>setTimeout(resolve,900));
     }
-  } finally { busy=false; $("#progress").hidden=true; }
+  } finally { busy=wasBusy;finishProgress(); }
 }
 function renderSession() {
   if (!session) return;
@@ -103,7 +115,7 @@ async function refresh() {
   const state=await api("/api/status"); token=state.token;session=state.session;
   $(".version").textContent=I18n.t('Version')+' · '+(state.version || 'development');
   renderSession();
-  $("#stop-desktop").hidden=!state.desktop;
+  $("#stop-desktop").hidden=!state.desktop;$("#progress-stop").hidden=!state.desktop;
   $("#load-example").hidden=!state.example_available;
   if ($("#empty-example")) $("#empty-example").hidden=!state.example_available;
   if (session) {await loadPairs();await renderStatistics();
@@ -213,9 +225,9 @@ async function loadPairs() {
     $("#detail-panel").innerHTML=("<div class=\"detail-empty\"><h3>"+esc(I18n.t("No pair in this scope"))+"</h3><p>"+esc(I18n.t("Adjust the filters to choose another recording."))+"</p></div>");
   }
 }
-async function selectPair(id) {
+async function selectPair(id,preferredKeeper=null) {
   selected=await api("/api/pair/"+encodeURIComponent(id));
-  chosen=selected.decision?.keeper || selected.keeper;
+  chosen=selected.tracks.some(track=>track.track_id===preferredKeeper)?preferredKeeper:selected.decision?.keeper || selected.keeper;
   renderDetail();
   $$(".pair-row").forEach(b=>b.classList.toggle("selected",b.dataset.pair===(groupMode?currentGroup?.id:id)));
 }
@@ -237,7 +249,7 @@ function renderDetail() {
     other.length?I18n.t("Some cue differences need a choice. Swapping the keeper may preserve the preferred preparation."):I18n.t("These cue sets can be combined without a slot conflict.");
   if (r.group_note) note+=" "+I18n.t("Group review ·")+" "+r.group_note;
   if (r.grid_differs) note+=" "+I18n.t("The selected keeper's grid will be used.");
-  $("#detail-panel").innerHTML=("<div class=\"detail-head\"><span class=\"eyebrow\">"+esc(I18n.t("PAIR INSPECTION"))+"</span><h3>")+esc(r.title)+'</h3><p>'+esc(r.artist)+("</p><span class=\"subtle\">"+esc(I18n.t("Suggested keeper ·"))+" ")+esc(r.keeper_reason)+'</span></div><div class="sibling-cards">'+trackCards+("</div><div class=\"cue-comparison\"><h4>"+esc(I18n.t("Saved cue positions"))+"</h4><div class=\"legend\"><span><i></i>"+" "+esc(I18n.t("Automatic labels"))+"</span><span><i class=\"manual\"></i>"+" "+esc(I18n.t("Other cues"))+"</span></div>")+r.tracks.map(lane).join("")+'<div class="cue-time"><span>0:00</span><span>'+Math.floor(Math.max(...r.tracks.map(t=>t.duration_seconds))/60)+(" "+esc("minutes")+"</span></div><div class=\"conflict-note\">")+esc(note)+'</div></div><div class="detail-actions"><label><input type="checkbox" id="accept-auto" '+(r.decision?.prefer_auto?"checked":"")+(">"+" "+esc(I18n.t("Keep selected sibling’s cue when the other cue has an automatic label"))+"</label>")+(ratingConflict?("<label><input type=\"checkbox\" id=\"accept-rating\">"+" "+esc(I18n.t("Keep selected sibling’s rating"))+"</label>"):"")+("<div class=\"action-row\"><button class=\"button\" id=\"stage-pair\">"+esc(I18n.t("Stage merge"))+"</button><button class=\"button secondary\" id=\"skip-pair\">"+esc(I18n.t("Skip"))+"</button>")+(r.decision?("<button class=\"button secondary\" id=\"undo-pair\">"+esc(I18n.t("Undo"))+"</button>"):"")+'</div></div>';
+  $("#detail-panel").innerHTML=("<div class=\"detail-head\"><span class=\"eyebrow\">"+esc(I18n.t("PAIR INSPECTION"))+"</span><h3>")+esc(r.title)+'</h3><p>'+esc(r.artist)+("</p><span class=\"subtle\">"+esc(I18n.t("Suggested keeper ·"))+" ")+esc(r.keeper_reason)+'</span></div><div class="sibling-cards">'+trackCards+("</div><div class=\"cue-comparison\"><h4>"+esc(I18n.t("Saved cue positions"))+"</h4><div class=\"legend\"><span><i></i>"+" "+esc(I18n.t("Automatic labels"))+"</span><span><i class=\"manual\"></i>"+" "+esc(I18n.t("Other cues"))+"</span></div>")+r.tracks.map(lane).join("")+'<div class="cue-time"><span>0:00</span><span>'+Math.floor(Math.max(...r.tracks.map(t=>t.duration_seconds))/60)+(" "+esc("minutes")+"</span></div><div class=\"conflict-note\">")+esc(note)+'</div></div><div class="detail-actions"><label><input type="checkbox" id="accept-auto" '+(r.decision?.prefer_auto?"checked":"")+(">"+" "+esc(I18n.t("Keep selected sibling’s cue when the other cue has an automatic label"))+"</label>")+(ratingConflict?("<label><input type=\"checkbox\" id=\"accept-rating\" "+(r.decision?.prefer_rating?"checked":"")+">"+" "+esc(I18n.t("Keep selected sibling’s rating"))+"</label>"):"")+("<div class=\"action-row\"><button class=\"button\" id=\"stage-pair\">"+esc(I18n.t("Stage merge"))+"</button><button class=\"button secondary\" id=\"skip-pair\">"+esc(I18n.t("Skip"))+"</button>")+(r.decision?("<button class=\"button secondary\" id=\"undo-pair\">"+esc(I18n.t("Undo"))+"</button>"):"")+'</div></div>';
   $$("[data-file-detail]").forEach(button=>{button.onclick=wrap(async event=>{event.stopPropagation();await openWorkspaceTrack(button.dataset.fileDetail);});button.onkeydown=event=>event.stopPropagation();});
   $$("[data-keeper]").forEach(el=>{
     const choose=()=>{chosen=el.dataset.keeper;renderDetail();};
@@ -260,6 +272,7 @@ async function saveDecision(action) {
   notify(action==="undo"?I18n.t("Decision undone"):I18n.t("Decision saved to this workspace"));
 }
 function showView(view) {
+  if(view!=="bubbles" && $("#bubble-expanded").open)$("#bubble-expanded").close();
   $$(".view").forEach(v=>v.hidden=v.id!=="view-"+view);
   $$(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===view));
   if (view==="statistics") renderStatistics().catch(error=>notify(error.message,true));
@@ -291,13 +304,14 @@ async function example() {
   await poll(result.job);selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Configured local workspace loaded"));
 }
 async function uploadFile(file,url) {
+  progress(null,I18n.t("Loading")+" "+file.name);
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
     activeUploads.add(xhr);xhr.onloadend=()=>activeUploads.delete(xhr);xhr.onabort=()=>reject(new Error(I18n.t("Upload cancelled for shutdown")));
     xhr.open("PUT",url);
     xhr.setRequestHeader("X-Workbench-Token",token);
     xhr.setRequestHeader("Content-Type","application/octet-stream");
-    xhr.upload.onprogress=e=>progress(e.lengthComputable?100*e.loaded/e.total:0,I18n.t("Loading")+" "+file.name);
+    xhr.upload.onprogress=e=>progress(e.lengthComputable?100*e.loaded/e.total:null,I18n.t("Loading")+" "+file.name);
     xhr.onload=()=>{
       let body;
       try {body=JSON.parse(xhr.responseText);} catch {reject(new Error(I18n.t("Upload interrupted")));return;}
@@ -332,14 +346,14 @@ $("#import-form").onsubmit=wrap(async e=>{
   if (busy) return;
   const zip=$("#zip-input").files[0],xml=$("#xml-input").files[0];
   if (!zip || !xml) return;
-  busy=true;$("#import-dialog").close();
+  busy=true;$("#import-dialog").close();progress(null,I18n.t("Working"));
   try {
     const started=await api("/api/import",{method:"POST",body:JSON.stringify({zip:zip.name,xml:xml.name,resume_session:resumeTarget})});
     await uploadFile(zip,"/api/upload/"+started.session+"/zip");
     await uploadFile(xml,"/api/upload/"+started.session+"/xml");
     const result=await api("/api/import/"+started.session+"/analyze",{method:"POST",body:"{}"});
     await poll(result.job);selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Input pair checked and loaded"));
-  } finally {busy=false;$("#progress").hidden=true;}
+  } finally {busy=false;finishProgress();}
 });
 $("#local-import-form").onsubmit=wrap(async e=>{
   e.preventDefault();if (busy) return;
@@ -393,12 +407,12 @@ $("#export-pair").onclick=wrap(async()=>generateExport("pair"));
 $("#export-xml").onclick=wrap(async()=>generateExport("xml"));
 
 function applyTheme(value) {
-  localStorage.setItem("workbench-theme",value);
+  preferences.set("workbench-theme",value);
   const actual=value==="system" ? matchMedia("(prefers-color-scheme: light)").matches?"light":"dark" : value;
   document.documentElement.dataset.theme=actual;
   $("#theme").value=value;
 }
-applyTheme(localStorage.getItem("workbench-theme") || "dark");
+applyTheme(preferences.get("workbench-theme") || "dark");
 $("#theme").onchange=e=>applyTheme(e.target.value);
 matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{if ($("#theme").value==="system") applyTheme("system");});
 async function renderStatistics() {
@@ -488,10 +502,15 @@ $("#review-mode").onchange=wrap(async e=>{
   groupMode=e.target.value==="groups";currentGroup=null;selected=null;offset=0;await loadPairs();
 });
 async function selectGroup(group) {
+  const sameGroup=currentGroup?.id===group.id;
+  const previousKeeper=sameGroup?currentGroup.keeper:null;
+  const previousPair=sameGroup?selected?.id:null;
+  const previousChosen=sameGroup?chosen:null;
   const detail=await api("/api/group/details?ids="+encodeURIComponent(group.track_ids.join(",")));
-  const previousKeeper=currentGroup?.id===group.id?currentGroup.keeper:null;
   currentGroup={...group,detail,keeper:group.track_ids.includes(previousKeeper)?previousKeeper:detail.keeper};
-  await selectPair(group.representative);
+  // Filtered group rows contain only the comparisons still available in this scope.
+  const comparison=group.pair_ids.includes(previousPair)?previousPair:group.representative;
+  await selectPair(comparison,comparison===previousPair?previousChosen:null);
 }
 function renderGroupControls() {
   const group=currentGroup;

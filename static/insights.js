@@ -54,7 +54,7 @@ async function insightSource(prefix){
   labSelect('#'+prefix+'-snapshot',info.snapshots,r=>r.label+' · '+date(r.created),I18n.t("Choose a saved collection snapshot"));
   if(info.snapshots.some(s=>s.id===old))select.value=old;
   if(!select.value && info.snapshots.length)select.value=info.snapshots[0].id;
-  $('[data-insight-capture="'+prefix+'"]').disabled=!info.workspace;
+  $$('[data-insight-capture="'+prefix+'"]').forEach(button=>button.disabled=!info.workspace);
   await insightSnapshotOptions(prefix);
 }
 async function insightSnapshotOptions(prefix){
@@ -166,9 +166,28 @@ function bubbleDimensionOptions(){
   if(used.has(state.dimension))state.dimension=Object.keys(insightDims).find(k=>!used.has(k)) || "tracks";
   $('#bubble-dimension').innerHTML=Object.entries(insightDims).map(([key,label])=>'<option value="'+key+'"'+(used.has(key)?' disabled':'')+'>'+esc(label)+'</option>').join('');$('#bubble-dimension').value=state.dimension;
 }
+function bubbleSourceAvailability(available){
+  for(const id of ['bubble-dimension','bubble-metric','bubble-color','bubble-colour-cloud','bubble-reset'])$('#'+id).disabled=!available;
+  if($('#bubble-empty'))$('#bubble-empty').hidden=available;
+}
+function bubblePlaceholder(message,state){
+  const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state=state;
+  const text=svgNode('text',{x:470,y:320,'text-anchor':'middle',fill:'currentColor','font-size':20});
+  bubbleLabelLines(message,65).forEach((line,i)=>{const span=svgNode('tspan',{x:470,dy:i?'1.3em':0});span.textContent=line;text.append(span);});
+  svg.append(text);
+}
+// The grouping selector must contain its choices even before a snapshot exists.
+bubbleDimensionOptions();bubbleSourceAvailability(false);
+$('#bubble-choose-source')?.addEventListener('click',()=>{
+  const select=$('#bubble-snapshot');select.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});select.focus({preventScroll:true});
+});
 async function loadBubbleData(){
-  const state=insightState.bubble,revision=++state.revision;if(!state.options){state.result=null;$('#bubble-evidence').textContent=I18n.t("Save or choose a collection snapshot to draw the map.");$('#bubble-svg').disabled=true;$('#library-bubbles').replaceChildren();for(const id of ['bubble-groups','bubble-summary','bubble-tracks','bubble-breadcrumbs','bubble-group-count','bubble-track-count','bubble-selected','bubble-map-note','bubble-color-note'])$('#'+id).innerHTML='';for(const id of ['bubble-groups-prev','bubble-groups-next','bubble-tracks-prev','bubble-tracks-next'])$('#'+id).disabled=true;$('#bubble-csv').hidden=true;$('#bubble-colour-meanings').hidden=true;return;}
-  bubbleDimensionOptions();const args=insightArgs('bubble');$('#library-bubbles').setAttribute('aria-busy','true');
+  const state=insightState.bubble,revision=++state.revision;
+  bubbleDimensionOptions();bubbleSourceAvailability(Boolean(state.options));
+  if(!state.options){state.result=null;$('#bubble-evidence').textContent=I18n.t("Save or choose a collection snapshot to draw the map.");$('#bubble-svg').disabled=true;const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state='no-source';for(const id of ['bubble-groups','bubble-summary','bubble-tracks','bubble-breadcrumbs','bubble-group-count','bubble-track-count','bubble-selected','bubble-map-note','bubble-color-note'])$('#'+id).innerHTML='';for(const id of ['bubble-groups-prev','bubble-groups-next','bubble-tracks-prev','bubble-tracks-next'])$('#'+id).disabled=true;$('#bubble-csv').hidden=true;$('#bubble-colour-meanings').hidden=true;return;}
+  const args=insightArgs('bubble');$('#library-bubbles').setAttribute('aria-busy','true');$('#bubble-groups').classList.add('insight-loading');$('#bubble-svg').disabled=true;
+  state.result=null;
+  bubblePlaceholder(I18n.t('Loading'),'loading');
   try{
     const [r,tracks]=await Promise.all([api('/api/insights/bubbles?'+new URLSearchParams({...args,dimension:state.dimension,metric:$('#bubble-metric').value,group_offset:state.groupOffset})),api('/api/insights/tracks?'+new URLSearchParams({...args,offset:state.offset}))]);
     if(revision!==state.revision)return;state.result=r;
@@ -178,8 +197,12 @@ async function loadBubbleData(){
     bindTrackDetails('#bubble-tracks',args.snapshot);
     $('#bubble-tracks-prev').disabled=!state.offset;$('#bubble-tracks-next').disabled=state.offset+50>=tracks.total;
     $('#bubble-csv').hidden=false;$('#bubble-csv').href='/api/insights/tracks.csv?'+new URLSearchParams(args);
-  }finally{if(revision===state.revision)$('#library-bubbles').removeAttribute('aria-busy');}
+  }catch(error){
+    if(revision===state.revision){state.result=null;$('#bubble-groups').replaceChildren();$('#bubble-selected').replaceChildren();bubblePlaceholder(I18n.t('The action could not be completed'),'error');}
+    throw error;
+  }finally{if(revision===state.revision){$('#library-bubbles').removeAttribute('aria-busy');$('#bubble-groups').classList.remove('insight-loading');}}
 }
+
 function renderBubbleBreadcrumbs(crumbs){
   $('#bubble-breadcrumbs').innerHTML=("<button data-bubble-back=\"0\">"+esc(I18n.t("Collection"))+"</button>")+crumbs.map((p,i)=>'<span>›</span><button data-bubble-back="'+(i+1)+'">'+esc(p.dimension==='colour'?colourDisplayLabel(p.key,p.label):p.label)+'</button>').join('');
   $$('[data-bubble-back]').forEach(b=>b.onclick=wrap(async()=>{const s=insightState.bubble,n=Number(b.dataset.bubbleBack);s.dimension=s.path[n]?.dimension || s.dimension;s.path=s.path.slice(0,n);s.offset=0;s.groupOffset=0;$('#bubble-track-detail').hidden=true;await loadBubbleData();}));
@@ -211,18 +234,42 @@ function bubbleLabelLines(label,characters){
   const visible=lines.length>2?[lines[0],lines.slice(1).join(' ')]:lines;
   return visible.slice(0,2).map(text=>text.length>characters?text.slice(0,characters-1)+'…':text);
 }
+function bubbleLayoutHash(value){
+  let hash=2166136261;for(const character of String(value))hash=Math.imul(hash^character.codePointAt(0),16777619);return hash>>>0;
+}
+function bubbleLayout(groups,result){
+  // Stable source identities seed the arrangement, independently of UI language
+  // or colour labels. A bounded pack replaces force animation and random jitter.
+  const seed=JSON.stringify([result.snapshot.id || '',result.dimension,result.metric,result.context.breadcrumbs.map(p=>[p.dimension,p.key]),result.group_offset]);
+  const order=group=>bubbleLayoutHash(JSON.stringify([seed,group.key]));
+  const root=d3.hierarchy({children:groups}).sum(d=>d.value || 0).sort((a,b)=>order(a.data)-order(b.data) || (String(a.data.key)<String(b.data.key)?-1:String(a.data.key)>String(b.data.key)?1:0));
+  d3.pack().size([940,680]).padding(28)(root);
+  const angle=bubbleLayoutHash(seed)/4294967296*Math.PI*2,cos=Math.cos(angle),sin=Math.sin(angle);
+  const nodes=root.children || [];
+  for(const node of nodes){
+    const x=(node.x-root.x)*1.14,y=(node.y-root.y)*1.14;
+    // Uniform rotation and centre-distance expansion cannot introduce overlap;
+    // keep every radius unchanged so circle areas still encode the metric.
+    node.x=root.x+x*cos-y*sin;node.y=root.y+x*sin+y*cos;
+  }
+  return nodes;
+}
+function fitBubbleViewBox(svg,nodes){
+  const margin=24;
+  const left=Math.min(...nodes.map(node=>node.x-node.r))-margin,top=Math.min(...nodes.map(node=>node.y-node.r))-margin;
+  const right=Math.max(...nodes.map(node=>node.x+node.r))+margin,bottom=Math.max(...nodes.map(node=>node.y+node.r))+margin;
+  svg.setAttribute('viewBox',[left,top,right-left,bottom-top].join(' '));svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+}
 function renderBubbleMap(){
-  const state=insightState.bubble,r=state.result;if(!r)return;const svg=$('#library-bubbles');svg.replaceChildren();
+  const state=insightState.bubble,r=state.result;if(!r)return;const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state=r.groups.some(g=>g.value>0)?'ready':'empty';
   if(r.dimension==='colour')for(const group of r.groups){group.original_label=group.original_label || group.label;group.label=colourDisplayLabel(group.key,group.original_label);}
-  const title=svgNode('title');title.textContent=I18n.t("Library bubbles ·")+" "+insightDims[r.dimension];svg.append(title);
+  const description=svgNode('desc');description.textContent=I18n.t("Library bubbles ·")+" "+insightDims[r.dimension];svg.append(description);
   const positive=r.groups.filter(g=>g.value>0);
   if(positive.length){
-    const root=d3.hierarchy({children:positive}).sum(d=>d.value || 0).sort((a,b)=>b.value-a.value);
-    d3.pack().size([940,680]).padding(10)(root);
-    for(const node of root.children || []){
+    const nodes=bubbleLayout(positive,r);fitBubbleViewBox(svg,nodes);
+    for(const node of nodes){
       const group=node.data,g=svgNode('g',{class:'bubble-node',transform:'translate('+node.x+','+node.y+')',role:'button',tabindex:'0','aria-label':group.label+', '+bubbleWeight(group.value,r.metric)+', '+num(group.entries)+' '+I18n.t('entries')+'. '+(r.dimension==='tracks'?I18n.t("Inspect track"):I18n.t("Drill down"))});
       const circle=svgNode('circle',{r:node.r,fill:bubbleColor(group),stroke:'#ffffff','stroke-width':2});g.append(circle);
-      const tooltip=svgNode('title');tooltip.textContent=group.label+' · '+num(group.entries)+(" "+I18n.t("entries")+" \u00b7 ")+num(group.recorded_plays)+" "+I18n.t("recorded usage");g.append(tooltip);
       if(node.r>=18){
         const font=Math.max(16,Math.min(26,node.r/4)),chars=Math.max(6,Math.floor(node.r*1.55/(font*.56)));
         const lines=node.r>=42?bubbleLabelLines(group.label,chars):[];
@@ -245,7 +292,9 @@ function renderBubbleMap(){
   if(r.groups.length)bubbleSelected(r.groups[0]);
 }
 async function drillBubble(group){
-  const state=insightState.bubble,dimension=state.dimension;
+  const state=insightState.bubble;
+  if(!state.result || $('#library-bubbles').getAttribute('aria-busy')==='true')return;
+  const dimension=state.result.dimension;
   if(dimension==='tracks'){
     await openTrackDetails($('#bubble-snapshot').value,group.key);return;
   }
@@ -262,7 +311,7 @@ $('#bubble-groups-next').onclick=wrap(async()=>{insightState.bubble.groupOffset+
 $('#bubble-tracks-prev').onclick=wrap(async()=>{insightState.bubble.offset=Math.max(0,insightState.bubble.offset-50);await loadBubbleData();});
 $('#bubble-tracks-next').onclick=wrap(async()=>{insightState.bubble.offset+=50;await loadBubbleData();});
 $('#bubble-svg').onclick=()=>{
-  const svg=$('#library-bubbles').cloneNode(true);svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.setAttribute('width','940');svg.setAttribute('height','680');svg.removeAttribute('aria-busy');
+  const original=$('#library-bubbles'),svg=original.cloneNode(true),bounds=original.viewBox.baseVal;svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.setAttribute('width',String(Math.ceil(bounds.width)));svg.setAttribute('height',String(Math.ceil(bounds.height)));svg.removeAttribute('aria-busy');
   const description=svgNode('desc');description.textContent=I18n.t("Static visible bubble-map snapshot.")+" "+(insightState.bubble.options?.snapshot.label || I18n.t("Collection"))+" "+I18n.t("· Captured")+" "+(insightState.bubble.options?.snapshot.captured || I18n.t("date unavailable"))+'. '+$('#bubble-map-note').textContent+" "+I18n.t("Branch:")+" "+$('#bubble-breadcrumbs').textContent+'. '+$('#bubble-color-note').textContent;svg.prepend(description);
   const content=new XMLSerializer().serializeToString(svg),blob=new Blob([content],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='library-bubbles.svg';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
@@ -282,7 +331,7 @@ $('#colour-meanings-form').onsubmit=wrap(async event=>{
   const r=await api('/api/insights/colour-meanings',{method:'POST',body:JSON.stringify({snapshot:$('#bubble-snapshot').value,meanings})});insightState.bubble.options.colour_meanings=r.meanings;
   $('#colour-meanings-state').textContent=r.note;renderBubbleMap();renderBubbleBreadcrumbs(insightState.bubble.result.context.breadcrumbs);
 });
-$('#bubble-colour-cloud').onclick=wrap(async()=>{const s=insightState.bubble;s.path=[];s.dimension='colour';s.offset=0;s.groupOffset=0;$('#bubble-color').value='saved';await loadBubbleData();});
+$('#bubble-colour-cloud').onclick=wrap(async()=>{const s=insightState.bubble;s.path=[];s.dimension='colour';s.offset=0;s.groupOffset=0;$('#bubble-color').value='saved';$('#bubble-metric').value='tracks';await loadBubbleData();});
 
 async function loadTonalData(){
   const state=insightState.tonal,revision=++state.revision;if(!state.options){state.result=null;$('#tonal-evidence').textContent=I18n.t("Choose or save a collection snapshot to inspect its keys and tempo.");for(const id of ['tonal-summary','tonal-tempo-stats','tonal-histogram','tonal-keys','tonal-tracks','tonal-count'])$('#'+id).innerHTML='';$('#tonal-csv').hidden=true;$('#tonal-prev').disabled=true;$('#tonal-next').disabled=true;return;}

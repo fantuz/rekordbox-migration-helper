@@ -468,17 +468,19 @@ def enrich_usage(catalog, backup, working, progress):
         for i,bitrate,sample,depth,bpm,year in db.execute("SELECT ID,BitRate,SampleRate,BitDepth,BPM,ReleaseYear FROM djmdContent"):
             if i in catalog.tracks:
                 catalog.tracks[i].update(bitrate=bitrate,sample_rate=sample,bit_depth=depth,bpm=(bpm or 0)/100,year=year)
-        from track_tags import native_colour
+        from track_tags import native_colour,native_colour_support
         tables={r[0] for r in db.execute("SELECT name FROM sqlite_schema WHERE type='table'")}
         content_columns={r[1] for r in db.execute('PRAGMA table_info(djmdContent)')}
         if 'djmdKey' in tables and 'KeyID' in content_columns:
             for identity,key in db.execute('SELECT c.ID,k.ScaleName FROM djmdContent c LEFT JOIN djmdKey k ON k.ID=c.KeyID'):
                 if identity in catalog.tracks:catalog.tracks[identity]['tonality']=key or ''
-        colours={}
+        colours={};colour_columns=set()
         if 'djmdColor' in tables:
             colour_columns={r[1] for r in db.execute('PRAGMA table_info(djmdColor)')}
             if {'ID','ColorCode','SortKey','Commnt'}<=colour_columns:
-                colours={str(r[0]):dict(zip(('ID','ColorCode','SortKey','Commnt'),r)) for r in db.execute('SELECT ID,ColorCode,SortKey,Commnt FROM djmdColor')}
+                active=' WHERE coalesce(rb_local_deleted,0)=0' if 'rb_local_deleted' in colour_columns else ''
+                colours={str(r[0]):dict(zip(('ID','ColorCode','SortKey','Commnt'),r)) for r in db.execute('SELECT ID,ColorCode,SortKey,Commnt FROM djmdColor'+active)}
+        catalog.metadata['colour_edit_support']=native_colour_support(db,{'djmdContent':content_columns,'djmdColor':colour_columns},list(colours.values()))
         if 'ColorID' in content_columns:
             for identity,color_id in db.execute('SELECT ID,ColorID FROM djmdContent'):
                 if identity in catalog.tracks:catalog.tracks[identity].update(native_colour(color_id,colours.get(str(color_id))))
@@ -542,7 +544,7 @@ def export_xml(catalog, decisions, relocations, destination, progress):
     """Export supported XML metadata while keeping the source archive as evidence."""
     from lxml import etree
     from xml.sax.saxutils import quoteattr
-    from metadata_overrides import plan as override_plan,apply_xml
+    from metadata_overrides import plan as override_plan,apply_xml,change_summary
     xml = Path(catalog.metadata["xml_path"])
     backup = Path(catalog.metadata["zip_path"])
     mapping, results = decision_map(catalog, decisions)
@@ -691,4 +693,5 @@ def export_xml(catalog, decisions, relocations, destination, progress):
     return {"track_count":len(result_ids),"merges":len(mapping),"playlist_tracks_recovered":len(needed),
             "metadata_fields":sum(len(fields) for i,fields in field_edits.items() if i in result_ids),
             "metadata_tracks_outside_xml":len(field_edits.keys()-result_ids),
+            "metadata_changes_by_field":change_summary({i:f for i,f in field_edits.items() if i in result_ids})["by_field"],
             "relocations":len(relocations),"sha256":digest,"native_backup_status":"Windows restore validation required"}

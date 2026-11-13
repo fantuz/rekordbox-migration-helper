@@ -140,6 +140,7 @@ def summary(session):
     fields=Store(DATA/'workbench-sidecar.sqlite3').overrides('session:'+session['id']) if (DATA/'workbench-sidecar.sqlite3').is_file() else {}
     return {"id":session["id"],"name":session.get("name",session["metadata"]["name"]),"metadata":session["metadata"],"counts":session["catalog"].counts,
             "metadata_override_fields":sum(len(v) for v in fields.values()),
+            "metadata_override_tracks":len(fields),"metadata_override_by_field":{f:sum(f in v for v in fields.values()) for f in {f for v in fields.values() for f in v}},
             "policy":session["policy"],"backup_acknowledged":session.get("backup_acknowledged"),"staged":sum(d["action"]=="merge" for d in decisions.values()),
             "skipped":sum(d["action"]=="skip" for d in decisions.values()),
             "relocations":len(session["relocations"]),"events":session["events"][-60:]}
@@ -692,6 +693,7 @@ def export():
         snapshot['metadata_overrides']=deepcopy(catalog.metadata['field_overrides'])
         from workbench_store import Store
         snapshot['metadata_override_evidence']=Store(DATA/'workbench-sidecar.sqlite3').overrides('session:'+session['id'])
+        snapshot['metadata_edit_history']=Store(DATA/'workbench-sidecar.sqlite3').override_history('session:'+session['id'])
     export_id=uuid4().hex
     def work(progress):
         result=prepare_export(catalog,decisions,relocations,snapshot,DATA/"exports",export_id,kind,progress,temporary_root=TEMPORARY.folder('exports'))

@@ -11,7 +11,7 @@ import zipfile
 from localization import browser_catalogues
 
 from engine import is_auto
-from track_tags import native_colour,rgb
+from track_tags import native_colour,rgb,editable_colour,native_colour_support
 
 
 FIELDS = ("id", "title", "artist", "album", "genre", "year", "bpm", "rating",
@@ -46,6 +46,7 @@ def track(values):
     result.update({field:clean(values.get(field)) for field in ('color_name','color_key','color_basis')})
     result['color_status']=values.get('color_status') if values.get('color_status') in ('assigned','unassigned','unknown') else 'unknown'
     result['color_hex']=rgb(values.get('color_hex'))
+    result['colour']=editable_colour(result)
     for field in ("duration", "play_count", "manual_cues", "auto_cues", "bitrate", "sample_rate", "bit_depth"):
         result[field] = number(values.get(field))
     result["year"] = number(values.get("year"), 1000, 2999)
@@ -72,6 +73,7 @@ def capture_catalog(catalog, scope="all"):
                              "playlists": [names.get(p, str(p)) for p in source.get("playlist_ids", [])]}))
     return {"tracks": tracks, "source_kind": "Loaded XML + ZIP", "scope": scope,
             "version": catalog.metadata.get("version"), "captured": datetime.now(timezone.utc).isoformat(),
+            "colour_edit_support":catalog.metadata.get("colour_edit_support"),
             "cue_basis": "Combined XML/native cue metadata; automatic origin is inferred from editable labels."}
 
 
@@ -123,6 +125,7 @@ def capture_database(db, columns):
         tracks.append(track(values))
     return {"tracks": tracks, "source_kind": "Read-only source snapshot", "scope": "all",
             "captured": datetime.now(timezone.utc).isoformat(),
+            "colour_edit_support":native_colour_support(db,columns,list(colours.values())),
             "cue_basis": "Active native djmdCue rows; automatic origin is inferred from editable labels."}
 
 

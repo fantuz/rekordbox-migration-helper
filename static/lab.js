@@ -109,7 +109,7 @@ $('#lab-pilot-consent').onchange=labPilotButtons;
 $('#lab-pilot-enabled').onchange=wrap(async()=>{try{const r=await labPost('features',{musicbrainz_enabled:$('#lab-pilot-enabled').checked});$('#lab-pilot-enabled').checked=r.musicbrainz_enabled;}finally{labPilotButtons();}});
 $('#lab-pilot-preview').onclick=wrap(async()=>{
   const r=await labPost('musicbrainz/preview',{snapshot:labSnapshot(),top_genres:$('#lab-pilot-top').value,seed:$('#lab-pilot-seed').value,speed:$('#lab-pilot-speed').value});labBatch=r.id;labPilotOffset=0;
-  localStorage.setItem('workbench-lab-batch',labBatch);$('#lab-pilot-consent').checked=false;await labLoadPilot();labPilotButtons();
+  preferences.set('workbench-lab-batch',labBatch);$('#lab-pilot-consent').checked=false;await labLoadPilot();labPilotButtons();
 });
 async function labLoadPilot() {
   if(!labBatch)return;
@@ -131,16 +131,17 @@ async function labLoadPilot() {
 $('#lab-pilot-start').onclick=wrap(async()=>{
   const r=await labPost('musicbrainz/'+labBatch+'/start',{query_consent:$('#lab-pilot-consent').checked});$('#lab-pilot-cancel').disabled=false;$('#lab-pilot-start').disabled=true;
   clearInterval(labPilotTimer);labPilotTimer=setInterval(()=>labLoadPilot().catch(error=>notify(error.message,true)),2500);
+  const wasBusy=busy;busy=true;progress(null,I18n.t('Working'),async()=>{await labPost('musicbrainz/'+labBatch+'/cancel',{});});
   try{
     while(true){
-      const task=await api('/api/tasks/'+r.job);
+      const task=await api('/api/tasks/'+r.job);progress(task.progress,task.message);
       if(task.status==='error')throw new Error(task.message);
       if(task.status==='complete'){notify(I18n.t("MusicBrainz pilot")+" "+task.result.status);break;}
       await new Promise(resolve=>setTimeout(resolve,1500));
     }
-  }finally{clearInterval(labPilotTimer);await labLoadPilot();$('#lab-pilot-cancel').disabled=true;labPilotButtons();}
+  }finally{busy=wasBusy;finishProgress();clearInterval(labPilotTimer);await labLoadPilot();$('#lab-pilot-cancel').disabled=true;labPilotButtons();}
 });
 $('#lab-pilot-cancel').onclick=wrap(async()=>{if(labBatch)await labPost('musicbrainz/'+labBatch+'/cancel',{});});
 $('#lab-pilot-prev').onclick=wrap(async()=>{labPilotOffset=Math.max(0,labPilotOffset-50);await labLoadPilot();});
 $('#lab-pilot-next').onclick=wrap(async()=>{labPilotOffset+=50;await labLoadPilot();});
-labBatch=localStorage.getItem('workbench-lab-batch');if(labBatch)labLoadPilot().catch(()=>{labBatch=null;localStorage.removeItem('workbench-lab-batch');});
+labBatch=preferences.get('workbench-lab-batch');if(labBatch)labLoadPilot().catch(()=>{labBatch=null;preferences.remove('workbench-lab-batch');});

@@ -49,7 +49,7 @@ class ReleaseTests(unittest.TestCase):
             else:
                 manifest.update(macos_runtime_test='passed',commit=self.commit)
                 path='Library Workbench.app/Contents/Resources/BUILD-MANIFEST.json'
-            file=self.root/('Library-Workbench-'+self.version+'-'+platform+'-preview.zip')
+            file=self.root/('Library-Workbench-'+self.version+'-'+platform+'.zip')
             with zipfile.ZipFile(file,'w') as archive:archive.writestr(path,json.dumps(manifest))
         file=self.root/('Library-Workbench-'+self.version+'-linux-source.tar.gz')
         with tarfile.open(file,'w:gz') as archive:
@@ -140,6 +140,25 @@ class ReleaseTests(unittest.TestCase):
         for output in (source/'releases').iterdir():
             (self.root/output.name).write_bytes(output.read_bytes())
         self.assertEqual(len(release.verify_assets(self.root,self.version,self.commit)),4)
+
+    def test_download_table_links_exact_versioned_assets_without_preview_suffixes(self):
+        names=release.archive_names('0.4.6-rc.1')
+        self.assertEqual(names,[
+            'Library-Workbench-0.4.6-rc.1-windows-x64.zip',
+            'Library-Workbench-0.4.6-rc.1-macos-x86_64.zip',
+            'Library-Workbench-0.4.6-rc.1-macos-arm64.zip',
+            'Library-Workbench-0.4.6-rc.1-linux-source.tar.gz'])
+        with patch.dict('os.environ',{'GITHUB_REPOSITORY':'example/workbench'}):notes=release.release_notes('0.4.6-rc.1',self.commit)
+        self.assertEqual(notes.count('[Download now]('),4)
+        for name in names:self.assertIn('https://github.com/example/workbench/releases/download/v0.4.6-rc.1/'+name,notes)
+        self.assertNotIn('-preview.zip',notes)
+        self.assertTrue(release.release_is_preview('0.4.6-rc.1'))
+
+    def test_stale_preview_archives_are_not_published_as_current_output(self):
+        self.packages()
+        windows=self.root/('Library-Workbench-'+self.version+'-windows-x64.zip')
+        windows.rename(windows.with_name(windows.stem+'-preview.zip'))
+        with self.assertRaisesRegex(ValueError,'exactly the four'):release.verify_assets(self.root,self.version,self.commit)
 
     def test_four_native_validated_archives_must_share_release_source(self):
         self.packages()

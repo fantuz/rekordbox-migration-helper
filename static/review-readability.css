@@ -1,0 +1,109 @@
+/* Review controls stay readable without changing any keeper or export rules. */
+#view-review{container:duplicate-review / inline-size}
+#view-review .review-layout{grid-template-columns:minmax(280px,1fr) minmax(0,2.2fr);gap:16px;align-items:start}
+#view-review .review-layout>section{min-width:0}
+#view-review #detail-panel{width:100%;max-width:1100px;margin-inline:auto;container:pair-comparison / inline-size}
+
+/* Native controls retain their keyboard and label behavior in both themes. */
+#view-review input:is([type=checkbox],[type=radio]){appearance:auto;display:inline-block;width:20px;height:20px;min-width:20px;min-height:20px;max-width:20px;max-height:20px;flex:0 0 20px;padding:0;margin:0;opacity:1;accent-color:#287eb7;cursor:pointer;vertical-align:middle}
+#view-review :is(input,select,button,[data-keeper]):focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+#view-review #evidence-filters{grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:8px 10px;margin-top:14px}
+#view-review #evidence-filters label{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;min-height:48px;padding:9px 10px;border:1px solid var(--line);border-radius:5px;background:var(--panel2);font-size:13px;line-height:1.45;color:var(--text)}
+#view-review #evidence-filters label:has(input:checked){border-color:var(--accent);background:var(--soft-blue)}
+#view-review #evidence-filters b{font-size:12px;font-weight:650;font-variant-numeric:tabular-nums;margin-left:0}
+#view-review .evidence-panel summary{font-size:14px;font-weight:600;line-height:1.5}
+#view-review .evidence-panel summary span{font-size:12px;margin-left:0;margin-right:12px}
+#view-review .evidence-foot{font-size:12px;line-height:1.55}
+#view-review .advanced-filters{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+#view-review .advanced-filters label,#view-review .policy-control{font-size:12px}
+#view-review .advanced-filters :is(input,select),#view-review .policy-control select{font-size:13px;min-height:40px}
+#view-review .rule-note{font-size:12px;line-height:1.6}
+#view-review .rule-note .subtle{font-size:12px}
+#view-review .workload span{display:block;font-size:12px;line-height:1.4}
+#view-review .workload strong{font-size:25px;font-weight:600}
+
+/* The candidate list uses about a third of the review workspace. */
+#view-review .filter-bar{padding:12px;gap:10px}
+#view-review .tabs{flex-wrap:wrap}
+#view-review .tab{font-size:12px;min-height:36px;padding:7px 8px}
+#view-review .search{width:100%;min-height:40px}
+#view-review .search input{font-size:13px;min-width:0}
+#view-review #feature-filter{width:100%;font-size:13px;min-height:40px}
+#view-review .view-controls{align-items:stretch;gap:9px;padding:12px}
+#view-review .view-controls label{display:flex;flex-direction:column;align-items:stretch;gap:5px;flex:1 1 130px;min-width:0;font-size:12px}
+#view-review .view-controls select{width:100%;font-size:13px;min-height:40px}
+#view-review .view-controls .text-button{font-size:12px;min-height:36px}
+#view-review .list-columns,#view-review .pair-row{grid-template-columns:minmax(0,1fr) 72px 62px;gap:8px;padding:12px}
+#view-review .list-columns{font-size:10px;letter-spacing:.3px;color:var(--muted)}
+#view-review .pair-row{min-height:78px}
+#view-review .pair-row.selected{background:var(--soft-blue);box-shadow:inset 3px 0 var(--accent)}
+#view-review .pair-row:hover{background:var(--panel2)}
+#view-review .pair-title{font-size:13px;font-weight:550;line-height:1.45;white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#view-review .pair-artist{font-size:12px;line-height:1.45}
+#view-review .cue-evidence{font-size:12px;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+#view-review .badge{font-size:11px;line-height:1.4;white-space:normal}
+#view-review .pagination{font-size:12px;gap:8px;flex-wrap:wrap}
+#view-review .pagination .icon-button{min-width:36px;min-height:36px;font-size:16px}
+#view-review .batch-bar>span{display:block;font-size:12px;line-height:1.5}
+#view-review .batch-bar .button{font-size:12px;white-space:normal}
+
+/* Both keeper cards and all recorded metadata use the available detail width. */
+#view-review .detail-head{padding:18px}
+#view-review .detail-head .eyebrow{font-size:11px}
+#view-review .detail-head h3{font-size:19px;line-height:1.4;overflow-wrap:anywhere}
+#view-review .detail-head p,#view-review .detail-head .subtle{font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+#view-review .sibling-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px}
+#view-review .sibling{width:100%;padding:14px;border:2px solid var(--line);background:var(--panel2);color:var(--text)}
+#view-review .sibling.chosen{border-color:var(--accent);background:var(--soft-blue);box-shadow:0 0 0 1px var(--accent)}
+#view-review .sibling-top{align-items:center;flex-wrap:wrap;min-height:28px;font-size:13px;font-weight:600;color:var(--text)}
+#view-review .sibling-top>span{font-size:15px;line-height:1.5;color:var(--accent)}
+#view-review .sibling:not(.chosen) .sibling-top>span{font-size:24px;line-height:1;color:var(--muted)}
+#view-review .sibling .title{font-size:14px;line-height:1.5;font-weight:600;margin:12px 0 7px}
+#view-review .sibling .stars{font-size:17px;letter-spacing:1px}
+#view-review .sibling dl{grid-template-columns:minmax(72px,.8fr) minmax(0,1.2fr);gap:7px 10px;font-size:13px;line-height:1.5;margin:14px 0}
+#view-review .sibling dt,#view-review .sibling dd{min-width:0;overflow-wrap:anywhere}
+#view-review .sibling dd{text-align:left;color:var(--text)}
+#view-review .sibling .path{font-size:12px;line-height:1.6;color:var(--muted);max-height:96px;margin:12px 0 7px;padding-top:10px;border-top:1px solid var(--line);white-space:normal;word-break:normal}
+#view-review .ref-link{display:block;width:100%;min-height:36px;font-size:13px;text-align:left;white-space:normal;overflow-wrap:anywhere;padding:7px 0}
+#view-review .cue-comparison{padding:4px 18px 18px}
+#view-review .cue-comparison h4{font-size:14px;font-weight:600}
+#view-review .legend{font-size:12px;gap:12px;flex-wrap:wrap}
+#view-review .legend i{width:8px;height:8px}
+#view-review .cue-lane{height:35px;margin:12px 0}
+#view-review .cue-lane label{font-size:12px}
+#view-review .cue-track{top:22px}
+#view-review .cue-time{font-size:12px;color:var(--muted)}
+#view-review .conflict-note{font-size:13px;line-height:1.6;background:var(--soft-blue);color:var(--text);border-color:var(--line);padding:12px}
+#view-review .detail-actions{padding:16px 18px}
+#view-review .detail-actions label{display:flex;align-items:flex-start;gap:12px;width:100%;min-height:48px;padding:12px;margin-bottom:10px;border:1px solid var(--line);border-radius:5px;background:var(--panel2);color:var(--text);font-size:13px;line-height:1.55;cursor:pointer}
+#view-review .detail-actions label:has(input:checked){border-color:var(--accent);background:var(--soft-blue)}
+#view-review .detail-actions input{margin-top:1px}
+#view-review .detail-actions .action-row{flex-wrap:wrap;margin-top:14px}
+#view-review .detail-actions .button{font-size:13px;min-height:42px;white-space:normal}
+#view-review #detail-panel>.text-button{margin:0 14px 12px;font-size:13px;min-height:36px}
+#view-review .hash-evidence{font-size:13px}
+#view-review .group-toolbar h4{font-size:15px}
+#view-review .group-toolbar label{font-size:13px;line-height:1.5}
+#view-review .group-toolbar select{font-size:13px;min-height:42px}
+#view-review .group-toolbar .button{font-size:13px;min-height:42px;white-space:normal}
+
+/* Container sizing also handles a wider sidebar without squeezing the cards. */
+@container duplicate-review (max-width:930px){
+  #view-review .review-layout{grid-template-columns:minmax(0,1fr)}
+  #view-review .pair-list{height:280px}
+}
+@container pair-comparison (max-width:580px){
+  #view-review .sibling-cards{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:1100px){
+  #view-review .review-layout{grid-template-columns:minmax(0,1fr)}
+  #view-review .pair-list{height:280px}
+}
+@media(max-width:600px){
+  #view-review .sibling-cards{grid-template-columns:minmax(0,1fr);padding:12px}
+  #view-review .workload{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #view-review .evidence-panel{padding:12px}
+  #view-review .detail-actions,#view-review .detail-head,#view-review .cue-comparison{padding:14px}
+  #view-review .policy-control{flex-wrap:wrap;max-width:100%}
+  #view-review .policy-control select{max-width:100%}
+}

@@ -2,12 +2,12 @@
 from pathlib import Path
 import argparse
 import shutil
-from release_tools import normalized_version
+from release_tools import normalized_version,archive_names
 
 
 def collect(source,destination,version):
     source,destination=Path(source),Path(destination);version=normalized_version(version)
-    names=['Library-Workbench-'+version+'-'+suffix for suffix in ('windows-x64-preview.zip','macos-arm64-preview.zip','macos-x86_64-preview.zip','linux-source.tar.gz')]
+    names=archive_names(version)
     names += [str(Path(n).with_suffix('.sha256')) if n.endswith('.zip') else n+'.sha256' for n in names[:]]
     found={}
     for path in source.rglob('*'):
