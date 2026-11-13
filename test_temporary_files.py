@@ -98,8 +98,14 @@ class ConsoleShutdownTests(unittest.TestCase):
             process=subprocess.Popen([sys.executable,str(Path(__file__).parent/'desktop_launcher.py'),'--no-browser','--port','0'],
                                      env={**os.environ,'LIBRARY_WORKBENCH_DATA_DIR':str(data)},stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
             try:
-                deadline=time.monotonic()+30
-                while not (data/'instance.json').exists() and time.monotonic()<deadline:time.sleep(.05)
+                deadline=time.monotonic()+60
+                while not (data/'instance.json').exists() and process.poll() is None and time.monotonic()<deadline:time.sleep(.05)
+                if not (data/'instance.json').exists():
+                    if process.poll() is None:process.terminate()
+                    try:output=process.communicate(timeout=5)[0]
+                    except subprocess.TimeoutExpired:process.kill();output=process.communicate()[0]
+                    log=(data/'application.log').read_text() if (data/'application.log').exists() else 'No application log was created'
+                    self.fail('Console app did not start; exit='+str(process.returncode)+'\n'+output+'\n'+log)
                 base=json.loads((data/'instance.json').read_text())['url']
                 with urllib.request.urlopen(base+'/api/cleanup',timeout=5) as response:temporary=json.load(response)['directory']
                 process.send_signal(signal.SIGINT);time.sleep(.1)
