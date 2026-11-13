@@ -80,11 +80,18 @@ def main():
                 page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"');page.wait_for_selector('#docs-content h1')
                 assert page.locator('#docs-content').inner_text()
                 assert page.locator('#page-title').inner_text()==messages['de']['Documentation']
-                assert not any(r['method']!='GET' for r in requests), 'Language changes submitted a mutation'
+                assert not any(r['method']!='GET' and not (r['method']=='POST' and r['url']==base+'/api/journeys/context') for r in requests), 'Language changes submitted a library mutation'
                 assert all(r['url'].startswith(base) or r['url'].startswith('blob:') for r in requests), 'Unexpected external request'
                 assert store.snapshot(sid)==before
                 assert not api_issues,api_issues
                 assert page.locator('#toast').is_hidden() or not page.locator('#toast').inner_text(), 'Unexpected caught UI error: '+page.locator('#toast').inner_text()
+                page.select_option('#language','en');page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
+                from check_journeys_ui import check_journeys_ui
+                report['journeys_ui']=check_journeys_ui(page,base,sid,args.output)
+                from check_sharing_ui import check_sharing_ui
+                report['sharing_ui']=check_sharing_ui(page,base,sid,args.output)
+                from check_intelligence_ui import check_intelligence_ui
+                report['intelligence_ui']=check_intelligence_ui(page,base,sid,args.output,store)
                 from check_workspace_ui import check_workspace_ui
                 report['workspace_ui']=check_workspace_ui(browser,page,base,sid,args.output,offline)
                 page.goto(Path(offline['directory']).joinpath('library.html').as_uri(),wait_until='load')

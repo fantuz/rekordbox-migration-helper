@@ -50,10 +50,10 @@ for(const prefix of ['dj','bubble','tonal']){
 }
 function insightBasisControls(prefix){const saved=$('#'+prefix+'-basis').value==='saved';for(const name of ['from','to'])$('#'+prefix+'-'+name).disabled=saved;}
 async function insightSource(prefix){
-  const info=await api('/api/lab'),select=$('#'+prefix+'-snapshot'),old=select.value || insightLastSnapshot;
+  const info=await api('/api/lab'),select=$('#'+prefix+'-snapshot'),shared=window.Journeys?.context(),old=shared?(shared.snapshot || ''):select.value || insightLastSnapshot;
   labSelect('#'+prefix+'-snapshot',info.snapshots,r=>r.label+' · '+date(r.created),I18n.t("Choose a saved collection snapshot"));
   if(info.snapshots.some(s=>s.id===old))select.value=old;
-  if(!select.value && info.snapshots.length)select.value=info.snapshots[0].id;
+  if(shared)select.value=info.snapshots.some(s=>s.id===old)?old:'';else if(!select.value && info.snapshots.length)select.value=info.snapshots[0].id;
   $$('[data-insight-capture="'+prefix+'"]').forEach(button=>button.disabled=!info.workspace);
   await insightSnapshotOptions(prefix);
 }
@@ -86,7 +86,7 @@ async function loadTonalityInsights(){await insightSource('tonal');await applyIn
 $$('[data-insight-capture]').forEach(button=>button.onclick=wrap(async()=>{
   if(busy)return;const prefix=button.dataset.insightCapture;
   const start=await labPost('snapshots',{source:'session',get label(){return I18n.t("DJ insights · loaded collection");}});const result=await poll(start.job);
-  insightLastSnapshot=result.id;await insightSource(prefix);$('#'+prefix+'-snapshot').value=result.id;await insightSnapshotOptions(prefix);await applyInsightFilters(prefix);notify(I18n.t("Saved collection snapshot for local insights"));
+  insightLastSnapshot=result.id;if(window.Journeys){await Journeys.load();await Journeys.selectContext('snapshot:'+result.id);}await insightSource(prefix);$('#'+prefix+'-snapshot').value=result.id;await insightSnapshotOptions(prefix);await applyInsightFilters(prefix);notify(I18n.t("Saved collection snapshot for local insights"));
 }));
 function insightArgs(prefix){
   const args={snapshot:$('#'+prefix+'-snapshot').value,basis:$('#'+prefix+'-basis').value};

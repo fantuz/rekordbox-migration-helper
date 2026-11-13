@@ -23,6 +23,7 @@ from platform_paths import default_data_directory, discover_cloud_roots
 from discovery import suggestions as discover_locations,scan_roots as discover_scan
 from storage_audit import scan_storage, verify_group
 from metadata_export import capture_catalog, export_metadata, list_metadata_exports
+from task_control import TaskControl, OperationCancelled
 import localization
 import documentation
 
@@ -43,6 +44,7 @@ TOKEN = secrets.token_urlsafe(32)
 executor = ThreadPoolExecutor(max_workers=1)
 lock = RLock()
 sessions, tasks = {}, {}
+task_controls = {}
 active = None
 
 
@@ -83,6 +85,7 @@ def log(session, text):
 
 def task_progress(job, amount, text):
     if shutdown.requested.is_set():raise InterruptedError('Stopping: temporary analysis copies are being cleaned')
+    task_controls[job].checkpoint(amount)
     with lock:
         tasks[job].update(progress=amount,message=text)
 
@@ -91,14 +94,21 @@ def launch(work, message, pool=None):
     if shutdown.requested.is_set():raise ValueError('The application is stopping')
     job = uuid4().hex
     tasks[job] = {"id":job,"status":"running","progress":0,"message":message}
+    task_controls[job] = TaskControl()
     def run():
         try:
+            task_controls[job].checkpoint()
             with TEMPORARY.operation():result=work(lambda n,s:task_progress(job,n,s))
             with lock:
                 tasks[job].update(status="complete",progress=100,result=result,message="Complete")
+        except OperationCancelled as error:
+            with lock:
+                tasks[job].update(status="cancelled",message=str(error))
         except Exception as error:
             with lock:
                 tasks[job].update(status="error",message=str(error),progress=0)
+        finally:
+            with lock:task_controls.pop(job,None)
     (pool or executor).submit(run)
     return job
 
@@ -256,6 +266,7 @@ def analyzer_report(report_id):
 
 @app.get("/api/quick-export")
 def quick_export_info():
+    from workbench_store import Store
     sources=[]
     for path in (DATA/"analyzers").glob("*/report.json"):
         if not (path.parent/"metadata.json").is_file():continue
@@ -264,28 +275,82 @@ def quick_export_info():
             counters=(report.get('database') or report.get('xml') or {}).get('counters',{})
             sources.append({"id":report["id"],"created":report["created"],"tracks":counters.get('tracks')})
         except (OSError,ValueError,KeyError,TypeError):continue
-    return jsonify(directory=str(DATA/"quick-exports"),sources=sorted(sources,key=lambda r:r["created"],reverse=True)[:20],
+    return jsonify(directory=str(DATA/"quick-exports"),sources=sorted(sources,key=lambda r:r["created"],reverse=True)[:20],snapshots=Store(DATA/'workbench-sidecar.sqlite3').snapshots(),
                    exports=list_metadata_exports(DATA/"quick-exports"))
+
+
+def quick_snapshot(body):
+    """Freeze one explicit metadata state for preview and generation alike."""
+    from workbench_store import Store
+    if not isinstance(body,dict):raise ValueError('Provide an offline summary request')
+    source=body.get('source','session');scope=body.get('scope','all')
+    if source=='session':
+        with lock:
+            session=current();snapshot=capture_catalog(session['catalog'],scope)
+            snapshot['scope_key']='session:'+str(session.get('id') or active or 'current')
+    elif isinstance(source,str) and source.startswith('lab:'):
+        snapshot=Store(DATA/'workbench-sidecar.sqlite3').snapshot(source[4:])
+        if scope!='all':raise ValueError('Choose all captured tracks for a saved snapshot')
+    else:
+        if not isinstance(source,str) or not re_uuid(source):raise ValueError('Choose a loaded workspace or saved source snapshot')
+        if scope!='all':raise ValueError('XML collection scope is available only for an imported XML/ZIP workspace')
+        path=DATA/'analyzers'/source/'metadata.json'
+        if not path.is_file():raise ValueError('This report has no metadata snapshot. Run Source analyzer again to enable quick export.')
+        snapshot=json.loads(path.read_text(encoding='utf-8'))
+        if isinstance(snapshot,dict):snapshot.setdefault('scope_key','capture:'+source)
+    if not isinstance(snapshot,dict) or not isinstance(snapshot.get('tracks'),list) or any(
+            not isinstance(track,dict) or not isinstance(track.get('id'),str) or
+            not isinstance(track.get('playlists',[]),list) or any(not isinstance(name,str) for name in track.get('playlists',[]))
+            for track in snapshot['tracks']):
+        raise ValueError('This source has no usable metadata snapshot. Capture it again.')
+    if body.get('working') is True:snapshot=Store(DATA/'workbench-sidecar.sqlite3').effective(snapshot)
+    snapshot['data_state']='working' if body.get('working') is True else 'captured'
+    return snapshot
+
+
+def sharing_options(body):
+    return {key:body[key] for key in ('preset','fields','track_ids','playlist') if key in body}
+
+
+@app.post('/api/quick-export/preview')
+def preview_quick_export():
+    from metadata_export import disclosure
+    body=request.get_json(silent=True)
+    return jsonify(disclosure(quick_snapshot(body),include_paths=body.get('include_paths') is True,
+                              allow_empty_selection=True,**sharing_options(body)))
+
+
+@app.put('/api/quick-export/xml')
+def quick_xml_upload():
+    """XML-only metadata entry; no native backup is needed for a summary."""
+    limit=4*1024**3
+    if request.content_length and request.content_length>limit:raise ValueError('XML exceeds the 4 GB analysis limit')
+    identity=uuid4().hex;folder=TEMPORARY.folder('xml-summaries',identity)
+    partial=folder/'collection.part';final=folder/'collection.xml';done=0
+    try:
+        with TEMPORARY.operation(),partial.open('xb') as stream:
+            while chunk:=request.stream.read(2*1024**2):
+                if shutdown.requested.is_set():raise InterruptedError('Upload cancelled for temporary-file cleanup')
+                done+=len(chunk)
+                if done>limit:raise ValueError('XML exceeds the 4 GB analysis limit')
+                stream.write(chunk)
+        if not done:raise ValueError('File is empty')
+        os.replace(partial,final)
+    except Exception:
+        partial.unlink(missing_ok=True);raise
+    from xml_analysis import analyze_xml
+    return jsonify(job=launch(lambda p:analyze_xml(final,DATA/'analyzers'/identity,p),'Reading XML metadata for an offline summary'),source=identity)
 
 
 @app.post("/api/quick-export")
 def quick_export():
-    body=request.get_json() or {}
-    source=body.get("source","session")
-    scope=body.get("scope","all")
-    if source=="session":
-        with lock:snapshot=capture_catalog(current()["catalog"],scope)
-    else:
-        if not isinstance(source,str) or not re_uuid(source):raise ValueError("Choose a loaded workspace or saved source snapshot")
-        if scope!="all":raise ValueError("XML collection scope is available only for an imported XML/ZIP workspace")
-        path=DATA/"analyzers"/source/"metadata.json"
-        if not path.is_file():raise ValueError("This report has no metadata snapshot. Run Source analyzer again to enable quick export.")
-        snapshot=json.loads(path.read_text(encoding="utf-8"))
+    body=request.get_json(silent=True)
+    snapshot=quick_snapshot(body)
     export_id=uuid4().hex
     title=body.get("title") or "My library"
     include_paths=body.get("include_paths") is True
     return jsonify(job=launch(lambda progress:export_metadata(snapshot,DATA/"quick-exports",export_id,ROOT/"static",progress,
-                                                             title=title,include_paths=include_paths,temporary_root=TEMPORARY.folder('exports')),"Building your offline metadata explorer"))
+                                                             title=title,include_paths=include_paths,temporary_root=TEMPORARY.folder('exports'),**sharing_options(body)),"Building your offline metadata explorer"))
 
 
 @app.get("/api/quick-export/<export_id>/<kind>")
@@ -391,6 +456,18 @@ def task(job):
     return jsonify(tasks[job])
 
 
+@app.post('/api/tasks/<job>/cancel')
+def cancel_task(job):
+    with lock:
+        if job not in tasks:return jsonify(error='Task not found'),404
+        control=task_controls.get(job)
+        if control and tasks[job]['status']=='running':
+            control.cancel()
+            tasks[job]['cancel_requested']=True
+        return jsonify(status=tasks[job]['status'],cancel_requested=tasks[job].get('cancel_requested',False),
+                       message='Cancellation takes effect at the next safe checkpoint; completed outputs are kept')
+
+
 def media_evidence(session,row):
     matches=(session.get("inventory") or {}).get("matches",{})
     check=session.get("media_verifications",{}).get(row["id"])
@@ -446,73 +523,8 @@ def in_scope(session,row,values,include_evidence=True):
 
 @app.get("/api/pairs")
 def pairs():
-    session=current()
-    cat=session["catalog"]
-    mode=request.args.get("filter","all")
-    query=request.args.get("q","").casefold()
-    offset=max(0,int(request.args.get("offset",0)))
-    rows=[]
-    facets={}
-    for i,r in cat.descriptions.items():
-        r=media_evidence(session,r)
-        if i in session.get("held_pairs",{}):
-            r={**r,"category":"review"}
-        choice=session["decisions"].get(i)
-        if mode=="staged" and (not choice or choice["action"]!="merge"):
-            continue
-        if mode in ("ready","auto","review") and (r["category"]!=mode or choice):
-            continue
-        if not in_scope(session,r,request.args,include_evidence=False):
-            continue
-        for key,value in r["evidence"].items():
-            facets[key]=facets.get(key,0)+int(value)
-        if not in_scope(session,r,request.args):
-            continue
-        rows.append({**r,"decision":choice})
-    rows.sort(key=lambda r:(r["category"]=="review",r["title"].casefold(),r["id"]))
-    parent={}
-    def root(i):
-        parent.setdefault(i,i)
-        while parent[i]!=i:
-            parent[i]=parent[parent[i]]
-            i=parent[i]
-        return i
-    for r in rows:
-        parent[root(r["a"])]=root(r["b"])
-    review_parent={}
-    def review_root(i):
-        review_parent.setdefault(i,i)
-        while review_parent[i]!=i:
-            review_parent[i]=review_parent[review_parent[i]]
-            i=review_parent[i]
-        return i
-    for r in rows:
-        if r["category"]=="review":
-            review_parent[review_root(r["a"])]=review_root(r["b"])
-    groups=len({root(i) for i in parent})
-    if request.args.get("view")=="groups":
-        grouped={}
-        for r in rows:
-            key=root(r["a"])
-            group=grouped.setdefault(key,{"id":key,"pairs":[],"tracks":set()})
-            group["pairs"].append(r)
-            group["tracks"].update((r["a"],r["b"]))
-        group_rows=[]
-        for group in grouped.values():
-            options=group["pairs"]
-            rep=next((r for r in options if r["category"]=="review"),options[0])
-            group_rows.append({"id":group["id"],"representative":rep["id"],"title":rep["title"],"artist":rep["artist"],
-                               "track_ids":sorted(group["tracks"]),"pair_ids":[r["id"] for r in options],
-                               "track_count":len(group["tracks"]),"pair_count":len(options),
-                               "category":"review" if any(r["category"]=="review" for r in options) else
-                                          "auto" if any(r["category"]=="auto" for r in options) else "ready"})
-        group_rows.sort(key=lambda r:(r["category"]=="review",r["title"].casefold(),r["id"]))
-        return jsonify(total=groups,groups=groups,tracks=len(parent),pair_count=len(rows),
-                       potential_reduction=len(parent)-groups,review_groups=len({review_root(i) for i in review_parent}),
-                       review_tracks=len(review_parent),facets=facets,offset=offset,rows=group_rows[offset:offset+40],view="groups")
-    return jsonify(total=len(rows),groups=groups,tracks=len(parent),potential_reduction=len(parent)-groups,
-                   review_groups=len({review_root(i) for i in review_parent}),review_tracks=len(review_parent),
-                   facets=facets,offset=offset,rows=rows[offset:offset+40])
+    from pair_query import page
+    return jsonify(page(current(),request.args,in_scope,media_evidence))
 
 
 @app.get("/api/pair/<pair_id>")
@@ -1085,6 +1097,10 @@ from lab_routes import register as register_lab
 register_lab(sys.modules[__name__])
 from insights_routes import register as register_insights
 register_insights(sys.modules[__name__])
+from intelligence_routes import register as register_intelligence
+register_intelligence(sys.modules[__name__])
+from journeys_routes import register as register_journeys
+register_journeys(sys.modules[__name__])
 
 
 if __name__=="__main__":

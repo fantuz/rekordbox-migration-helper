@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Add resumable migration and integrity journeys with explicit evidence states and shared collection context.
+- Promote offline sharing with public aggregate, selected-list and private presets, field disclosure and XML-only input.
+- Make snapshot comparison, metadata editing and MusicBrainz easier to discover with labelled accent cards.
+- Add playlist-overlap, saved-session progression, collection-evolution and staged-duplicate-impact views.
+- Add per-operation cooperative cancellation, cached duplicate pagination and 33k/100k GitHub performance checks.
+- Reuse verified release artifacts only for the exact trusted main commit and version, and cache the pinned Linux runtime.
+- Refresh validation guidance and distinguish user-reported success from unverified compatibility.
+
 ## 1.0.1 — 2026-11-13
 
 This update adds a self-contained Linux application, clearer review of duplicate groups and step-by-step instructions for preparing and restoring library copies.

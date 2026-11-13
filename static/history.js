@@ -3,7 +3,9 @@ let historyOffset=0,historyEntryOffset=0,historySelected=null;
 async function loadHistory(){
   const info=await api('/api/lab');
   labSelect('#history-snapshot',info.snapshots,r=>r.label+' · '+date(r.created),I18n.t("Choose a saved snapshot"));
-  if(!$('#history-snapshot').value && info.snapshots.length)$('#history-snapshot').value=info.snapshots[0].id;
+  const shared=window.Journeys?.context();
+  if(shared)$('#history-snapshot').value=info.snapshots.some(s=>s.id===shared.snapshot)?shared.snapshot:'';
+  else if(!$('#history-snapshot').value && info.snapshots.length)$('#history-snapshot').value=info.snapshots[0].id;
   const sources=[...(info.workspace?[{id:'session',get label(){return I18n.t("Loaded XML + ZIP workspace");}}]:[]),...info.sources.map(r=>({id:r.id,label:I18n.t("Source capture ·")+" "+date(r.created)+' · '+r.label}))];
   labSelect('#history-source',sources,r=>r.label,I18n.t("Choose a native input capture"));$('#history-capture').disabled=!sources.length;
   historyOffset=0;historySelected=null;$('#history-session').hidden=true;await loadHistoryList();
@@ -38,7 +40,7 @@ function renderAddedYears(data){
   return data.years.map(y=>'<div class="hist-row"><span>'+esc(y.year)+'</span><div class="hist-bar"><i style="width:'+100*y.tracks/max+'%"></i></div><b>'+num(y.tracks)+'</b></div>').join('')+'<p class="subtle">'+num(data.unknown)+(" "+esc(I18n.t("tracks without a usable date added. Recorded library addition dates differ from release years and may reflect earlier migrations."))+"</p>");
 }
 $('#history-capture').onclick=wrap(async()=>{
-  const r=await labPost('snapshots',{source:$('#history-source').value,label:$('#history-label').value || I18n.t("Play history snapshot")});const result=await poll(r.job);await loadHistory();$('#history-snapshot').value=result.id;await loadHistoryList();notify(I18n.t("History and collection metadata saved locally"));
+  const r=await labPost('snapshots',{source:$('#history-source').value,label:$('#history-label').value || I18n.t("Play history snapshot")});const result=await poll(r.job);if(window.Journeys){await Journeys.load();await Journeys.selectContext('snapshot:'+result.id);}await loadHistory();$('#history-snapshot').value=result.id;await loadHistoryList();notify(I18n.t("History and collection metadata saved locally"));
 });
 $('#history-snapshot').onchange=wrap(async()=>{historyOffset=0;historySelected=null;$('#history-session').hidden=true;await loadHistoryList();});
 for(const id of ['history-find','history-year'])$('#'+id)[id==='history-year'?'onchange':'onclick']=wrap(async()=>{historyOffset=0;await loadHistoryList();});

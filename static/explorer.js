@@ -14,7 +14,11 @@
   function hours(s){return number.format(Math.round(s/3600*10)/10)+" h";}
   function rating(v){return empty(v)?I18n.t("Unknown"):v===0?I18n.t("Unrated"):v+" / 5";}
   const tracks=data.rows.map(row=>Object.fromEntries(data.columns.map((name,i)=>[name,row[i]])));
+  const aggregateOnly=data.preset==='public', included=new Set(data.columns);
+  const pageFields={tracks:null,genres:'genre',years:'year',added:'date_added',artists:'artist',albums:'album',bpm:'bpm',ratings:'rating',duration:'duration',formats:'format',playlists:'playlists',tonality:'tonality',colours:'color_status'};
+  const availablePages=Object.keys(pages).filter(key=>key==='index' || (aggregateOnly?Object.hasOwn(data.aggregates?.categories || {},key):key==='tracks' || included.has(pageFields[key])));
   for(const r of tracks){
+    if(!Array.isArray(r.playlists))r.playlists=[];
     r.added_year=String(r.date_added || '').match(/^([1-9]\d{3})(?:\D|\d{4}|$)/)?.[1] || null;
     r.color_group=r.color_status==='assigned'?(r.color_name || r.color_hex || 'Assigned colour'):r.color_status==='unassigned'?'No assigned colour':null;
     r.bpm_group=empty(r.bpm)?null:bpmBins.find(([max])=>r.bpm<max)[1];
@@ -77,19 +81,21 @@
     const top=node("article");top.append(node("span",I18n.t("THE SHAPE OF THE COLLECTION"),"eyebrow"),node("h3",I18n.t("Genres at a glance")));
     for(const g of genres){const button=node("button",undefined,"bar-row"),rail=node("span",undefined,"bar-track"),fill=node("span",undefined,"bar-fill");fill.style.width=(100*g.count/max)+"%";rail.append(fill);button.append(node("span",g.label),rail,node("small",number.format(g.count)));button.onclick=()=>go("tracks",{...state,genre:g.key});top.append(button);}
     const quality=node("article");quality.append(node("span",I18n.t("METADATA COVERAGE"),"eyebrow"),node("h3",I18n.t("What is still unknown?")));const dl=node("dl",undefined,"quality");
-    for(const [name,count] of [[I18n.t("Without a genre"),rows.filter(r=>!r.genre).length],[I18n.t("Without a release year"),rows.filter(r=>empty(r.year)).length],[I18n.t("Without a saved BPM"),rows.filter(r=>empty(r.bpm)).length],[I18n.t("No personal star rating"),rows.filter(r=>r.rating===0).length],[I18n.t("Duration not saved"),rows.filter(r=>empty(r.duration)).length],[I18n.t("Analysis status unknown"),rows.filter(r=>empty(r.analysed)).length]])dl.append(node("dt",name),node("dd",number.format(count)));
-    quality.append(dl,node("p",I18n.t("An unknown tag is a review opportunity, not proof of a damaged track."),"muted"));target.append(top,quality);
+    for(const [field,name,count] of [["genre",I18n.t("Without a genre"),rows.filter(r=>!r.genre).length],["year",I18n.t("Without a release year"),rows.filter(r=>empty(r.year)).length],["bpm",I18n.t("Without a saved BPM"),rows.filter(r=>empty(r.bpm)).length],["rating",I18n.t("No personal star rating"),rows.filter(r=>r.rating===0).length],["duration",I18n.t("Duration not saved"),rows.filter(r=>empty(r.duration)).length],["analysed",I18n.t("Analysis status unknown"),rows.filter(r=>empty(r.analysed)).length]])if(included.has(field))dl.append(node("dt",name),node("dd",number.format(count)));
+    quality.append(dl,node("p",I18n.t("An unknown tag is a review opportunity, not proof of a damaged track."),"muted"));if(included.has("genre"))target.append(top);target.append(quality);
   }
   function render(){
+    if(aggregateOnly){renderAggregates();return;}
     const rows=filtered();const metrics=$("#metrics");metrics.replaceChildren(
       metric(I18n.t("Tracks in view"),number.format(rows.length),number.format(tracks.length)+" "+I18n.t("in this snapshot")),
-      metric(I18n.t("Personal stars"),number.format(rows.filter(r=>r.rating>0).length),I18n.t("Tracks with a saved rating")),
-      metric(I18n.t("Saved as analyzed"),number.format(rows.filter(r=>r.analysed===true).length),I18n.t("Status from captured metadata")),
-      metric(I18n.t("Recorded duration"),hours(totalDuration(rows)),I18n.t("Sum of available track lengths")));
+      ...(included.has("rating")?[metric(I18n.t("Personal stars"),number.format(rows.filter(r=>r.rating>0).length),I18n.t("Tracks with a saved rating"))]:[]),
+      ...(included.has("analysed")?[metric(I18n.t("Saved as analyzed"),number.format(rows.filter(r=>r.analysed===true).length),I18n.t("Status from captured metadata"))]:[]),
+      ...(included.has("duration")?[metric(I18n.t("Recorded duration"),hours(totalDuration(rows)),I18n.t("Sum of available track lengths"))]:[]));
     overview(rows);const category=facet[view];
     shown=category?groups(rows,category):rows.slice();
-    tableColumns=category?[["label",pages[view],false],["count",I18n.t("Tracks"),true],["duration",I18n.t("Recorded duration"),true],["rated",I18n.t("Starred tracks"),true],["average_bpm",I18n.t("Mean saved BPM"),true],["plays",I18n.t("Saved plays"),true]]:
+    tableColumns=category?[["label",pages[view],false],["count",I18n.t("Tracks"),true],...(included.has('duration')?[["duration",I18n.t("Recorded duration"),true]]:[]),...(included.has('rating')?[["rated",I18n.t("Starred tracks"),true]]:[]),...(included.has('bpm')?[["average_bpm",I18n.t("Mean saved BPM"),true]]:[]),...(included.has('play_count')?[["plays",I18n.t("Saved plays"),true]]:[])]:
       [["title",I18n.t("Track"),false],["artist",I18n.t("Artist"),false],["album",I18n.t("Album"),false],["genre",I18n.t("Genre"),false],["year",I18n.t("Year"),true],["bpm","BPM",true],["rating",I18n.t("Personal stars"),true],["duration",I18n.t("Duration"),true],["format",I18n.t("Format"),false],["play_count",I18n.t("Plays"),true]];
+    if(!category){tableColumns=tableColumns.filter(([key])=>included.has(key));if(!tableColumns.length)tableColumns=data.columns.map(key=>[key,I18n.field(key),['bitrate','sample_rate','bit_depth','auto_cues','manual_cues'].includes(key)]);}
     const order=sortField || (category?"count":"title"),direction=sortField?(ascending?1:-1):(category?-1:1);
     shown.sort((a,b)=>{const av=a[order],bv=b[order];if(empty(av))return empty(bv)?0:1;if(empty(bv))return -1;return direction*(typeof av==="number" && typeof bv==="number"?av-bv:collator.compare(String(av),String(bv)));});
     page=Math.min(page,Math.max(0,Math.ceil(shown.length/pageSize)-1));
@@ -107,18 +113,41 @@
     const chips=$("#active-filters");chips.replaceChildren();for(const field of new Set(Object.values(facet)))if(state[field]!==undefined){const button=node("button",I18n.field(field.replace("_group",""))+": "+(state[field]===missing?I18n.t("Unknown"):state[field].slice(2))+" ×","chip");button.onclick=()=>{const next={...state};delete next[field];go(view,next);};chips.append(button);}
     for(const a of document.querySelectorAll("#navigation a"))a.href=href(a.dataset.view);
   }
-  function route(){state=Object.fromEntries(new URLSearchParams(location.hash.slice(1)));view=single?(state.view || "index"):document.body.dataset.view;if(!pages[view])view="index";delete state.view;page=0;sortField="";
+  function renderAggregates(){
+    const summary=data.aggregates, category=view==='index'?'genres':view;
+    $('#metrics').replaceChildren(metric(I18n.t('Tracks'),number.format(summary.tracks),I18n.t('Aggregate summary')),metric(I18n.t('Recorded duration'),hours(summary.duration),number.format(summary.duration_known)+' '+I18n.t('tracks')),metric(I18n.t('Mean saved BPM'),summary.average_bpm===null?I18n.t('Unknown'):number.format(summary.average_bpm),number.format(summary.bpm_known)+' '+I18n.t('tracks')));
+    $('#overview').hidden=true;
+    shown=(summary.categories[category] || []).map(g=>({...g,label:label(g.label)}));
+    const direction=sortField?(ascending?1:-1):-1, order=sortField || 'count';
+    shown.sort((a,b)=>direction*(typeof a[order]==='number'&&typeof b[order]==='number'?a[order]-b[order]:collator.compare(String(a[order]??''),String(b[order]??''))));
+    tableColumns=[['label',pages[category],false],['count',I18n.t('Tracks'),true],['duration',I18n.t('Recorded duration'),true],['average_bpm',I18n.t('Mean saved BPM'),true]];
+    $('#view-title').textContent=view==='index'?I18n.t('Genres at a glance'):pages[view];
+    $('#view-description').textContent=I18n.t('Aggregate summary only. Individual tracks and personal usage are excluded.');
+    const table=$('#metadata-table'),head=table.querySelector('thead'),body=table.querySelector('tbody'),header=node('tr');table.classList.remove('track-table');head.replaceChildren();body.replaceChildren();
+    for(const [field,title] of tableColumns){const th=node('th'),button=node('button',title+(order===field?(direction===1?' ↑':' ↓'):''));th.scope='col';th.setAttribute('aria-sort',order===field?(direction===1?'ascending':'descending'):'none');button.onclick=()=>{ascending=sortField===field?!ascending:true;sortField=field;page=0;render();};th.append(button);header.append(th);}head.append(header);
+    page=Math.min(page,Math.max(0,Math.ceil(shown.length/pageSize)-1));
+    for(const group of shown.slice(page*pageSize,(page+1)*pageSize)){const row=node('tr');for(const [field,,numeric] of tableColumns)row.append(node('td',field==='duration'?hours(group[field]):empty(group[field])?I18n.t('Unknown'):typeof group[field]==='number'?number.format(group[field]):group[field],numeric?'numeric':''));body.append(row);}
+    if(!shown.length){const row=node('tr'),cell=node('td',I18n.t('0 results'));cell.colSpan=tableColumns.length;row.append(cell);body.append(row);}
+    $('#results').textContent=number.format(shown.length)+' '+I18n.t('Categories');$('#previous').disabled=page===0;$('#next').disabled=(page+1)*pageSize>=shown.length;
+    for(const a of document.querySelectorAll('#navigation a'))a.href=href(a.dataset.view,{});
+  }
+  function route(){state=Object.fromEntries(new URLSearchParams(location.hash.slice(1)));view=single?(state.view || "index"):document.body.dataset.view;if(!availablePages.includes(view))view="index";delete state.view;page=0;sortField="";
     const theme=["system","dark","light"].includes(state.theme)?state.theme:"system";$("#theme").value=theme;document.body.dataset.theme=theme;
     for(const [id,key] of [["search","q"],["rating-filter","rating"],["format-filter","format_filter"],["bpm-min","bpm_min"],["bpm-max","bpm_max"],["duration-min","duration_min"],["duration-max","duration_max"]])$("#"+id).value=state[key] || "";
     for(const a of document.querySelectorAll("#navigation a")){if(a.dataset.view===view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");}render();
   }
-  for(const [key,title] of Object.entries(pages)){const a=node("a",title);a.dataset.view=key;a.href=href(key,{});$("#navigation").append(a);}
+  for(const key of availablePages){const a=node("a",pages[key]);a.dataset.view=key;a.href=href(key,{});$("#navigation").append(a);}
+  if(aggregateOnly){$('.filters').hidden=true;$('#active-filters').hidden=true;}else{
+    for(const [id,fields] of [['rating-filter',['rating']],['format-filter',['format']],['bpm-min',['bpm']],['bpm-max',['bpm']],['duration-min',['duration']],['duration-max',['duration']],['search',['id','title','artist','album','genre','label','composer']]])if(!fields.some(f=>included.has(f)))$('#'+id).closest('label').hidden=true;
+  }
   for(const format of Array.from(new Set(tracks.map(r=>r.format).filter(Boolean))).sort()){const option=node("option",format);option.value=format;$("#format-filter").append(option);}
   function snapshotNotes(){
   $("#library-title").textContent=data.title;document.title=data.title+" "+I18n.t("· Offline library explorer");
-  $("#snapshot-info").textContent=number.format(tracks.length)+(" "+I18n.t("tracks")+" \u00b7 ")+data.source_kind+" "+I18n.t("· captured")+" "+new Date(data.captured || data.created).toLocaleString(I18n.language);
+  $("#snapshot-info").textContent=number.format(data.track_count??tracks.length)+(" "+I18n.t("tracks")+" \u00b7 ")+data.source_kind+" "+I18n.t("· captured")+" "+new Date(data.captured || data.created).toLocaleString(I18n.language);
   $("#scope-note").textContent=I18n.t("Captured library tags ·")+" "+(data.scope==="xml"?I18n.t("XML collection scope"):I18n.t("full captured library"))+". "+(data.metadata_overrides_applied?data.metadata_overrides_applied+" "+I18n.t("explicit working metadata fields applied.")+" ":"")+I18n.t("Merge and relocation decisions are not applied.")+" "+(data.includes_paths?I18n.t("Recorded file paths are included by your choice."):I18n.t("File paths are excluded."))+" "+I18n.t("No audio, artwork or waveform data.");
   $("#provenance").textContent=I18n.t("Generated by Library Workbench ·")+" "+new Date(data.created).toLocaleString(I18n.language)+" · "+(data.version?"rekordbox "+data.version:I18n.t("application version not supplied"));$("#cue-note").textContent=data.cue_basis;
+  if(aggregateOnly)$('#scope-note').textContent=I18n.t('Aggregate summary only. Individual tracks and personal usage are excluded.')+' '+I18n.t('Merge and relocation decisions are not applied.');
+  if(data.disclosure){$('#disclosure-note').textContent=I18n.t('Included fields')+': '+data.disclosure.fields.map(f=>data.columns.includes(f)?I18n.field(f):I18n.t(f)).join(', ')+'. '+I18n.t('Metadata state')+': '+I18n.t(data.data_state==='working'?'Working metadata':'Captured metadata')+'.';}
   }
   snapshotNotes();
   $("#theme").onchange=()=>{const next={...state,theme:$("#theme").value};if(single)next.view=view;location.hash=new URLSearchParams(next).toString();};document.body.dataset.theme="system";

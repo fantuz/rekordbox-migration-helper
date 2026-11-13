@@ -246,7 +246,7 @@ def analyze_folder(source,output,progress,version_hint="",snapshot_root=None):
         elif version_hint.startswith("5"):
             result["messages"].append({"level":"warning","text":"The supplied v5 version conflicts with the modern master.db format. Check which library folder is selected."})
         else:
-            result["messages"].append({"level":"info","text":"master.db identifies the v6/v7 format family, not the exact application version. A restore or live-library check in Windows rekordbox remains to be validated."})
+            result["messages"].append({"level":"info","text":"master.db identifies the v6/v7 format family, not the exact application version. A fully recorded native restore checklist remains outstanding; see Compatibility for qualified user-reported results."})
         if source_stamps(root)!=stamps:
             raise ValueError("The source database changed while the report was running. Close rekordbox, pause sync and capture again.")
         result["source_unchanged"]=True
