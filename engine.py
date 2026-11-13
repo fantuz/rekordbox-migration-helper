@@ -282,24 +282,30 @@ def parse_xml(path, progress):
     def start(name, attrs):
         nonlocal section, current, depth, version
         depth += 1
+        if depth==1 and name!='DJ_PLAYLISTS':raise ValueError('Expected a rekordbox DJ_PLAYLISTS XML root')
         if depth == 2:
             section = name
         if name == "PRODUCT":
             version = attrs.get("Version", "")
         if section == "COLLECTION":
             if name == "TRACK":
+                if not attrs.get('TrackID'):raise ValueError('Every collection track needs a TrackID')
                 current = attrs["TrackID"]
                 if current in tracks:
                     raise ValueError("XML contains repeated TrackID values")
                 tracks[current] = {"attrs": attrs, "marks": [], "tempo": 0}
             elif name == "POSITION_MARK":
+                if current is None:raise ValueError('A cue must belong to a collection track')
                 tracks[current]["marks"].append(attrs)
             elif name == "TEMPO":
+                if current is None:raise ValueError('A tempo marker must belong to a collection track')
                 tracks[current]["tempo"] += 1
         elif section == "PLAYLISTS" and name == "TRACK":
+            if not attrs.get('Key'):raise ValueError('Every playlist track reference needs a Key')
             playlists.append(attrs["Key"])
     def end(name):
-        nonlocal depth
+        nonlocal depth,current
+        if section=='COLLECTION' and name=='TRACK':current=None
         depth -= 1
     def reject(*args):
         raise ValueError("XML declarations with DTD or entities are unsupported")
@@ -310,12 +316,14 @@ def parse_xml(path, progress):
     total, done = path.stat().st_size, 0
     with path.open("rb") as stream:
         while chunk := stream.read(2 * 1024 * 1024):
-            parser.Parse(chunk, False)
+            try:parser.Parse(chunk, False)
+            except expat.ExpatError as error:raise ValueError('Invalid XML: '+str(error)) from error
             digest.update(chunk)
             done += len(chunk)
             if done % (32 * 1024 * 1024) == 0:
                 progress(15 + int(20 * done / max(total, 1)), "Reading XML track and cue records")
-        parser.Parse(b"", True)
+        try:parser.Parse(b"", True)
+        except expat.ExpatError as error:raise ValueError('Invalid XML: '+str(error)) from error
     if not tracks:
         raise ValueError("XML has no Collection tracks")
     return tracks, playlists, version, digest.hexdigest()
@@ -634,7 +642,7 @@ def export_xml(catalog, decisions, relocations, destination, progress):
             # Stream one collection track or top-level playlist at a time.
             with destination.open("wb") as stream:
                 stream.write(b'<?xml version="1.0" encoding="UTF-8"?>\n<DJ_PLAYLISTS Version="1.0.0">\n')
-                stream.write(b'<PRODUCT Name="rekordbox" Version="'+catalog.metadata.get("version","7.2.19").encode()+b'" Company="AlphaTheta"/>\n')
+                stream.write(etree.tostring(etree.Element('PRODUCT',Name='rekordbox',Version=str(catalog.metadata.get('version','7.2.19')),Company='AlphaTheta'),encoding='UTF-8')+b'\n')
                 stream.write(namespace("COLLECTION",{"Entries":len(result_ids)}).encode())
                 emitted=set()
                 for event,e in etree.iterparse(str(xml),events=("end",),resolve_entities=False,no_network=True,huge_tree=True):

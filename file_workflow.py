@@ -29,6 +29,10 @@ def select_inputs(values):
     paths={}
     for kind in ("zip","xml"):
         value=str(values.get(kind,"")).strip().strip('"')
+        try:
+            if '\x00' in value:raise UnicodeError()
+            value.encode('utf-8')
+        except UnicodeError:raise ValueError('File paths must contain valid Unicode without null characters') from None
         path=Path(value).expanduser()
         if not value or not path.is_absolute() or path.suffix.lower()!="."+kind:
             raise ValueError("Choose a full path to a ."+kind+" file on this computer")

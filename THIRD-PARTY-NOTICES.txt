@@ -6,7 +6,7 @@ license is supplied in runtime/LICENSE.txt. Third-party Python package metadata
 and license files are retained under runtime/Lib/site-packages/*.dist-info.
 macOS app bundles retain dependency license metadata collected by PyInstaller.
 
-Core dependencies include Flask, Werkzeug, lxml, pyrekordbox, TinyTag (MIT), SQLAlchemy, NumPy,
+Core dependencies include Flask, Werkzeug, lxml, pyrekordbox, TinyTag (MIT), markdown-it-py (MIT), mdurl (MIT), SQLAlchemy, NumPy,
 psutil and sqlcipher3-wheels, with their transitive dependencies. Build manifests
 record the exact versions and, for the Windows wheel assembly, source URLs and
 SHA-256 digests. Consult each included package license for its terms.

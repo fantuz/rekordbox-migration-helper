@@ -126,6 +126,8 @@ def main():
     for file in APP.glob("*.py"):
         if not file.name.startswith("test_"):shutil.copy2(file,app_folder/file.name)
     shutil.copytree(APP/"static",app_folder/"static")
+    shutil.copytree(APP/'docs',app_folder/'docs')
+    for name in ('README.md','CHANGELOG.md','SECURITY.md','CONTRIBUTING.md'):shutil.copy2(APP/name,app_folder/name)
     (folder/"VERSION").write_text(VERSION+"\n",encoding="utf-8")
     for name in ("LICENSE","THIRD-PARTY-NOTICES.txt"):
         if (APP/name).is_file():shutil.copy2(APP/name,folder/name)

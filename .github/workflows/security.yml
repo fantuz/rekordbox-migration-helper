@@ -29,7 +29,7 @@ jobs:
           python-version: '3.13'
       - uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266 # v1.1.0
         with:
-          inputs: requirements.txt requirements-build.txt
+          inputs: requirements.txt requirements-build.txt requirements-test.txt requirements-browser.txt
 
   dependency-review:
     name: Review dependency changes
