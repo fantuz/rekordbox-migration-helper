@@ -19,6 +19,8 @@ Source analysis opens original database files only as byte streams for a private
 
 The preparation workflow writes new copies. Native ZIP generation remains experimental, is gated to v7 inputs and requires an untouched-backup acknowledgement. It is not an in-place source-folder editor.
 
+Native package CI currently exercises Ubuntu 22.04 (Linux portable), Windows x64, macOS 15 Intel and macOS 26 Apple Silicon. Source checks also run on Linux, Windows and both Mac architectures. Moving Apple Silicon CI to the current stable macOS 26 pool avoids the observed macOS 15 ARM runner-allocation failures; all architecture and runtime gates remain required. Build manifests record the actual runner/runtime. These checks do not certify every older operating-system version.
+
 ## Device-format roadmap
 
 Classic USB Device Library uses `export.pdb`. OneLibrary is the new name for Device Library Plus; AlphaTheta documents full compatibility between them. It is a device-export family separate from the desktop `datafile.edb` → `master.db` transition. Current detection does not imply record decoding or conversion. A future device reader/comparator needs genuine fixtures for both classic and OneLibrary exports, including USBs containing both formats.

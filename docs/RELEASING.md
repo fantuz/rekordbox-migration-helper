@@ -4,6 +4,8 @@
 
 Every pull request and push to `main` runs source tests on Linux, Windows, Mac Intel and Mac Apple Silicon, then builds and exercises the portable applications. Open the run under **Actions → Check and package** and scroll to **Artifacts**, or follow the download link in the final check summary:
 
+Source checks and native builds run independently; a queued platform does not prevent other platform artifacts from being built. The final required check and release workflow still require every source, browser and native package check to pass, then verify the complete five-archive set. Current Mac runners are macOS 15 for Intel and macOS 26 for Apple Silicon; runner versions are recorded in build manifests. Tested runner versions are not a claim that every older operating system has been validated.
+
 | Download | Artifact |
 | --- | --- |
 | Windows x64 portable | `windows-x64-portable` |
