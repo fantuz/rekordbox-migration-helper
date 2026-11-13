@@ -272,6 +272,7 @@ async function saveDecision(action) {
   notify(action==="undo"?I18n.t("Decision undone"):I18n.t("Decision saved to this workspace"));
 }
 function showView(view) {
+  if(view!=="bubbles" && $("#bubble-expanded").open)$("#bubble-expanded").close();
   $$(".view").forEach(v=>v.hidden=v.id!=="view-"+view);
   $$(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===view));
   if (view==="statistics") renderStatistics().catch(error=>notify(error.message,true));

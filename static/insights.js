@@ -263,14 +263,13 @@ function fitBubbleViewBox(svg,nodes){
 function renderBubbleMap(){
   const state=insightState.bubble,r=state.result;if(!r)return;const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state=r.groups.some(g=>g.value>0)?'ready':'empty';
   if(r.dimension==='colour')for(const group of r.groups){group.original_label=group.original_label || group.label;group.label=colourDisplayLabel(group.key,group.original_label);}
-  const title=svgNode('title');title.textContent=I18n.t("Library bubbles ·")+" "+insightDims[r.dimension];svg.append(title);
+  const description=svgNode('desc');description.textContent=I18n.t("Library bubbles ·")+" "+insightDims[r.dimension];svg.append(description);
   const positive=r.groups.filter(g=>g.value>0);
   if(positive.length){
     const nodes=bubbleLayout(positive,r);fitBubbleViewBox(svg,nodes);
     for(const node of nodes){
       const group=node.data,g=svgNode('g',{class:'bubble-node',transform:'translate('+node.x+','+node.y+')',role:'button',tabindex:'0','aria-label':group.label+', '+bubbleWeight(group.value,r.metric)+', '+num(group.entries)+' '+I18n.t('entries')+'. '+(r.dimension==='tracks'?I18n.t("Inspect track"):I18n.t("Drill down"))});
       const circle=svgNode('circle',{r:node.r,fill:bubbleColor(group),stroke:'#ffffff','stroke-width':2});g.append(circle);
-      const tooltip=svgNode('title');tooltip.textContent=group.label+' · '+num(group.entries)+(" "+I18n.t("entries")+" \u00b7 ")+num(group.recorded_plays)+" "+I18n.t("recorded usage");g.append(tooltip);
       if(node.r>=18){
         const font=Math.max(16,Math.min(26,node.r/4)),chars=Math.max(6,Math.floor(node.r*1.55/(font*.56)));
         const lines=node.r>=42?bubbleLabelLines(group.label,chars):[];

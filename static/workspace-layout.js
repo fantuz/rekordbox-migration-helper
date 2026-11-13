@@ -9,5 +9,5 @@
   view.before(anchor);
   document.getElementById('bubble-expand').addEventListener('click',()=>{expanded.append(view);expanded.showModal();});
   document.getElementById('bubble-expand-close').addEventListener('click',()=>expanded.close());
-  expanded.addEventListener('close',()=>{anchor.after(view);document.getElementById('bubble-expand').focus();});
+  expanded.addEventListener('close',()=>{anchor.after(view);if(!view.hidden)document.getElementById('bubble-expand').focus();});
 })();

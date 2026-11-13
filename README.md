@@ -51,7 +51,7 @@ See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XM
 
 <!-- project-downloads:end -->
 
-The buttons open the latest stable release’s automatically generated **Downloads** table. Choose the row for your platform; older and prerelease builds remain under [Releases](https://github.com/fantuz/rekordbox-migration-helper/releases). See [what changed in 0.4.5](CHANGELOG.md).
+The buttons open the latest stable release’s **Downloads** section. New releases include an automatically generated platform table; existing downloads are also available under Assets. Choose your platform; older and prerelease builds remain under [Releases](https://github.com/fantuz/rekordbox-migration-helper/releases). See [what changed in 0.4.5](CHANGELOG.md).
 
 On Linux, use Python 3.13 or newer and run `./start.sh` from this directory. The first launch installs requirements into a local virtual environment. The application opens your browser and binds only to loopback. Use **Stop local application** in its footer when finished.
 
