@@ -94,6 +94,8 @@ class MetadataExportTests(unittest.TestCase):
         result=export_metadata(snapshot,self.root,'f'*32,ASSETS,lambda *_:None,preset='public')
         self.assertEqual(result['tracks'],2);self.assertEqual(result['preset'],'public')
         with zipfile.ZipFile(Path(result['directory'])/'metadata-explorer.zip') as archive:
+            self.assertNotIn('tracks.html',archive.namelist());self.assertNotIn('playlists.html',archive.namelist())
+            self.assertNotIn('ratings.html',archive.namelist());self.assertNotIn('added.html',archive.namelist())
             embedded=archive.read('library-data.js').decode('utf-8')
             self.assertNotIn('PRIVATE-TITLE',embedded);self.assertNotIn('My playlist',embedded)
             self.assertEqual(json.loads(embedded.removeprefix('window.METADATA_SNAPSHOT=').removesuffix(';'))['rows'],[])

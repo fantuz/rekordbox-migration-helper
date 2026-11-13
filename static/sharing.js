@@ -21,7 +21,8 @@ window.SharingUI=(() => {
     const paths=q('quick-paths');paths.disabled=preset!=='private';if(paths.disabled)paths.checked=false;
     refresh();
   }
-  function schedule(){q('quick-generate').disabled=true;clearTimeout(timer);timer=setTimeout(refresh,250);}
+  function requestOptions(){return {source:q('quick-source').value,scope:q('quick-scope').value,include_paths:q('quick-paths').checked,...options()};}
+  function schedule(){revision++;q('quick-generate').disabled=true;clearTimeout(timer);timer=setTimeout(refresh,250);}
   function showDisclosure(info){
     const output=q('share-disclosure');output.replaceChildren();
     const summary=document.createElement('strong');summary.textContent=num(info.track_count)+' '+t('tracks')+' · '+t(info.aggregates_only?'Aggregate summary':'Selected metadata');output.append(summary);
@@ -29,13 +30,15 @@ window.SharingUI=(() => {
   }
   async function refresh(){
     if(!ready || q('view-quick')?.hidden)return;
+    clearTimeout(timer);
     const serial=++revision, source=q('quick-source').value, output=q('share-disclosure');
     q('quick-generate').disabled=true;
     if(!source){output.textContent=t('Choose a metadata source to preview the export.');return;}
     output.textContent=t('Checking export contents…');
     try{
-      const info=await api('/api/quick-export/preview',{method:'POST',body:JSON.stringify({source,scope:q('quick-scope').value,include_paths:q('quick-paths').checked,...options()})});
-      if(serial!==revision)return;
+      const fingerprint=JSON.stringify(requestOptions());
+      const info=await api('/api/quick-export/preview',{method:'POST',body:fingerprint});
+      if(serial!==revision || fingerprint!==JSON.stringify(requestOptions()))return;
       const select=q('share-playlist'),old=select.value;
       select.replaceChildren(new Option(t('Choose a playlist'),''),...(info.available_playlists || []).map(name=>new Option(name,name)));
       if(Array.from(select.options).some(option=>option.value===old))select.value=old;

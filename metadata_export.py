@@ -26,6 +26,9 @@ PUBLIC_DIMENSIONS = {"genres": "genre", "years": "year", "artists": "artist", "a
 PAGES = {"index": "Overview", "tracks": "Tracks", "genres": "Genres", "years": "Release years", "added": "Added by year",
          "artists": "Artists", "albums": "Albums", "bpm": "BPM ranges", "ratings": "Ratings",
          "duration": "Duration", "formats": "Formats", "playlists": "Playlists", "tonality": "Tonality", "colours": "Track colours"}
+PAGE_FIELDS = {"genres": "genre", "years": "year", "added": "date_added", "artists": "artist", "albums": "album",
+               "bpm": "bpm", "ratings": "rating", "duration": "duration", "formats": "format", "playlists": "playlists",
+               "tonality": "tonality", "colours": "color_status"}
 
 
 def number(value, minimum=0, maximum=None):
@@ -246,6 +249,9 @@ def export_metadata(snapshot, root, export_id, assets, progress, title="My libra
     pending.mkdir(parents=True)
     try:
         data = payload(snapshot, title, include_paths, preset, fields, track_ids, playlist)
+        exported_pages = {key: name for key, name in PAGES.items()
+                          if key == "index" or (key in PUBLIC_DIMENSIONS if preset == "public" else
+                                                key == "tracks" or PAGE_FIELDS.get(key) in data['columns'])}
         serialized = script_json(data)
         css, js = (assets/"explorer.css").read_text(encoding="utf-8"), (assets/"explorer.js").read_text(encoding="utf-8")
         translations=browser_catalogues(assets)+'\n'+(assets/'i18n.js').read_text(encoding='utf-8')
@@ -261,7 +267,7 @@ def export_metadata(snapshot, root, export_id, assets, progress, title="My libra
         (pending/"library.html").write_bytes(standalone)
         progress(55, "Building the offline category pages")
         with zipfile.ZipFile(pending/"metadata-explorer.zip", "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
-            for view in PAGES:
+            for view in exported_pages:
                 archive.writestr(view+".html", page(view, False).encode("utf-8"))
             archive.writestr("explorer.css", css.encode("utf-8"))
             archive.writestr("explorer.js", js.encode("utf-8"))
@@ -280,7 +286,7 @@ def export_metadata(snapshot, root, export_id, assets, progress, title="My libra
                   "source_captured": data["captured"], "includes_paths": data['includes_paths'], "staged_changes_applied": False,
                   "preset": data['preset'], "data_state": data['data_state'], "disclosure": data['disclosure'],
                   "metadata_overrides_applied":data.get('metadata_overrides_applied',0),
-                  "pages": list(PAGES.values()), "files": files, "directory": str(final.resolve())}
+                  "pages": list(exported_pages.values()), "files": files, "directory": str(final.resolve())}
         (pending/"export.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
         pending.rename(final)
     except Exception:
