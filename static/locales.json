@@ -2044,14 +2044,14 @@
       "ru": "Добавления в коллекцию по годам"
     },
     "Collection index": {
-      "de": "SAMMLUNGSINDEX",
-      "fr": "INDEX DE COLLECTION",
-      "it": "INDICE RACCOLTA",
-      "es": "ÍNDICE DE COLECCIÓN",
-      "el": "ΕΥΡΕΤΗΡΙΟ ΣΥΛΛΟΓΗΣ",
-      "pl": "INDEKS KOLEKCJI",
-      "cs": "REJSTŘÍK KOLEKCE",
-      "ru": "УКАЗАТЕЛЬ КОЛЛЕКЦИИ"
+      "de": "Sammlungsindex",
+      "fr": "Index de collection",
+      "it": "Indice della raccolta",
+      "es": "Índice de colección",
+      "el": "Ευρετήριο συλλογής",
+      "pl": "Indeks kolekcji",
+      "cs": "Rejstřík sbírky",
+      "ru": "Индекс коллекции"
     },
     "Collection overview": {
       "de": "Sammlungsübersicht",
@@ -7008,14 +7008,14 @@
       "ru": "Запросы отправляют исполнителя/название или ISRC в MusicBrainz. Без путей, аудио, обложек и отпечатков. При использовании имени файла нужна проверка идентичности. Распознавание аудио потребовало бы отдельного AcoustID."
     },
     "Quick export": {
-      "de": "SCHNELLEXPORT",
-      "fr": "EXPORT RAPIDE",
-      "it": "ESPORTAZIONE RAPIDA",
-      "es": "EXPORTACIÓN RÁPIDA",
-      "el": "ΓΡΗΓΟΡΗ ΕΞΑΓΩΓΗ",
-      "pl": "SZYBKI EKSPORT",
-      "cs": "RYCHLÝ EXPORT",
-      "ru": "БЫСТРЫЙ ЭКСПОРТ"
+      "de": "Schnellexport",
+      "fr": "Export rapide",
+      "it": "Esportazione rapida",
+      "es": "Exportación rápida",
+      "el": "Γρήγορη εξαγωγή",
+      "pl": "Szybki eksport",
+      "cs": "Rychlý export",
+      "ru": "Быстрый экспорт"
     },
     "Quick insight views": {
       "de": "Schnelle Analyseansichten",
@@ -12341,6 +12341,326 @@
       "pl": "Przygotuj",
       "cs": "Připravit",
       "ru": "Подготовить"
+    },
+    "Full path to a library folder or collection.xml": {
+      "de": "Vollständiger Pfad zu Bibliotheksordner oder collection.xml",
+      "fr": "Chemin complet du dossier de bibliothèque ou de collection.xml",
+      "it": "Percorso completo della cartella libreria o collection.xml",
+      "es": "Ruta completa de carpeta de biblioteca o collection.xml",
+      "el": "Πλήρης διαδρομή φακέλου βιβλιοθήκης ή collection.xml",
+      "pl": "Pełna ścieżka folderu biblioteki lub collection.xml",
+      "cs": "Úplná cesta ke složce knihovny nebo collection.xml",
+      "ru": "Полный путь к папке библиотеки или collection.xml"
+    },
+    "For example, 7.2.19": {
+      "de": "Zum Beispiel 7.2.19",
+      "fr": "Par exemple, 7.2.19",
+      "it": "Per esempio, 7.2.19",
+      "es": "Por ejemplo, 7.2.19",
+      "el": "Για παράδειγμα, 7.2.19",
+      "pl": "Na przykład 7.2.19",
+      "cs": "Například 7.2.19",
+      "ru": "Например, 7.2.19"
+    },
+    "Contains": {
+      "de": "Enthält",
+      "fr": "Contient",
+      "it": "Contiene",
+      "es": "Contiene",
+      "el": "Περιέχει",
+      "pl": "Zawiera",
+      "cs": "Obsahuje",
+      "ru": "Содержит"
+    },
+    "Find a track or artist": {
+      "de": "Titel oder Interpret suchen",
+      "fr": "Chercher un titre ou un artiste",
+      "it": "Cerca brano o artista",
+      "es": "Buscar pista o artista",
+      "el": "Εύρεση κομματιού ή καλλιτέχνη",
+      "pl": "Znajdź utwór lub wykonawcę",
+      "cs": "Najít skladbu nebo interpreta",
+      "ru": "Найти трек или исполнителя"
+    },
+    "Search candidate pairs": {
+      "de": "Kandidatenpaare durchsuchen",
+      "fr": "Rechercher des paires candidates",
+      "it": "Cerca coppie candidate",
+      "es": "Buscar pares candidatos",
+      "el": "Αναζήτηση υποψήφιων ζευγών",
+      "pl": "Szukaj par kandydatów",
+      "cs": "Hledat dvojice kandidátů",
+      "ru": "Поиск пар кандидатов"
+    },
+    "Unlimited": {
+      "de": "Unbegrenzt",
+      "fr": "Illimité",
+      "it": "Illimitato",
+      "es": "Sin límite",
+      "el": "Απεριόριστο",
+      "pl": "Bez limitu",
+      "cs": "Neomezeně",
+      "ru": "Без ограничений"
+    },
+    "Before computer migration": {
+      "de": "Vor Computerwechsel",
+      "fr": "Avant migration d’ordinateur",
+      "it": "Prima della migrazione computer",
+      "es": "Antes de migrar de equipo",
+      "el": "Πριν τη μεταφορά υπολογιστή",
+      "pl": "Przed migracją komputera",
+      "cs": "Před migrací počítače",
+      "ru": "Перед переносом на другой компьютер"
+    },
+    "Search recorded session names or dates": {
+      "de": "Erfasste Sitzungsnamen oder Daten suchen",
+      "fr": "Chercher les noms ou dates de sessions",
+      "it": "Cerca nomi o date di sessioni registrate",
+      "es": "Buscar nombres o fechas de sesiones",
+      "el": "Αναζήτηση ονομάτων ή ημερομηνιών συνεδριών",
+      "pl": "Szukaj zapisanych nazw lub dat sesji",
+      "cs": "Hledat názvy nebo data zaznamenaných relací",
+      "ru": "Поиск записанных названий или дат сеансов"
+    },
+    "Find history": {
+      "de": "Verlauf suchen",
+      "fr": "Rechercher l’historique",
+      "it": "Cerca cronologia",
+      "es": "Buscar historial",
+      "el": "Εύρεση ιστορικού",
+      "pl": "Znajdź historię",
+      "cs": "Najít historii",
+      "ru": "Найти историю"
+    },
+    "Find a track within this history": {
+      "de": "Titel in diesem Verlauf suchen",
+      "fr": "Chercher un titre dans cet historique",
+      "it": "Cerca un brano in questa cronologia",
+      "es": "Buscar una pista en este historial",
+      "el": "Εύρεση κομματιού σε αυτό το ιστορικό",
+      "pl": "Znajdź utwór w tej historii",
+      "cs": "Najít skladbu v této historii",
+      "ru": "Найти трек в этой истории"
+    },
+    "Search session tracks": {
+      "de": "Sitzungstitel durchsuchen",
+      "fr": "Rechercher des titres de session",
+      "it": "Cerca brani della sessione",
+      "es": "Buscar pistas de sesión",
+      "el": "Αναζήτηση κομματιών συνεδρίας",
+      "pl": "Szukaj utworów sesji",
+      "cs": "Hledat skladby relace",
+      "ru": "Поиск треков сеанса"
+    },
+    "Track or artist": {
+      "de": "Titel oder Interpret",
+      "fr": "Titre ou artiste",
+      "it": "Brano o artista",
+      "es": "Pista o artista",
+      "el": "Κομμάτι ή καλλιτέχνης",
+      "pl": "Utwór lub wykonawca",
+      "cs": "Skladba nebo interpret",
+      "ru": "Трек или исполнитель"
+    },
+    "Select a sibling in Duplicate review": {
+      "de": "Duplikat in Duplikatprüfung wählen",
+      "fr": "Sélectionner un doublon dans la révision",
+      "it": "Scegli una copia nella revisione duplicati",
+      "es": "Elegir un duplicado en la revisión",
+      "el": "Επιλέξτε αντίγραφο στον έλεγχο διπλοτύπων",
+      "pl": "Wybierz duplikat w przeglądzie duplikatów",
+      "cs": "Vybrat kopii v kontrole duplikátů",
+      "ru": "Выберите копию в проверке дубликатов"
+    },
+    "Before cleanup": {
+      "de": "Vor Bereinigung",
+      "fr": "Avant nettoyage",
+      "it": "Prima della pulizia",
+      "es": "Antes de limpiar",
+      "el": "Πριν την εκκαθάριση",
+      "pl": "Przed porządkowaniem",
+      "cs": "Před úklidem",
+      "ru": "Перед очисткой"
+    },
+    "Full local path": {
+      "de": "Vollständiger lokaler Pfad",
+      "fr": "Chemin local complet",
+      "it": "Percorso locale completo",
+      "es": "Ruta local completa",
+      "el": "Πλήρης τοπική διαδρομή",
+      "pl": "Pełna ścieżka lokalna",
+      "cs": "Úplná místní cesta",
+      "ru": "Полный локальный путь"
+    },
+    "Search title, artist, album, genre or ID": {
+      "de": "Titel, Interpret, Album, Genre oder ID suchen",
+      "fr": "Chercher titre, artiste, album, genre ou ID",
+      "it": "Cerca titolo, artista, album, genere o ID",
+      "es": "Buscar título, artista, álbum, género o ID",
+      "el": "Αναζήτηση τίτλου, καλλιτέχνη, άλμπουμ, είδους ή ID",
+      "pl": "Szukaj tytułu, wykonawcy, albumu, gatunku lub ID",
+      "cs": "Hledat název, interpreta, album, žánr nebo ID",
+      "ru": "Поиск названия, исполнителя, альбома, жанра или ID"
+    },
+    "Search snapshot tracks": {
+      "de": "Snapshot-Titel durchsuchen",
+      "fr": "Rechercher des titres de l’instantané",
+      "it": "Cerca brani dello snapshot",
+      "es": "Buscar pistas de la instantánea",
+      "el": "Αναζήτηση κομματιών στιγμιότυπου",
+      "pl": "Szukaj utworów zrzutu",
+      "cs": "Hledat skladby snímku",
+      "ru": "Поиск треков снимка"
+    },
+    "Filter findings": {
+      "de": "Befunde filtern",
+      "fr": "Filtrer les constats",
+      "it": "Filtra riscontri",
+      "es": "Filtrar hallazgos",
+      "el": "Φιλτράρισμα ευρημάτων",
+      "pl": "Filtruj wyniki",
+      "cs": "Filtrovat zjištění",
+      "ru": "Фильтровать результаты"
+    },
+    "Filter report findings": {
+      "de": "Berichtsbefunde filtern",
+      "fr": "Filtrer les constats du rapport",
+      "it": "Filtra riscontri del rapporto",
+      "es": "Filtrar hallazgos del informe",
+      "el": "Φιλτράρισμα ευρημάτων αναφοράς",
+      "pl": "Filtruj wyniki raportu",
+      "cs": "Filtrovat zjištění zprávy",
+      "ru": "Фильтровать результаты отчёта"
+    },
+    "Full path to your backup.zip": {
+      "de": "Vollständiger Pfad zu backup.zip",
+      "fr": "Chemin complet de backup.zip",
+      "it": "Percorso completo di backup.zip",
+      "es": "Ruta completa de backup.zip",
+      "el": "Πλήρης διαδρομή προς backup.zip",
+      "pl": "Pełna ścieżka do backup.zip",
+      "cs": "Úplná cesta k backup.zip",
+      "ru": "Полный путь к backup.zip"
+    },
+    "Full path to your collection.xml": {
+      "de": "Vollständiger Pfad zu collection.xml",
+      "fr": "Chemin complet de collection.xml",
+      "it": "Percorso completo di collection.xml",
+      "es": "Ruta completa de collection.xml",
+      "el": "Πλήρης διαδρομή προς collection.xml",
+      "pl": "Pełna ścieżka do collection.xml",
+      "cs": "Úplná cesta k collection.xml",
+      "ru": "Полный путь к collection.xml"
+    },
+    "Track, artist, album or genre…": {
+      "de": "Titel, Interpret, Album oder Genre…",
+      "fr": "Titre, artiste, album ou genre…",
+      "it": "Brano, artista, album o genere…",
+      "es": "Pista, artista, álbum o género…",
+      "el": "Κομμάτι, καλλιτέχνης, άλμπουμ ή είδος…",
+      "pl": "Utwór, wykonawca, album lub gatunek…",
+      "cs": "Skladba, interpret, album nebo žánr…",
+      "ru": "Трек, исполнитель, альбом или жанр…"
+    },
+    "Choose sibling {id}": {
+      "de": "Duplikat {id} wählen",
+      "fr": "Choisir le doublon {id}",
+      "it": "Scegli la copia {id}",
+      "es": "Elegir el duplicado {id}",
+      "el": "Επιλογή αντιγράφου {id}",
+      "pl": "Wybierz duplikat {id}",
+      "cs": "Vybrat duplikát {id}",
+      "ru": "Выбрать дубликат {id}"
+    },
+    "References": {
+      "de": "Referenzen",
+      "fr": "Références",
+      "it": "Riferimenti",
+      "es": "Referencias",
+      "el": "Αναφορές",
+      "pl": "Odwołania",
+      "cs": "Odkazy",
+      "ru": "Ссылки"
+    },
+    "Minutes": {
+      "de": "Minuten",
+      "fr": "Minutes",
+      "it": "Minuti",
+      "es": "Minutos",
+      "el": "Λεπτά",
+      "pl": "Minuty",
+      "cs": "Minuty",
+      "ru": "Минуты"
+    },
+    "Re-scan after file changes.": {
+      "de": "Nach Dateiänderungen erneut scannen.",
+      "fr": "Relancez l’analyse après modification des fichiers.",
+      "it": "Ripeti la scansione dopo modifiche ai file.",
+      "es": "Vuelve a examinar tras cambios en los archivos.",
+      "el": "Σαρώστε ξανά μετά από αλλαγές αρχείων.",
+      "pl": "Skanuj ponownie po zmianie plików.",
+      "cs": "Po změnách souborů skenujte znovu.",
+      "ru": "Повторите сканирование после изменения файлов."
+    },
+    "from": {
+      "de": "von",
+      "fr": "du",
+      "it": "dal",
+      "es": "desde",
+      "el": "από",
+      "pl": "od",
+      "cs": "od",
+      "ru": "с"
+    },
+    "through": {
+      "de": "bis",
+      "fr": "au",
+      "it": "al",
+      "es": "hasta",
+      "el": "έως",
+      "pl": "do",
+      "cs": "do",
+      "ru": "по"
+    },
+    "Showing": {
+      "de": "Angezeigt",
+      "fr": "Affichage",
+      "it": "Visualizzati",
+      "es": "Mostrando",
+      "el": "Εμφανίζονται",
+      "pl": "Wyświetlono",
+      "cs": "Zobrazeno",
+      "ru": "Показано"
+    },
+    "Recorded plays / selected evidence": {
+      "de": "Erfasste Wiedergaben / gewählte Befunde",
+      "fr": "Lectures enregistrées / éléments sélectionnés",
+      "it": "Riproduzioni registrate / riscontri selezionati",
+      "es": "Reproducciones registradas / evidencias seleccionadas",
+      "el": "Καταγεγραμμένες αναπαραγωγές / επιλεγμένα ευρήματα",
+      "pl": "Zapisane odtworzenia / wybrane wyniki",
+      "cs": "Zaznamenaná přehrání / vybrané podklady",
+      "ru": "Записанные воспроизведения / выбранные данные"
+    },
+    "Full track duration (seconds)": {
+      "de": "Volle Titeldauer (Sekunden)",
+      "fr": "Durée totale des titres (secondes)",
+      "it": "Durata intera dei brani (secondi)",
+      "es": "Duración completa de pistas (segundos)",
+      "el": "Πλήρης διάρκεια κομματιών (δευτερόλεπτα)",
+      "pl": "Pełna długość utworów (sekundy)",
+      "cs": "Celá délka skladeb (sekundy)",
+      "ru": "Полная длительность треков (секунды)"
+    },
+    "Tonality is the saved tag, not a new key analysis. Different key notations stay separate. BPM means/medians weight each library entry equally; no half/double-time correction is applied.": {
+      "de": "Tonart ist der gespeicherte Tag, keine neue Analyse. Verschiedene Notationen bleiben getrennt. BPM-Mittelwert und Median gewichten jeden Eintrag gleich; keine Halb-/Doppeltempo-Korrektur.",
+      "fr": "La tonalité est le tag enregistré, pas une nouvelle analyse. Les notations restent distinctes. Moyennes et médianes BPM pondèrent chaque entrée également, sans correction de demi/double tempo.",
+      "it": "La tonalità è il tag salvato, non una nuova analisi. Le notazioni restano separate. Media e mediana BPM pesano ogni voce ugualmente, senza correzione a metà/doppio tempo.",
+      "es": "La tonalidad es la etiqueta guardada, no un análisis nuevo. Las notaciones quedan separadas. Media y mediana BPM ponderan cada entrada igual, sin corrección a mitad/doble tempo.",
+      "el": "Η τονικότητα είναι η αποθηκευμένη ετικέτα, όχι νέα ανάλυση. Οι σημειογραφίες μένουν χωριστές. Μέσοι και διάμεσοι BPM σταθμίζουν κάθε εγγραφή εξίσου, χωρίς διόρθωση μισού/διπλού tempo.",
+      "pl": "Tonacja to zapisany tag, nie nowa analiza. Notacje pozostają oddzielne. Średnie i mediany BPM ważą każdy wpis równo, bez korekty połowy/podwójnego tempa.",
+      "cs": "Tónina je uložený tag, nikoli nová analýza. Notace zůstávají oddělené. Průměr a medián BPM váží položky stejně, bez opravy polovičního/dvojitého tempa.",
+      "ru": "Тональность — сохранённый тег, не новый анализ. Обозначения остаются отдельно. Средние и медианы BPM учитывают записи поровну, без коррекции половинного/двойного темпа."
     }
   }
 }

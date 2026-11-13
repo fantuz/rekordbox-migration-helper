@@ -9,32 +9,36 @@ const insightOptions=(values)=>Object.entries(values).map(([key,label])=>'<optio
 let insightLastSnapshot='';
 
 function insightFilterMarkup(prefix){
-  const field=(name,label,input,cls='')=>'<label class="'+cls+'">'+esc(label)+input.replaceAll('@@ID@@',prefix+'-'+name)+'</label>';
-  const select='<select id="@@ID@@">',input='<input id="@@ID@@"';
-  return '<form id="'+prefix+'-filter-form">'+(prefix==='dj'?field('perspective',I18n.t("Perspective"),select+insightOptions(insightModes)+'</select>'):'')+
-    field('basis',I18n.t("Usage evidence"),select+("<option value=\"saved\">"+esc(I18n.t("Saved play count"))+"</option><option value=\"history\">"+esc(I18n.t("Captured history entries"))+"</option><option value=\"sessions\">"+esc(I18n.t("Distinct captured sessions"))+"</option></select>"))+
-    field('family',I18n.t("Genre family"),select+("<option value=\"\">"+esc(I18n.t("All families"))+"</option></select>"))+
-    field('genre',I18n.t("Saved genre tag"),select+("<option value=\"\">"+esc(I18n.t("All saved tags"))+"</option></select>"))+
-    field('tone',I18n.t("Saved tonality"),select+("<option value=\"\">"+esc(I18n.t("All keys / unknown"))+"</option></select>"))+
-    field('colour',I18n.t("Saved track colour"),select+("<option value=\"\">"+esc(I18n.t("All colours / unknown"))+"</option></select>"))+
-    field('usage',I18n.t("Recorded usage"),select+("<option value=\"\">"+esc(I18n.t("Any / unknown"))+"</option><option value=\"zero\">"+esc(I18n.t("Known zero"))+"</option><option value=\"low\">"+esc(I18n.t("Low · 1–3"))+"</option><option value=\"played\">"+esc(I18n.t("Positive count"))+"</option><option value=\"unknown\">"+esc(I18n.t("Unknown count"))+"</option></select>"))+
-    field('search',I18n.t("Title, artist, album or genre"),input+(" placeholder=\""+esc(I18n.t("Search captured tags"))+"\" autocomplete=\"off\">"),'insight-filter-wide')+
-    field('preparation',I18n.t("Preparation"),select+("<option value=\"\">"+esc(I18n.t("Any preparation"))+"</option><option value=\"manual\">"+esc(I18n.t("Manual cues"))+"</option><option value=\"mixed\">"+esc(I18n.t("Mixed manual / auto cues"))+"</option><option value=\"auto\">"+esc(I18n.t("Only automatic cues"))+"</option><option value=\"none\">"+esc(I18n.t("No cues"))+"</option><option value=\"unknown\">"+esc(I18n.t("Cue status unknown"))+"</option><option value=\"analysed\">"+esc(I18n.t("Saved as analyzed"))+"</option></select>"))+
-    ("<div class=\"insight-filter-actions\"><button type=\"submit\" class=\"button\">"+esc(I18n.t("Apply filters"))+"</button><button type=\"button\" class=\"text-button\" id=\"")+prefix+("-filter-reset\">"+esc(I18n.t("Reset"))+"</button></div>")+
-    ("<details><summary>"+esc(I18n.t("More criteria · BPM, length, stars and session dates"))+"</summary><div class=\"insight-extra-grid\">")+
-    field('bpm-min',I18n.t("Minimum BPM"),input+(" type=\"number\" min=\"0\" step=\"0.1\" placeholder=\""+esc(I18n.t("Any"))+"\">"))+
-    field('bpm-max',I18n.t("Maximum BPM"),input+(" type=\"number\" min=\"0\" step=\"0.1\" placeholder=\""+esc(I18n.t("Any"))+"\">"))+
-    field('min',I18n.t("Minimum minutes"),input+(" type=\"number\" min=\"0\" step=\"0.1\" placeholder=\""+esc(I18n.t("Any"))+"\">"))+
-    field('max',I18n.t("Maximum minutes"),input+(" type=\"number\" min=\"0\" step=\"0.1\" placeholder=\""+esc(I18n.t("Any"))+"\">"))+
-    field('rating-min',I18n.t("Minimum personal stars"),select+("<option value=\"\">"+esc(I18n.t("Any / unknown"))+"</option><option value=\"1\">1+</option><option value=\"2\">2+</option><option value=\"3\">3+</option><option value=\"4\">4+</option><option value=\"5\">5</option></select>"))+
-    field('from',I18n.t("History sessions from"),input+' type="date" disabled>')+field('to',I18n.t("History sessions through"),input+' type="date" disabled>')+
-    (prefix==='dj'?field('stars',I18n.t("Underplayed: minimum stars"),input+' type="number" min="0" max="5" value="3">')+
-      field('max-plays',I18n.t("Underplayed: maximum plays"),input+' type="number" min="0" value="3">')+
-      field('days',I18n.t("Rediscover: days since recorded use"),input+' type="number" min="1" max="36500" value="180">')+
-      field('random-mode',I18n.t("Random selection"),select+("<option value=\"balanced\">"+esc(I18n.t("Balance genre families"))+"</option><option value=\"uniform\">"+esc(I18n.t("Uniform across entries"))+"</option></select>"))+
-      field('sample',I18n.t("Random sample size"),input+' type="number" min="1" max="100" value="20">')+
-      field('seed',I18n.t("Repeatable random seed"),input+' value="next-set-1" maxlength="100">'):'')+
-    ("</div><p class=\"subtle\">"+esc(I18n.t("Session dates apply only to captured-history evidence. Least played excludes zero and unknown counts. Prepared means a saved analyzed flag and at least one manual cue. Captured metadata is used; staged edits remain separate."))+"</p></details></form>");
+  // Only fixed interface keys enter these markers; saved genre/track data stays raw.
+  const option=(value,key)=>'<option value="'+esc(value)+'"'+(/[A-Za-z]/.test(key)?' data-i18n="'+esc(key)+'"':'')+'>'+esc(/[A-Za-z]/.test(key)?I18n.t(key):key)+'</option>';
+  const select=items=>'<select id="@@ID@@">'+items.map(([value,key])=>option(value,key)).join('')+'</select>';
+  const placeholder=key=>' placeholder="'+esc(I18n.t(key))+'" data-i18n-placeholder="'+esc(key)+'"';
+  const input=(attributes='',hint='')=>'<input id="@@ID@@"'+(hint?placeholder(hint):'')+attributes+'>';
+  const field=(name,key,control,cls='')=>'<label class="'+cls+'">'+I18n.html(key)+control.replaceAll('@@ID@@',prefix+'-'+name)+'</label>';
+  const number=(attributes='')=>input(' type="number" min="0"'+attributes,'Any');
+  const modes=[['most','Most played'],['least','Least played · positive counts'],['zero','No recorded plays'],['ready','Prepared, no recorded plays'],['gems','Highly rated, underplayed'],['rediscover','Rediscover past rotation'],['recent','Recently added'],['last_used','Recently used'],['preparation','Preparation opportunities'],['random','Random discovery'],['all','All matching tracks']];
+  return '<form id="'+prefix+'-filter-form">'+(prefix==='dj'?field('perspective','Perspective',select(modes)):'')+
+    field('basis','Usage evidence',select([['saved','Saved play count'],['history','Captured history entries'],['sessions','Distinct captured sessions']]))+
+    field('family','Genre family',select([['','All families']]))+
+    field('genre','Saved genre tag',select([['','All saved tags']]))+
+    field('tone','Saved tonality',select([['','All keys / unknown']]))+
+    field('colour','Saved track colour',select([['','All colours / unknown']]))+
+    field('usage','Recorded usage',select([['','Any / unknown'],['zero','Known zero'],['low','Low · 1–3'],['played','Positive count'],['unknown','Unknown count']]))+
+    field('search','Title, artist, album or genre',input(' autocomplete="off"','Search captured tags'),'insight-filter-wide')+
+    field('preparation','Preparation',select([['','Any preparation'],['manual','Manual cues'],['mixed','Mixed manual / auto cues'],['auto','Only automatic cues'],['none','No cues'],['unknown','Cue status unknown'],['analysed','Saved as analyzed']]))+
+    '<div class="insight-filter-actions"><button type="submit" class="button">'+I18n.html('Apply filters')+'</button><button type="button" class="text-button" id="'+prefix+'-filter-reset">'+I18n.html('Reset')+'</button></div>'+
+    '<details id="'+prefix+'-more-criteria"><summary>'+I18n.html('More criteria · BPM, length, stars and session dates')+'</summary><div class="insight-extra-grid">'+
+    field('bpm-min','Minimum BPM',number(' step="0.1"'))+field('bpm-max','Maximum BPM',number(' step="0.1"'))+
+    field('min','Minimum minutes',number(' step="0.1"'))+field('max','Maximum minutes',number(' step="0.1"'))+
+    field('rating-min','Minimum personal stars',select([['','Any / unknown'],['1','1+'],['2','2+'],['3','3+'],['4','4+'],['5','5']]))+
+    field('from','History sessions from',input(' type="date" disabled'))+field('to','History sessions through',input(' type="date" disabled'))+
+    (prefix==='dj'?field('stars','Underplayed: minimum stars',input(' type="number" min="0" max="5" value="3"'))+
+      field('max-plays','Underplayed: maximum plays',input(' type="number" min="0" value="3"'))+
+      field('days','Rediscover: days since recorded use',input(' type="number" min="1" max="36500" value="180"'))+
+      field('random-mode','Random selection',select([['balanced','Balance genre families'],['uniform','Uniform across entries']]))+
+      field('sample','Random sample size',input(' type="number" min="1" max="100" value="20"'))+
+      field('seed','Repeatable random seed',input(' value="next-set-1" maxlength="100"')):'')+
+    '</div><p class="subtle">'+I18n.html('Session dates apply only to captured-history evidence. Least played excludes zero and unknown counts. Prepared means a saved analyzed flag and at least one manual cue. Captured metadata is used; staged edits remain separate.')+'</p></details></form>';
 }
 for(const prefix of ['dj','bubble','tonal']){
   $('#'+prefix+'-filters').innerHTML=insightFilterMarkup(prefix);
@@ -67,11 +71,11 @@ async function insightSnapshotOptions(prefix){
   const tone=$('#'+prefix+'-tone'),oldTone=tone.value,colour=$('#'+prefix+'-colour'),oldColour=colour.value;
   tone.innerHTML=("<option value=\"\">"+esc(I18n.t("All keys / unknown"))+"</option>")+options.tonalities.map(key=>'<option value="'+esc(JSON.stringify(key))+'">'+esc(key || I18n.t("Unknown / not captured"))+'</option>').join('');
   if(options.tonalities.some(key=>JSON.stringify(key)===oldTone))tone.value=oldTone;
-  colour.innerHTML=("<option value=\"\">"+esc(I18n.t("All colours / unknown"))+"</option>")+options.colours.map(c=>'<option value="'+esc(JSON.stringify(c.key))+'">'+esc(c.label)+' · '+num(c.tracks)+'</option>').join('');
+  colour.innerHTML=("<option value=\"\">"+esc(I18n.t("All colours / unknown"))+"</option>")+options.colours.map(c=>'<option value="'+esc(JSON.stringify(c.key))+'">'+esc(c.status==='unknown'?I18n.t('Colour not captured'):c.status==='unassigned'?I18n.t('No assigned colour'):c.label)+' · '+num(c.tracks)+'</option>').join('');
   if(options.colours.some(c=>JSON.stringify(c.key)===oldColour))colour.value=oldColour;
   for(const basis of ['history',"sessions"])$('#'+prefix+'-basis option[value="'+basis+'"]').disabled=!options.history_available;
   if(!options.history_available)$('#'+prefix+'-basis').value='saved';insightBasisControls(prefix);
-  $('#'+prefix+'-snapshot-note').textContent=num(options.entries)+" "+I18n.t("captured entries ·")+" "+(options.snapshot.captured?I18n.t("Snapshot")+" "+date(options.snapshot.captured):I18n.t("Capture date unavailable"))+' · '+(options.reference_date?I18n.t("Rediscovery reference")+" "+options.reference_date:I18n.t("Rediscovery date unavailable"))+' · '+(options.history_available?num(options.history_sessions)+" "+I18n.t("saved sessions"):I18n.t("Native session history unavailable"))+'. Captured metadata; originals stay unchanged.';
+  $('#'+prefix+'-snapshot-note').textContent=num(options.entries)+" "+I18n.t("captured entries ·")+" "+(options.snapshot.captured?I18n.t("Snapshot")+" "+date(options.snapshot.captured):I18n.t("Capture date unavailable"))+' · '+(options.reference_date?I18n.t("Rediscovery reference")+" "+options.reference_date:I18n.t("Rediscovery date unavailable"))+' · '+(options.history_available?num(options.history_sessions)+" "+I18n.t("saved sessions"):I18n.t("Native session history unavailable"))+'. '+I18n.t('Source files stay unchanged')+'.';
   if(prefix==='bubble'){
     $('#bubble-genre-rules').innerHTML='<dl>'+options.genre_rules.families.map(r=>'<dt>'+esc(r.family)+'</dt><dd>'+esc(r.aliases.join(', '))+'</dd>').join('')+'</dl><p class="subtle">'+esc(options.genre_rules.fallback)+'</p>';
   }
@@ -103,7 +107,7 @@ async function applyInsightFilters(prefix){
   else await loadDJData();
 }
 function insightEvidence(context){
-  return context.basis_label+(context.selected_sessions!==null?' · '+num(context.selected_sessions)+" "+I18n.t("sessions")+(context.from?' from '+context.from:'')+(context.to?' through '+context.to:''):" "+I18n.t("· Lifetime scope of the saved counter; reset history may be incomplete"))+
+  return I18n.t(context.basis_label)+(context.selected_sessions!==null?' · '+num(context.selected_sessions)+" "+I18n.t("sessions")+(context.from?' '+I18n.t('from')+' '+context.from:'')+(context.to?' '+I18n.t('through')+' '+context.to:''):" "+I18n.t("· Lifetime scope of the saved counter; reset history may be incomplete"))+
     (context.history_unresolved_entries && context.basis!=='saved'?' · '+num(context.history_unresolved_entries)+" "+I18n.t("history entries outside the captured collection are excluded"):'')+
     (context.history_undated_entries && context.basis!=='saved'?' · '+num(context.history_undated_entries)+" "+I18n.t("undated entries are excluded when a session-date filter is active"):'');
 }
@@ -116,22 +120,22 @@ function insightCards(stats,bubble=false){
   return cards.map(([title,value,note])=>'<div><span>'+esc(title)+'</span><strong>'+esc(value)+'</strong><small>'+esc(note)+'</small></div>').join('');
 }
 function insightTempoLine(stats){
-  const decimal=v=>insightUnknown(v)?I18n.t("Unknown"):Number(v).toLocaleString(undefined,{maximumFractionDigits:1});
+  const decimal=v=>insightUnknown(v)?I18n.t("Unknown"):Number(v).toLocaleString(I18n.language,{maximumFractionDigits:1});
   return [[I18n.t("Mean BPM"),decimal(stats.bpm_mean)],[I18n.t("Median BPM"),decimal(stats.bpm_median)],[I18n.t("BPM range"),insightUnknown(stats.bpm_min)?I18n.t("Unknown"):decimal(stats.bpm_min)+'–'+decimal(stats.bpm_max)],[I18n.t("Average length"),insightDuration(stats.duration_mean)],[I18n.t("Median length"),insightDuration(stats.duration_median)]].map(([label,value])=>'<div><span>'+esc(label)+'</span><b>'+esc(value)+'</b></div>').join('')+'<small>'+num(stats.bpm_known)+" "+I18n.t("known BPM ·")+" "+num(stats.bpm_unknown)+(" "+esc(I18n.t("unknown. Each entry has equal weight; full track length is not time played."))+"</small>");
 }
 function insightTrackTable(rows,basis){
   if(!rows.length)return ("<p class=\"subtle\">"+esc(I18n.t("No entries match this perspective and these filters. Unknown usage, dates and preparation are not silently treated as known zero."))+"</p>");
-  return ("<table><thead><tr><th>"+esc(I18n.t("Track / artist"))+"</th><th>"+esc(I18n.t("Saved genre"))+"</th><th>")+esc(basis)+("</th><th>"+esc(I18n.t("Personal stars"))+"</th><th>"+esc(I18n.t("Preparation"))+"</th><th>"+esc(I18n.t("BPM / length"))+"</th><th>"+esc(I18n.t("Recorded dates"))+"</th></tr></thead><tbody>")+rows.map(t=>'<tr><td><button class="insight-track-title text-button" data-insight-open="'+esc(t.id)+'">'+esc(t.title || I18n.t("Untitled track"))+'</button><span class="insight-track-artist">'+esc(t.artist || I18n.t("Artist unavailable"))+'</span>'+(t.reason && ![I18n.t("All matching tracks"),I18n.t("Most played"),I18n.t("Least played · positive counts")].includes(t.reason)?'<small class="insight-reason">'+esc(t.reason)+'</small>':'')+'</td><td>'+esc(t.genre || '(blank)')+'<span class="insight-track-note">'+esc(t.family)+'</span></td><td><span class="insight-play-value">'+esc(insightValue(t.plays))+'</span></td><td>'+esc(t.rating===null?I18n.t("Unknown"):t.rating===0?I18n.t("Unrated"):t.rating+' / 5')+'</td><td>'+esc({get manual(){return I18n.t("Manual cues");},get mixed(){return I18n.t("Manual + auto");},get auto(){return I18n.t("Only auto");},get none(){return I18n.t("No cues");},get unknown(){return I18n.t("Unknown");}}[t.preparation])+'<span class="insight-track-note">'+insightValue(t.manual_cues)+' manual · '+(t.analysed===true?I18n.t("Analyzed"):t.analysed===false?I18n.t("Not marked analyzed"):I18n.t("Analysis unknown"))+'</span></td><td>'+esc(insightValue(t.bpm))+' BPM<span class="insight-track-note">'+esc(insightDuration(t.duration))+("</span></td><td>"+esc(I18n.t("Last evidence:"))+" ")+esc(t.evidence_last_date || I18n.t("Unknown"))+(t.evidence_date_after_snapshot?("<span class=\"insight-track-note\">"+esc(I18n.t("Date is after snapshot · review"))+"</span>"):'')+("<span class=\"insight-track-note\">"+esc(I18n.t("Added:"))+" ")+esc(t.date_added || I18n.t("Unknown"))+'</span></td></tr>').join('')+'</tbody></table>';
+  return ("<table><thead><tr><th>"+esc(I18n.t("Track / artist"))+"</th><th>"+esc(I18n.t("Saved genre"))+"</th><th>")+esc(I18n.t(basis))+("</th><th>"+esc(I18n.t("Personal stars"))+"</th><th>"+esc(I18n.t("Preparation"))+"</th><th>"+esc(I18n.t("BPM / length"))+"</th><th>"+esc(I18n.t("Recorded dates"))+"</th></tr></thead><tbody>")+rows.map(t=>'<tr><td><button class="insight-track-title text-button" data-insight-open="'+esc(t.id)+'">'+esc(t.title || I18n.t("Untitled track"))+'</button><span class="insight-track-artist">'+esc(t.artist || I18n.t("Artist unavailable"))+'</span>'+(t.reason && !["All matching tracks","Most played","Least played · positive counts"].includes(t.reason)?'<small class="insight-reason">'+esc(I18n.t(t.reason))+'</small>':'')+'</td><td>'+esc(t.genre || I18n.t('(blank tag)'))+'<span class="insight-track-note">'+esc(t.family)+'</span></td><td><span class="insight-play-value">'+esc(insightValue(t.plays))+'</span></td><td>'+esc(t.rating===null?I18n.t("Unknown"):t.rating===0?I18n.t("Unrated"):t.rating+' / 5')+'</td><td>'+esc({get manual(){return I18n.t("Manual cues");},get mixed(){return I18n.t("Manual + auto");},get auto(){return I18n.t("Only auto");},get none(){return I18n.t("No cues");},get unknown(){return I18n.t("Unknown");}}[t.preparation])+'<span class="insight-track-note">'+insightValue(t.manual_cues)+(" "+I18n.t("Manual cues")+" \u00b7 ")+(t.analysed===true?I18n.t("Analyzed"):t.analysed===false?I18n.t("Not marked analyzed"):I18n.t("Analysis unknown"))+'</span></td><td>'+esc(insightValue(t.bpm))+' BPM<span class="insight-track-note">'+esc(insightDuration(t.duration))+("</span></td><td>"+esc(I18n.t("Last evidence:"))+" ")+esc(t.evidence_last_date || I18n.t("Unknown"))+(t.evidence_date_after_snapshot?("<span class=\"insight-track-note\">"+esc(I18n.t("Date is after snapshot · review"))+"</span>"):'')+("<span class=\"insight-track-note\">"+esc(I18n.t("Added:"))+" ")+esc(t.date_added || I18n.t("Unknown"))+'</span></td></tr>').join('')+'</tbody></table>';
 }
 async function loadDJData(){
   const state=insightState.dj,revision=++state.revision;if(!state.options){state.result=null;$('#dj-tracks').innerHTML=("<p>"+esc(I18n.t("Save or choose a collection snapshot to begin."))+"</p>");for(const id of ['dj-summary','dj-balance','dj-tempo-stats','dj-result-note','dj-count'])$('#'+id).innerHTML='';$('#dj-result-title').textContent=I18n.t("Choose a collection snapshot");$('#dj-evidence').textContent='';$('#dj-csv').hidden=true;$('#dj-save-report').disabled=true;$('#dj-prev').disabled=true;$('#dj-next').disabled=true;return;}
   const args={...insightArgs('dj'),offset:state.offset};$('#dj-tracks').classList.add('insight-loading');
   try{
     const r=await api('/api/insights/tracks?'+new URLSearchParams(args));if(revision!==state.revision)return;state.result=r;
-    $('#dj-result-title').textContent=r.title;$('#dj-evidence').textContent=insightEvidence(r.context);
+    $('#dj-result-title').textContent=insightModes[r.perspective] || r.title;$('#dj-evidence').textContent=insightEvidence(r.context);
     $('#dj-summary').innerHTML=insightCards(r.result_stats);$('#dj-tempo-stats').innerHTML=insightTempoLine(r.result_stats);$('#dj-tracks').innerHTML=insightTrackTable(r.rows,r.context.basis_label);bindTrackDetails('#dj-tracks',args.snapshot);
-    $('#dj-result-note').textContent=num(r.scope_stats.entries)+" "+I18n.t("entries in the filtered collection ·")+" "+num(r.eligible)+" "+I18n.t("eligible for this perspective")+(r.seed?' · '+num(r.total)+" "+I18n.t("sampled using seed “")+r.seed+'”':'')+(r.scope_stats.top_ten_play_share!==null?" "+I18n.t("· Top ten entries account for")+" "+r.scope_stats.top_ten_play_share+I18n.t("% of recorded usage in that filtered collection."):'.')+(r.perspective==='rediscover' && !r.rediscovery_date_available?" "+I18n.t("A reliable snapshot reference date is unavailable."):'');
-    $('#dj-count').textContent=num(r.total)+' entries · '+(r.total?num(state.offset+1)+'–'+num(Math.min(state.offset+50,r.total)):'0');$('#dj-prev').disabled=!state.offset;$('#dj-next').disabled=state.offset+50>=r.total;
+    $('#dj-result-note').textContent=num(r.scope_stats.entries)+" "+I18n.t("entries in the filtered collection ·")+" "+num(r.eligible)+" "+I18n.t("eligible for this perspective")+(r.seed?' · '+num(r.total)+" "+I18n.t("sampled using seed “")+r.seed+'”':'')+(r.scope_stats.top_ten_play_share!==null?" "+I18n.t("· Top ten entries account for")+" "+num(r.scope_stats.top_ten_play_share)+I18n.t("% of recorded usage in that filtered collection."):'.')+(r.perspective==='rediscover' && !r.rediscovery_date_available?" "+I18n.t("A reliable snapshot reference date is unavailable."):'');
+    $('#dj-count').textContent=num(r.total)+(" "+I18n.t("entries")+" \u00b7 ")+(r.total?num(state.offset+1)+'–'+num(Math.min(state.offset+50,r.total)):'0');$('#dj-prev').disabled=!state.offset;$('#dj-next').disabled=state.offset+50>=r.total;
     $('#dj-csv').hidden=false;$('#dj-csv').href='/api/insights/tracks.csv?'+new URLSearchParams(insightArgs('dj'));$('#dj-save-report').disabled=false;
     $$('[data-dj-preset]').forEach(b=>b.classList.toggle('selected',b.dataset.djPreset===r.perspective));renderGenreBalance();
   }finally{if(revision===state.revision)$('#dj-tracks').classList.remove('insight-loading');}
@@ -140,7 +144,7 @@ function renderGenreBalance(){
   const r=insightState.dj.result;if(!r)return;const groups=r.genre_balance.slice(),order=$('#dj-balance-order').value;
   if(order==='gap')groups.sort((a,b)=>(b.exploration_gap ?? -Infinity)-(a.exploration_gap ?? -Infinity) || b.entries-a.entries);
   if(order==='collection')groups.sort((a,b)=>b.entries-a.entries);
-  $('#dj-balance').innerHTML=groups.slice(0,10).map(g=>'<button class="balance-row" data-balance-family="'+esc(g.family)+'"><span>'+esc(g.family)+'<b>'+num(g.entries)+'</b></span><div class="balance-rails"><i class="balance-library" style="width:'+Math.min(100,g.library_share || 0)+'%"></i><i class="balance-plays" style="width:'+Math.min(100,g.play_share || 0)+'%"></i></div><small>'+num(g.recorded_plays)+' recorded · '+num(g.known_usage)+' known / '+num(g.entries)+" "+I18n.t("entries")+(order==='gap'?(g.exploration_gap===null?" "+I18n.t("· insufficient play data"):" "+I18n.t("· gap")+" "+g.exploration_gap.toFixed(1)+" "+I18n.t("percentage points")):'')+'</small></button>').join('') || ("<p class=\"subtle\">"+esc(I18n.t("No groups in this scope."))+"</p>");
+  $('#dj-balance').innerHTML=groups.slice(0,10).map(g=>'<button class="balance-row" data-balance-family="'+esc(g.family)+'"><span>'+esc(g.family)+'<b>'+num(g.entries)+'</b></span><div class="balance-rails"><i class="balance-library" style="width:'+Math.min(100,g.library_share || 0)+'%"></i><i class="balance-plays" style="width:'+Math.min(100,g.play_share || 0)+'%"></i></div><small>'+num(g.recorded_plays)+(" "+I18n.t("Recorded usage")+" \u00b7 ")+num(g.known_usage)+(" "+I18n.t("known counters")+" / ")+num(g.entries)+" "+I18n.t("entries")+(order==='gap'?(g.exploration_gap===null?" "+I18n.t("· insufficient play data"):" "+I18n.t("· gap")+" "+g.exploration_gap.toFixed(1)+" "+I18n.t("percentage points")):'')+'</small></button>').join('') || ("<p class=\"subtle\">"+esc(I18n.t("No groups in this scope."))+"</p>");
   $$('[data-balance-family]').forEach(b=>b.onclick=wrap(async()=>{$('#dj-family').value=b.dataset.balanceFamily;$('#dj-genre').value='';await applyInsightFilters('dj');}));
 }
 $$('[data-dj-preset]').forEach(b=>b.onclick=wrap(async()=>{
@@ -170,7 +174,7 @@ async function loadBubbleData(){
     if(revision!==state.revision)return;state.result=r;
     $('#bubble-summary').innerHTML=insightCards(r.summary,true);$('#bubble-evidence').textContent=insightEvidence(r.context);
     renderBubbleBreadcrumbs(r.context.breadcrumbs);renderColourLegend();renderBubbleMap();
-    $('#bubble-tracks').innerHTML=insightTrackTable(tracks.rows,tracks.context.basis_label);$('#bubble-track-count').textContent=num(tracks.total)+' entries · '+(tracks.total?num(state.offset+1)+'–'+num(Math.min(state.offset+50,tracks.total)):'0');
+    $('#bubble-tracks').innerHTML=insightTrackTable(tracks.rows,tracks.context.basis_label);$('#bubble-track-count').textContent=num(tracks.total)+(" "+I18n.t("entries")+" \u00b7 ")+(tracks.total?num(state.offset+1)+'–'+num(Math.min(state.offset+50,tracks.total)):'0');
     bindTrackDetails('#bubble-tracks',args.snapshot);
     $('#bubble-tracks-prev').disabled=!state.offset;$('#bubble-tracks-next').disabled=state.offset+50>=tracks.total;
     $('#bubble-csv').hidden=false;$('#bubble-csv').href='/api/insights/tracks.csv?'+new URLSearchParams(args);
@@ -197,7 +201,7 @@ function bubbleTextColor(group){
 function bubbleWeight(value,metric){return metric==='duration'?(value<3600?num(Math.round(value/60))+' min':num(Math.round(value/360)/10)+' h'):num(value);}
 function bubbleSelected(group){
   const r=insightState.bubble.result;
-  $('#bubble-selected').innerHTML='<h4>'+esc(group.label)+'</h4><p><b>'+esc(bubbleWeight(group.value,r.metric))+'</b> · '+esc(r.metric_label)+'</p><p>'+num(group.entries)+' entries · '+num(group.unknown_usage)+" "+I18n.t("unknown usage counts ·")+" "+num(group.weight_unknown_entries)+(" "+esc(I18n.t("unknown size inputs"))+"</p><p>"+esc(I18n.t("Mean BPM:"))+" ")+esc(group.bpm_mean===null?I18n.t("Unknown"):group.bpm_mean.toFixed(1))+("</p><small>"+esc(I18n.t("Saved tags behind this category")))+(group.saved_tags_total>8?" "+I18n.t("· first 8 of")+" "+num(group.saved_tags_total):'')+'</small><ul>'+group.saved_tags.map(t=>'<li>'+esc(t.tag)+' · '+num(t.tracks)+'</li>').join('')+'</ul>';
+  $('#bubble-selected').innerHTML='<h4>'+esc(group.label)+'</h4><p><b>'+esc(bubbleWeight(group.value,r.metric))+'</b> · '+esc(I18n.t(r.metric_label))+'</p><p>'+num(group.entries)+(" "+I18n.t("entries")+" \u00b7 ")+num(group.unknown_usage)+" "+I18n.t("unknown usage counts ·")+" "+num(group.weight_unknown_entries)+(" "+esc(I18n.t("unknown size inputs"))+"</p><p>"+esc(I18n.t("Mean BPM:"))+" ")+esc(group.bpm_mean===null?I18n.t("Unknown"):group.bpm_mean.toFixed(1))+("</p><small>"+esc(I18n.t("Saved tags behind this category")))+(group.saved_tags_total>8?" "+I18n.t("· first 8 of")+" "+num(group.saved_tags_total):'')+'</small><ul>'+group.saved_tags.map(t=>'<li>'+esc(t.tag)+' · '+num(t.tracks)+'</li>').join('')+'</ul>';
 }
 const svgNode=(name,attrs={})=>{const element=document.createElementNS('http://www.w3.org/2000/svg',name);for(const [key,value] of Object.entries(attrs))element.setAttribute(key,value);return element;};
 function bubbleLabelLines(label,characters){
@@ -216,9 +220,9 @@ function renderBubbleMap(){
     const root=d3.hierarchy({children:positive}).sum(d=>d.value || 0).sort((a,b)=>b.value-a.value);
     d3.pack().size([940,680]).padding(10)(root);
     for(const node of root.children || []){
-      const group=node.data,g=svgNode('g',{class:'bubble-node',transform:'translate('+node.x+','+node.y+')',role:'button',tabindex:'0','aria-label':group.label+', '+bubbleWeight(group.value,r.metric)+', '+group.entries+' entries. '+(r.dimension==='tracks'?I18n.t("Inspect track"):I18n.t("Drill down"))});
+      const group=node.data,g=svgNode('g',{class:'bubble-node',transform:'translate('+node.x+','+node.y+')',role:'button',tabindex:'0','aria-label':group.label+', '+bubbleWeight(group.value,r.metric)+', '+num(group.entries)+' '+I18n.t('entries')+'. '+(r.dimension==='tracks'?I18n.t("Inspect track"):I18n.t("Drill down"))});
       const circle=svgNode('circle',{r:node.r,fill:bubbleColor(group),stroke:'#ffffff','stroke-width':2});g.append(circle);
-      const tooltip=svgNode('title');tooltip.textContent=group.label+' · '+num(group.entries)+' entries · '+num(group.recorded_plays)+" "+I18n.t("recorded usage");g.append(tooltip);
+      const tooltip=svgNode('title');tooltip.textContent=group.label+' · '+num(group.entries)+(" "+I18n.t("entries")+" \u00b7 ")+num(group.recorded_plays)+" "+I18n.t("recorded usage");g.append(tooltip);
       if(node.r>=18){
         const font=Math.max(16,Math.min(26,node.r/4)),chars=Math.max(6,Math.floor(node.r*1.55/(font*.56)));
         const lines=node.r>=42?bubbleLabelLines(group.label,chars):[];
@@ -232,11 +236,11 @@ function renderBubbleMap(){
     }
   }else{const message=svgNode('text',{x:470,y:320,'text-anchor':'middle',fill:'currentColor','font-size':20});message.textContent=r.groups.length?I18n.t("No positive weights · try sizing by track count"):I18n.t("No entries in this branch");svg.append(message);}
   $('#bubble-svg').disabled=!r.groups.length;
-  $('#bubble-group-title').textContent=insightDims[r.dimension];$('#bubble-group-count').textContent=num(r.groups_total)+' categories · '+(r.groups_total?num(r.group_offset+1)+'–'+num(Math.min(r.group_offset+60,r.groups_total)):'0');
+  $('#bubble-group-title').textContent=insightDims[r.dimension];$('#bubble-group-count').textContent=num(r.groups_total)+(" "+I18n.t("Categories")+" \u00b7 ")+(r.groups_total?num(r.group_offset+1)+'–'+num(Math.min(r.group_offset+60,r.groups_total)):'0');
   $('#bubble-groups').innerHTML=r.groups.map((g,i)=>'<button class="bubble-group-button" data-bubble-index="'+i+'"><i class="bubble-swatch" style="background:'+bubbleColor(g)+'"></i><span>'+esc(g.label)+'</span><b>'+esc(bubbleWeight(g.value,r.metric))+'</b></button>').join('');
   $$('[data-bubble-index]').forEach(button=>{const group=r.groups[Number(button.dataset.bubbleIndex)];button.onclick=wrap(()=>drillBubble(group));button.onmouseenter=()=>bubbleSelected(group);button.onfocus=()=>bubbleSelected(group);});
   $('#bubble-groups-prev').disabled=!r.group_offset;$('#bubble-groups-next').disabled=r.group_offset+60>=r.groups_total;
-  $('#bubble-map-note').textContent=I18n.t("Area:")+" "+r.metric_label+'. Showing '+num(r.groups.length)+" "+I18n.t("of")+" "+num(r.groups_total)+' categories'+(r.groups_total>60?" "+I18n.t("on this page; use Next groups to see the rest"):'')+'. '+num(r.zero_weight_groups)+" "+I18n.t("categories have zero/unknown weight and remain in the list. Compare circle areas within this page; full track length is not time played.");
+  $('#bubble-map-note').textContent=I18n.t("Area:")+" "+I18n.t(r.metric_label)+'. '+I18n.t('Showing')+' '+num(r.groups.length)+" "+I18n.t("of")+" "+num(r.groups_total)+(" "+I18n.t("Categories")+"")+(r.groups_total>60?" "+I18n.t("on this page; use Next groups to see the rest"):'')+'. '+num(r.zero_weight_groups)+" "+I18n.t("categories have zero/unknown weight and remain in the list. Compare circle areas within this page; full track length is not time played.");
   $('#bubble-color-note').textContent={get group(){return I18n.t("Color identifies categories. Exact counts remain in the list.");},preparation:I18n.t("Manual-cue coverage (known entries): blue <25%, cyan 25–74%, green ≥75%. Gray: unknown. Analysis is separate."),rating:I18n.t("Mean saved stars, excluding unrated entries: purple <2; blue 2–3.99; green ≥4. Gray: no ratings."),saved:I18n.t("Saved track colour; gray means no single known colour. Inferred RGB is identified. Cue colours are separate.")}[$('#bubble-color').value];
   if(r.groups.length)bubbleSelected(r.groups[0]);
 }
@@ -265,12 +269,13 @@ $('#bubble-svg').onclick=()=>{
 
 function colourDisplayLabel(key,fallback){
   const options=insightState.bubble.options,colour=options?.colours.find(c=>c.key===key),meaning=colour && options.colour_meanings?.[colour.hex || colour.key];
-  return meaning?meaning+' · '+fallback:fallback;
+  const label=colour?.status==='unknown'?I18n.t('Colour not captured'):colour?.status==='unassigned'?I18n.t('No assigned colour'):fallback;
+  return meaning?meaning+' · '+label:label;
 }
 function renderColourLegend(){
   const options=insightState.bubble.options;if(!options)return;
   $('#bubble-colour-meanings').hidden=!($('#bubble-color').value==='saved' || insightState.bubble.dimension==='colour' || insightState.bubble.path.some(p=>p.dimension==='colour'));
-  $('#colour-meanings-fields').innerHTML=options.colours.filter(c=>c.status==='assigned').map(c=>'<label>'+esc(c.label)+' · '+num(c.tracks)+(" "+esc("entries")+"<input data-colour-legend=\"")+esc(c.hex || c.key)+'" value="'+esc(options.colour_meanings?.[c.hex || c.key] || '')+("\" maxlength=\"120\" placeholder=\""+esc(I18n.t("Optional: opener, banger, finale…"))+"\"></label>")).join('') || ("<p class=\"subtle\">"+esc(I18n.t("No assigned colours were captured. Unknown colour data needs a fresh native capture or an XML containing Colour fields."))+"</p>");
+  $('#colour-meanings-fields').innerHTML=options.colours.filter(c=>c.status==='assigned').map(c=>'<label>'+esc(c.status==='unknown'?I18n.t('Colour not captured'):c.status==='unassigned'?I18n.t('No assigned colour'):c.label)+' · '+num(c.tracks)+(" "+esc(I18n.t("entries"))+"<input data-colour-legend=\"")+esc(c.hex || c.key)+'" value="'+esc(options.colour_meanings?.[c.hex || c.key] || '')+("\" maxlength=\"120\" placeholder=\""+esc(I18n.t("Optional: opener, banger, finale…"))+"\"></label>")).join('') || ("<p class=\"subtle\">"+esc(I18n.t("No assigned colours were captured. Unknown colour data needs a fresh native capture or an XML containing Colour fields."))+"</p>");
 }
 $('#colour-meanings-form').onsubmit=wrap(async event=>{
   event.preventDefault();const meanings=Object.fromEntries($$('[data-colour-legend]').map(input=>[input.dataset.colourLegend,input.value]));
@@ -288,8 +293,8 @@ async function loadTonalData(){
   const max=Math.max(1,...r.bpm_histogram.map(b=>b.tracks));
   $('#tonal-histogram').innerHTML=r.bpm_histogram.map((b,i)=>'<button class="tempo-band" data-tempo-band="'+i+'"><span>'+esc(b.minimum+'–'+b.maximum)+'</span><span class="hist-bar"><i style="width:'+100*b.tracks/max+'%"></i></span><b>'+num(b.tracks)+'</b></button>').join('')+'<p class="subtle">'+num(r.summary.bpm_unknown)+" "+I18n.t("entries without known BPM.")+(r.bpm_bands_total>200?" "+I18n.t("First 200 bands shown; narrow the BPM range to inspect unusual values."):'')+'</p>';
   $('#tonal-keys').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Saved tonality"))+"</th><th>"+esc(I18n.t("Entries"))+"</th><th>"+esc(I18n.t("Recorded usage"))+"</th><th>"+esc(I18n.t("Mean / median BPM"))+"</th></tr></thead><tbody>")+r.tonalities.map((key,i)=>'<tr><td><button class="text-button" data-tonality-index="'+i+'">'+esc(key.label)+'</button></td><td>'+num(key.entries)+'</td><td>'+num(key.recorded_plays)+'</td><td>'+esc(key.bpm_mean===null?I18n.t("Unknown"):key.bpm_mean.toFixed(1))+' / '+esc(key.bpm_median===null?I18n.t("Unknown"):Number(key.bpm_median).toFixed(1))+'</td></tr>').join('')+'</tbody></table>';
-  $('#tonal-note').textContent=r.note;$('#tonal-tracks').innerHTML=insightTrackTable(tracks.rows,tracks.context.basis_label);bindTrackDetails('#tonal-tracks',args.snapshot);
-  $('#tonal-count').textContent=num(tracks.total)+' entries · '+(tracks.total?num(state.offset+1)+'–'+num(Math.min(state.offset+50,tracks.total)):'0');$('#tonal-prev').disabled=!state.offset;$('#tonal-next').disabled=state.offset+50>=tracks.total;
+  $('#tonal-note').textContent=I18n.t(r.note);$('#tonal-tracks').innerHTML=insightTrackTable(tracks.rows,tracks.context.basis_label);bindTrackDetails('#tonal-tracks',args.snapshot);
+  $('#tonal-count').textContent=num(tracks.total)+(" "+I18n.t("entries")+" \u00b7 ")+(tracks.total?num(state.offset+1)+'–'+num(Math.min(state.offset+50,tracks.total)):'0');$('#tonal-prev').disabled=!state.offset;$('#tonal-next').disabled=state.offset+50>=tracks.total;
   $('#tonal-csv').hidden=false;$('#tonal-csv').href='/api/insights/tracks.csv?'+new URLSearchParams(args);
   $$('[data-tonality-index]').forEach(b=>b.onclick=wrap(async()=>{$('#tonal-tone').value=JSON.stringify(r.tonalities[Number(b.dataset.tonalityIndex)].tonality);await applyInsightFilters('tonal');}));
   $$('[data-tempo-band]').forEach(b=>b.onclick=wrap(async()=>{const band=r.bpm_histogram[Number(b.dataset.tempoBand)];$('#tonal-bpm-min').value=band.minimum;$('#tonal-bpm-max').value=band.maximum;await applyInsightFilters('tonal');}));

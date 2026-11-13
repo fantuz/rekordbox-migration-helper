@@ -57,6 +57,12 @@ def main():
                     assert page.locator('.nav[data-view="review"]').inner_text().strip().endswith(messages[code]['Duplicate review'])
                     assert page.evaluate('window.metadataExecuted') is None
                     assert page.locator('#language').input_value()==code
+                    assert page.locator('#dj-perspective option[value="most"]').inner_text()==messages[code]['Most played']
+                    assert page.locator('#dj-search').get_attribute('placeholder')==messages[code]['Search captured tags']
+                    assert page.locator('#dj-filter-reset').inner_text()==messages[code]['Reset']
+                    assert page.locator('#dj-result-title').inner_text()==messages[code]['All matching tracks']
+                    assert page.locator('#search').get_attribute('placeholder')==messages[code]['Find a track or artist']
+                    assert page.locator('#search').get_attribute('aria-label')==messages[code]['Search candidate pairs']
                     report['languages'].append({'code':code,'app':'passed','metadata_unchanged':True})
                     if code in ('en','de','el','ru'):page.screenshot(path=str(args.output/(code+'-insights.png')),full_page=False)
                 page.locator('[data-insight-open="t0"]').click();page.wait_for_selector('#track-detail-dialog[open]')
