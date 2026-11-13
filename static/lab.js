@@ -25,6 +25,8 @@ async function loadLab() {
 }
 async function labSnapshotChanged(clear=true) {
   const s=labInfo.snapshots.find(r=>r.id===labSnapshot());
+  $('#lab-unlock').disabled=!s;
+  if(!s){labEdited=null;labUnlocked=false;$('#lab-unlock').checked=false;$('#lab-tracks').replaceChildren();$('#lab-tracks-count').textContent='';$('#lab-edit-form').hidden=true;$('#lab-edit-state').textContent=I18n.t('Read-only');}
   $('#lab-snapshot-info').textContent=s?I18n.t("Scope:")+" "+s.scope_key+" "+I18n.t("· Original snapshots remain immutable.")+" "+(s.scope_key.startsWith('session:')?I18n.t("Staged edits apply to copy exports from this same workspace."):I18n.t("Edits apply to offline HTML; they do not attach to a different XML/ZIP workspace.")):I18n.t("Save a snapshot from a loaded workspace or Source analyzer capture.");
   if(clear){labTrackOffset=0;labEdited=null;$('#lab-edit-form').hidden=true;}
   if(s)await labLoadTracks();
