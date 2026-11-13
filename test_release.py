@@ -19,6 +19,13 @@ with patch.object(sys,'path',[str(Path(__file__).parent/'packaging'),*sys.path])
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_plain_versions_publish_stable_unless_preview_is_requested(self):
+        self.assertFalse(release.release_is_preview('0.4.5'))
+        self.assertTrue(release.release_is_preview('0.4.5',requested=True))
+        for suffix in ('alpha.1','beta.2','rc.1'):
+            self.assertTrue(release.release_is_preview('0.4.6-'+suffix))
+        with self.assertRaises(ValueError):release.release_is_preview('not-a-version')
+
     def test_native_artifact_layouts_are_collected_without_private_or_unexpected_files(self):
         import sys
         with patch.object(sys,'path',[str(Path(__file__).parent/'packaging'),*sys.path]):

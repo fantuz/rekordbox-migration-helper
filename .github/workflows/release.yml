@@ -16,9 +16,9 @@ on:
         type: boolean
         default: false
       prerelease:
-        description: Mark as a preview / prerelease
+        description: Publish as a preview (alpha/beta/rc versions are always previews)
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
@@ -35,6 +35,7 @@ jobs:
     outputs:
       version: ${{ steps.plan.outputs.version }}
       tag: ${{ steps.plan.outputs.tag }}
+      prerelease: ${{ steps.plan.outputs.prerelease }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,6 +44,7 @@ jobs:
       - id: plan
         env:
           REQUESTED_RELEASE_VERSION: ${{ inputs.release_version }}
+          REQUESTED_PRERELEASE: ${{ inputs.prerelease }}
           RELEASE_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           GH_TOKEN: ${{ github.token }}
         run: python3 packaging/prepare_release.py
@@ -74,7 +76,7 @@ jobs:
       RELEASE_TAG: ${{ needs.plan.outputs.tag }}
       RELEASE_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       PUBLISH_REQUESTED: ${{ github.event_name == 'push' || inputs.publish }}
-      PRERELEASE_REQUESTED: ${{ github.event_name == 'push' || inputs.prerelease || contains(needs.plan.outputs.version, '-') }}
+      PRERELEASE_REQUESTED: ${{ needs.plan.outputs.prerelease }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -102,5 +104,9 @@ jobs:
           args=(--draft --verify-tag --target "$GITHUB_SHA" --title "Library Workbench $REQUESTED_RELEASE_VERSION" --notes-file release-assets/RELEASE-NOTES.md)
           if [[ "$PRERELEASE_REQUESTED" == true ]]; then args+=(--prerelease); fi
           gh release create "$RELEASE_TAG" release-assets/Library-Workbench-*.zip release-assets/Library-Workbench-*.tar.gz release-assets/SHA256SUMS "${args[@]}"
-          if [[ "$PUBLISH_REQUESTED" == true ]]; then gh release edit "$RELEASE_TAG" --draft=false; fi
+          if [[ "$PUBLISH_REQUESTED" == true ]]; then
+            publish_args=(--draft=false)
+            if [[ "$PRERELEASE_REQUESTED" != true ]]; then publish_args+=(--latest); fi
+            gh release edit "$RELEASE_TAG" "${publish_args[@]}"
+          fi
           gh release view "$RELEASE_TAG" --json url --jq '.url' >> "$GITHUB_STEP_SUMMARY"
