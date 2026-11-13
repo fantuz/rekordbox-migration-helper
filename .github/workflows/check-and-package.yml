@@ -189,11 +189,13 @@ jobs:
         run: |
           docker run --rm --volume "$PWD:/work" --workdir /work \
             --env GITHUB_SHA --env LIBRARY_WORKBENCH_VERSION --env LIBRARY_WORKBENCH_BUILD_IMAGE \
+            --env "WORKBENCH_BUILD_UID=$(id -u)" --env "WORKBENCH_BUILD_GID=$(id -g)" \
             "$LIBRARY_WORKBENCH_BUILD_IMAGE" /bin/bash -eu -c '
               dnf install -y bzip2-devel libffi-devel xz-devel openssl-devel sqlite-devel zlib-devel
               /opt/python/cp313-cp313/bin/python packaging/build_linux_python.py
               /opt/workbench-python/bin/python3.13 -m pip install -r requirements.txt -r requirements-build.txt
               /opt/workbench-python/bin/python3.13 packaging/build_linux.py
+              chown -R "$WORKBENCH_BUILD_UID:$WORKBENCH_BUILD_GID" releases
             '
       - name: Extract into a path containing spaces and Unicode
         shell: python
