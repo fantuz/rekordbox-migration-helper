@@ -3,15 +3,19 @@ import importlib.util
 from io import BytesIO
 import json
 from pathlib import Path
+import sys
 import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
+import urllib.error
 import zipfile
 
 
 spec=importlib.util.spec_from_file_location('workbench_release_tools',Path(__file__).parent/'packaging/release_tools.py')
 release=importlib.util.module_from_spec(spec);spec.loader.exec_module(release)
+with patch.object(sys,'path',[str(Path(__file__).parent/'packaging'),*sys.path]):
+    from prepare_release import validate_release_target
 
 
 class ReleaseTests(unittest.TestCase):
@@ -42,7 +46,7 @@ class ReleaseTests(unittest.TestCase):
             with zipfile.ZipFile(file,'w') as archive:archive.writestr(path,json.dumps(manifest))
         file=self.root/('Library-Workbench-'+self.version+'-linux-source.tar.gz')
         with tarfile.open(file,'w:gz') as archive:
-            for name,content in [('app.py',self.source),('VERSION',(self.version+'\n').encode()),*([('.data/private.db',b'private')] if private_source else [])]:
+            for name,content in [('app.py',self.source),('.gitattributes',b'static/vendor.js -text\n'),('VERSION',(self.version+'\n').encode()),*([('.data/private.db',b'private')] if private_source else [])]:
                 member=tarfile.TarInfo('library-workbench/'+name);member.size=len(content);archive.addfile(member,BytesIO(content))
         for file in self.root.iterdir():
             if file.name.endswith(('.zip','.tar.gz')):
@@ -54,6 +58,81 @@ class ReleaseTests(unittest.TestCase):
         for value in ('0.4.0;touch /tmp/example','$(echo bad)','0.4','01.2.3','0.4.0\ntag=other'):
             with self.assertRaises(ValueError):release.normalized_version(value)
         with self.assertRaisesRegex(ValueError,'default branch'):release.release_plan('0.4.0','refs/heads/unreviewed')
+
+    def test_tag_version_is_canonical_and_cannot_be_overridden(self):
+        self.assertEqual(release.release_plan('','refs/tags/v0.4.5'),{'version':'0.4.5','tag':'v0.4.5'})
+        self.assertEqual(release.release_plan('','refs/tags/v0.4.6-rc.1')['version'],'0.4.6-rc.1')
+        for ref in ('refs/tags/0.4.5','refs/tags/v0.4.5-unreviewed','refs/tags/v0.4.5/extra'):
+            with self.assertRaises(ValueError):release.release_plan('',ref)
+        with self.assertRaisesRegex(ValueError,'does not match'):release.release_plan('0.4.6','refs/tags/v0.4.5')
+
+    def github_state(self, target=None, merged=True, existing_release=False):
+        def read(path):
+            if path.startswith('releases/tags/'):
+                if existing_release:return {'id':123}
+            elif path.startswith('git/ref/tags/'):
+                if target is not None:return {'object':target}
+            elif path.startswith('git/tags/'):
+                return {'object':{'type':'commit','sha':self.commit}}
+            elif path.startswith('compare/'):
+                return {'status':'ahead' if merged else 'diverged','merge_base_commit':{'sha':self.commit if merged else 'c'*40}}
+            raise urllib.error.HTTPError('https://api.github.test/'+path,404,'Not found',{},None)
+        return read
+
+    def test_manual_release_requires_a_new_tag_and_a_new_release(self):
+        plan=release.release_plan(self.version,'refs/heads/main')
+        validate_release_target(plan,'refs/heads/main',self.commit,self.github_state())
+        with self.assertRaisesRegex(ValueError,'tag already exists'):
+            validate_release_target(plan,'refs/heads/main',self.commit,self.github_state({'type':'commit','sha':self.commit}))
+        with self.assertRaisesRegex(ValueError,'release already exists'):
+            validate_release_target(plan,'refs/heads/main',self.commit,self.github_state(existing_release=True))
+
+    def test_lightweight_and_annotated_tags_must_match_the_checked_main_commit(self):
+        ref='refs/tags/v'+self.version;plan=release.release_plan('',ref)
+        for target in ({'type':'commit','sha':self.commit},{'type':'tag','sha':'d'*40}):
+            validate_release_target(plan,ref,self.commit,self.github_state(target))
+        for target,message in ((None,'no longer exists'),({'type':'commit','sha':'b'*40},'checked commit'),({'type':'tree','sha':self.commit},'checked commit')):
+            with self.assertRaisesRegex(ValueError,message):
+                validate_release_target(plan,ref,self.commit,self.github_state(target))
+        with self.assertRaisesRegex(ValueError,'merged into the default branch'):
+            validate_release_target(plan,ref,self.commit,self.github_state({'type':'commit','sha':self.commit},merged=False))
+
+    def test_api_failures_and_cyclic_annotated_tags_fail_closed(self):
+        ref='refs/tags/v'+self.version;plan=release.release_plan('',ref)
+        def denied(path):raise urllib.error.HTTPError('https://api.github.test/'+path,403,'Denied',{},None)
+        with self.assertRaises(urllib.error.HTTPError):validate_release_target(plan,ref,self.commit,denied)
+        read=self.github_state({'type':'tag','sha':'d'*40})
+        def cyclic(path):
+            if path.startswith('git/tags/'):return {'object':{'type':'tag','sha':'d'*40}}
+            return read(path)
+        with self.assertRaisesRegex(ValueError,'tag chain'):validate_release_target(plan,ref,self.commit,cyclic)
+
+    def test_release_notes_include_only_the_requested_changelog_and_installation_limits(self):
+        changelog='# Changelog\n\n## 0.4.6 — future\n\nUnreleased feature.\n\n## 0.4.5 — 2026-11-13\n\nColour cloud and insights.\n\n### Details\n\nStaged comments.\n\n## 0.4.0 — old\n\nOld feature.\n'
+        notes=release.release_notes('0.4.5',self.commit,changelog)
+        for value in ('Colour cloud','Staged comments','### Details','Library Workbench.exe','Apple Silicon','SHA256SUMS','experimental',self.commit):self.assertIn(value,notes)
+        for value in ('Unreleased feature','Old feature'):self.assertNotIn(value,notes)
+        self.assertIn('local library analyzer',release.release_notes('0.4.7',self.commit,changelog))
+
+    def test_real_source_packager_allows_gitattributes_but_excludes_private_workspaces(self):
+        import sys
+        with patch.object(sys,'path',[str(Path(__file__).parent/'packaging'),*sys.path]):
+            import build_source
+        self.packages()
+        source=self.root/'checkout';source.mkdir()
+        (source/'app.py').write_bytes(self.source)
+        (source/'.gitattributes').write_text('static/vendor.js -text\n',encoding='utf-8')
+        (source/'CHANGELOG.md').write_text('# Public release notes\n',encoding='utf-8')
+        (source/'.data').mkdir();(source/'.data'/'private.db').write_bytes(b'private input')
+        with patch.object(build_source,'ROOT',source),patch.object(build_source,'VERSION',self.version):build_source.main()
+        archive=next((source/'releases').glob('*.tar.gz'))
+        with tarfile.open(archive) as packed:
+            self.assertIn('library-workbench/.gitattributes',packed.getnames())
+            self.assertIn('library-workbench/CHANGELOG.md',packed.getnames())
+            self.assertNotIn('library-workbench/.data/private.db',packed.getnames())
+        for output in (source/'releases').iterdir():
+            (self.root/output.name).write_bytes(output.read_bytes())
+        self.assertEqual(len(release.verify_assets(self.root,self.version,self.commit)),4)
 
     def test_four_native_validated_archives_must_share_release_source(self):
         self.packages()

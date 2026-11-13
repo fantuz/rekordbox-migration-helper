@@ -2,6 +2,7 @@
 
 [![Build and native runtime checks](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml/badge.svg?branch=main)](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml)
 [![Security checks](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/security.yml)
+[![Release packages](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/release.yml/badge.svg)](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/release.yml)
 [![Latest preview](https://img.shields.io/github/v/release/fantuz/rekordbox-migration-helper?include_prereleases&label=release)](https://github.com/fantuz/rekordbox-migration-helper/releases)
 [![MIT license](https://img.shields.io/github/license/fantuz/rekordbox-migration-helper)](LICENSE)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-507269)](#start)
@@ -18,6 +19,8 @@ See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XM
 
 ## Start
 
+Download the Windows, Mac or Linux archive from [Releases](https://github.com/fantuz/rekordbox-migration-helper/releases). See [what changed in 0.4.5](CHANGELOG.md).
+
 On Linux, use Python 3.13 or newer and run `./start.sh` from this directory. The first launch installs requirements into a local virtual environment. The application opens your browser and binds only to loopback. Use **Stop local application** in its footer when finished.
 
 Windows users extract the complete portable ZIP and double-click **Library Workbench.exe**. Python and dependencies are included. Mac users choose the Apple Silicon (`arm64`) or Intel (`x86_64`) preview, extract it and open **Library Workbench.app**. Mac previews are ad-hoc signed, not Developer ID signed or notarized; macOS may restrict opening them. Source checkout remains available for developers.
@@ -27,7 +30,7 @@ Windows users extract the complete portable ZIP and double-click **Library Workb
 1. **Source analyzer** reads a source data folder through a private database/journal snapshot. It reports integrity, schema compatibility, track/cue/playlist counters, reference issues and selected-folder footprint. It does not modify the source. Close rekordbox and pause Cloud Library Sync during capture. No XML or ZIP input is required for this mode.
 2. **Import XML + ZIP** loads a consecutive Backup Library ZIP and collection XML export. Choose files to copy them into a workspace, or use existing files by full path without another large copy. Compare duplicate groups, cues, ratings and file references, then generate XML and native ZIP together from one frozen decision snapshot.
 
-The **0.5 Library lab preview** adds snapshot comparison, metadata consistency, analysis asset audits, genre/BPM preparation coverage and a locked metadata editor backed by a separate local SQLite store. An opt-in MusicBrainz pilot previews 20 tracks per top genre plus 50 unknown-genre tracks, with selectable lookup pacing and separate community-rating evidence. Sources stay unchanged. See the [Library lab guide](docs/LIBRARY-LAB.md) for scope, privacy, export behavior and limits. The published 0.4.0 release predates these preview features.
+The **0.4.5 Library lab preview** adds snapshot comparison, metadata consistency, analysis asset audits, genre/BPM preparation coverage and a locked metadata editor backed by a separate local SQLite store. An opt-in MusicBrainz pilot previews 20 tracks per top genre plus 50 unknown-genre tracks, with selectable lookup pacing and separate community-rating evidence. Sources stay unchanged. See the [Library lab guide](docs/LIBRARY-LAB.md) for scope, privacy, export behavior and limits, and the [changelog](CHANGELOG.md) for additions since 0.4.0.
 
 The preview also reads standalone collection XML for v5 statistics (track counts, artist, title, BPM, duration and other available tags). Native v5 `.edb` records remain undecoded. Analysis copies are removed on acknowledged shutdown; reports, decisions and completed exports are retained. See [temporary-file cleanup and resuming](docs/TEMPORARY-FILES.md).
 
@@ -68,7 +71,7 @@ Browse genre, year, artist, album, BPM range, personal rating, duration, format 
 
 The export freezes captured source metadata. Staged merges and reference edits are not applied. It contains no audio, artwork, waveforms, cue timestamps, native database or cloud credentials. File paths are excluded unless explicitly selected. This read-only export does not require backup acknowledgement and is not a native backup. Older analyzer reports need a fresh capture to gain a metadata snapshot.
 
-External community ratings remain a proposal; no library metadata is sent to an internet service. See [the ratings feasibility study](docs/COMMUNITY-RATINGS.md) and [the library-analysis roadmap](docs/LIBRARY-ROADMAP.md).
+The optional MusicBrainz proof of concept sends selected metadata queries only after the user starts a confirmed pilot. Community evidence stays in the local working database. See [the ratings feasibility study](docs/COMMUNITY-RATINGS.md) and [the library-analysis roadmap](docs/LIBRARY-ROADMAP.md).
 
 ## Workspace locations
 
@@ -92,6 +95,8 @@ See [the Windows restore procedure](docs/RESTORE-TEST.md) before testing transfo
 
 ## Releases and security
 
-Maintainers can use **Actions → Create release → Run workflow** on `main`, enter a version and choose draft or publication. The workflow builds and validates all four archives before attaching them to a GitHub release, and creates the version tag automatically. No local push/tag or personal token is needed. See [web release instructions](docs/RELEASING.md).
+Every pull request and push to `main` automatically tests and builds Windows x64, Mac Intel, Mac Apple Silicon and Linux source archives. Download development packages from the run's **Artifacts** section; the final check summary lists the correct artifact for each platform. Development artifacts are retained for 14 days.
+
+For a release, use **Actions → Create release → Run workflow** on `main`, enter a version and choose draft or publication. The workflow builds and validates all four archives, adds the matching changelog entry and installation guidance, then creates the version tag automatically. No local push/tag or personal token is needed. Pushing a `v<version>` tag for a commit already merged into `main` also builds and publishes a preview automatically, as in entropy-service. Release downloads remain available separately from temporary CI artifacts. See [release instructions](docs/RELEASING.md).
 
 [SECURITY.md](SECURITY.md) explains private reporting and local trust boundaries. Weekly dependency checks, pinned actions and Dependabot configuration complement the repository's existing default CodeQL setup. [Repository security guidance](docs/REPOSITORY-SECURITY.md) compares DNSProxy/entropy-service and provides importable branch/tag ruleset templates. Merge-policy changes remain a maintainer choice.
