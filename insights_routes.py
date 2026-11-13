@@ -1,6 +1,7 @@
 """Read-only local insight APIs and explicitly retained report/download actions."""
 from collections import OrderedDict
 import csv
+import unicodedata
 from io import StringIO
 import json
 from threading import RLock
@@ -64,7 +65,10 @@ def register(owner):
         stream=StringIO(newline='');writer=csv.writer(stream);writer.writerow((*columns,'usage_evidence'))
         def safe(value):
             if value is None:return ''
-            if isinstance(value,str) and (value.lstrip().startswith(('=','+','-','@')) or value.startswith(('\t','\r','\n'))):return "'"+value
+            if isinstance(value,str):
+                plain=value.lstrip()
+                while plain and (plain[0].isspace() or unicodedata.category(plain[0]) in ('Cc','Cf')):plain=plain[1:]
+                if plain.startswith(('=','+','-','@')) or value.startswith(('\t','\r','\n')):return "'"+value
             return value
         for row in result['rows']:writer.writerow([safe(row.get(field)) for field in columns]+[result['context']['basis_label']])
         return app.response_class('\ufeff'+stream.getvalue(),mimetype='text/csv',headers={'Content-Disposition':'attachment; filename="dj-insights.csv"'})

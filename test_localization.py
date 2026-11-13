@@ -1,4 +1,5 @@
 from collections import Counter
+from contextlib import ExitStack
 from html.parser import HTMLParser
 import json
 from pathlib import Path
@@ -42,6 +43,7 @@ class LocalizationTests(unittest.TestCase):
             parser=Markers();parser.feed((ASSETS/name).read_text(encoding='utf-8'))
             self.assertFalse(parser.keys-set(available),(name,parser.keys-set(available)))
         self.assertNotIn('use strict',available)
+        self.assertNotIn('(prefers-color-scheme: light)',available)
         self.assertNotIn('POST',available)
         self.assertNotIn('source_track',available)
         script=browser_catalogues(ASSETS)
@@ -77,7 +79,8 @@ class LocalizationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             from temporary_files import TemporaryWorkspace
             workspace=TemporaryWorkspace(Path(tmp))
-            with patch.object(application,'TEMPORARY',workspace):
+            with patch.object(application,'TEMPORARY',workspace),ExitStack() as cleanup:
+                cleanup.callback(workspace.best_effort_cleanup)
                 response=client.post('/api/import',json={'zip':'Συλλογή Łódź 🎧.zip','xml':'Český Русский.xml'},headers=headers)
                 self.assertEqual(response.status_code,200,response.json)
                 info=json.loads((workspace.folder(response.json['session'])/'upload.json').read_text(encoding='utf-8'))

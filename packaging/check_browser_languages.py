@@ -1,5 +1,6 @@
 """CI-only real browser checks; never load a user's library or query providers."""
 import argparse
+import csv
 from copy import deepcopy
 import json
 import os
@@ -25,7 +26,7 @@ def main():
     messages=catalogues(ROOT/'static')
     with tempfile.TemporaryDirectory(prefix='workbench-language-') as tmp:
         root=Path(tmp);data=root/'data';data.mkdir();store=Store(data/'workbench-sidecar.sqlite3')
-        titles=['Unknown','Artist','Tracks','Ready','Most played','Copy','Grüße · Français · Città · Español','Ελληνικά · Łódź · Český · Русский','日本語 · 🎧 · cafe\u0301','</script><img src=x onerror="window.metadataExecuted=1">']
+        titles=['Unknown','Artist','Tracks','Ready','Most played','Copy','Grüße · Français · Città · Español','Ελληνικά · Łódź · Český · Русский','日本語 · 🎧 · cafe\u0301','</script><img src=x onerror="window.metadataExecuted=1">',' =1+1','\ufeff@SUM(1,1)']
         tracks=[{**track({'id':'t'+str(i),'title':title,'artist':'Автор & Łódź 🎧','album':'Album {slot0} <mix>','genre':'House' if i%2 else 'Unknown','bpm':120+i,'duration':240,'play_count':i+1,'rating':4,'manual_cues':1,'auto_cues':0,'analysed':True,'comment':'Local comment Ελληνικά 🎧'}),'cues':[]} for i,title in enumerate(titles)]
         snapshot={'schema':1,'scope_key':'synthetic:browser','source_kind':'Synthetic Unicode fixture','tracks':tracks,'playlists':[],'asset_references':[],'capabilities':{'cue_positions':True,'playlist_order':False}}
         saved=store.save_snapshot(snapshot,'Synthetic Unicode fixture');sid=saved['id'];before=deepcopy(store.snapshot(sid))
@@ -76,6 +77,12 @@ def main():
                     assert page.locator('#metadata-table').inner_text().find(titles[9])>=0
                     assert page.locator('img[src="x"]').count()==0
                     report['languages'][list(LANGUAGES).index(code)]['offline']='passed'
+                with page.expect_download() as download:
+                    page.locator('#download-csv').click()
+                download_path=root/'browser-export.csv';download.value.save_as(download_path)
+                with download_path.open(encoding='utf-8-sig',newline='') as stream:csv_rows=list(csv.reader(stream))
+                assert any(row[0]=="' =1+1" for row in csv_rows[1:])
+                assert any(row[0]=="'\ufeff@SUM(1,1)" for row in csv_rows[1:])
                 assert not errors,errors
                 browser.close()
             report.update(status='passed',errors=errors,language_changes_submit_no_mutations=True,unexpected_network_requests=0,unsaved_comment_preserved=True,locked_fields_preserved=True)

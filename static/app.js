@@ -123,7 +123,7 @@ async function loadQuickExports() {
   const info=await api("/api/quick-export"),select=$("#quick-source"),old=select.value;
   const options=[];
   if(session) options.push(("<option value=\"session\">"+esc(I18n.t("Loaded XML/ZIP workspace ·"))+" ")+num(session.counts.tracks)+(" "+esc("tracks")+"</option>"));
-  options.push(...info.sources.map(s=>'<option value="'+esc(s.id)+'">Source snapshot · '+esc(new Date(s.created).toLocaleString(I18n.language))+' · '+num(s.tracks)+(" "+esc("tracks")+"</option>")));
+  options.push(...info.sources.map(s=>'<option value="'+esc(s.id)+("\">"+esc(I18n.t("Source snapshot ·"))+" "+"")+esc(new Date(s.created).toLocaleString(I18n.language))+' · '+num(s.tracks)+(" "+esc("tracks")+"</option>")));
   select.innerHTML=options.join("") || ("<option value=\"\">"+esc(I18n.t("Load a workspace or analyze a source folder first"))+"</option>");
   if([...select.options].some(o=>o.value===old))select.value=old;
   updateQuickSource();
@@ -168,7 +168,7 @@ function renderWorkflow() {
 }
 function exportCard(record) {
   const label=record.format==="pair"?I18n.t("XML + ZIP + report"):record.format.toUpperCase()+" "+I18n.t("+ report");
-  return '<article class="export-record"><div class="export-record-heading"><strong>'+esc(label)+'</strong><span>'+esc(new Date(record.created).toLocaleString(I18n.language))+'</span></div><p>'+esc(record.session_name)+' · '+num(record.merges)+(" "+esc(I18n.t("merges · one saved decision snapshot"))+"</p><div class=\"download-links\">")+record.files.map(f=>'<a class="button secondary small" href="'+esc(f.download)+'">Download '+esc(f.kind.toUpperCase())+' ↓</a>').join("")+("</div><div class=\"folder-row\"><span>"+esc(I18n.t("Saved output folder"))+"</span><code>")+esc(record.directory)+'</code><button class="text-button" data-export-path="'+esc(record.directory)+("\">"+esc(I18n.t("Copy path"))+"</button></div></article>");
+  return '<article class="export-record"><div class="export-record-heading"><strong>'+esc(label)+'</strong><span>'+esc(new Date(record.created).toLocaleString(I18n.language))+'</span></div><p>'+esc(record.session_name)+' · '+num(record.merges)+(" "+esc(I18n.t("merges · one saved decision snapshot"))+"</p><div class=\"download-links\">")+record.files.map(f=>'<a class="button secondary small" href="'+esc(f.download)+("\">"+esc(I18n.t("Download"))+" "+"")+esc(f.kind.toUpperCase())+' ↓</a>').join("")+("</div><div class=\"folder-row\"><span>"+esc(I18n.t("Saved output folder"))+"</span><code>")+esc(record.directory)+'</code><button class="text-button" data-export-path="'+esc(record.directory)+("\">"+esc(I18n.t("Copy path"))+"</button></div></article>");
 }
 function bindExportCopies() {
   $$("[data-export-path]").forEach(button=>button.onclick=wrap(async()=>{
@@ -222,13 +222,13 @@ async function selectPair(id) {
 function lane(track, index) {
   const duration=Math.max(1,track.duration_seconds*1000);
   const dots=track.cues.map(c=>'<i class="cue-dot '+(autoCue(c)?"auto":"")+'" style="left:'+Math.max(0,Math.min(99,100*(c.InMsec || 0)/duration))+'%" title="'+esc((c.Comment || I18n.t("Cue"))+" · "+((c.InMsec || 0)/1000).toFixed(2)+" s")+'"></i>').join("");
-  return '<div class="cue-lane"><label>SIBLING '+String.fromCharCode(65+index)+'</label><div class="cue-track">'+dots+'</div></div>';
+  return ("<div class=\"cue-lane\"><label>"+esc(I18n.t("Sibling"))+" "+"")+String.fromCharCode(65+index)+'</label><div class="cue-track">'+dots+'</div></div>';
 }
 function renderDetail() {
   const r=selected;
   if (!r) return;
   const names=["A","B"];
-  const trackCards=r.tracks.map((t,i)=>'<article class="sibling '+(chosen===t.track_id?"chosen":"")+'" data-keeper="'+esc(t.track_id)+'" tabindex="0" role="button" aria-label="Choose sibling '+names[i]+'"><div class="sibling-top">SIBLING '+names[i]+'<span>'+(chosen===t.track_id?I18n.t("◉ KEEPER"):"○")+'</span></div><div class="title">'+esc(t.title)+'</div><div class="stars" aria-label="'+t.rating+' stars">'+("★".repeat(Math.min(5,t.rating)))+("☆".repeat(Math.max(0,5-t.rating)))+("</div><dl><dt>"+esc(I18n.t("Album"))+"</dt><dd>")+esc(t.album || I18n.t("Unknown"))+("</dd><dt>"+esc(I18n.t("Cues"))+"</dt><dd>")+t.cue_summary.auto+' auto · '+t.cue_summary.other+(" "+esc("other")+"</dd><dt>"+esc(I18n.t("Added"))+"</dt><dd>")+esc(date(t.date_added))+("</dd><dt>"+esc(I18n.t("Last played"))+"</dt><dd>")+esc(date(t.last_played))+("</dd><dt>"+esc(I18n.t("Play count"))+"</dt><dd>")+num(t.play_count)+("</dd><dt>"+esc(I18n.t("File size"))+"</dt><dd>")+(t.size_bytes/1e6).toFixed(1)+(" MB</dd><dt>"+esc(I18n.t("Source"))+"</dt><dd>")+(t.october_xml?I18n.t("XML + backup"):I18n.t("Backup"))+'</dd></dl><div class="path">'+esc(t.xml_location || t.original_path || t.current_path)+'</div><button class="ref-link" data-file-detail="'+esc(t.track_id)+("\">"+esc(I18n.t("File view / comments"))+"</button><button class=\"ref-link\" data-ref=\"")+esc(t.track_id)+("\">"+esc(I18n.t("Prepare this reference ↗"))+"</button></article>")).join("");
+  const trackCards=r.tracks.map((t,i)=>'<article class="sibling '+(chosen===t.track_id?"chosen":"")+'" data-keeper="'+esc(t.track_id)+'" tabindex="0" role="button" aria-label="Choose sibling '+names[i]+("\"><div class=\"sibling-top\">"+esc(I18n.t("Sibling"))+" "+"")+names[i]+'<span>'+(chosen===t.track_id?I18n.t("◉ KEEPER"):"○")+'</span></div><div class="title">'+esc(t.title)+'</div><div class="stars" aria-label="'+t.rating+' stars">'+("★".repeat(Math.min(5,t.rating)))+("☆".repeat(Math.max(0,5-t.rating)))+("</div><dl><dt>"+esc(I18n.t("Album"))+"</dt><dd>")+esc(t.album || I18n.t("Unknown"))+("</dd><dt>"+esc(I18n.t("Cues"))+"</dt><dd>")+t.cue_summary.auto+' auto · '+t.cue_summary.other+(" "+esc("other")+"</dd><dt>"+esc(I18n.t("Added"))+"</dt><dd>")+esc(date(t.date_added))+("</dd><dt>"+esc(I18n.t("Last played"))+"</dt><dd>")+esc(date(t.last_played))+("</dd><dt>"+esc(I18n.t("Play count"))+"</dt><dd>")+num(t.play_count)+("</dd><dt>"+esc(I18n.t("File size"))+"</dt><dd>")+(t.size_bytes/1e6).toFixed(1)+(" MB</dd><dt>"+esc(I18n.t("Source"))+"</dt><dd>")+(t.october_xml?I18n.t("XML + backup"):I18n.t("Backup"))+'</dd></dl><div class="path">'+esc(t.xml_location || t.original_path || t.current_path)+'</div><button class="ref-link" data-file-detail="'+esc(t.track_id)+("\">"+esc(I18n.t("File view / comments"))+"</button><button class=\"ref-link\" data-ref=\"")+esc(t.track_id)+("\">"+esc(I18n.t("Prepare this reference ↗"))+"</button></article>")).join("");
   const ratingConflict=r.conflicts.some(c=>c.type==="rating");
   const autoConflicts=r.conflicts.filter(c=>c.type==="cue_slot" && c.auto);
   const other=r.conflicts.filter(c=>!autoConflicts.includes(c) && c.type!=="rating");
@@ -394,13 +394,13 @@ $("#export-xml").onclick=wrap(async()=>generateExport("xml"));
 
 function applyTheme(value) {
   localStorage.setItem("workbench-theme",value);
-  const actual=value==="system" ? matchMedia(I18n.t("(prefers-color-scheme: light)")).matches?"light":"dark" : value;
+  const actual=value==="system" ? matchMedia("(prefers-color-scheme: light)").matches?"light":"dark" : value;
   document.documentElement.dataset.theme=actual;
   $("#theme").value=value;
 }
 applyTheme(localStorage.getItem("workbench-theme") || "dark");
 $("#theme").onchange=e=>applyTheme(e.target.value);
-matchMedia(I18n.t("(prefers-color-scheme: light)")).addEventListener("change",()=>{if ($("#theme").value==="system") applyTheme("system");});
+matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{if ($("#theme").value==="system") applyTheme("system");});
 async function renderStatistics() {
   if (!session) return;
   const params=new URLSearchParams({min:$("#stats-min").value || "0",max:$("#stats-max").value,cohort:$("#stats-cohort").value});

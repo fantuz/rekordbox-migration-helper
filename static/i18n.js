@@ -13,7 +13,8 @@ window.I18n=(() => {
   const number=(value,options={})=>{const key=language+JSON.stringify(options);if(!numberFormats.has(key))numberFormats.set(key,new Intl.NumberFormat(language,options));return numberFormats.get(key).format(Number(value));};
   function message(key,params={}){
     key=String(key ?? '');
-    let text=data.messages[language]?.[key] ?? data.messages.en?.[key];
+    const selected=data.messages[language] || {},english=data.messages.en || {};
+    let text=Object.hasOwn(selected,key)?selected[key]:Object.hasOwn(english,key)?english[key]:undefined;
     if(text===undefined){missing.add(key);text=key;}
     if(text && typeof text==='object')text=text[new Intl.PluralRules(language).select(Number(params.count))] ?? text.other;
     return String(text ?? key);

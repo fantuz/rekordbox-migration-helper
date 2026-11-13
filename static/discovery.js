@@ -17,12 +17,12 @@ $('#lab-assets-path').closest('label').insertAdjacentHTML('afterend','<div id="a
 async function renderDiscoveryHints(data){
   locationHints=data || await api('/api/discovery');
   for(const prefix of ['source-discovery','asset-discovery']){
-    $('#'+prefix+'-mounts').innerHTML=(locationHints.mounted_roots || []).map((r,i)=>'<button class="text-button" type="button" data-mount-root="'+prefix+'" data-mount-index="'+i+'">Add '+esc(r.path)+'</button>').join('');
+    $('#'+prefix+'-mounts').innerHTML=(locationHints.mounted_roots || []).map((r,i)=>'<button class="text-button" type="button" data-mount-root="'+prefix+'" data-mount-index="'+i+("\">"+esc(I18n.t("Add"))+" "+"")+esc(r.path)+'</button>').join('');
   }
   $$('[data-mount-root]').forEach(b=>b.onclick=wrap(()=>appendPath('#'+b.dataset.mountRoot+'-roots',locationHints.mounted_roots[Number(b.dataset.mountIndex)].path)));
   const options=[...(locationHints.analysis_paths || [])];
   if(session?.metadata?.zip_path)options.unshift({path:session.metadata.zip_path,get origin(){return I18n.t("Loaded backup ZIP");}});
-  $('#asset-location-hints').innerHTML=options.map((r,i)=>'<button class="text-button" type="button" data-asset-hint="'+i+'">Add '+esc(r.path)+'</button>').join('') || ("<span class=\"subtle\">"+esc(I18n.t("Enter paths manually, or use the bounded search below. A backup ZIP can be audited directly."))+"</span>");
+  $('#asset-location-hints').innerHTML=options.map((r,i)=>'<button class="text-button" type="button" data-asset-hint="'+i+("\">"+esc(I18n.t("Add"))+" "+"")+esc(r.path)+'</button>').join('') || ("<span class=\"subtle\">"+esc(I18n.t("Enter paths manually, or use the bounded search below. A backup ZIP can be audited directly."))+"</span>");
   $$('[data-asset-hint]').forEach(b=>b.onclick=wrap(()=>appendPath('#lab-assets-path',options[Number(b.dataset.assetHint)].path)));
 }
 async function runDiscovery(prefix,kind){

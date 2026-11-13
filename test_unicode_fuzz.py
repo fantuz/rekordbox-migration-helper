@@ -21,7 +21,7 @@ from native_export import mutable_copy,rewrite_archive
 from workbench_store import Store
 
 ASSETS=Path(__file__).parent/'static'
-CORPUS=['Straße · Grüße','Français œ ç','Città più','Español ñ ¿','Ελληνικά άς','Łódź żółć','Český řů','Русский ёж','日本語 中文 한글','🎧 👩🏽‍💻 𝄞','café','cafe\u0301','İ ı I i Σ σ ς','</script><img src=x onerror=alert(1)>','A & B <mix> "quote"',"'); DROP TABLE tracks; --",'=HYPERLINK("https://example.invalid")','\u202eabc\u202c','\u2028\u2029','{slot0} {count}',' leading and trailing ']
+CORPUS=['Straße · Grüße','Français œ ç','Città più','Español ñ ¿','Ελληνικά άς','Łódź żółć','Český řů','Русский ёж','日本語 中文 한글','🎧 👩🏽‍💻 𝄞','café','cafe\u0301','İ ı I i Σ σ ς','</script><img src=x onerror=alert(1)>','A & B <mix> "quote"',"'); DROP TABLE tracks; --",'=HYPERLINK("https://example.invalid")',' \t=1+1','\ufeff@SUM(1,1)','\n=1+1','\u202eabc\u202c','\u2028\u2029','{slot0} {count}',' leading and trailing ']
 VALID=st.characters(min_codepoint=32,max_codepoint=0x10ffff,exclude_categories=('Cs',),exclude_characters='\ufffe\uffff')
 TEXT=st.one_of(st.sampled_from(CORPUS),st.text(VALID,max_size=65))
 BOUNDED=settings(max_examples=40,deadline=None,derandomize=True,database=None)
@@ -119,4 +119,4 @@ class UnicodePropertyTests(unittest.TestCase):
             root=Path(tmp)/'Grüße Français Città Español Ελληνικά Łódź Český Русский 🎧';root.mkdir()
             paths={kind:root/('Συλλογή Łódź Český Русский 🎧.'+kind) for kind in ('xml','zip')}
             for path in paths.values():path.write_bytes(b'synthetic')
-            self.assertEqual(select_inputs({key:str(value) for key,value in paths.items()}),paths)
+            self.assertEqual(select_inputs({key:str(value) for key,value in paths.items()}),{key:value.resolve() for key,value in paths.items()})
