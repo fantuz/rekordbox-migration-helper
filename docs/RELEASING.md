@@ -18,7 +18,7 @@ GitHub wraps each artifact in an outer ZIP; extract it to find the actual applic
 Open **Actions → Create release → Run workflow**. Select **main**, enter a version such as `0.4.5` or `0.4.6-rc.1` (blank uses `VERSION`), and choose:
 
 - **Publish when complete:** leave unchecked for a draft, or check to publish after every check passes.
-- **Preview / prerelease:** keep checked while native rekordbox restoration remains experimental. Versions containing `-alpha`, `-beta` or `-rc` are always prereleases.
+- **Preview / prerelease:** check to publish an optional preview. Plain versions publish as stable/latest by default. Versions containing `-alpha`, `-beta` or `-rc` are always prereleases.
 
 Click **Run workflow**. The workflow audits dependencies, builds the selected default-branch commit, runs the complete source checks and exercises the actual Windows/Mac packaged applications. It attaches four archives plus `SHA256SUMS`. The matching section of [CHANGELOG.md](../CHANGELOG.md), installation instructions, compatibility limits and source commit populate the release notes. No local tag, push, personal access token or signing secret is needed.
 
@@ -28,7 +28,7 @@ The entered version is embedded in package manifests and the source archive's `V
 
 ## Automatic version-tag releases
 
-Like entropy-service, pushing a canonical tag such as `v0.4.6` or `v0.4.6-rc.1` automatically runs the complete release chain and publishes a preview after it passes. Both lightweight and annotated tags work. The tag determines the package version and must resolve to the checked commit, already merged into the default branch. An unrelated branch, moved/deleted tag, duplicate release or API validation failure stops publication.
+Like entropy-service, pushing a canonical tag such as `v0.4.6` or `v0.4.6-rc.1` automatically runs the complete release chain and publishes after it passes. Plain versions become the latest stable release; `-alpha`, `-beta` and `-rc` versions remain previews. Both lightweight and annotated tags work. The tag determines the package version and must resolve to the checked commit, already merged into the default branch. An unrelated branch, moved/deleted tag, duplicate release or API validation failure stops publication.
 
 Tag builds reuse the triggering tag; web releases create a new tag atomically after validation. A tag created by the web workflow's `GITHUB_TOKEN` does not trigger a second build: that same run has already built and validated the packages. See [GitHub token event behavior](https://docs.github.com/en/actions/concepts/security/github_token).
 
