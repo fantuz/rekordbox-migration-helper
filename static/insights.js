@@ -124,7 +124,7 @@ function insightTrackTable(rows,basis){
   return '<table><thead><tr><th>Track / artist</th><th>Saved genre</th><th>'+esc(basis)+'</th><th>Personal stars</th><th>Preparation</th><th>BPM / length</th><th>Recorded dates</th></tr></thead><tbody>'+rows.map(t=>'<tr><td><button class="insight-track-title text-button" data-insight-open="'+esc(t.id)+'">'+esc(t.title || 'Untitled track')+'</button><span class="insight-track-artist">'+esc(t.artist || 'Artist unavailable')+'</span>'+(t.reason && !['All matching tracks','Most played','Least played · positive counts'].includes(t.reason)?'<small class="insight-reason">'+esc(t.reason)+'</small>':'')+'</td><td>'+esc(t.genre || '(blank)')+'<span class="insight-track-note">'+esc(t.family)+'</span></td><td><span class="insight-play-value">'+esc(insightValue(t.plays))+'</span></td><td>'+esc(t.rating===null?'Unknown':t.rating===0?'Unrated':t.rating+' / 5')+'</td><td>'+esc({manual:'Manual cues',mixed:'Manual + auto',auto:'Only auto',none:'No cues',unknown:'Unknown'}[t.preparation])+'<span class="insight-track-note">'+insightValue(t.manual_cues)+' manual · '+(t.analysed===true?'Analyzed':t.analysed===false?'Not marked analyzed':'Analysis unknown')+'</span></td><td>'+esc(insightValue(t.bpm))+' BPM<span class="insight-track-note">'+esc(insightDuration(t.duration))+'</span></td><td>Last evidence: '+esc(t.evidence_last_date || 'Unknown')+(t.evidence_date_after_snapshot?'<span class="insight-track-note">Date is after snapshot · review</span>':'')+'<span class="insight-track-note">Added: '+esc(t.date_added || 'Unknown')+'</span></td></tr>').join('')+'</tbody></table>';
 }
 async function loadDJData(){
-  const state=insightState.dj,revision=++state.revision;if(!state.options){state.result=null;$('#dj-tracks').innerHTML='<p>Save or choose a collection snapshot to begin.</p>';$('#dj-summary').innerHTML='';$('#dj-balance').innerHTML='';$('#dj-evidence').textContent='';$('#dj-csv').hidden=true;$('#dj-save-report').disabled=true;return;}
+  const state=insightState.dj,revision=++state.revision;if(!state.options){state.result=null;$('#dj-tracks').innerHTML='<p>Save or choose a collection snapshot to begin.</p>';for(const id of ['dj-summary','dj-balance','dj-tempo-stats','dj-result-note','dj-count'])$('#'+id).innerHTML='';$('#dj-result-title').textContent='Choose a collection snapshot';$('#dj-evidence').textContent='';$('#dj-csv').hidden=true;$('#dj-save-report').disabled=true;$('#dj-prev').disabled=true;$('#dj-next').disabled=true;return;}
   const args={...insightArgs('dj'),offset:state.offset};$('#dj-tracks').classList.add('insight-loading');
   try{
     const r=await api('/api/insights/tracks?'+new URLSearchParams(args));if(revision!==state.revision)return;state.result=r;
@@ -163,7 +163,7 @@ function bubbleDimensionOptions(){
   $('#bubble-dimension').innerHTML=Object.entries(insightDims).map(([key,label])=>'<option value="'+key+'"'+(used.has(key)?' disabled':'')+'>'+esc(label)+'</option>').join('');$('#bubble-dimension').value=state.dimension;
 }
 async function loadBubbleData(){
-  const state=insightState.bubble,revision=++state.revision;if(!state.options){state.result=null;$('#bubble-evidence').textContent='Save or choose a collection snapshot to draw the map.';$('#bubble-svg').disabled=true;$('#library-bubbles').replaceChildren();for(const id of ['bubble-groups','bubble-summary','bubble-tracks','bubble-breadcrumbs'])$('#'+id).innerHTML='';$('#bubble-csv').hidden=true;return;}
+  const state=insightState.bubble,revision=++state.revision;if(!state.options){state.result=null;$('#bubble-evidence').textContent='Save or choose a collection snapshot to draw the map.';$('#bubble-svg').disabled=true;$('#library-bubbles').replaceChildren();for(const id of ['bubble-groups','bubble-summary','bubble-tracks','bubble-breadcrumbs','bubble-group-count','bubble-track-count','bubble-selected','bubble-map-note','bubble-color-note'])$('#'+id).innerHTML='';for(const id of ['bubble-groups-prev','bubble-groups-next','bubble-tracks-prev','bubble-tracks-next'])$('#'+id).disabled=true;$('#bubble-csv').hidden=true;$('#bubble-colour-meanings').hidden=true;return;}
   bubbleDimensionOptions();const args=insightArgs('bubble');$('#library-bubbles').setAttribute('aria-busy','true');
   try{
     const [r,tracks]=await Promise.all([api('/api/insights/bubbles?'+new URLSearchParams({...args,dimension:state.dimension,metric:$('#bubble-metric').value,group_offset:state.groupOffset})),api('/api/insights/tracks?'+new URLSearchParams({...args,offset:state.offset}))]);
@@ -200,6 +200,13 @@ function bubbleSelected(group){
   $('#bubble-selected').innerHTML='<h4>'+esc(group.label)+'</h4><p><b>'+esc(bubbleWeight(group.value,r.metric))+'</b> · '+esc(r.metric_label)+'</p><p>'+num(group.entries)+' entries · '+num(group.unknown_usage)+' unknown usage counts · '+num(group.weight_unknown_entries)+' unknown size inputs</p><p>Mean BPM: '+esc(group.bpm_mean===null?'Unknown':group.bpm_mean.toFixed(1))+'</p><small>Saved tags behind this category'+(group.saved_tags_total>8?' · first 8 of '+num(group.saved_tags_total):'')+'</small><ul>'+group.saved_tags.map(t=>'<li>'+esc(t.tag)+' · '+num(t.tracks)+'</li>').join('')+'</ul>';
 }
 const svgNode=(name,attrs={})=>{const element=document.createElementNS('http://www.w3.org/2000/svg',name);for(const [key,value] of Object.entries(attrs))element.setAttribute(key,value);return element;};
+function bubbleLabelLines(label,characters){
+  const lines=[];let line='';
+  for(const word of label.split(/\s+/)){if(line && (line+' '+word).length>characters){lines.push(line);line=word;}else line+=(line?' ':'')+word;}
+  if(line)lines.push(line);
+  const visible=lines.length>2?[lines[0],lines.slice(1).join(' ')]:lines;
+  return visible.slice(0,2).map(text=>text.length>characters?text.slice(0,characters-1)+'…':text);
+}
 function renderBubbleMap(){
   const state=insightState.bubble,r=state.result;if(!r)return;const svg=$('#library-bubbles');svg.replaceChildren();
   if(r.dimension==='colour')for(const group of r.groups){group.original_label=group.original_label || group.label;group.label=colourDisplayLabel(group.key,group.original_label);}
@@ -212,12 +219,12 @@ function renderBubbleMap(){
       const group=node.data,g=svgNode('g',{class:'bubble-node',transform:'translate('+node.x+','+node.y+')',role:'button',tabindex:'0','aria-label':group.label+', '+bubbleWeight(group.value,r.metric)+', '+group.entries+' entries. '+(r.dimension==='tracks'?'Inspect track':'Drill down')});
       const circle=svgNode('circle',{r:node.r,fill:bubbleColor(group),stroke:'#ffffff','stroke-width':2});g.append(circle);
       const tooltip=svgNode('title');tooltip.textContent=group.label+' · '+num(group.entries)+' entries · '+num(group.recorded_plays)+' recorded usage';g.append(tooltip);
-      if(node.r>=20){
-        const font=Math.max(10,Math.min(23,node.r/4.5)),chars=Math.max(6,Math.floor(node.r*1.6/(font*.56))),label=group.label;
-        const lines=label.length<=chars?[label]:[label.slice(0,chars),label.slice(chars,chars*2-1)+(label.length>chars*2-1?'…':'')];
+      if(node.r>=18){
+        const font=Math.max(16,Math.min(26,node.r/4)),chars=Math.max(6,Math.floor(node.r*1.55/(font*.56)));
+        const lines=node.r>=42?bubbleLabelLines(group.label,chars):[];
         const text=svgNode('text',{'text-anchor':'middle','font-family':'system-ui,sans-serif','font-size':font,fill:bubbleTextColor(group)});
         lines.forEach((line,i)=>{const span=svgNode('tspan',{x:0,y:(i-(lines.length-1)/2)*font*1.15-font*.45});span.textContent=line;text.append(span);});
-        const count=svgNode('tspan',{x:0,y:font*(lines.length>1?1.7:1.1),'font-size':font*1.12,'font-weight':'700',class:'bubble-number'});count.textContent=bubbleWeight(group.value,r.metric);text.append(count);g.append(text);
+        const count=svgNode('tspan',{x:0,y:lines.length?font*(lines.length>1?1.7:1.1):font*.35,'font-size':font*1.12,'font-weight':'700',class:'bubble-number'});count.textContent=bubbleWeight(group.value,r.metric);text.append(count);g.append(text);
       }
       g.addEventListener('mouseenter',()=>bubbleSelected(group));g.addEventListener('focus',()=>bubbleSelected(group));
       g.addEventListener('click',wrap(()=>drillBubble(group)));
@@ -252,7 +259,7 @@ $('#bubble-tracks-prev').onclick=wrap(async()=>{insightState.bubble.offset=Math.
 $('#bubble-tracks-next').onclick=wrap(async()=>{insightState.bubble.offset+=50;await loadBubbleData();});
 $('#bubble-svg').onclick=()=>{
   const svg=$('#library-bubbles').cloneNode(true);svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.setAttribute('width','940');svg.setAttribute('height','680');svg.removeAttribute('aria-busy');
-  const description=svgNode('desc');description.textContent='Static visible bubble-map snapshot. '+$('#bubble-map-note').textContent+' Branch: '+$('#bubble-breadcrumbs').textContent+'. '+$('#bubble-color-note').textContent;svg.prepend(description);
+  const description=svgNode('desc');description.textContent='Static visible bubble-map snapshot. '+(insightState.bubble.options?.snapshot.label || 'Collection')+' · Captured '+(insightState.bubble.options?.snapshot.captured || 'date unavailable')+'. '+$('#bubble-map-note').textContent+' Branch: '+$('#bubble-breadcrumbs').textContent+'. '+$('#bubble-color-note').textContent;svg.prepend(description);
   const content=new XMLSerializer().serializeToString(svg),blob=new Blob([content],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='library-bubbles.svg';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
 
@@ -273,7 +280,7 @@ $('#colour-meanings-form').onsubmit=wrap(async event=>{
 $('#bubble-colour-cloud').onclick=wrap(async()=>{const s=insightState.bubble;s.path=[];s.dimension='colour';s.offset=0;s.groupOffset=0;$('#bubble-color').value='saved';await loadBubbleData();});
 
 async function loadTonalData(){
-  const state=insightState.tonal,revision=++state.revision;if(!state.options){$('#tonal-evidence').textContent='Choose or save a collection snapshot to inspect its keys and tempo.';return;}
+  const state=insightState.tonal,revision=++state.revision;if(!state.options){state.result=null;$('#tonal-evidence').textContent='Choose or save a collection snapshot to inspect its keys and tempo.';for(const id of ['tonal-summary','tonal-tempo-stats','tonal-histogram','tonal-keys','tonal-tracks','tonal-count'])$('#'+id).innerHTML='';$('#tonal-csv').hidden=true;$('#tonal-prev').disabled=true;$('#tonal-next').disabled=true;return;}
   const args=insightArgs('tonal'),[r,tracks]=await Promise.all([api('/api/insights/tonality?'+new URLSearchParams(args)),api('/api/insights/tracks?'+new URLSearchParams({...args,offset:state.offset}))]);
   if(revision!==state.revision)return;state.result=r;
   $('#tonal-evidence').textContent=insightEvidence(r.context);$('#tonal-tempo-stats').innerHTML=insightTempoLine(r.summary);

@@ -6,7 +6,7 @@ XML_FIELDS={'title':'Name','artist':'Artist','year':'Year','rating':'Rating','al
 
 
 def validate(field,value):
-    if field not in FIELDS:raise ValueError('Choose title, artist, year, rating, album or genre')
+    if field not in FIELDS:raise ValueError('Choose title, artist, year, rating, album, genre or comment')
     if field=='comment':
         value='' if value is None else str(value)
         if len(value)>4096 or any((ord(c)<32 and c not in '\t\n\r') or 0xD800<=ord(c)<=0xDFFF or ord(c) in (0xFFFE,0xFFFF) for c in value):
