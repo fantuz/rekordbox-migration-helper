@@ -4,6 +4,12 @@ from unittest.mock import patch
 import json
 import tempfile
 import unittest
+import os
+import signal
+import subprocess
+import sys
+import time
+import urllib.request
 
 from temporary_files import TemporaryWorkspace,OWNER
 from shutdown_cleanup import ShutdownController
@@ -66,6 +72,47 @@ class ResumeIdentityTests(unittest.TestCase):
             newzip=root/'renamed.zip';newxml=root/'renamed.xml';shutil.copyfile(zip,newzip);shutil.copyfile(xml,newxml)
             self.assertEqual(identity,pair_signature(newzip,newxml));newxml.write_text('<changed/>')
             self.assertNotEqual(identity,pair_signature(newzip,newxml))
+
+    def test_reattach_preserves_workspace_identity_and_rejects_other_snapshots(self):
+        import app as application
+        import zipfile
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);sid='b'*32;folder=root/sid;folder.mkdir();catalog=folder/'catalog.sqlite3';catalog.write_bytes(b'saved review metadata')
+            xml=root/'original.xml';xml.write_text('<collection/>');backup=root/'original.zip'
+            with zipfile.ZipFile(backup,'w') as z:z.writestr('master.db',b'native database')
+            state={'metadata':{'source':str(catalog),'pair_signature':pair_signature(backup,xml)},'decisions':{'pair':{'action':'merge','keeper':'one'}}}
+            saved=folder/'state.json';saved.write_text(json.dumps(state))
+            with patch.object(application,'DATA',root),patch.object(application,'load_session',return_value={'session':sid}) as load:
+                result=application.reattach_inputs(sid,{'zip':backup,'xml':xml},lambda *_:None,'linked')
+                self.assertEqual(result['session'],sid);self.assertEqual(load.call_args.args[1],sid)
+                xml.write_text('<different/>')
+                with self.assertRaisesRegex(ValueError,'differ'):application.reattach_inputs(sid,{'zip':backup,'xml':xml},lambda *_:None,'linked')
+            self.assertEqual(json.loads(saved.read_text())['decisions'],state['decisions'])
+
+
+@unittest.skipIf(sys.platform=='win32','Console signals are tested on Linux/macOS; Windows uses acknowledged HTTP shutdown')
+class ConsoleShutdownTests(unittest.TestCase):
+    def test_first_ctrl_c_warns_and_second_cleans_then_exits(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data=Path(temp);report=data/'saved-report.json';report.write_text('keep')
+            process=subprocess.Popen([sys.executable,str(Path(__file__).parent/'desktop_launcher.py'),'--no-browser','--port','0'],
+                                     env={**os.environ,'LIBRARY_WORKBENCH_DATA_DIR':str(data)},stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
+            try:
+                deadline=time.monotonic()+30
+                while not (data/'instance.json').exists() and time.monotonic()<deadline:time.sleep(.05)
+                base=json.loads((data/'instance.json').read_text())['url']
+                with urllib.request.urlopen(base+'/api/cleanup',timeout=5) as response:temporary=json.load(response)['directory']
+                process.send_signal(signal.SIGINT);time.sleep(.1)
+                self.assertIsNone(process.poll());self.assertTrue(Path(temporary).is_dir())
+                with urllib.request.urlopen(base+'/api/status',timeout=5) as response:self.assertEqual(json.load(response)['cleanup']['phase'],'running')
+                process.send_signal(signal.SIGINT);output=process.communicate(timeout=15)[0]
+                self.assertEqual(process.returncode,0,output);self.assertIn('Press Ctrl+C again to confirm',output)
+                self.assertFalse(Path(temporary).exists());self.assertEqual(report.read_text(),'keep')
+            finally:
+                if process.poll() is None:
+                    process.terminate()
+                    try:process.communicate(timeout=10)
+                    except subprocess.TimeoutExpired:process.kill();process.communicate()
 
 
 if __name__=='__main__':unittest.main()
