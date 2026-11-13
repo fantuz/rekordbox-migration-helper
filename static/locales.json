@@ -1534,14 +1534,15 @@
       "ru": "Создать снимок из"
     },
     "Capture loaded library": {
-      "de": "Geladene Bibliothek erfassen",
-      "fr": "Capturer la bibliothèque chargée",
-      "it": "Acquisisci libreria caricata",
-      "es": "Capturar biblioteca cargada",
-      "el": "Καταγραφή φορτωμένης βιβλιοθήκης",
-      "pl": "Zarejestruj wczytaną bibliotekę",
-      "cs": "Zachytit načtenou knihovnu",
-      "ru": "Создать снимок загруженной библиотеки"
+      "de": "Geladene Bibliothek verwenden",
+      "fr": "Utiliser la bibliothèque chargée",
+      "it": "Usa la libreria caricata",
+      "es": "Usar la biblioteca cargada",
+      "el": "Χρήση φορτωμένης βιβλιοθήκης",
+      "pl": "Użyj wczytanej biblioteki",
+      "cs": "Použít načtenou knihovnu",
+      "ru": "Использовать загруженную библиотеку",
+      "en": "Use loaded library"
     },
     "Capture the shape of your collection.": {
       "de": "Sammlungsübersicht erfassen.",
@@ -12661,6 +12662,136 @@
       "pl": "Tonacja to zapisany tag, nie nowa analiza. Notacje pozostają oddzielne. Średnie i mediany BPM ważą każdy wpis równo, bez korekty połowy/podwójnego tempa.",
       "cs": "Tónina je uložený tag, nikoli nová analýza. Notace zůstávají oddělené. Průměr a medián BPM váží položky stejně, bez opravy polovičního/dvojitého tempa.",
       "ru": "Тональность — сохранённый тег, не новый анализ. Обозначения остаются отдельно. Средние и медианы BPM учитывают записи поровну, без коррекции половинного/двойного темпа."
+    },
+    "Sources": {
+      "de": "Quellen",
+      "fr": "Sources",
+      "it": "Sorgenti",
+      "es": "Orígenes",
+      "el": "Πηγές",
+      "pl": "Źródła",
+      "cs": "Zdroje",
+      "ru": "Источники"
+    },
+    "Analysis & insights": {
+      "de": "Analyse und Einblicke",
+      "fr": "Analyse et statistiques",
+      "it": "Analisi e statistiche",
+      "es": "Análisis y estadísticas",
+      "el": "Ανάλυση και στοιχεία",
+      "pl": "Analiza i statystyki",
+      "cs": "Analýza a přehledy",
+      "ru": "Анализ и статистика"
+    },
+    "Cleanup & migration": {
+      "de": "Bereinigung und Migration",
+      "fr": "Nettoyage et migration",
+      "it": "Pulizia e migrazione",
+      "es": "Limpieza y migración",
+      "el": "Εκκαθάριση και μεταφορά",
+      "pl": "Porządkowanie i migracja",
+      "cs": "Úklid a migrace",
+      "ru": "Очистка и миграция"
+    },
+    "Exports & help": {
+      "de": "Exporte und Hilfe",
+      "fr": "Exports et aide",
+      "it": "Esportazioni e aiuto",
+      "es": "Exportaciones y ayuda",
+      "el": "Εξαγωγές και βοήθεια",
+      "pl": "Eksporty i pomoc",
+      "cs": "Exporty a nápověda",
+      "ru": "Экспорт и справка"
+    },
+    "Sidebar width": {
+      "de": "Seitenleistenbreite",
+      "fr": "Largeur du panneau",
+      "it": "Larghezza pannello",
+      "es": "Ancho del panel",
+      "el": "Πλάτος πλαϊνού πίνακα",
+      "pl": "Szerokość panelu",
+      "cs": "Šířka panelu",
+      "ru": "Ширина панели"
+    },
+    "Compact": {
+      "de": "Kompakt",
+      "fr": "Compact",
+      "it": "Compatto",
+      "es": "Compacto",
+      "el": "Συμπαγές",
+      "pl": "Kompaktowy",
+      "cs": "Kompaktní",
+      "ru": "Компактная"
+    },
+    "Standard": {
+      "de": "Standard",
+      "fr": "Standard",
+      "it": "Standard",
+      "es": "Estándar",
+      "el": "Τυπικό",
+      "pl": "Standardowy",
+      "cs": "Standardní",
+      "ru": "Стандартная"
+    },
+    "Wide": {
+      "de": "Breit",
+      "fr": "Large",
+      "it": "Ampio",
+      "es": "Amplio",
+      "el": "Ευρύ",
+      "pl": "Szeroki",
+      "cs": "Široký",
+      "ru": "Широкая"
+    },
+    "Workspace navigation": {
+      "de": "Arbeitsbereich-Navigation",
+      "fr": "Navigation de l’espace de travail",
+      "it": "Navigazione area di lavoro",
+      "es": "Navegación del espacio de trabajo",
+      "el": "Πλοήγηση χώρου εργασίας",
+      "pl": "Nawigacja obszaru roboczego",
+      "cs": "Navigace pracovního prostoru",
+      "ru": "Навигация рабочей области"
+    },
+    "Operation in progress": {
+      "de": "Vorgang läuft",
+      "fr": "Opération en cours",
+      "it": "Operazione in corso",
+      "es": "Operación en curso",
+      "el": "Λειτουργία σε εξέλιξη",
+      "pl": "Operacja w toku",
+      "cs": "Probíhá operace",
+      "ru": "Операция выполняется"
+    },
+    "Keep this window open until the operation finishes.": {
+      "de": "Dieses Fenster bis zum Abschluss geöffnet lassen.",
+      "fr": "Gardez cette fenêtre ouverte jusqu’à la fin de l’opération.",
+      "it": "Mantieni aperta questa finestra fino al termine.",
+      "es": "Mantén esta ventana abierta hasta finalizar.",
+      "el": "Κρατήστε αυτό το παράθυρο ανοιχτό μέχρι την ολοκλήρωση.",
+      "pl": "Pozostaw to okno otwarte do zakończenia operacji.",
+      "cs": "Ponechte okno otevřené do dokončení operace.",
+      "ru": "Оставьте окно открытым до завершения операции."
+    },
+    "No analysis snapshot selected": {
+      "de": "Kein Analyse-Snapshot ausgewählt",
+      "fr": "Aucun instantané d’analyse sélectionné",
+      "it": "Nessuno snapshot di analisi selezionato",
+      "es": "Ninguna instantánea de análisis seleccionada",
+      "el": "Δεν επιλέχθηκε στιγμιότυπο ανάλυσης",
+      "pl": "Nie wybrano zrzutu analizy",
+      "cs": "Není vybrán snímek analýzy",
+      "ru": "Снимок анализа не выбран"
+    },
+    "Use the loaded XML/ZIP library, or choose a saved analysis snapshot.": {
+      "de": "Geladene XML/ZIP-Bibliothek verwenden oder gespeicherten Analyse-Snapshot wählen.",
+      "fr": "Utilisez la bibliothèque XML/ZIP chargée ou choisissez un instantané d’analyse enregistré.",
+      "it": "Usa la libreria XML/ZIP caricata o scegli uno snapshot di analisi salvato.",
+      "es": "Usa la biblioteca XML/ZIP cargada o elige una instantánea de análisis guardada.",
+      "el": "Χρησιμοποιήστε τη φορτωμένη βιβλιοθήκη XML/ZIP ή επιλέξτε αποθηκευμένο στιγμιότυπο ανάλυσης.",
+      "pl": "Użyj wczytanej biblioteki XML/ZIP lub wybierz zapisany zrzut analizy.",
+      "cs": "Použijte načtenou knihovnu XML/ZIP nebo vyberte uložený snímek analýzy.",
+      "ru": "Используйте загруженную библиотеку XML/ZIP или выберите сохранённый снимок анализа."
     }
   }
 }

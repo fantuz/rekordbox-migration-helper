@@ -2,6 +2,7 @@
 import html
 from pathlib import Path
 import posixpath
+import re
 from urllib.parse import quote,unquote,urlsplit
 
 ROOT=Path(__file__).resolve().parent
@@ -13,6 +14,7 @@ def render_document(name,root=ROOT):
     from markdown_it import MarkdownIt
     if name not in FILES:raise ValueError('Unknown documentation chapter')
     source=FILES[name];text=(Path(root)/source).read_text(encoding='utf-8')
+    text=re.sub(r'<!-- project-(badges|downloads):start -->.*?<!-- project-\1:end -->','',text,flags=re.S)
     parser=MarkdownIt('js-default').enable('table')
     tokens=parser.parse(text)
     def links(items):

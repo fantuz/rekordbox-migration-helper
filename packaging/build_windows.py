@@ -14,7 +14,7 @@ import sys
 import tempfile
 import urllib.request
 import zipfile
-from release_tools import build_version
+from release_tools import build_version,archive_name
 
 APP=Path(__file__).resolve().parents[1]
 VERSION=build_version()
@@ -140,7 +140,7 @@ def main():
                                      for p in app_folder.rglob("*") if p.is_file()}
     (folder/"BUILD-MANIFEST.json").write_text(json.dumps(manifest,indent=2),encoding="utf-8")
     (folder/"START HERE.txt").write_text(
-        "LIBRARY WORKBENCH "+VERSION+" — WINDOWS x64 PREVIEW\n\n"
+        "LIBRARY WORKBENCH "+VERSION+" — WINDOWS x64 PORTABLE\n\n"
         "1. Extract this entire ZIP to a folder.\n"
         "2. Double-click Library Workbench.exe.\n"
         "3. The application opens in your default browser.\n"
@@ -150,12 +150,13 @@ def main():
         "No Python installation, administrator access, shell or package setup is required.\n"
         "Use Stop local application in the page footer to close the local server.\n"
         "Workspaces and logs are stored under %LOCALAPPDATA%\\LibraryWorkbench.\n\n"
-        "This Windows preview has been assembled and checked on Linux, but has not\n"
-        "been run on Windows. Validate startup and an isolated rekordbox restore\n"
-        "before using generated native library backups on a working collection.\n\n"
+        "Native Windows runtime validation is recorded in BUILD-MANIFEST.json.\n"
+        "Use a release or the validated windows-x64-portable CI artifact.\n"
+        "Test an isolated rekordbox restore before using generated native\n"
+        "library backups on a working collection.\n\n"
         "BUILD-MANIFEST.json records source URLs, versions and hashes.\n",
         encoding="utf-8")
-    destination=args.output/("Library-Workbench-"+VERSION+"-windows-x64-preview.zip")
+    destination=args.output/archive_name(VERSION,'windows-x64')
     with zipfile.ZipFile(destination,"w",compression=zipfile.ZIP_DEFLATED,compresslevel=6) as out:
         for file in sorted(folder.rglob("*")):
             if file.is_file():out.write(file,file.relative_to(folder.parent))

@@ -1,15 +1,26 @@
 # rekordbox Migration Helper · Library Workbench
 
-[![Build and native runtime checks](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml/badge.svg?branch=main)](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml)
-[![Security checks](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/security.yml)
-[![Release packages](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/release.yml/badge.svg)](https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/release.yml)
-[![Latest release](https://img.shields.io/github/v/release/fantuz/rekordbox-migration-helper?include_prereleases&label=release)](https://github.com/fantuz/rekordbox-migration-helper/releases)
-[![MIT license](https://img.shields.io/github/license/fantuz/rekordbox-migration-helper)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-507269)](#start)
-[![Security policy](https://img.shields.io/badge/security-private%20reporting-507269)](SECURITY.md)
-[![GitHub stars](https://img.shields.io/github/stars/fantuz/rekordbox-migration-helper?style=flat)](https://github.com/fantuz/rekordbox-migration-helper/stargazers)
+<!-- project-badges:start -->
+<p align="center">
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml"><img src="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml/badge.svg?branch=main" alt="Build and native runtime checks" height="20"></a>
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/security.yml"><img src="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/security.yml/badge.svg?branch=main" alt="Security checks" height="20"></a>
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/release.yml"><img src="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/release.yml/badge.svg" alt="Release packages" height="20"></a>
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/releases/latest"><img src="https://img.shields.io/github/v/release/fantuz/rekordbox-migration-helper?label=release" alt="Latest stable release" height="20"></a>
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/releases"><img src="https://img.shields.io/github/downloads/fantuz/rekordbox-migration-helper/total?label=downloads" alt="Downloads" height="20"></a>
+  <br>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/fantuz/rekordbox-migration-helper" alt="MIT license" height="20"></a>
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/stargazers"><img src="https://img.shields.io/github/stars/fantuz/rekordbox-migration-helper?style=flat" alt="GitHub stars" height="20"></a>
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/issues"><img src="https://img.shields.io/github/issues/fantuz/rekordbox-migration-helper" alt="Open issues" height="20"></a>
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/commits/main"><img src="https://img.shields.io/github/last-commit/fantuz/rekordbox-migration-helper/main" alt="Last commit on main" height="20"></a>
+  <br>
+  <a href="#start"><img src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-507269" alt="Supported platforms" height="20"></a>
+  <a href="#start"><img src="https://img.shields.io/badge/Python-3.13%2B-3776ab" alt="Linux source runtime: Python 3.13 or newer" height="20"></a>
+  <a href="docs/LOCALIZATION.md"><img src="https://img.shields.io/badge/interface-9%20languages-2e7d32" alt="Nine interface languages" height="20"></a>
+  <a href="SECURITY.md"><img src="https://img.shields.io/badge/security-private%20reporting-507269" alt="Security policy and private reporting" height="20"></a>
+</p>
+<!-- project-badges:end -->
 
-A local browser application for understanding a rekordbox library, reviewing duplicates and preparing edited copies. Use it to prepare a move to a new computer or compare a library before and after a version change: inspect references, preparation and history, then verify the target collection. Linux is the primary development platform. Windows and macOS portable previews are built and exercised by CI.
+A local browser application for understanding a rekordbox library, reviewing duplicates and preparing edited copies. Use it to prepare a move to a new computer or compare a library before and after a version change: inspect references, preparation and history, then verify the target collection. Linux is the primary development platform. Windows and macOS portable applications are built and exercised by CI.
 
 **DJ insights** adds explainable rotation/discovery views, seeded genre-balanced random picks, a clickable bubble explorer and **Colour cloud**. **Tonality & tempo** inspects saved keys, BPM distributions and duration statistics. A collapsed per-track Comments editor stages notes freely; other metadata still requires an explicit unlock. Everything runs locally over retained snapshots. See the [DJ insights guide](docs/DJ-INSIGHTS.md) for evidence sources, unknown values, grouping rules, colour meanings, privacy and copy-export limits.
 
@@ -21,11 +32,30 @@ See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XM
 
 ## Start
 
-Download the Windows, Mac or Linux archive from [Releases](https://github.com/fantuz/rekordbox-migration-helper/releases). See [what changed in 0.4.5](CHANGELOG.md).
+<!-- project-downloads:start -->
+<p align="center">
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/releases/latest#downloads"><img src="https://img.shields.io/badge/Download%20now-Windows%20x64%20portable%20ZIP-0078D4?style=for-the-badge" alt="Download now — Windows" height="28"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/releases/latest#downloads"><img src="https://img.shields.io/badge/Download%20now-macOS%20Intel%20x86--64-555555?style=for-the-badge" alt="Download now — Mac Intel" height="28"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/releases/latest#downloads"><img src="https://img.shields.io/badge/Download%20now-macOS%20Apple%20Silicon%20ARM64-222222?style=for-the-badge" alt="Download now — Mac ARM" height="28"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/releases/latest#downloads"><img src="https://img.shields.io/badge/Download%20now-Linux%20source%20%7C%20Python%203.13%2B-2e7d32?style=for-the-badge" alt="Download now — Linux" height="28"></a>
+</p>
+
+<!-- project-downloads:end -->
+
+The buttons open the latest stable release’s automatically generated **Downloads** table. Choose the row for your platform; older and prerelease builds remain under [Releases](https://github.com/fantuz/rekordbox-migration-helper/releases). See [what changed in 0.4.5](CHANGELOG.md).
 
 On Linux, use Python 3.13 or newer and run `./start.sh` from this directory. The first launch installs requirements into a local virtual environment. The application opens your browser and binds only to loopback. Use **Stop local application** in its footer when finished.
 
-Windows users extract the complete portable ZIP and double-click **Library Workbench.exe**. Python and dependencies are included. Mac users choose the Apple Silicon (`arm64`) or Intel (`x86_64`) preview, extract it and open **Library Workbench.app**. Mac previews are ad-hoc signed, not Developer ID signed or notarized; macOS may restrict opening them. Source checkout remains available for developers.
+Windows users extract the complete portable ZIP and double-click **Library Workbench.exe**. Python and dependencies are included. Mac users choose the Apple Silicon (`arm64`) or Intel (`x86_64`) archive, extract it and open **Library Workbench.app**. Mac applications are ad-hoc signed, not Developer ID signed or notarized; macOS may restrict opening them. Source checkout remains available for developers.
 
 ## Two workflows
 

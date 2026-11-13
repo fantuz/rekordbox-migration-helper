@@ -1,3 +1,4 @@
+const preferences={get(key){try{return localStorage.getItem(key);}catch{return null;}},set(key,value){try{localStorage.setItem(key,value);}catch{}},remove(key){try{localStorage.removeItem(key);}catch{}}};
 const $ = s => document.querySelector(s);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num = n => I18n.number(Number(n || 0));
@@ -63,14 +64,25 @@ function notify(text, error=false) {
   toast.timeout = setTimeout(() => toast.hidden = true, error ? 9000 : 4500);
 }
 function wrap(fn) { return async e => {try {await fn(e);} catch(error) {notify(error.message,true);}}; }
-function progress(n, text) {
-  $("#progress").hidden=false;
+let progressCancel=null;
+function progress(n, text, cancel) {
+  const dialog=$("#progress"),value=Number.isFinite(n)?Math.max(0,Math.min(100,n)):null;
+  if(cancel){progressCancel=cancel;$("#progress-cancel").hidden=false;$("#progress-cancel").disabled=false;}
+  dialog.hidden=false;if(!dialog.open)dialog.showModal();
+  document.documentElement.dataset.operationBusy='true';
   $("#progress-label").textContent=text;
-  $("#progress-percent").textContent=Math.round(n)+"%";
-  $("#progress-bar").value=n;
+  $("#progress-percent").textContent=value===null?'—':I18n.number(Math.round(value))+'%';
+  if(value===null)$("#progress-bar").removeAttribute('value');else $("#progress-bar").value=value;
 }
+function finishProgress(){
+  const dialog=$("#progress");if(dialog.open)dialog.close();dialog.hidden=true;
+  document.documentElement.dataset.operationBusy='false';progressCancel=null;$("#progress-cancel").hidden=true;
+}
+$("#progress").addEventListener('cancel',event=>event.preventDefault());
+$("#progress-stop").onclick=()=>openCleanupDialog();
+$("#progress-cancel").onclick=wrap(async()=>{$("#progress-cancel").disabled=true;if(progressCancel)await progressCancel();});
 async function poll(job) {
-  busy=true;
+  const wasBusy=busy;busy=true;progress(null,I18n.t("Working"));
   try {
     while (true) {
       const state=await api("/api/tasks/"+job);
@@ -79,7 +91,7 @@ async function poll(job) {
       if (state.status==="complete") return state.result;
       await new Promise(resolve=>setTimeout(resolve,900));
     }
-  } finally { busy=false; $("#progress").hidden=true; }
+  } finally { busy=wasBusy;finishProgress(); }
 }
 function renderSession() {
   if (!session) return;
@@ -103,7 +115,7 @@ async function refresh() {
   const state=await api("/api/status"); token=state.token;session=state.session;
   $(".version").textContent=I18n.t('Version')+' · '+(state.version || 'development');
   renderSession();
-  $("#stop-desktop").hidden=!state.desktop;
+  $("#stop-desktop").hidden=!state.desktop;$("#progress-stop").hidden=!state.desktop;
   $("#load-example").hidden=!state.example_available;
   if ($("#empty-example")) $("#empty-example").hidden=!state.example_available;
   if (session) {await loadPairs();await renderStatistics();
@@ -291,13 +303,14 @@ async function example() {
   await poll(result.job);selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Configured local workspace loaded"));
 }
 async function uploadFile(file,url) {
+  progress(null,I18n.t("Loading")+" "+file.name);
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
     activeUploads.add(xhr);xhr.onloadend=()=>activeUploads.delete(xhr);xhr.onabort=()=>reject(new Error(I18n.t("Upload cancelled for shutdown")));
     xhr.open("PUT",url);
     xhr.setRequestHeader("X-Workbench-Token",token);
     xhr.setRequestHeader("Content-Type","application/octet-stream");
-    xhr.upload.onprogress=e=>progress(e.lengthComputable?100*e.loaded/e.total:0,I18n.t("Loading")+" "+file.name);
+    xhr.upload.onprogress=e=>progress(e.lengthComputable?100*e.loaded/e.total:null,I18n.t("Loading")+" "+file.name);
     xhr.onload=()=>{
       let body;
       try {body=JSON.parse(xhr.responseText);} catch {reject(new Error(I18n.t("Upload interrupted")));return;}
@@ -332,14 +345,14 @@ $("#import-form").onsubmit=wrap(async e=>{
   if (busy) return;
   const zip=$("#zip-input").files[0],xml=$("#xml-input").files[0];
   if (!zip || !xml) return;
-  busy=true;$("#import-dialog").close();
+  busy=true;$("#import-dialog").close();progress(null,I18n.t("Working"));
   try {
     const started=await api("/api/import",{method:"POST",body:JSON.stringify({zip:zip.name,xml:xml.name,resume_session:resumeTarget})});
     await uploadFile(zip,"/api/upload/"+started.session+"/zip");
     await uploadFile(xml,"/api/upload/"+started.session+"/xml");
     const result=await api("/api/import/"+started.session+"/analyze",{method:"POST",body:"{}"});
     await poll(result.job);selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Input pair checked and loaded"));
-  } finally {busy=false;$("#progress").hidden=true;}
+  } finally {busy=false;finishProgress();}
 });
 $("#local-import-form").onsubmit=wrap(async e=>{
   e.preventDefault();if (busy) return;
@@ -393,12 +406,12 @@ $("#export-pair").onclick=wrap(async()=>generateExport("pair"));
 $("#export-xml").onclick=wrap(async()=>generateExport("xml"));
 
 function applyTheme(value) {
-  localStorage.setItem("workbench-theme",value);
+  preferences.set("workbench-theme",value);
   const actual=value==="system" ? matchMedia("(prefers-color-scheme: light)").matches?"light":"dark" : value;
   document.documentElement.dataset.theme=actual;
   $("#theme").value=value;
 }
-applyTheme(localStorage.getItem("workbench-theme") || "dark");
+applyTheme(preferences.get("workbench-theme") || "dark");
 $("#theme").onchange=e=>applyTheme(e.target.value);
 matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{if ($("#theme").value==="system") applyTheme("system");});
 async function renderStatistics() {

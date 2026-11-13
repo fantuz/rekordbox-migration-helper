@@ -84,7 +84,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: '*preview*'
+          pattern: '*-portable'
           merge-multiple: true
           path: release-staging
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333

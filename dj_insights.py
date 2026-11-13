@@ -2,6 +2,7 @@
 from collections import Counter,defaultdict
 from datetime import date,datetime,timedelta
 from hashlib import sha256
+from heapq import nlargest
 import re
 import unicodedata
 from statistics import median
@@ -227,7 +228,7 @@ def statistics(rows):
     tempos=[t['bpm'] for t in rows if t['bpm'] is not None];lengths=[t['duration'] for t in rows if t['duration'] is not None]
     return {'entries':len(rows),'known_usage':len(known),'unknown_usage':len(rows)-len(known),'recorded_plays':total,
             'zero_usage':sum(v==0 for v in known),'known_usage_percent':round(100*len(known)/len(rows),1) if rows else None,
-            'top_ten_play_share':round(100*sum(sorted(known,reverse=True)[:10])/total,1) if total else None,
+            'top_ten_play_share':round(100*sum(nlargest(10,known))/total,1) if total else None,
             'rated':sum(t['rating'] is not None and t['rating']>0 for t in rows),
             'manual_cues':sum(t['manual_cues'] is not None and t['manual_cues']>0 for t in rows),
             'genre_families':len({t['family'] for t in rows}),'full_track_seconds':sum(t['duration'] or 0 for t in rows),
@@ -321,26 +322,33 @@ def bubbles(index,args):
     if dimension in {p['dimension'] for p in context['breadcrumbs']}:raise ValueError('Choose a dimension not already fixed by the current branch')
     groups=defaultdict(list)
     for t in rows:groups[index.key(t,dimension)].append(t)
+    # Sort lightweight group summaries first. Expensive medians, tag samples and
+    # colour/preparation detail are needed only for the 60 visible categories.
+    # A track/artist split can contain tens of thousands of groups.
     result=[]
     for key,group in groups.items():
-        s=statistics(group);value=s['entries'] if metric=='tracks' else s['recorded_plays'] if metric=='plays' else s['full_track_seconds']
+        value=len(group) if metric=='tracks' else sum(t['plays'] or 0 for t in group) if metric=='plays' else sum(t['duration'] or 0 for t in group)
+        label=(group[0]['title'] or 'Untitled track')+' · '+(group[0]['artist'] or 'Artist unavailable') if dimension=='tracks' else index.label(key,dimension)
+        result.append({'key':key,'label':label,'value':value,'entries':len(group)})
+    result.sort(key=lambda g:(-g['value'],-g['entries'],g['label'].casefold(),g['key']))
+    offset=max(0,int(args.get('group_offset',0)))
+    visible=[]
+    for item in result[offset:offset+60]:
+        group=groups[item['key']];s=statistics(group)
         unknown=s['unknown_usage'] if metric=='plays' else s['duration_unknown'] if metric=='duration' else 0
         rated=[t['rating'] for t in group if t['rating'] is not None and t['rating']>0]
         preparation_known=[t for t in group if t['preparation']!='unknown']
         tags=Counter(t['genre'] or '(blank)' for t in group)
-        result.append({'key':key,'label':(group[0]['title'] or 'Untitled track')+' · '+(group[0]['artist'] or 'Artist unavailable') if dimension=='tracks' else index.label(key,dimension),
-                       'value':value,'weight_unknown_entries':unknown,**s,
-                       'color_hex':group[0]['color_hex'] if len({t['color_hex'] for t in group})==1 and all(t['color_status']=='assigned' for t in group) else None,
-                       'color_status':group[0]['color_status'] if len({t['color_status'] for t in group})==1 else 'mixed',
-                       'mean_personal_rating':sum(rated)/len(rated) if rated else None,
-                       'manual_cue_percent':100*sum(t['preparation'] in ('manual','mixed') for t in preparation_known)/len(preparation_known) if preparation_known else None,
-                       'cue_status_known':len(preparation_known),'saved_tags':[{'tag':tag,'tracks':n} for tag,n in tags.most_common(8)],'saved_tags_total':len(tags)})
-    result.sort(key=lambda g:(-g['value'],-g['entries'],g['label'].casefold(),g['key']))
-    offset=max(0,int(args.get('group_offset',0)))
+        visible.append({**item,'weight_unknown_entries':unknown,**s,
+                        'color_hex':group[0]['color_hex'] if len({t['color_hex'] for t in group})==1 and all(t['color_status']=='assigned' for t in group) else None,
+                        'color_status':group[0]['color_status'] if len({t['color_status'] for t in group})==1 else 'mixed',
+                        'mean_personal_rating':sum(rated)/len(rated) if rated else None,
+                        'manual_cue_percent':100*sum(t['preparation'] in ('manual','mixed') for t in preparation_known)/len(preparation_known) if preparation_known else None,
+                        'cue_status_known':len(preparation_known),'saved_tags':[{'tag':tag,'tracks':n} for tag,n in tags.most_common(8)],'saved_tags_total':len(tags)})
     return {'snapshot':index.info,'context':context,'summary':statistics(rows),'dimension':dimension,'metric':metric,'metric_label':METRICS[metric],
-            'groups':result[offset:offset+60],'groups_total':len(result),'group_offset':offset,
+            'groups':visible,'groups_total':len(result),'group_offset':offset,
             'zero_weight_groups':sum(g['value']==0 for g in result),
-            'visible_weight':sum(g['value'] for g in result[offset:offset+60]),'total_weight':sum(g['value'] for g in result),
+            'visible_weight':sum(g['value'] for g in visible),'total_weight':sum(g['value'] for g in result),
             'note':'Circle areas encode the selected metric among the categories on this page. Zero/unknown weights remain in the category list. Full track duration is not time played.'}
 
 

@@ -57,3 +57,9 @@ Download the entire matching view as CSV, including its evidence label. Spreadsh
 Reports, decisions, comments, preferences and deliberate downloads survive temporary-input cleanup. Comments remain private to the file-view/working store and prepared library copies. Shareable metadata explorers add tonality and track-colour categories while excluding comments.
 
 Bubble layout uses a bundled, integrity-checked [d3-hierarchy 3.1.2](https://github.com/d3/d3-hierarchy) build under ISC, with license/provenance in `static`. It requires no CDN, JavaScript package installation or internet at runtime. The native packaging checks exercise the insight APIs and bundled chart asset on Windows and both Mac architectures; they do not exercise a licensed rekordbox restoration.
+
+## Starting the colour cloud
+
+Loading XML/ZIP files prepares the review workspace. If no analysis snapshot is selected, choose **Use loaded library** directly inside the graph or its source bar. This captures metadata from the existing local analysis copy, without writing to the source files, and the saved snapshot can be reused by the other insight views. Alternatively, select an existing saved snapshot.
+
+Grouping choices remain visible before a source is ready. The canvas distinguishes no source, loading, empty results and a failed request. **Colour cloud** starts with track count as area so unplayed tracks still appear; other area metrics can be selected afterward. Unknown and unassigned colours remain counted. Each chart page renders at most 60 categories; detailed group statistics are calculated for those visible groups, while collection totals cover the full branch.

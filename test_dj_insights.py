@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 import app as application
-from dj_insights import InsightIndex,ranking,bubbles,genre_family,initial,saved_date
+from dj_insights import InsightIndex,ranking,bubbles,genre_family,initial,saved_date,statistics as insight_statistics
 from workbench_store import Store
 
 
@@ -130,6 +130,35 @@ class BubbleAggregationTests(unittest.TestCase):
         self.assertIsNone(mixed['manual_cue_percent']);self.assertIsNone(mixed['mean_personal_rating'])
         house=next(g for g in r['groups'] if g['key']=='House')
         self.assertEqual(house['manual_cue_percent'],100);self.assertEqual(house['mean_personal_rating'],4.5)
+
+    def test_large_colour_cloud_preserves_unknowns_and_bounds_detailed_group_work(self):
+        palette=['#FF007F','#FF0000','#FFA500','#FFFF00','#00FF00','#25FDE9','#0000FF','#660099']
+        tracks=[]
+        for i in range(33000):
+            bucket=i%10
+            tracks.append(song(str(i),color_key='native:'+str(bucket+1) if bucket<8 else 'unassigned' if bucket==8 else 'unknown',
+                               color_name='Saved colour '+str(bucket)+' · Ελληνικά' if bucket<8 else None,
+                               color_hex=palette[bucket] if bucket<8 else None,
+                               color_status='assigned' if bucket<8 else 'unassigned' if bucket==8 else 'unknown'))
+        index=InsightIndex({'tracks':tracks,'capabilities':{}})
+        cloud=bubbles(index,{'dimension':'colour','metric':'tracks'})
+        self.assertEqual(cloud['groups_total'],10);self.assertEqual(cloud['total_weight'],33000)
+        self.assertEqual(sum(g['entries'] for g in cloud['groups']),33000)
+        self.assertTrue(all(g['value']==3300 for g in cloud['groups']))
+        self.assertEqual(cloud['summary']['coloured'],26400)
+        self.assertEqual(cloud['summary']['colour_unassigned'],3300);self.assertEqual(cloud['summary']['colour_unknown'],3300)
+        assigned=next(g for g in cloud['groups'] if g['key']=='native:1')
+        self.assertEqual(assigned['label'],'Saved colour 0 · Ελληνικά');self.assertEqual(assigned['color_hex'],palette[0])
+        unplayed=bubbles(index,{'dimension':'colour','metric':'plays'})
+        self.assertEqual(unplayed['zero_weight_groups'],10);self.assertEqual(unplayed['total_weight'],0)
+        # Paging a high-cardinality split should not calculate medians and tag
+        # samples for the 32,940 groups that are not displayed on this page.
+        with patch('dj_insights.statistics',wraps=insight_statistics) as detail:
+            page=bubbles(index,{'dimension':'tracks','group_offset':32760})
+        self.assertEqual(page['groups_total'],33000);self.assertEqual(page['total_weight'],33000)
+        self.assertEqual(len(page['groups']),60);self.assertLessEqual(detail.call_count,61)
+        self.assertEqual(len({g['key'] for g in page['groups']}),60)
+        self.assertEqual(tracks[0]['color_name'],'Saved colour 0 · Ελληνικά')
 
     def test_click_branches_intersect_dimensions_without_double_counting(self):
         index=InsightIndex(snapshot());path=[{'dimension':'family','key':'House'}]

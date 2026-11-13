@@ -6,12 +6,16 @@ Every pull request and push to `main` runs source tests on Linux, Windows, Mac I
 
 | Download | Artifact |
 | --- | --- |
-| Windows x64 portable | `windows-x64-preview` |
-| Mac Apple Silicon | `macos-preview-macos-15` |
-| Mac Intel | `macos-preview-macos-15-intel` |
+| Windows x64 portable | `windows-x64-portable` |
+| Mac Apple Silicon | `macos-arm64-portable` |
+| Mac Intel | `macos-x86_64-portable` |
 | Linux source | `linux-source` |
 
-GitHub wraps each artifact in an outer ZIP; extract it to find the actual application archive. The intermediate `windows-portable-assembly` has not passed the native Windows executable check; use `windows-x64-preview`. Development artifacts expire after 14 days. GitHub release assets are retained separately. **Check and package → Run workflow** also builds a selected ref without publishing.
+GitHub wraps each artifact in an outer ZIP; extract it to find the actual application archive. The intermediate `windows-portable-assembly` has not passed the native Windows executable check; use `windows-x64-portable`. Development artifacts expire after 14 days. GitHub release assets are retained separately. **Check and package → Run workflow** also builds a selected ref without publishing.
+
+Archive filenames contain the version and architecture without a `-preview` suffix, for example `Library-Workbench-0.4.6-windows-x64.zip` and `Library-Workbench-0.4.6-macos-arm64.zip`. The release channel is separate: alpha/beta/rc versions still publish as prereleases.
+
+The README download buttons always open the latest stable release's **Downloads** table. That table is generated for each release with links to its exact four versioned assets, so no README version edit is needed. Existing published releases keep their original names.
 
 ## Release without a shell
 
