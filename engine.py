@@ -460,6 +460,20 @@ def enrich_usage(catalog, backup, working, progress):
         for i,bitrate,sample,depth,bpm,year in db.execute("SELECT ID,BitRate,SampleRate,BitDepth,BPM,ReleaseYear FROM djmdContent"):
             if i in catalog.tracks:
                 catalog.tracks[i].update(bitrate=bitrate,sample_rate=sample,bit_depth=depth,bpm=(bpm or 0)/100,year=year)
+        from track_tags import native_colour
+        tables={r[0] for r in db.execute("SELECT name FROM sqlite_schema WHERE type='table'")}
+        content_columns={r[1] for r in db.execute('PRAGMA table_info(djmdContent)')}
+        if 'djmdKey' in tables and 'KeyID' in content_columns:
+            for identity,key in db.execute('SELECT c.ID,k.ScaleName FROM djmdContent c LEFT JOIN djmdKey k ON k.ID=c.KeyID'):
+                if identity in catalog.tracks:catalog.tracks[identity]['tonality']=key or ''
+        colours={}
+        if 'djmdColor' in tables:
+            colour_columns={r[1] for r in db.execute('PRAGMA table_info(djmdColor)')}
+            if {'ID','ColorCode','SortKey','Commnt'}<=colour_columns:
+                colours={str(r[0]):dict(zip(('ID','ColorCode','SortKey','Commnt'),r)) for r in db.execute('SELECT ID,ColorCode,SortKey,Commnt FROM djmdColor')}
+        if 'ColorID' in content_columns:
+            for identity,color_id in db.execute('SELECT ID,ColorID FROM djmdContent'):
+                if identity in catalog.tracks:catalog.tracks[identity].update(native_colour(color_id,colours.get(str(color_id))))
         catalog.metadata["playlist_options"]=[{"id":i,"name":name} for i,name in db.execute("SELECT ID,Name FROM djmdPlaylist WHERE rb_local_deleted=0 AND coalesce(Attribute,0)!=1 ORDER BY Name")]
         for i,album,composer,genre,label in db.execute("""SELECT c.ID,al.Name,co.Name,g.Name,l.Name
             FROM djmdContent c LEFT JOIN djmdAlbum al ON al.ID=c.AlbumID LEFT JOIN djmdArtist co ON co.ID=c.ComposerID

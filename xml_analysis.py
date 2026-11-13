@@ -9,6 +9,7 @@ from xml.parsers import expat
 from engine import parse_xml,path_key,is_auto,HOT_NUMBERS
 from media import file_record
 from metadata_export import track
+from track_tags import xml_colour
 
 
 def analyze_xml(source,output,progress):
@@ -26,7 +27,8 @@ def analyze_xml(source,output,progress):
         t=track({'id':identity,'title':a.get('Name'),'artist':a.get('Artist'),'album':a.get('Album'),'genre':a.get('Genre'),
                  'year':a.get('Year'),'bpm':a.get('AverageBpm'),'duration':a.get('TotalTime'),'rating':rating,'label':a.get('Label'),
                  'composer':a.get('Composer'),'play_count':a.get('PlayCount'),'date_added':a.get('DateAdded'),'bitrate':a.get('BitRate'),
-                 'sample_rate':a.get('SampleRate'),'current_path':a.get('Location'),'manual_cues':len(marks)-auto,'auto_cues':auto})
+                 'sample_rate':a.get('SampleRate'),'current_path':a.get('Location'),'manual_cues':len(marks)-auto,'auto_cues':auto,
+                 'comment':a.get('Comments'),'tonality':a.get('Tonality'),**xml_colour(a.get('Colour'))})
         t.update(cues=None,raw_tags={'year':a.get('Year'),'bpm':a.get('AverageBpm'),'duration':a.get('TotalTime'),'rating':rating},uuid=None,isrc=a.get('ISRC',''))
         tracks.append(t);by_location[path_key(a.get('Location'))].append(identity)
     lookup={t['id']:t for t in tracks};playlists=[];stack=[];scope='';unresolved=0

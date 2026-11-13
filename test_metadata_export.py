@@ -56,7 +56,7 @@ class MetadataExportTests(unittest.TestCase):
         self.assertFalse(result['staged_changes_applied'])
         with zipfile.ZipFile(folder/'metadata-explorer.zip') as archive:
             self.assertIsNone(archive.testzip())
-            for page in ('index','tracks','genres','years','added','artists','albums','bpm','ratings','duration','formats','playlists'):
+            for page in ('index','tracks','genres','years','added','artists','albums','bpm','ratings','duration','formats','playlists','tonality','colours'):
                 self.assertIn(page+'.html',archive.namelist())
             script=archive.read('library-data.js').decode('utf-8')
             self.assertNotIn('private-name',script)

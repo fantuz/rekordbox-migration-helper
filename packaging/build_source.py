@@ -13,7 +13,7 @@ def main():
     destination=ROOT/"releases"/("Library-Workbench-"+VERSION+"-linux-source.tar.gz")
     destination.parent.mkdir(exist_ok=True)
     files=list(ROOT.glob("*.py"))
-    files+=[ROOT/name for name in ("start.sh","requirements.txt","requirements-build.txt","README.md","LICENSE","SECURITY.md","THIRD-PARTY-NOTICES.txt")]
+    files+=[ROOT/name for name in (".gitattributes","start.sh","requirements.txt","requirements-build.txt","README.md","LICENSE","SECURITY.md","THIRD-PARTY-NOTICES.txt")]
     files+=list((ROOT/"static").glob("*"))
     files+=list((ROOT/"packaging").glob("*.py"))+list((ROOT/"packaging").glob("*.c"))
     files+=list((ROOT/"docs").glob("*.md"))

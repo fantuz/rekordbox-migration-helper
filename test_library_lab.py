@@ -132,8 +132,8 @@ class StoreAndOverrideTests(unittest.TestCase):
         master=self.root/'fixture.db'
         with closing(mutable_copy(master)) as db:
             db.executescript('''
-              CREATE TABLE djmdContent(ID TEXT PRIMARY KEY,Title TEXT,ReleaseYear INTEGER,Rating INTEGER,ArtistID TEXT,AlbumID TEXT,GenreID TEXT,rb_local_deleted INTEGER,rb_local_synced INTEGER,rb_local_usn INTEGER,updated_at TEXT);
-              INSERT INTO djmdContent VALUES ('one','Original',2000,1,NULL,NULL,NULL,0,1,0,'old');
+              CREATE TABLE djmdContent(ID TEXT PRIMARY KEY,Title TEXT,ReleaseYear INTEGER,Rating INTEGER,ArtistID TEXT,AlbumID TEXT,GenreID TEXT,rb_local_deleted INTEGER,rb_local_synced INTEGER,rb_local_usn INTEGER,updated_at TEXT,Commnt TEXT);
+              INSERT INTO djmdContent VALUES ('one','Original',2000,1,NULL,NULL,NULL,0,1,0,'old','Original comment');
               CREATE TABLE agentRegistry(registry_id TEXT,int_1 INTEGER,updated_at TEXT);
               INSERT INTO agentRegistry VALUES ('localUpdateCount',0,'old');
             ''')
@@ -144,18 +144,20 @@ class StoreAndOverrideTests(unittest.TestCase):
             z.write(master,'master.db');z.writestr('contents.xml','<ROOT><VALUE name="CONTENT_NUM" val="1"/></ROOT>');z.writestr('USBANLZ/a/b/ANLZ0000.DAT',b'unchanged analysis')
         xml.write_text('<DJ_PLAYLISTS><PRODUCT Version="7.0.0"/><COLLECTION Entries="1"><TRACK TrackID="one" Name="Original" Artist="" Year="2000" Rating="51"><TEMPO Inizio="0" Bpm="120" Metro="4/4" Battito="1"/><POSITION_MARK Name="Drop" Num="0" Type="0" Start="1.000"/></TRACK></COLLECTION><PLAYLISTS><NODE><TRACK Key="one"/></NODE></PLAYLISTS></DJ_PLAYLISTS>',encoding='utf-8')
         original=[sha256(p.read_bytes()).hexdigest() for p in (backup,xml)]
-        edits={'one':{'title':'Edited title','artist':'Edited artist','album':'Edited album','genre':'Edited genre','year':2024,'rating':4}}
+        edits={'one':{'title':'Edited title','artist':'Edited artist','album':'Edited album','genre':'Edited genre','year':2024,'rating':4,'comment':'First line\nSecond & café <mix>'}}
         c=SimpleNamespace(tracks={'one':{'october_xml':True}},metadata={'xml_path':str(xml),'zip_path':str(backup),'version':'7.0.0','field_overrides':edits})
         outxml=self.root/'edited.xml';outzip=self.root/'edited.zip'
         x=export_xml(c,{}, {},outxml,lambda *_:None);n=export_native(c,{}, {},outzip,lambda *_:None)
-        self.assertEqual((x['metadata_fields'],n['metadata_fields']),(6,6))
+        self.assertEqual((x['metadata_fields'],n['metadata_fields']),(7,7))
         checked=parse_xml(outxml,lambda *_:None)[0]['one'];self.assertEqual(checked['attrs']['Genre'],'Edited genre');self.assertEqual(checked['attrs']['Rating'],'204')
         self.assertEqual(checked['tempo'],1);self.assertEqual(checked['marks'][0]['Name'],'Drop')
+        self.assertEqual(checked['attrs']['Comments'],edits['one']['comment'])
         with zipfile.ZipFile(outzip) as z:
             extracted=self.root/'check.db';extracted.write_bytes(z.read('master.db'));self.assertEqual(z.read('USBANLZ/a/b/ANLZ0000.DAT'),b'unchanged analysis')
         with closing(open_master(extracted.resolve())) as db:
             self.assertEqual(tuple(db.execute('SELECT Title,ReleaseYear,Rating FROM djmdContent').fetchone()),('Edited title',2024,4))
             self.assertEqual(db.execute('SELECT Name FROM djmdGenre').fetchone()[0],'Edited genre')
+            self.assertEqual(db.execute('SELECT Commnt FROM djmdContent').fetchone()[0],edits['one']['comment'])
         self.assertEqual([sha256(p.read_bytes()).hexdigest() for p in (backup,xml)],original)
 
     def test_plaintext_private_wal_capture_keeps_committed_rows(self):

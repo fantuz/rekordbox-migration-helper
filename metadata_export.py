@@ -10,16 +10,17 @@ import shutil
 import zipfile
 
 from engine import is_auto
+from track_tags import native_colour,rgb
 
 
 FIELDS = ("id", "title", "artist", "album", "genre", "year", "bpm", "rating",
           "duration", "format", "label", "composer", "play_count", "date_added",
           "last_played", "analysed", "manual_cues", "auto_cues", "bitrate",
-          "sample_rate", "bit_depth", "playlists")
+          "sample_rate", "bit_depth", "playlists", "tonality", "color_name", "color_hex", "color_status")
 PATH_FIELDS = ("current_path", "original_path")
 PAGES = {"index": "Overview", "tracks": "Tracks", "genres": "Genres", "years": "Release years", "added": "Added by year",
          "artists": "Artists", "albums": "Albums", "bpm": "BPM ranges", "ratings": "Ratings",
-         "duration": "Duration", "formats": "Formats", "playlists": "Playlists"}
+         "duration": "Duration", "formats": "Formats", "playlists": "Playlists", "tonality": "Tonality", "colours": "Track colours"}
 
 
 def number(value, minimum=0, maximum=None):
@@ -38,8 +39,12 @@ def clean(value):
 
 def track(values):
     """Keep a bounded metadata allowlist; unavailable values stay unknown."""
-    text = ("id", "title", "artist", "album", "genre", "label", "composer", "date_added", "last_played", *PATH_FIELDS)
+    text = ("id", "title", "artist", "album", "genre", "label", "composer", "date_added", "last_played", "tonality", *PATH_FIELDS)
     result = {field: clean(values.get(field)) for field in text}
+    result['comment']=None if values.get('comment') is None else str(values['comment'])
+    result.update({field:clean(values.get(field)) for field in ('color_name','color_key','color_basis')})
+    result['color_status']=values.get('color_status') if values.get('color_status') in ('assigned','unassigned','unknown') else 'unknown'
+    result['color_hex']=rgb(values.get('color_hex'))
     for field in ("duration", "play_count", "manual_cues", "auto_cues", "bitrate", "sample_rate", "bit_depth"):
         result[field] = number(values.get(field))
     result["year"] = number(values.get("year"), 1000, 2999)
@@ -80,6 +85,8 @@ def capture_database(db, columns):
 
     lookups = {name: {str(row["ID"]): row["Name"] for row in rows(name, ("ID", "Name"))}
                for name in ("djmdArtist", "djmdAlbum", "djmdGenre", "djmdLabel")}
+    keys={str(r['ID']):r['ScaleName'] for r in rows('djmdKey',('ID','ScaleName'))}
+    colours={str(r['ID']):r for r in rows('djmdColor',('ID','ColorCode','SortKey','Commnt'))}
     playlist_names = {str(p["ID"]): p["Name"] for p in rows("djmdPlaylist", ("ID", "Name", "Attribute"))
                       if (p["Attribute"] or 0) != 1}
     playlists = defaultdict(list)
@@ -92,7 +99,7 @@ def capture_database(db, columns):
     cue_known = {"ContentID", "Comment"} <= columns.get("djmdCue", set())
     source_fields = ("ID", "Title", "ArtistID", "AlbumID", "GenreID", "LabelID", "ComposerID", "ReleaseYear",
                      "BPM", "Rating", "Length", "DJPlayCount", "StockDate", "Analysed", "BitRate", "SampleRate",
-                     "BitDepth", "FolderPath", "OrgFolderPath")
+                     "BitDepth", "FolderPath", "OrgFolderPath", "Commnt", "KeyID", "ColorID")
     tracks = []
     for row in rows("djmdContent", source_fields):
         identity = str(row["ID"])
@@ -104,6 +111,8 @@ def capture_database(db, columns):
                   "date_added": row["StockDate"], "analysed": row["Analysed"], "bitrate": row["BitRate"],
                   "sample_rate": row["SampleRate"], "bit_depth": row["BitDepth"], "current_path": row["FolderPath"],
                   "original_path": row["OrgFolderPath"], "playlists": playlists[identity],
+                  'comment':row['Commnt'],'tonality':keys.get(str(row['KeyID']),''),
+                  **native_colour(row['ColorID'],colours.get(str(row['ColorID'])),'ColorID' in columns.get('djmdContent',set())),
                   "manual_cues": len(cues[identity])-automated if cue_known else None,
                   "auto_cues": automated if cue_known else None}
         for target, table, field in (("artist", "djmdArtist", "ArtistID"), ("composer", "djmdArtist", "ComposerID"),

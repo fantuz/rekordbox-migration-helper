@@ -73,7 +73,7 @@ async function labLoadTracks() {
   $('#lab-edit-state').textContent=(labUnlocked?'Staging unlocked':'Read-only')+' · '+num(r.override_fields)+' field overrides in this scope. Source database and audio tags stay unchanged.';
   $('#lab-tracks').innerHTML='<table><thead><tr><th>Track</th><th>Artist</th><th>Year / stars / genre</th><th></th></tr></thead><tbody>'+r.rows.map((item,i)=>{const t={...item.original,...Object.fromEntries(Object.entries(item.overrides).map(([k,v])=>[k,v.value]))};return '<tr><td>'+esc(t.title)+'<br><span class="subtle">'+esc(t.id)+'</span></td><td>'+esc(t.artist)+'</td><td>'+esc(t.year || '—')+' · '+esc(t.rating ?? 'Unknown')+' ★ · '+esc(t.genre || 'Unknown')+'</td><td><button class="button secondary" data-lab-edit="'+i+'">Inspect / edit'+(Object.keys(item.overrides).length?' · staged':'')+'</button></td></tr>';}).join('')+'</tbody></table>';
   $('#lab-tracks-count').textContent=num(r.total)+' tracks · '+num(labTrackOffset+1)+'–'+num(Math.min(labTrackOffset+30,r.total));$('#lab-tracks-prev').disabled=!labTrackOffset;$('#lab-tracks-next').disabled=labTrackOffset+30>=r.total;
-  $$('[data-lab-edit]').forEach(b=>b.onclick=()=>labEdit(labTrackRows[Number(b.dataset.labEdit)]));
+  $$('[data-lab-edit]').forEach(b=>b.onclick=wrap(()=>openTrackDetails(labSnapshot(),labTrackRows[Number(b.dataset.labEdit)].original.id)));
   if(labEdited){const updated=r.rows.find(t=>t.original.id===labEdited.original.id);if(updated)labEdit(updated);else $('#lab-edit-save').disabled=!labUnlocked;}
 }
 function labEdit(item) {

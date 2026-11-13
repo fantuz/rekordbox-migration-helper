@@ -3,8 +3,8 @@
   const data=window.METADATA_SNAPSHOT, $=s=>document.querySelector(s);
   if (!data || data.schema!==1) {$("#scope-note").textContent="This file has no supported metadata snapshot. Generate an explorer from Library Workbench.";return;}
   const number=new Intl.NumberFormat(), collator=new Intl.Collator(undefined,{numeric:true,sensitivity:"base"});
-  const pages={index:"Overview",tracks:"Tracks",genres:"Genres",years:"Release years",added:"Added by year",artists:"Artists",albums:"Albums",bpm:"BPM ranges",ratings:"Ratings",duration:"Duration",formats:"Formats",playlists:"Playlists"};
-  const facet={genres:"genre",years:"year",added:"added_year",artists:"artist",albums:"album",bpm:"bpm_group",ratings:"rating_group",duration:"duration_group",formats:"format",playlists:"playlist"};
+  const pages={index:"Overview",tracks:"Tracks",genres:"Genres",years:"Release years",added:"Added by year",artists:"Artists",albums:"Albums",bpm:"BPM ranges",ratings:"Ratings",duration:"Duration",formats:"Formats",playlists:"Playlists",tonality:"Tonality",colours:"Track colours"};
+  const facet={genres:"genre",years:"year",added:"added_year",artists:"artist",albums:"album",bpm:"bpm_group",ratings:"rating_group",duration:"duration_group",formats:"format",playlists:"playlist",tonality:"tonality",colours:"color_group"};
   const bpmBins=[[80,"Under 80"],[100,"80–99.99"],[120,"100–119.99"],[130,"120–129.99"],[140,"130–139.99"],[160,"140–159.99"],[180,"160–179.99"],[Infinity,"180+"]];
   const durationBins=[[60,"Under 1 min"],[180,"1–2.99 min"],[360,"3–5.99 min"],[600,"6–9.99 min"],[1800,"10–29.99 min"],[Infinity,"30 min+"]];
   const missing="missing", empty=v=>v===null || v===undefined || v==="", folded=v=>String(v).normalize("NFKC").toLocaleLowerCase();
@@ -16,6 +16,7 @@
   const tracks=data.rows.map(row=>Object.fromEntries(data.columns.map((name,i)=>[name,row[i]])));
   for(const r of tracks){
     r.added_year=String(r.date_added || '').match(/^([1-9]\d{3})(?:\D|\d{4}|$)/)?.[1] || null;
+    r.color_group=r.color_status==='assigned'?(r.color_name || r.color_hex || 'Assigned colour'):r.color_status==='unassigned'?'No assigned colour':null;
     r.bpm_group=empty(r.bpm)?null:bpmBins.find(([max])=>r.bpm<max)[1];
     r.duration_group=empty(r.duration)?null:durationBins.find(([max])=>r.duration<max)[1];
     r.rating_group=empty(r.rating)?null:r.rating===0?"Unrated":r.rating+" stars";

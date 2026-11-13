@@ -10,6 +10,8 @@
 
 A local browser application for understanding a rekordbox library, reviewing duplicates and preparing edited copies. Use it to prepare a move to a new computer or compare a library before and after a version change: inspect references, preparation and history, then verify the target collection. Linux is the primary development platform. Windows and macOS portable previews are built and exercised by CI.
 
+**DJ insights** adds explainable rotation/discovery views, seeded genre-balanced random picks, a clickable bubble explorer and **Colour cloud**. **Tonality & tempo** inspects saved keys, BPM distributions and duration statistics. A collapsed per-track Comments editor stages notes freely; other metadata still requires an explicit unlock. Everything runs locally over retained snapshots. See the [DJ insights guide](docs/DJ-INSIGHTS.md) for evidence sources, unknown values, grouping rules, colour meanings, privacy and copy-export limits.
+
 See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XML and native libraries](docs/FORMAT-SOURCES.md), and [path discovery, analysis/STEMS audit and play-history guide](docs/DISCOVERY-ASSETS-HISTORY.md). The light interface uses blue/green emphasis, prominent duplicate-pair counts and compact tables. Statistics and offline explorers separate addition year from release year. Native histories remain private local snapshot data, browsable after temporary database cleanup.
 
 **Keep a fresh, untouched backup created by rekordbox Backup Library outside this workspace before generating transformed files. Preserve the audio separately when it is excluded from the backup. Native ZIP restoration in rekordbox remains experimental.**

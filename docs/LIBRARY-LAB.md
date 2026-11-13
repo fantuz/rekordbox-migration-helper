@@ -18,6 +18,8 @@ Reports support finding filters, paging and complete JSON download. Analysis aud
 
 ## Staged field overrides
 
+The per-track file view now includes a collapsed Comments section. Individual comments stage without unlocking; other fields keep the unlock gate. Comment values stay out of insight tables/CSV and shareable HTML. The same-workspace copy writers support XML Comments/native Commnt with baseline/conflict checks. See [DJ insights and track comments](DJ-INSIGHTS.md).
+
 The editor starts read-only. Unlock the snapshot scope to stage title, artist, album, genre, year or personal stars. Original snapshots stay immutable; edits and reset history live in `workbench-sidecar.sqlite3` under the private application data directory. Whole personal stars use 0–5. Year may be cleared.
 
 For XML/native ZIP copy export, edits must belong to a snapshot captured from that same loaded XML/ZIP workspace. The export freezes edits alongside merge/relocation decisions, validates their original baseline, resolves donors to keepers and holds conflicting edits. Native named values reuse exact active names or create validated lookup rows with new IDs/UUIDs/update counters. XML retains its own collection scope; native-only edits outside that scope are counted in validation. Sources and audio tags remain unchanged. Older native schemas are not silently enabled.
