@@ -22,7 +22,7 @@ def main():
     from playwright.sync_api import sync_playwright
     parser=argparse.ArgumentParser();parser.add_argument('--browser',choices=['chromium','firefox','webkit'],default='chromium');parser.add_argument('--output',type=Path,required=True);args=parser.parse_args()
     args.output.mkdir(parents=True,exist_ok=True)
-    errors=[];requests=[];report={'browser':args.browser,'synthetic':True,'languages':[],'status':'running'}
+    errors=[];requests=[];api_issues=[];report={'browser':args.browser,'synthetic':True,'languages':[],'status':'running'}
     messages=catalogues(ROOT/'static')
     with tempfile.TemporaryDirectory(prefix='workbench-language-') as tmp:
         root=Path(tmp);data=root/'data';data.mkdir();store=Store(data/'workbench-sidecar.sqlite3')
@@ -45,6 +45,10 @@ def main():
                 context=browser.new_context(locale='en-US',viewport={'width':1440,'height':1000})
                 page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
                 page.on('request',lambda request:requests.append({'url':request.url,'method':request.method}))
+                def check_api_response(response):
+                    if response.url.startswith(base+'/api/') and (response.status>=400 or ('application/json' not in response.headers.get('content-type','') and '/api/i18n.js' not in response.url)):
+                        api_issues.append({'url':response.url,'status':response.status,'content_type':response.headers.get('content-type')})
+                page.on('response',check_api_response)
                 page.goto(base,wait_until='networkidle');page.wait_for_function('typeof loadDJInsights === "function"')
                 for code in LANGUAGES:
                     page.select_option('#language',code)
@@ -79,6 +83,8 @@ def main():
                 assert not any(r['method']!='GET' for r in requests), 'Language changes submitted a mutation'
                 assert all(r['url'].startswith(base) or r['url'].startswith('blob:') for r in requests), 'Unexpected external request'
                 assert store.snapshot(sid)==before
+                assert not api_issues,api_issues
+                assert page.locator('#toast').is_hidden() or not page.locator('#toast').inner_text(), 'Unexpected caught UI error: '+page.locator('#toast').inner_text()
                 page.goto(Path(offline['directory']).joinpath('library.html').as_uri(),wait_until='load')
                 for code in LANGUAGES:
                     page.select_option('#language',code);page.wait_for_function('(code)=>document.documentElement.lang===code',arg=code)
@@ -98,12 +104,14 @@ def main():
                 browser.close()
             report.update(status='passed',errors=errors,language_changes_submit_no_mutations=True,unexpected_network_requests=0,unsaved_comment_preserved=True,locked_fields_preserved=True)
         except Exception as error:
-            report.update(status='failed',error=str(error),errors=errors);raise
+            report.update(status='failed',error=str(error),errors=errors,api_issues=api_issues);raise
         finally:
             process.terminate()
             try:process.wait(timeout=15)
             except subprocess.TimeoutExpired:process.kill();process.wait(timeout=5)
-            log.close();(args.output/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+            log.close()
+            if (data/'application.log').exists():(args.output/'server.log').write_text((data/'application.log').read_text(encoding='utf-8'),encoding='utf-8')
+            (args.output/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 
 
 if __name__=='__main__':main()
