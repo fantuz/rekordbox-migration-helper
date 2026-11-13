@@ -9,6 +9,23 @@ from xml.etree import ElementTree
 DATABASE_NAMES=('master.db','Master.db','datafile.edb','DataFile.edb','ExtData.edb','extdata.edb')
 
 
+def configure_packaged_certificates(platform_name=None,environ=None,frozen=None,certificate_files=None):
+    """Use the host's CA store when bundled OpenSSL came from another distro."""
+    name=platform_name or sys.platform
+    env=os.environ if environ is None else environ
+    packaged=getattr(sys,'frozen',False) if frozen is None else frozen
+    if not packaged or name not in ('linux','darwin') or 'SSL_CERT_FILE' in env or 'SSL_CERT_DIR' in env:return None
+    files=certificate_files if certificate_files is not None else (
+        '/etc/ssl/certs/ca-certificates.crt','/etc/pki/tls/certs/ca-bundle.crt',
+        '/etc/ssl/ca-bundle.pem','/etc/ssl/cert.pem')
+    for name in files:
+        path=Path(name)
+        try:
+            if path.is_file():env['SSL_CERT_FILE']=str(path);return str(path)
+        except OSError:continue
+    return None
+
+
 def default_data_directory(app_root,platform_name=None,environ=None,home=None,frozen=None):
     name=platform_name or sys.platform
     env=os.environ if environ is None else environ

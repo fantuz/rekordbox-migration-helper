@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import platform
 import subprocess
+import ssl
 import sys
 import sysconfig
 import tarfile
@@ -54,6 +55,7 @@ def main():
            *[ROOT/name for name in ('README.md', 'CHANGELOG.md', 'SECURITY.md', 'CONTRIBUTING.md')]]
     manifest={'application':'Library Workbench', 'version':version, 'platform':'linux-x86_64',
               'python':platform.python_version(), 'libc_build':platform.libc_ver(), 'minimum_glibc':'2.28',
+              'openssl_build':ssl.OPENSSL_VERSION,
               'build_image':os.environ.get('LIBRARY_WORKBENCH_BUILD_IMAGE'),
               'python_source':json.loads((ROOT/'.build/linux-python-source.json').read_text(encoding='utf-8')),
               'linux_runtime_test':'pending', 'commit':os.environ.get('GITHUB_SHA'),

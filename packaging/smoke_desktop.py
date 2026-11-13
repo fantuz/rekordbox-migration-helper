@@ -163,6 +163,7 @@ def main():
                 assert temporary_info['bytes']>0
                 checks={"status":"passed","platform":platform.platform(),"launcher":"portable executable" if args.application else "macOS app bundle" if args.macos_app else "Linux portable ELF" if args.linux_application else "Python source",
                         "external_python_unavailable":bool(args.linux_application),
+                        "host_tls_roots_without_network":"passed" if args.linux_application else "not exercised",
                         "encrypted_sqlcipher_read_write":"passed","http_startup":"passed","unicode_workspace_path":"passed",
                         "read_only_analyzer":"passed","source_sha256_unchanged":True,"json_report_download":"passed",
                         "offline_html_and_minisite_export":"passed","library_lab_capture_and_staged_edit":"passed","musicbrainz_local_preview_no_network":"passed",

@@ -10,7 +10,7 @@ import time
 import urllib.request
 import webbrowser
 import signal
-from platform_paths import default_data_directory
+from platform_paths import default_data_directory,configure_packaged_certificates
 
 
 def acquire_lock(path):
@@ -58,6 +58,11 @@ def smoke_test():
     import wave
     from engine import open_master
     from native_export import mutable_copy
+    tls_roots='not exercised'
+    if getattr(sys,'frozen',False) and sys.platform=='linux':
+        import ssl
+        assert ssl.create_default_context().cert_store_stats()['x509_ca']>0,'No trusted OS certificates available'
+        tls_roots='loaded from host CA store; no network request'
     with tempfile.TemporaryDirectory() as tmp:
         audio=Path(tmp)/'synthetic.wav'
         with wave.open(str(audio),'wb') as out:out.setparams((1,2,8000,0,'NONE','not compressed'));out.writeframes(b'\0\0'*80)
@@ -71,10 +76,11 @@ def smoke_test():
         check=open_master(path.resolve())
         assert check.execute("SELECT value FROM smoke").fetchone()==("ready",)
         check.close()
-    print(json.dumps({"status":"passed","python":sys.version.split()[0],"sqlcipher":"encrypted read/write passed","lxml":lxml.etree.LXML_VERSION}))
+    print(json.dumps({"status":"passed","python":sys.version.split()[0],"sqlcipher":"encrypted read/write passed","lxml":lxml.etree.LXML_VERSION,'tls_roots':tls_roots}))
 
 
 def main():
+    configure_packaged_certificates()
     parser=argparse.ArgumentParser(description="Library Workbench desktop application")
     parser.add_argument("--port",type=int,default=8765)
     parser.add_argument("--no-browser",action="store_true",default=os.environ.get("LIBRARY_WORKBENCH_NO_BROWSER")=="1")

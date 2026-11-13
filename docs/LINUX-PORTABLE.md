@@ -19,7 +19,9 @@ Original input files remain unchanged. Uploaded analysis copies are temporary; d
 
 ## Build and evidence
 
-GitHub builds the package with pinned PyInstaller and CPython 3.13.18 in a digest-pinned manylinux_2_28 x86-64 container. The container's wheel-building interpreter is static, so the workflow first builds shared CPython from the official, SHA-256-pinned source archive. Its origin and checksum are recorded in the manifest, and its license is included under `_internal/licenses`. Inputs are the public application checkout and dependencies, never a user's library. The package preserves shared-library symlinks and executable permissions in TAR format.
+GitHub builds the package with pinned PyInstaller and CPython 3.13.18 in a digest-pinned manylinux_2_28 x86-64 container. The container's wheel-building interpreter is static, so the workflow installs the build headers for compression, FFI, SQLite and TLS, then builds shared CPython from the official, SHA-256-pinned source archive. Its origin and checksum are recorded in the manifest, and its license is included under `_internal/licenses`. Inputs are the public application checkout and dependencies, never a user's library. The package preserves shared-library symlinks and executable permissions in TAR format.
+
+Bundled Linux/macOS launchers use the host operating system’s certificate file when available, preserving explicit `SSL_CERT_FILE`/`SSL_CERT_DIR` overrides. No certificate verification is disabled and no extra CA service is queried. The Linux executable also verifies that trusted roots load without making an internet request.
 
 The host check extracts into a path with spaces and Unicode, clears Python environment variables and points `PATH` at a nonexistent folder before running the bundled ELF. It exercises encrypted synthetic database reads, source hash preservation, browser-server startup, repeat launch, translated resources, snapshots, offline exports and acknowledged cleanup. The harness uses its own Python only to create synthetic fixtures and send HTTP checks; the application must run independently.
 

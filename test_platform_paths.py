@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from xml.etree.ElementTree import Element,SubElement,tostring
 
-from platform_paths import default_data_directory,discover_sources
+from platform_paths import default_data_directory,discover_sources,configure_packaged_certificates
 
 
 class PlatformPathTests(unittest.TestCase):
@@ -77,6 +77,17 @@ class PlatformPathTests(unittest.TestCase):
             self.assertEqual(default_data_directory('/application','linux',{'XDG_DATA_HOME':str(data)},user,True),data/'LibraryWorkbench')
             self.assertEqual(default_data_directory('/application','linux',{'XDG_DATA_HOME':'relative'},user,True),user/'.local/share/LibraryWorkbench')
             self.assertEqual(default_data_directory('/application','linux',{},user,False),Path('/application/.data'))
+
+    def test_bundled_runtime_uses_os_certificates_and_honours_explicit_trust_settings(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path=Path(temporary)/'ca.pem';path.write_text('synthetic CA path only; never used for TLS')
+            env={};configure_packaged_certificates('linux',env,True,[path])
+            self.assertEqual(env,{'SSL_CERT_FILE':str(path)})
+            for key in ('SSL_CERT_FILE','SSL_CERT_DIR'):
+                env={key:'user-managed'};configure_packaged_certificates('darwin',env,True,[path])
+                self.assertEqual(env,{key:'user-managed'})
+            for platform,packaged in (('linux',False),('win32',True)):
+                env={};configure_packaged_certificates(platform,env,packaged,[path]);self.assertEqual(env,{})
 
 
 

@@ -1354,14 +1354,15 @@
       "ru": "Ветвь:"
     },
     "Bring the matching pair.": {
-      "de": "Passendes Dateipaar auswählen.",
-      "fr": "Sélectionnez la paire correspondante.",
-      "it": "Seleziona la coppia corrispondente.",
-      "es": "Selecciona el par correspondiente.",
-      "el": "Επιλέξτε το αντίστοιχο ζεύγος.",
-      "pl": "Wybierz pasującą parę plików.",
-      "cs": "Vyberte odpovídající dvojici souborů.",
-      "ru": "Выберите соответствующую пару файлов."
+      "en": "Select the library ZIP and XML",
+      "de": "ZIP und XML der Bibliothek auswählen",
+      "fr": "Sélectionner le ZIP et le XML de la bibliothèque",
+      "it": "Seleziona ZIP e XML della libreria",
+      "es": "Selecciona el ZIP y el XML de la biblioteca",
+      "el": "Επιλογή ZIP και XML της βιβλιοθήκης",
+      "pl": "Wybierz ZIP i XML biblioteki",
+      "cs": "Vyberte ZIP a XML knihovny",
+      "ru": "Выберите ZIP и XML библиотеки"
     },
     "Broken XML playlist targets": {
       "de": "Ungültige XML-Playlistziele",
