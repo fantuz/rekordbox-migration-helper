@@ -263,13 +263,31 @@
     "An untouched rekordbox backup is required before transformation.": {},
     "Analysis asset audit": {},
     "Analysis copies are temporary. Originals stay unchanged.": {},
-    "Analysis extension": {},
+    "Analysis extension": {
+      "de": "Analysedateiendung",
+      "fr": "Extension d’analyse",
+      "it": "Estensione analisi",
+      "es": "Extensión de análisis",
+      "el": "Επέκταση ανάλυσης",
+      "pl": "Rozszerzenie analizy",
+      "cs": "Přípona analýzy",
+      "ru": "Расширение анализа"
+    },
     "Analysis folder or backup ZIP": {},
     "Analysis folders found": {},
     "Analysis folders or backup ZIPs · up to 20 paths": {},
     "Analysis folders without active links": {},
     "Analysis status unknown": {},
-    "Analysis unknown": {},
+    "Analysis unknown": {
+      "de": "Analysestatus unbekannt",
+      "fr": "Analyse inconnue",
+      "it": "Analisi sconosciuta",
+      "es": "Análisis desconocido",
+      "el": "Άγνωστη ανάλυση",
+      "pl": "Nieznany stan analizy",
+      "cs": "Neznámá analýza",
+      "ru": "Состояние анализа неизвестно"
+    },
     "Analyze existing files": {},
     "Analyze read-only snapshot": {},
     "Analyzed": {
@@ -282,8 +300,26 @@
       "cs": "Analyzováno",
       "ru": "Проанализировано"
     },
-    "Analyzed songs": {},
-    "Analyzed tracks": {},
+    "Analyzed songs": {
+      "de": "Analysierte Songs",
+      "fr": "Morceaux analysés",
+      "it": "Brani analizzati",
+      "es": "Canciones analizadas",
+      "el": "Αναλυμένα κομμάτια",
+      "pl": "Przeanalizowane utwory",
+      "cs": "Analyzované skladby",
+      "ru": "Проанализированные композиции"
+    },
+    "Analyzed tracks": {
+      "de": "Analysierte Tracks",
+      "fr": "Pistes analysées",
+      "it": "Tracce analizzate",
+      "es": "Pistas analizadas",
+      "el": "Αναλυμένα κομμάτια",
+      "pl": "Przeanalizované utwory",
+      "cs": "Analyzované skladby",
+      "ru": "Проанализированные треки"
+    },
     "Any": {
       "de": "Beliebig",
       "fr": "Indifférent",
@@ -315,7 +351,16 @@
       "cs": "Libovolný seznam",
       "ru": "Любой плейлист"
     },
-    "Any preparation": {},
+    "Any preparation": {
+      "de": "Beliebige Vorbereitung",
+      "fr": "Toute préparation",
+      "it": "Qualsiasi preparazione",
+      "es": "Cualquier preparación",
+      "el": "Οποιαδήποτε προετοιμασία",
+      "pl": "Dowolne przygotowanie",
+      "cs": "Libovolná příprava",
+      "ru": "Любая подготовка"
+    },
     "Any rating": {
       "de": "Alle Bewertungen",
       "fr": "Toutes les notes",
@@ -361,9 +406,36 @@
       "ru": "Исполнитель"
     },
     "Artist / author": {},
-    "Artist initial": {},
-    "Artist unavailable": {},
-    "Artist unknown": {},
+    "Artist initial": {
+      "de": "Künstlerinitiale",
+      "fr": "Initiale d’artiste",
+      "it": "Iniziale artista",
+      "es": "Inicial del artista",
+      "el": "Αρχικό καλλιτέχνη",
+      "pl": "Inicjał wykonawcy",
+      "cs": "Iniciála interpreta",
+      "ru": "Инициал исполнителя"
+    },
+    "Artist unavailable": {
+      "de": "Künstler nicht verfügbar",
+      "fr": "Artiste indisponible",
+      "it": "Artista non disponibile",
+      "es": "Artista no disponible",
+      "el": "Καλλιτέχνης μη διαθέσιμος",
+      "pl": "Wykonawca niedostępny",
+      "cs": "Interpret není k dispozici",
+      "ru": "Исполнитель недоступен"
+    },
+    "Artist unknown": {
+      "de": "Künstler unbekannt",
+      "fr": "Artiste inconnu",
+      "it": "Artista sconosciuto",
+      "es": "Artista desconocido",
+      "el": "Άγνωστος καλλιτέχνης",
+      "pl": "Nieznany wykonawca",
+      "cs": "Neznámý interpret",
+      "ru": "Неизвестный исполнитель"
+    },
     "Artists": {
       "de": "Künstler",
       "fr": "Artistes",
@@ -388,9 +460,36 @@
       "cs": "Automatické body CUE",
       "ru": "Автоматические CUE"
     },
-    "Automatic labels": {},
-    "Average length": {},
-    "BATCH DECISION": {},
+    "Automatic labels": {
+      "de": "Automatische Bezeichnungen",
+      "fr": "Libellés automatiques",
+      "it": "Etichette automatiche",
+      "es": "Etiquetas automáticas",
+      "el": "Αυτόματες ετικέτες",
+      "pl": "Automatyczne etykiety",
+      "cs": "Automatické popisky",
+      "ru": "Автоматические метки"
+    },
+    "Average length": {
+      "de": "Mittlere Dauer",
+      "fr": "Durée moyenne",
+      "it": "Durata media",
+      "es": "Duración media",
+      "el": "Μέση διάρκεια",
+      "pl": "Średnia długość",
+      "cs": "Průměrná délka",
+      "ru": "Средняя длительность"
+    },
+    "BATCH DECISION": {
+      "de": "STAPELENTSCHEIDUNG",
+      "fr": "DÉCISION PAR LOT",
+      "it": "DECISIONE IN BLOCCO",
+      "es": "DECISIÓN POR LOTE",
+      "el": "ΑΠΟΦΑΣΗ ΠΑΡΤΙΔΑΣ",
+      "pl": "DECYZJA ZBIORCZA",
+      "cs": "DÁVKOVÉ ROZHODNUTÍ",
+      "ru": "ПАКЕТНОЕ РЕШЕНИЕ"
+    },
     "BPM": {
       "de": "BPM",
       "fr": "BPM",
@@ -412,7 +511,16 @@
       "cs": "Pásmo BPM",
       "ru": "Полоса BPM"
     },
-    "BPM distribution": {},
+    "BPM distribution": {
+      "de": "BPM-Verteilung",
+      "fr": "Distribution BPM",
+      "it": "Distribuzione BPM",
+      "es": "Distribución BPM",
+      "el": "Κατανομή BPM",
+      "pl": "Rozkład BPM",
+      "cs": "Rozložení BPM",
+      "ru": "Распределение BPM"
+    },
     "BPM from": {
       "de": "BPM ab",
       "fr": "BPM min.",
@@ -544,7 +652,16 @@
     "Bubble drill-down path": {},
     "Bubble explorer snapshot": {},
     "Bulk cue selector": {},
-    "COLLECTION INDEX": {},
+    "COLLECTION INDEX": {
+      "de": "SAMMLUNGSINDEX",
+      "fr": "INDEX DE COLLECTION",
+      "it": "INDICE RACCOLTA",
+      "es": "ÍNDICE DE COLECCIÓN",
+      "el": "ΕΥΡΕΤΗΡΙΟ ΣΥΛΛΟΓΗΣ",
+      "pl": "INDEKS KOLEKCJI",
+      "cs": "REJSTŘÍK KOLEKCE",
+      "ru": "УКАЗАТЕЛЬ КОЛЛЕКЦИИ"
+    },
     "COLLECTION VS ROTATION": {},
     "CUE EVIDENCE": {
       "de": "CUE-NACHWEISE",
@@ -557,7 +674,16 @@
       "ru": "ДАННЫЕ CUE"
     },
     "CURRENT INPUT PAIR": {},
-    "Cancel lookups": {},
+    "Cancel lookups": {
+      "de": "Abfragen abbrechen",
+      "fr": "Annuler les requêtes",
+      "it": "Annulla ricerche",
+      "es": "Cancelar consultas",
+      "el": "Ακύρωση αναζητήσεων",
+      "pl": "Anuluj zapytania",
+      "cs": "Zrušit dotazy",
+      "ru": "Отменить запросы"
+    },
     "Candidate comparisons · tracks can appear in several pairs": {},
     "Capture a stable snapshot": {},
     "Capture date unavailable": {},
@@ -607,7 +733,16 @@
       "cs": "Kategorie",
       "ru": "Категория"
     },
-    "Category filters": {},
+    "Category filters": {
+      "de": "Kategoriefilter",
+      "fr": "Filtres de catégories",
+      "it": "Filtri categoria",
+      "es": "Filtros de categoría",
+      "el": "Φίλτρα κατηγορίας",
+      "pl": "Filtry kategorii",
+      "cs": "Filtry kategorií",
+      "ru": "Фильтры категорий"
+    },
     "Changelog": {
       "de": "Änderungsprotokoll",
       "fr": "Journal des modifications",
@@ -618,8 +753,26 @@
       "cs": "Přehled změn",
       "ru": "История изменений"
     },
-    "Check coverage": {},
-    "Check metadata": {},
+    "Check coverage": {
+      "de": "Abdeckung prüfen",
+      "fr": "Vérifier la couverture",
+      "it": "Verifica copertura",
+      "es": "Comprobar cobertura",
+      "el": "Έλεγχος κάλυψης",
+      "pl": "Sprawdź pokrycie",
+      "cs": "Zkontrolovat pokrytí",
+      "ru": "Проверить покрытие"
+    },
+    "Check metadata": {
+      "de": "Metadaten prüfen",
+      "fr": "Vérifier les métadonnées",
+      "it": "Verifica metadati",
+      "es": "Comprobar metadatos",
+      "el": "Έλεγχος μεταδεδομένων",
+      "pl": "Sprawdź metadane",
+      "cs": "Zkontrolovat metadata",
+      "ru": "Проверить метаданные"
+    },
     "Check tag variants, missing values and review thresholds. Coverage groups entries by genre and 10-BPM bands. {slot0}": {},
     "Choose a backup and XML to begin": {},
     "Choose a collection snapshot": {},
@@ -669,7 +822,16 @@
     "Cloud and local copies": {},
     "Cloud and local storage": {},
     "Cloud library users can choose a different database path.": {},
-    "Cloud placeholder": {},
+    "Cloud placeholder": {
+      "de": "Cloud-Platzhalter",
+      "fr": "Fichier cloud non local",
+      "it": "Segnaposto cloud",
+      "es": "Marcador de nube",
+      "el": "Σύμβολο αρχείου cloud",
+      "pl": "Plik zastępczy w chmurze",
+      "cs": "Zástupný soubor cloudu",
+      "ru": "Облачный заполнитель"
+    },
     "Cloud-folder logical bytes": {},
     "Cloud-folder logical bytes can also occupy local disk. These measures overlap; they are not account quota usage. Allocation is OS-reported and may be partial on some filesystems.": {},
     "Cloud/local candidate groups": {},
@@ -683,16 +845,61 @@
       "cs": "Kolekce",
       "ru": "Коллекция"
     },
-    "Collection XML": {},
+    "Collection XML": {
+      "de": "Sammlungs-XML",
+      "fr": "XML de collection",
+      "it": "XML della raccolta",
+      "es": "XML de colección",
+      "el": "XML συλλογής",
+      "pl": "XML kolekcji",
+      "cs": "XML kolekce",
+      "ru": "XML коллекции"
+    },
     "Collection additions by year": {},
-    "Collection index": {},
+    "Collection index": {
+      "de": "SAMMLUNGSINDEX",
+      "fr": "INDEX DE COLLECTION",
+      "it": "INDICE RACCOLTA",
+      "es": "ÍNDICE DE COLECCIÓN",
+      "el": "ΕΥΡΕΤΗΡΙΟ ΣΥΛΛΟΓΗΣ",
+      "pl": "INDEKS KOLEKCJI",
+      "cs": "REJSTŘÍK KOLEKCE",
+      "ru": "УКАЗАТЕЛЬ КОЛЛЕКЦИИ"
+    },
     "Collection overview": {},
-    "Collection scope": {},
-    "Collection size": {},
+    "Collection scope": {
+      "de": "Sammlungsumfang",
+      "fr": "Périmètre de collection",
+      "it": "Ambito raccolta",
+      "es": "Ámbito de colección",
+      "el": "Πεδίο συλλογής",
+      "pl": "Zakres kolekcji",
+      "cs": "Rozsah kolekce",
+      "ru": "Область коллекции"
+    },
+    "Collection size": {
+      "de": "Sammlungsgröße",
+      "fr": "Taille de la collection",
+      "it": "Dimensione raccolta",
+      "es": "Tamaño de colección",
+      "el": "Μέγεθος συλλογής",
+      "pl": "Rozmiar kolekcji",
+      "cs": "Velikost kolekce",
+      "ru": "Размер коллекции"
+    },
     "Collection snapshot": {},
     "Collection statistics": {},
     "Color identifies categories. Exact counts remain in the list.": {},
-    "Color represents": {},
+    "Color represents": {
+      "de": "Farbe zeigt",
+      "fr": "La couleur représente",
+      "it": "Il colore rappresenta",
+      "es": "El color representa",
+      "el": "Το χρώμα αναπαριστά",
+      "pl": "Kolor przedstawia",
+      "cs": "Barva představuje",
+      "ru": "Цвет обозначает"
+    },
     "Colour not captured": {},
     "Colour status": {
       "de": "Farbstatus",
@@ -729,8 +936,26 @@
     "Comments can be staged without unlocking other fields. No source file or audio tag is written.": {},
     "Comments stage locally without unlocking other fields. Originals and audio tags remain unchanged.": {},
     "Comments · optional": {},
-    "Community Ratings": {},
-    "Community evidence": {},
+    "Community Ratings": {
+      "de": "Community-Bewertungen",
+      "fr": "Notes communautaires",
+      "it": "Valutazioni della comunità",
+      "es": "Valoraciones de la comunidad",
+      "el": "Βαθμολογίες κοινότητας",
+      "pl": "Oceny społeczności",
+      "cs": "Komunitní hodnocení",
+      "ru": "Оценки сообщества"
+    },
+    "Community evidence": {
+      "de": "Community-Nachweise",
+      "fr": "Éléments communautaires",
+      "it": "Evidenze della comunità",
+      "es": "Evidencias de la comunidad",
+      "el": "Στοιχεία κοινότητας",
+      "pl": "Dowody społeczności",
+      "cs": "Komunitní podklady",
+      "ru": "Данные сообщества"
+    },
     "Community v6/v7 native database reference ↗": {},
     "Compare backups, review duplicates and references, then prepare migration copies. {slot0}": {},
     "Compare cues, loops, labels, colours, ratings and playlist order. Ambiguous or unmatched tracks remain separate. {slot0}": {},
@@ -742,7 +967,16 @@
     "Compare media folders": {},
     "Compare music locations for this report →": {},
     "Compare preparation, find uneven tags and plan changes in a separate local SQLite store.": {},
-    "Compare snapshots": {},
+    "Compare snapshots": {
+      "de": "Snapshots vergleichen",
+      "fr": "Comparer les instantanés",
+      "it": "Confronta istantanee",
+      "es": "Comparar instantáneas",
+      "el": "Σύγκριση στιγμιοτύπων",
+      "pl": "Porównaj migawki",
+      "cs": "Porovnat snímky",
+      "ru": "Сравнить снимки"
+    },
     "Compatibility": {
       "de": "Kompatibilität",
       "fr": "Compatibilité",
@@ -753,7 +987,16 @@
       "cs": "Kompatibilita",
       "ru": "Совместимость"
     },
-    "Completed exports": {},
+    "Completed exports": {
+      "de": "Abgeschlossene Exporte",
+      "fr": "Exports terminés",
+      "it": "Esportazioni completate",
+      "es": "Exportaciones completadas",
+      "el": "Ολοκληρωμένες εξαγωγές",
+      "pl": "Ukończone eksporty",
+      "cs": "Dokončené exporty",
+      "ru": "Завершённые экспорты"
+    },
     "Composer": {
       "de": "Komponist",
       "fr": "Compositeur",
@@ -820,7 +1063,16 @@
       "ru": "CUE"
     },
     "Cue origin is inferred from saved labels.": {},
-    "Cue preparation": {},
+    "Cue preparation": {
+      "de": "Cue-Vorbereitung",
+      "fr": "Préparation des cues",
+      "it": "Preparazione cue",
+      "es": "Preparación de cues",
+      "el": "Προετοιμασία CUE",
+      "pl": "Przygotowanie CUE",
+      "cs": "Příprava bodů CUE",
+      "ru": "Подготовка CUE"
+    },
     "Cue status unknown": {},
     "Cue tolerance (ms)": {},
     "Cues": {
@@ -867,7 +1119,16 @@
       "cs": "Tmavý",
       "ru": "Тёмная"
     },
-    "Database integrity": {},
+    "Database integrity": {
+      "de": "Datenbankintegrität",
+      "fr": "Intégrité de la base",
+      "it": "Integrità database",
+      "es": "Integridad de la base",
+      "el": "Ακεραιότητα βάσης δεδομένων",
+      "pl": "Integralność bazy danych",
+      "cs": "Integrita databáze",
+      "ru": "Целостность базы данных"
+    },
     "Database unreadable": {},
     "Date added": {
       "de": "Hinzugefügt am",
@@ -881,9 +1142,27 @@
     },
     "Date is after snapshot · review": {},
     "Date not captured ·": {},
-    "Date unavailable": {},
+    "Date unavailable": {
+      "de": "Datum nicht verfügbar",
+      "fr": "Date indisponible",
+      "it": "Data non disponibile",
+      "es": "Fecha no disponible",
+      "el": "Ημερομηνία μη διαθέσιμη",
+      "pl": "Data niedostępna",
+      "cs": "Datum není k dispozici",
+      "ru": "Дата недоступна"
+    },
     "Decision saved to this workspace": {},
-    "Decision undone": {},
+    "Decision undone": {
+      "de": "Entscheidung rückgängig",
+      "fr": "Décision annulée",
+      "it": "Decisione annullata",
+      "es": "Decisión deshecha",
+      "el": "Η απόφαση αναιρέθηκε",
+      "pl": "Decyzja cofnięta",
+      "cs": "Rozhodnutí vráceno",
+      "ru": "Решение отменено"
+    },
     "Default locations and saved database paths checked": {},
     "Delete temporary copies and quit": {},
     "Detected cloud folders · choose only those containing the music you want to compare": {},
@@ -940,11 +1219,38 @@
       "cs": "Přejít na detail",
       "ru": "Детализировать"
     },
-    "Dropbox folder": {},
+    "Dropbox folder": {
+      "de": "Dropbox-Ordner",
+      "fr": "Dossier Dropbox",
+      "it": "Cartella Dropbox",
+      "es": "Carpeta de Dropbox",
+      "el": "Φάκελος Dropbox",
+      "pl": "Folder Dropbox",
+      "cs": "Složka Dropbox",
+      "ru": "Папка Dropbox"
+    },
     "Dropbox {slot0} Google Drive": {},
     "Dropbox-visible files": {},
-    "Duplicate groups": {},
-    "Duplicate review": {},
+    "Duplicate groups": {
+      "de": "Duplikatgruppen",
+      "fr": "Groupes de doublons",
+      "it": "Gruppi di duplicati",
+      "es": "Grupos de duplicados",
+      "el": "Ομάδες διπλοτύπων",
+      "pl": "Grupy duplikatów",
+      "cs": "Skupiny duplicit",
+      "ru": "Группы дубликатов"
+    },
+    "Duplicate review": {
+      "de": "Duplikatprüfung",
+      "fr": "Vérification des doublons",
+      "it": "Verifica duplicati",
+      "es": "Revisión de duplicados",
+      "el": "Έλεγχος διπλοτύπων",
+      "pl": "Przegląd duplikatów",
+      "cs": "Kontrola duplicit",
+      "ru": "Проверка дубликатов"
+    },
     "Duration": {
       "de": "Dauer",
       "fr": "Durée",
@@ -955,7 +1261,16 @@
       "cs": "Délka",
       "ru": "Длительность"
     },
-    "Duration (seconds)": {},
+    "Duration (seconds)": {
+      "de": "Dauer (Sekunden)",
+      "fr": "Durée (secondes)",
+      "it": "Durata (secondi)",
+      "es": "Duración (segundos)",
+      "el": "Διάρκεια (δευτερόλεπτα)",
+      "pl": "Czas trwania (sekundy)",
+      "cs": "Délka (sekundy)",
+      "ru": "Длительность (секунды)"
+    },
     "Duration not saved": {},
     "EXPERIMENTAL · OPT-IN · GET ONLY": {},
     "Each export gets its own folder. Browser downloads are additional copies saved according to your browser settings.": {},
@@ -987,7 +1302,16 @@
       "cs": "Podklady",
       "ru": "Данные проверки"
     },
-    "Evidence criteria": {},
+    "Evidence criteria": {
+      "de": "Nachweiskriterien",
+      "fr": "Critères de preuve",
+      "it": "Criteri di evidenza",
+      "es": "Criterios de evidencia",
+      "el": "Κριτήρια στοιχείων",
+      "pl": "Kryteria dowodów",
+      "cs": "Kritéria podkladů",
+      "ru": "Критерии проверки"
+    },
     "Evidence to review": {},
     "Exact application version not inferred": {},
     "Existing collection XML path": {},
@@ -997,7 +1321,16 @@
     "Explore the bubble map →": {},
     "Explore the local example": {},
     "Explore this snapshot with the application closed. No connection required.": {},
-    "Explorer title": {},
+    "Explorer title": {
+      "de": "Explorertitel",
+      "fr": "Titre de l’explorateur",
+      "it": "Titolo esploratore",
+      "es": "Título del explorador",
+      "el": "Τίτλος εξερευνητή",
+      "pl": "Tytuł przeglądarki",
+      "cs": "Název průzkumníku",
+      "ru": "Название обозревателя"
+    },
     "Export details ↓": {},
     "Export offline HTML & minisite": {},
     "Export one format separately": {},
@@ -1016,7 +1349,16 @@
     },
     "File paths are excluded.": {},
     "File paths must contain valid Unicode without null characters": {},
-    "File references": {},
+    "File references": {
+      "de": "Dateiverweise",
+      "fr": "Références de fichiers",
+      "it": "Riferimenti ai file",
+      "es": "Referencias de archivos",
+      "el": "Αναφορές αρχείων",
+      "pl": "Odwołania do plików",
+      "cs": "Odkazy na soubory",
+      "ru": "Ссылки на файлы"
+    },
     "File size": {
       "de": "Dateigröße",
       "fr": "Taille du fichier",
@@ -1064,9 +1406,27 @@
     },
     "Filter collection · genre, tonality, colour, usage, BPM and length": {},
     "Filter keys and tempo · genre, colour, usage and preparation": {},
-    "Filter metadata": {},
+    "Filter metadata": {
+      "de": "Metadaten filtern",
+      "fr": "Filtrer les métadonnées",
+      "it": "Filtra metadati",
+      "es": "Filtrar metadatos",
+      "el": "Φιλτράρισμα μεταδεδομένων",
+      "pl": "Filtruj metadane",
+      "cs": "Filtrovat metadata",
+      "ru": "Фильтр метаданных"
+    },
     "Filter preset saved": {},
-    "Filter sessions": {},
+    "Filter sessions": {
+      "de": "Sitzungen filtern",
+      "fr": "Filtrer les sessions",
+      "it": "Filtra sessioni",
+      "es": "Filtrar sesiones",
+      "el": "Φιλτράρισμα συνεδριών",
+      "pl": "Filtruj sesje",
+      "cs": "Filtrovat relace",
+      "ru": "Фильтр сеансов"
+    },
     "Find a new angle on your collection.": {},
     "Find analysis and STEMS-related asset locations": {},
     "Find in collection": {},
@@ -1113,7 +1473,16 @@
       "cs": "Formát",
       "ru": "Формат"
     },
-    "Format Sources": {},
+    "Format Sources": {
+      "de": "Formatquellen",
+      "fr": "Références des formats",
+      "it": "Fonti dei formati",
+      "es": "Fuentes de formatos",
+      "el": "Πηγές μορφών",
+      "pl": "Źródła formatów",
+      "cs": "Zdroje formátů",
+      "ru": "Источники форматов"
+    },
     "Formats": {
       "de": "Formate",
       "fr": "Formats",
@@ -1262,7 +1631,16 @@
     },
     "Interface language": {},
     "Interface language; metadata and paths remain unchanged": {},
-    "Inventory status": {},
+    "Inventory status": {
+      "de": "Inventarstatus",
+      "fr": "État de l’inventaire",
+      "it": "Stato inventario",
+      "es": "Estado del inventario",
+      "el": "Κατάσταση απογραφής",
+      "pl": "Status inwentarza",
+      "cs": "Stav inventáře",
+      "ru": "Состояние инвентаризации"
+    },
     "Keep a fresh {slot0} copy outside this workspace. Preserve audio separately when it is excluded from the ZIP. The generated files are experimental working copies, and a successful file check does not prove a successful rekordbox restore.": {},
     "Keep a real backup before transforming your library.": {},
     "Keep a separate untouched backup before exporting": {},
@@ -1298,7 +1676,16 @@
     "Known disk allocation": {},
     "Known disk allocation by location": {},
     "Known local disk allocation": {},
-    "Known tonality": {},
+    "Known tonality": {
+      "de": "Bekannte Tonart",
+      "fr": "Tonalité connue",
+      "it": "Tonalità nota",
+      "es": "Tonalidad conocida",
+      "el": "Γνωστή τονικότητα",
+      "pl": "Znana tonacja",
+      "cs": "Známá tónina",
+      "ru": "Известная тональность"
+    },
     "Known zero": {
       "de": "Bekannte Null",
       "fr": "Zéro connu",
@@ -1329,7 +1716,16 @@
       "cs": "Poslední kontrola",
       "ru": "Последняя проверка"
     },
-    "Last evidence:": {},
+    "Last evidence:": {
+      "de": "Letzter Nachweis:",
+      "fr": "Dernier élément :",
+      "it": "Ultima evidenza:",
+      "es": "Última evidencia:",
+      "el": "Τελευταίο στοιχείο:",
+      "pl": "Ostatni dowód:",
+      "cs": "Poslední podklad:",
+      "ru": "Последняя проверка:"
+    },
     "Last file hash verification agreed": {},
     "Last file hash verification differed": {},
     "Last played": {
@@ -1355,13 +1751,40 @@
       "cs": "Laboratoř knihovny",
       "ru": "Лаборатория библиотеки"
     },
-    "Library Roadmap": {},
+    "Library Roadmap": {
+      "de": "Projektfahrplan",
+      "fr": "Feuille de route",
+      "it": "Piano di sviluppo",
+      "es": "Hoja de ruta",
+      "el": "Σχέδιο ανάπτυξης",
+      "pl": "Plan rozwoju",
+      "cs": "Plán rozvoje",
+      "ru": "План развития"
+    },
     "Library Workbench · Personal library preparation {slot0} {slot1}": {},
     "Library backup ZIP": {},
-    "Library bubbles": {},
+    "Library bubbles": {
+      "de": "Bibliotheksblasen",
+      "fr": "Bulles de bibliothèque",
+      "it": "Bolle della libreria",
+      "es": "Burbujas de biblioteca",
+      "el": "Φυσαλίδες βιβλιοθήκης",
+      "pl": "Bąbelki biblioteki",
+      "cs": "Bubliny knihovny",
+      "ru": "Пузырьки библиотеки"
+    },
     "Library bubbles ·": {},
     "Library categories": {},
-    "Library export": {},
+    "Library export": {
+      "de": "Bibliotheksexport",
+      "fr": "Export de bibliothèque",
+      "it": "Esportazione libreria",
+      "es": "Exportación de biblioteca",
+      "el": "Εξαγωγή βιβλιοθήκης",
+      "pl": "Eksport biblioteki",
+      "cs": "Export knihovny",
+      "ru": "Экспорт библиотеки"
+    },
     "Library lab": {
       "de": "Bibliothekslabor",
       "fr": "Laboratoire de bibliothèque",
@@ -1374,7 +1797,16 @@
     },
     "Library lab tools": {},
     "Library preparation": {},
-    "Library summary": {},
+    "Library summary": {
+      "de": "Bibliotheksübersicht",
+      "fr": "Résumé de bibliothèque",
+      "it": "Riepilogo libreria",
+      "es": "Resumen de biblioteca",
+      "el": "Σύνοψη βιβλιοθήκης",
+      "pl": "Podsumowanie biblioteki",
+      "cs": "Souhrn knihovny",
+      "ru": "Сводка библиотеки"
+    },
     "License": {
       "de": "Lizenz",
       "fr": "Licence",
@@ -1449,7 +1881,16 @@
       "cs": "Umístění",
       "ru": "Расположение"
     },
-    "Location type": {},
+    "Location type": {
+      "de": "Speicherorttyp",
+      "fr": "Type d’emplacement",
+      "it": "Tipo di posizione",
+      "es": "Tipo de ubicación",
+      "el": "Τύπος τοποθεσίας",
+      "pl": "Typ lokalizacji",
+      "cs": "Typ umístění",
+      "ru": "Тип расположения"
+    },
     "Logical media size by visible location": {},
     "Logical size": {
       "de": "Logische Größe",
@@ -1473,8 +1914,26 @@
       "ru": "Скорость запросов"
     },
     "Low · 1–3": {},
-    "METADATA COVERAGE": {},
-    "METADATA ONLY": {},
+    "METADATA COVERAGE": {
+      "de": "METADATENABDECKUNG",
+      "fr": "COUVERTURE DES MÉTADONNÉES",
+      "it": "COPERTURA METADATI",
+      "es": "COBERTURA DE METADATOS",
+      "el": "ΚΑΛΥΨΗ ΜΕΤΑΔΕΔΟΜΕΝΩΝ",
+      "pl": "POKRYCIE METADANYCH",
+      "cs": "POKRYTÍ METADAT",
+      "ru": "ПОКРЫТИЕ МЕТАДАННЫХ"
+    },
+    "METADATA ONLY": {
+      "de": "NUR METADATEN",
+      "fr": "MÉTADONNÉES UNIQUEMENT",
+      "it": "SOLO METADATI",
+      "es": "SOLO METADATOS",
+      "el": "ΜΟΝΟ ΜΕΤΑΔΕΔΟΜΕΝΑ",
+      "pl": "TYLKO METADANE",
+      "cs": "POUZE METADATA",
+      "ru": "ТОЛЬКО МЕТАДАННЫЕ"
+    },
     "Make the clear decisions together.": {},
     "Manual + auto": {},
     "Manual categories mean cues without the saved labels CUE(Auto) or 1.1Bars. A zero saved play count can include incomplete history.": {},
@@ -1501,7 +1960,16 @@
       "cs": "Maximální BPM",
       "ru": "Максимальный BPM"
     },
-    "Maximum minutes": {},
+    "Maximum minutes": {
+      "de": "Maximale Minuten",
+      "fr": "Minutes maximum",
+      "it": "Minuti massimi",
+      "es": "Minutos máximos",
+      "el": "Μέγιστα λεπτά",
+      "pl": "Maksymalna liczba minut",
+      "cs": "Maximum minut",
+      "ru": "Максимум минут"
+    },
     "Mean / median BPM": {},
     "Mean BPM": {
       "de": "Mittlere BPM",
@@ -1526,7 +1994,16 @@
     "Mean personal stars · rated tracks": {},
     "Mean saved BPM": {},
     "Media availability": {},
-    "Media inventory": {},
+    "Media inventory": {
+      "de": "Medieninventar",
+      "fr": "Inventaire des médias",
+      "it": "Inventario multimediale",
+      "es": "Inventario multimedia",
+      "el": "Απογραφή μέσων",
+      "pl": "Inwentarz mediów",
+      "cs": "Inventář médií",
+      "ru": "Инвентаризация медиа"
+    },
     "Median BPM": {
       "de": "BPM-Median",
       "fr": "BPM médian",
@@ -1537,13 +2014,40 @@
       "cs": "Medián BPM",
       "ru": "Медиана BPM"
     },
-    "Median length": {},
+    "Median length": {
+      "de": "Mediandauer",
+      "fr": "Durée médiane",
+      "it": "Durata mediana",
+      "es": "Duración mediana",
+      "el": "Διάμεση διάρκεια",
+      "pl": "Mediana długości",
+      "cs": "Medián délky",
+      "ru": "Медианная длительность"
+    },
     "Merge and relocation decisions are not applied.": {},
     "Metadata & collection coverage": {},
     "Metadata and media filters": {},
-    "Metadata editor": {},
+    "Metadata editor": {
+      "de": "Metadateneditor",
+      "fr": "Éditeur de métadonnées",
+      "it": "Editor metadati",
+      "es": "Editor de metadatos",
+      "el": "Επεξεργαστής μεταδεδομένων",
+      "pl": "Edytor metadanych",
+      "cs": "Editor metadat",
+      "ru": "Редактор метаданных"
+    },
     "Metadata is locked. Unlock staging first.": {},
-    "Metadata source": {},
+    "Metadata source": {
+      "de": "Metadatenquelle",
+      "fr": "Source des métadonnées",
+      "it": "Origine metadati",
+      "es": "Origen de metadatos",
+      "el": "Πηγή μεταδεδομένων",
+      "pl": "Źródło metadanych",
+      "cs": "Zdroj metadat",
+      "ru": "Источник метаданных"
+    },
     "Migration": {
       "de": "Migration",
       "fr": "Migration",
@@ -1575,7 +2079,16 @@
       "ru": "Минимум CUE"
     },
     "Minimum manual cues": {},
-    "Minimum minutes": {},
+    "Minimum minutes": {
+      "de": "Minimale Minuten",
+      "fr": "Minutes minimum",
+      "it": "Minuti minimi",
+      "es": "Minutos mínimos",
+      "el": "Ελάχιστα λεπτά",
+      "pl": "Minimalna liczba minut",
+      "cs": "Minimum minut",
+      "ru": "Минимум минут"
+    },
     "Minimum personal stars": {},
     "Minisite ZIP": {
       "de": "Minisite-ZIP",
@@ -1645,7 +2158,16 @@
     "Multiple database references to one scanned path": {},
     "Music files remain separate when the backup excludes audio. Use Media inventory when you want to verify the actual files.": {},
     "MusicBrainz metadata pilot": {},
-    "MusicBrainz pilot": {},
+    "MusicBrainz pilot": {
+      "de": "MusicBrainz-Pilot",
+      "fr": "Pilote MusicBrainz",
+      "it": "Prova MusicBrainz",
+      "es": "Piloto MusicBrainz",
+      "el": "Πιλοτική δοκιμή MusicBrainz",
+      "pl": "Pilotaż MusicBrainz",
+      "cs": "Pilotní projekt MusicBrainz",
+      "ru": "Пилот MusicBrainz"
+    },
     "Names and file metadata only. Limited to 15 seconds, 12,000 folders and 200,000 entries. Links and online-only subfolders are skipped. A narrow root gives better coverage.": {},
     "Names and sizes suggest candidates; SHA-256 confirms byte equality. Equality alone does not establish safe deletion. {slot0}": {},
     "Native ZIP export is experimental. Test restoration in an isolated Windows rekordbox library with Cloud Library Sync paused. A completed export verifies file consistency; compatibility with rekordbox still needs that test.": {},
@@ -1854,7 +2376,16 @@
     },
     "Only auto cues": {},
     "Only automatic cues": {},
-    "Open comparison": {},
+    "Open comparison": {
+      "de": "Vergleich öffnen",
+      "fr": "Ouvrir la comparaison",
+      "it": "Apri confronto",
+      "es": "Abrir comparación",
+      "el": "Άνοιγμα σύγκρισης",
+      "pl": "Otwórz porównanie",
+      "cs": "Otevřít porovnání",
+      "ru": "Открыть сравнение"
+    },
     "Open it whenever you like": {},
     "Open local example ↗": {},
     "Open report": {
@@ -1873,7 +2404,16 @@
     "Optional: opener, banger, finale…": {},
     "Original comment captured.": {},
     "Original comment not captured. Recapture matching inputs before applying this working comment to an export.": {},
-    "Original path": {},
+    "Original path": {
+      "de": "Ursprünglicher Pfad",
+      "fr": "Chemin d’origine",
+      "it": "Percorso originale",
+      "es": "Ruta original",
+      "el": "Αρχική διαδρομή",
+      "pl": "Oryginalna ścieżka",
+      "cs": "Původní cesta",
+      "ru": "Исходный путь"
+    },
     "Other / manual cues are present": {},
     "Other cues": {
       "de": "Andere Cues",
@@ -1900,13 +2440,40 @@
       "cs": "Přehled",
       "ru": "Обзор"
     },
-    "PAIR INSPECTION": {},
+    "PAIR INSPECTION": {
+      "de": "PAARPRÜFUNG",
+      "fr": "INSPECTION DE PAIRE",
+      "it": "ISPEZIONE COPPIA",
+      "es": "INSPECCIÓN DE PAR",
+      "el": "ΕΛΕΓΧΟΣ ΖΕΥΓΟΥΣ",
+      "pl": "KONTROLA PARY",
+      "cs": "KONTROLA DVOJICE",
+      "ru": "ПРОВЕРКА ПАРЫ"
+    },
     "PAIRS WITH AUTO CUE DIFFERENCES": {},
     "PICK UP WHERE YOU LEFT OFF": {},
     "POSSIBLE DUPLICATE PAIRS": {},
-    "PREPARATION DESK": {},
+    "PREPARATION DESK": {
+      "de": "VORBEREITUNG",
+      "fr": "PRÉPARATION",
+      "it": "PREPARAZIONE",
+      "es": "PREPARACIÓN",
+      "el": "ΠΡΟΕΤΟΙΜΑΣΙΑ",
+      "pl": "PRZYGOTOWANIE",
+      "cs": "PŘÍPRAVA",
+      "ru": "ПОДГОТОВКА"
+    },
     "Pair a library ZIP and XML": {},
-    "Pair comparisons": {},
+    "Pair comparisons": {
+      "de": "Paarvergleiche",
+      "fr": "Comparaisons de paires",
+      "it": "Confronti di coppie",
+      "es": "Comparaciones de pares",
+      "el": "Συγκρίσεις ζευγών",
+      "pl": "Porównania par",
+      "cs": "Porovnání dvojic",
+      "ru": "Сравнения пар"
+    },
     "Pairs": {
       "de": "Paare",
       "fr": "Paires",
@@ -1929,8 +2496,26 @@
       "ru": "Пройдено"
     },
     "Paths can reveal personal folder names. Leave this unchecked when sharing. The export includes no audio, artwork, beatgrids, cue timestamps or native database.": {},
-    "Personal rating": {},
-    "Personal stars": {},
+    "Personal rating": {
+      "de": "Persönliche Bewertung",
+      "fr": "Note personnelle",
+      "it": "Valutazione personale",
+      "es": "Valoración personal",
+      "el": "Προσωπική βαθμολογία",
+      "pl": "Własna ocena",
+      "cs": "Vlastní hodnocení",
+      "ru": "Личная оценка"
+    },
+    "Personal stars": {
+      "de": "Persönliche Sterne",
+      "fr": "Étoiles personnelles",
+      "it": "Stelle personali",
+      "es": "Estrellas personales",
+      "el": "Προσωπικά αστέρια",
+      "pl": "Własne gwiazdki",
+      "cs": "Vlastní hvězdy",
+      "ru": "Личные звёзды"
+    },
     "Personal stars are whole numbers 0–5. Clearing year stores an unknown year. Reset removes an override and restores the captured value.": {},
     "Personal stars remain yours. Zero usage can reflect reset counters or limited captured histories. Manual cue origin is inferred from labels. These views count library entries, including duplicates; they do not identify unique recordings or verify audio-file presence.": {},
     "Perspective": {
@@ -1996,8 +2581,26 @@
       "cs": "Přehrání",
       "ru": "Воспроизведения"
     },
-    "Populated genres": {},
-    "Positive count": {},
+    "Populated genres": {
+      "de": "Genres mit Einträgen",
+      "fr": "Genres renseignés",
+      "it": "Generi popolati",
+      "es": "Géneros con entradas",
+      "el": "Είδη με εγγραφές",
+      "pl": "Gatunki z utworami",
+      "cs": "Žánry se skladbami",
+      "ru": "Жанры с записями"
+    },
+    "Positive count": {
+      "de": "Positiver Zähler",
+      "fr": "Compteur positif",
+      "it": "Conteggio positivo",
+      "es": "Recuento positivo",
+      "el": "Θετικός μετρητής",
+      "pl": "Dodatni licznik",
+      "cs": "Kladný počet",
+      "ru": "Положительный счётчик"
+    },
     "Possible cloud/local copies": {},
     "Possible extra files": {},
     "Possible extra logical bytes": {},
@@ -2014,7 +2617,16 @@
     },
     "Preparation opportunities": {},
     "Prepare a matching output pair": {},
-    "Prepare export": {},
+    "Prepare export": {
+      "de": "Export vorbereiten",
+      "fr": "Préparer l’export",
+      "it": "Prepara esportazione",
+      "es": "Preparar exportación",
+      "el": "Προετοιμασία εξαγωγής",
+      "pl": "Przygotuj eksport",
+      "cs": "Připravit export",
+      "ru": "Подготовить экспорт"
+    },
     "Prepare file references": {},
     "Prepare this reference ↗": {},
     "Prepared, no recorded plays": {},
@@ -2039,9 +2651,36 @@
       "cs": "Předchozí",
       "ru": "Назад"
     },
-    "Previous groups": {},
-    "Previous page": {},
-    "Previous tracks": {},
+    "Previous groups": {
+      "de": "Vorherige Gruppen",
+      "fr": "Groupes précédents",
+      "it": "Gruppi precedenti",
+      "es": "Grupos anteriores",
+      "el": "Προηγούμενες ομάδες",
+      "pl": "Poprzednie grupy",
+      "cs": "Předchozí skupiny",
+      "ru": "Предыдущие группы"
+    },
+    "Previous page": {
+      "de": "Vorherige Seite",
+      "fr": "Page précédente",
+      "it": "Pagina precedente",
+      "es": "Página anterior",
+      "el": "Προηγούμενη σελίδα",
+      "pl": "Poprzednia strona",
+      "cs": "Předchozí stránka",
+      "ru": "Предыдущая страница"
+    },
+    "Previous tracks": {
+      "de": "Vorherige Tracks",
+      "fr": "Pistes précédentes",
+      "it": "Tracce precedenti",
+      "es": "Pistas anteriores",
+      "el": "Προηγούμενα κομμάτια",
+      "pl": "Poprzednie utwory",
+      "cs": "Předchozí skladby",
+      "ru": "Предыдущие треки"
+    },
     "Proposed": {
       "de": "Vorgeschlagen",
       "fr": "Proposé",
@@ -2086,7 +2725,16 @@
     },
     "READ-ONLY COMPARISON ·": {},
     "READ-ONLY FOLDER COMPARISON": {},
-    "READ-ONLY MODE": {},
+    "READ-ONLY MODE": {
+      "de": "SCHREIBGESCHÜTZTER MODUS",
+      "fr": "MODE LECTURE SEULE",
+      "it": "MODALITÀ SOLA LETTURA",
+      "es": "MODO SOLO LECTURA",
+      "el": "ΛΕΙΤΟΥΡΓΙΑ ΜΟΝΟ ΑΝΑΓΝΩΣΗΣ",
+      "pl": "TRYB TYLKO DO ODCZYTU",
+      "cs": "REŽIM POUZE PRO ČTENÍ",
+      "ru": "РЕЖИМ ТОЛЬКО ЧТЕНИЯ"
+    },
     "READ-ONLY REPORT ·": {},
     "READY PAIRS": {
       "de": "BEREITE PAARE",
@@ -2112,9 +2760,27 @@
       "ru": "RGB"
     },
     "ROTATION · REDISCOVERY · YOUR NEXT SET": {},
-    "Random discovery": {},
+    "Random discovery": {
+      "de": "Zufallsentdeckung",
+      "fr": "Découverte aléatoire",
+      "it": "Scoperta casuale",
+      "es": "Descubrimiento aleatorio",
+      "el": "Τυχαία ανακάλυψη",
+      "pl": "Losowe odkrywanie",
+      "cs": "Náhodné objevování",
+      "ru": "Случайное открытие"
+    },
     "Random sample size": {},
-    "Random selection": {},
+    "Random selection": {
+      "de": "Zufallsauswahl",
+      "fr": "Sélection aléatoire",
+      "it": "Selezione casuale",
+      "es": "Selección aleatoria",
+      "el": "Τυχαία επιλογή",
+      "pl": "Losowy wybór",
+      "cs": "Náhodný výběr",
+      "ru": "Случайный выбор"
+    },
     "Ratings": {
       "de": "Bewertungen",
       "fr": "Notes",
@@ -2126,7 +2792,16 @@
       "ru": "Оценки"
     },
     "Read candidate bytes to verify equality (256 MiB budget)": {},
-    "Read completed": {},
+    "Read completed": {
+      "de": "Lesen abgeschlossen",
+      "fr": "Lecture terminée",
+      "it": "Lettura completata",
+      "es": "Lectura completada",
+      "el": "Η ανάγνωση ολοκληρώθηκε",
+      "pl": "Odczyt zakończony",
+      "cs": "Čtení dokončeno",
+      "ru": "Чтение завершено"
+    },
     "Read in place · no extra copy": {},
     "Read in place · no input copy": {},
     "Read library health and file footprint from a private database snapshot. XML and ZIP exports are optional for this mode.": {},
@@ -2157,8 +2832,26 @@
     },
     "Reattach originals": {},
     "Reattach the original pair for this saved workspace. The app verifies its identity before restoring your decisions; different inputs are rejected.": {},
-    "Recently added": {},
-    "Recently used": {},
+    "Recently added": {
+      "de": "Kürzlich hinzugefügt",
+      "fr": "Ajoutés récemment",
+      "it": "Aggiunte di recente",
+      "es": "Añadidas recientemente",
+      "el": "Πρόσφατες προσθήκες",
+      "pl": "Ostatnio dodane",
+      "cs": "Nedávno přidané",
+      "ru": "Недавно добавленные"
+    },
+    "Recently used": {
+      "de": "Zuletzt verwendet",
+      "fr": "Utilisés récemment",
+      "it": "Usate di recente",
+      "es": "Usadas recientemente",
+      "el": "Πρόσφατη χρήση",
+      "pl": "Ostatnio używane",
+      "cs": "Nedávno použité",
+      "ru": "Недавно использованные"
+    },
     "Recognition is separate from validation": {},
     "Record label": {
       "de": "Plattenlabel",
@@ -2170,16 +2863,61 @@
       "cs": "Vydavatelství",
       "ru": "Лейбл"
     },
-    "Recorded date": {},
-    "Recorded dates": {},
-    "Recorded duration": {},
+    "Recorded date": {
+      "de": "Erfasstes Datum",
+      "fr": "Date enregistrée",
+      "it": "Data registrata",
+      "es": "Fecha registrada",
+      "el": "Καταγεγραμμένη ημερομηνία",
+      "pl": "Zapisana data",
+      "cs": "Zaznamenané datum",
+      "ru": "Зафиксированная дата"
+    },
+    "Recorded dates": {
+      "de": "Erfasste Daten",
+      "fr": "Dates enregistrées",
+      "it": "Date registrate",
+      "es": "Fechas registradas",
+      "el": "Καταγεγραμμένες ημερομηνίες",
+      "pl": "Zapisane daty",
+      "cs": "Zaznamenaná data",
+      "ru": "Зафиксированные даты"
+    },
+    "Recorded duration": {
+      "de": "Erfasste Dauer",
+      "fr": "Durée enregistrée",
+      "it": "Durata registrata",
+      "es": "Duración registrada",
+      "el": "Καταγεγραμμένη διάρκεια",
+      "pl": "Zapisany czas trwania",
+      "cs": "Zaznamenaná délka",
+      "ru": "Зафиксированная длительность"
+    },
     "Recorded file paths are included by your choice.": {},
     "Recorded prefix maps an old path. Export root URI is written to prepared copies. Missing means absent from scanned roots. {slot0}": {},
     "Recorded prefix · optional": {},
-    "Recorded usage": {},
+    "Recorded usage": {
+      "de": "Erfasste Nutzung",
+      "fr": "Utilisation enregistrée",
+      "it": "Utilizzo registrato",
+      "es": "Uso registrado",
+      "el": "Καταγεγραμμένη χρήση",
+      "pl": "Zapisane użycie",
+      "cs": "Zaznamenané použití",
+      "ru": "Зафиксированное использование"
+    },
     "Recorded usage · selected evidence": {},
     "Recording group ·": {},
-    "Recording groups": {},
+    "Recording groups": {
+      "de": "Aufnahmegruppen",
+      "fr": "Groupes d’enregistrements",
+      "it": "Gruppi di registrazioni",
+      "es": "Grupos de grabaciones",
+      "el": "Ομάδες ηχογραφήσεων",
+      "pl": "Grupy nagrań",
+      "cs": "Skupiny nahrávek",
+      "ru": "Группы записей"
+    },
     "Records the shared decisions and validation results": {},
     "Rediscover past rotation": {},
     "Rediscover: days since recorded use": {},
@@ -2202,7 +2940,16 @@
       "cs": "Rok vydání",
       "ru": "Год выпуска"
     },
-    "Release years": {},
+    "Release years": {
+      "de": "Veröffentlichungsjahre",
+      "fr": "Années de sortie",
+      "it": "Anni di uscita",
+      "es": "Años de publicación",
+      "el": "Έτη κυκλοφορίας",
+      "pl": "Lata wydania",
+      "cs": "Roky vydání",
+      "ru": "Годы выпуска"
+    },
     "Releasing": {
       "de": "Veröffentlichung",
       "fr": "Publication",
@@ -2231,7 +2978,16 @@
     "Repeated DB reference groups": {},
     "Repeated DB references · one file": {},
     "Repeated recorded-path groups": {},
-    "Report section": {},
+    "Report section": {
+      "de": "Berichtsabschnitt",
+      "fr": "Section du rapport",
+      "it": "Sezione rapporto",
+      "es": "Sección del informe",
+      "el": "Ενότητα αναφοράς",
+      "pl": "Sekcja raportu",
+      "cs": "Oddíl zprávy",
+      "ru": "Раздел отчёта"
+    },
     "Repository Security": {},
     "Require a saved analyzed status": {},
     "Reset": {
@@ -2244,8 +3000,26 @@
       "cs": "Obnovit",
       "ru": "Сбросить"
     },
-    "Reset filters": {},
-    "Reset override": {},
+    "Reset filters": {
+      "de": "Filter zurücksetzen",
+      "fr": "Réinitialiser les filtres",
+      "it": "Reimposta filtri",
+      "es": "Restablecer filtros",
+      "el": "Επαναφορά φίλτρων",
+      "pl": "Resetuj filtry",
+      "cs": "Obnovit filtry",
+      "ru": "Сбросить фильтры"
+    },
+    "Reset override": {
+      "de": "Überschreibung zurücksetzen",
+      "fr": "Réinitialiser la modification",
+      "it": "Reimposta modifica",
+      "es": "Restablecer modificación",
+      "el": "Επαναφορά παράκαμψης",
+      "pl": "Resetuj nadpisanie",
+      "cs": "Obnovit přepsání",
+      "ru": "Сбросить переопределение"
+    },
     "Reset to captured comment": {},
     "Resolve auto cues": {},
     "Resolve differences in automatic cues?": {},
@@ -2314,7 +3088,16 @@
     "SAVED SESSIONS · RECORDED TRACK ORDER": {},
     "SAVED TRACK METADATA": {},
     "SNAPSHOTS · EVIDENCE · WORKING METADATA": {},
-    "STAGED MERGES": {},
+    "STAGED MERGES": {
+      "de": "VORGEMERKTE ZUSAMMENFÜHRUNGEN",
+      "fr": "FUSIONS PRÉPARÉES",
+      "it": "UNIONI PREPARATE",
+      "es": "FUSIONES PREPARADAS",
+      "el": "ΣΥΓΧΩΝΕΥΣΕΙΣ ΣΕ ΑΝΑΜΟΝΗ",
+      "pl": "PRZYGOTOWANE SCALENIA",
+      "cs": "PŘIPRAVENÁ SLOUČENÍ",
+      "ru": "ПОДГОТОВЛЕННЫЕ ОБЪЕДИНЕНИЯ"
+    },
     "STATUS": {
       "de": "STATUS",
       "fr": "ÉTAT",
@@ -2325,7 +3108,16 @@
       "cs": "STAV",
       "ru": "СОСТОЯНИЕ"
     },
-    "STEMS evidence": {},
+    "STEMS evidence": {
+      "de": "STEMS-Nachweise",
+      "fr": "Éléments STEMS",
+      "it": "Evidenze STEMS",
+      "es": "Evidencias STEMS",
+      "el": "Στοιχεία STEMS",
+      "pl": "Dowody STEMS",
+      "cs": "Podklady STEMS",
+      "ru": "Данные STEMS"
+    },
     "STEMS readiness is unknown. Use Analysis asset audit for extension sizes, RBSC data and STEMS path candidates. {slot0}": {},
     "STEP 01 · START A WORKSPACE": {},
     "Same cue set": {},
@@ -2359,7 +3151,16 @@
     "Save local legend": {},
     "Save or choose a collection snapshot to begin.": {},
     "Save or choose a collection snapshot to draw the map.": {},
-    "Save snapshot": {},
+    "Save snapshot": {
+      "de": "Snapshot speichern",
+      "fr": "Enregistrer l’instantané",
+      "it": "Salva istantanea",
+      "es": "Guardar instantánea",
+      "el": "Αποθήκευση στιγμιοτύπου",
+      "pl": "Zapisz migawkę",
+      "cs": "Uložit snímek",
+      "ru": "Сохранить снимок"
+    },
     "Save these filters": {},
     "Save this table as CSV ↓": {},
     "Save this view": {},
@@ -2425,12 +3226,48 @@
       "cs": "Uložená zpráva",
       "ru": "Сохранённый отчёт"
     },
-    "Saved session": {},
-    "Saved sessions": {},
-    "Saved snapshot": {},
+    "Saved session": {
+      "de": "Gespeicherte Sitzung",
+      "fr": "Session enregistrée",
+      "it": "Sessione salvata",
+      "es": "Sesión guardada",
+      "el": "Αποθηκευμένη συνεδρία",
+      "pl": "Zapisana sesja",
+      "cs": "Uložená relace",
+      "ru": "Сохранённый сеанс"
+    },
+    "Saved sessions": {
+      "de": "Gespeicherte Sitzungen",
+      "fr": "Sessions enregistrées",
+      "it": "Sessioni salvate",
+      "es": "Sesiones guardadas",
+      "el": "Αποθηκευμένες συνεδρίες",
+      "pl": "Zapisane sesje",
+      "cs": "Uložené relace",
+      "ru": "Сохранённые сеансы"
+    },
+    "Saved snapshot": {
+      "de": "Gespeicherter Snapshot",
+      "fr": "Instantané enregistré",
+      "it": "Istantanea salvata",
+      "es": "Instantánea guardada",
+      "el": "Αποθηκευμένο στιγμιότυπο",
+      "pl": "Zapisana migawka",
+      "cs": "Uložený snímek",
+      "ru": "Сохранённый снимок"
+    },
     "Saved storage comparisons": {},
     "Saved tags behind this category": {},
-    "Saved tonality": {},
+    "Saved tonality": {
+      "de": "Gespeicherte Tonart",
+      "fr": "Tonalité enregistrée",
+      "it": "Tonalità salvata",
+      "es": "Tonalidad guardada",
+      "el": "Αποθηκευμένη τονικότητα",
+      "pl": "Zapisana tonacja",
+      "cs": "Uložená tónina",
+      "ru": "Сохранённая тональность"
+    },
     "Saved track colour": {},
     "Saved track order is unavailable.": {},
     "Saved view": {
@@ -2444,7 +3281,16 @@
       "ru": "Сохранённое представление"
     },
     "Saved workspace resumed": {},
-    "Saved workspaces": {},
+    "Saved workspaces": {
+      "de": "Gespeicherte Arbeitsbereiche",
+      "fr": "Espaces de travail enregistrés",
+      "it": "Spazi di lavoro salvati",
+      "es": "Espacios de trabajo guardados",
+      "el": "Αποθηκευμένοι χώροι εργασίας",
+      "pl": "Zapisane obszary robocze",
+      "cs": "Uložené pracovní prostory",
+      "ru": "Сохранённые рабочие области"
+    },
     "Scan folders to see reference candidates.": {},
     "Scan these folders": {},
     "Schema": {
@@ -2503,7 +3349,16 @@
       "cs": "Zabezpečení",
       "ru": "Безопасность"
     },
-    "Security Findings": {},
+    "Security Findings": {
+      "de": "Sicherheitsbefunde",
+      "fr": "Constats de sécurité",
+      "it": "Risultati di sicurezza",
+      "es": "Hallazgos de seguridad",
+      "el": "Ευρήματα ασφάλειας",
+      "pl": "Ustalenia bezpieczeństwa",
+      "cs": "Bezpečnostní nálezy",
+      "ru": "Результаты проверки безопасности"
+    },
     "Select a category to browse its tracks. Missing values remain visible as unknown.": {},
     "Select a pair": {},
     "Select a retained snapshot or capture the loaded XML/ZIP workspace. Temporary input cleanup does not remove snapshots. {slot0}": {},
@@ -2518,7 +3373,16 @@
       "en": "Selected files are copied to a separate session folder under {slot0}. The transfer stays on this computer. These uploaded copies are removed at exit. Your originals are not changed. Reports, decisions and completed exports are kept."
     },
     "Selected-source footprint": {},
-    "Selection seed": {},
+    "Selection seed": {
+      "de": "Auswahl-Seed",
+      "fr": "Graine de sélection",
+      "it": "Seed di selezione",
+      "es": "Semilla de selección",
+      "el": "Σπόρος επιλογής",
+      "pl": "Ziarno wyboru",
+      "cs": "Seed výběru",
+      "ru": "Начальное значение выбора"
+    },
     "Sequential requests use at least 1.1 seconds plus service backoff. At balanced speed, 150 uncached matches take roughly 10 minutes. {slot0}": {},
     "Session dates apply only to captured-history evidence. Least played excludes zero and unknown counts. Prepared means a saved analyzed flag and at least one manual cue. Captured metadata is used; staged edits remain separate.": {},
     "Session history requires a native ZIP or modern database. Standard collection XML contains no native History tab. {slot0}": {},
@@ -2535,7 +3399,16 @@
     "Several candidates": {},
     "Several file candidates": {},
     "Share of footprint": {},
-    "Show evidence": {},
+    "Show evidence": {
+      "de": "Nachweise anzeigen",
+      "fr": "Afficher les éléments",
+      "it": "Mostra evidenze",
+      "es": "Mostrar evidencias",
+      "el": "Εμφάνιση στοιχείων",
+      "pl": "Pokaż dowody",
+      "cs": "Zobrazit podklady",
+      "ru": "Показать данные проверки"
+    },
     "Show genre families by": {},
     "Showing the first 40 locations. Choose a narrower root or download the full report.": {},
     "Similarity": {
@@ -2591,7 +3464,16 @@
       "cs": "Snímek",
       "ru": "Снимок"
     },
-    "Snapshot label": {},
+    "Snapshot label": {
+      "de": "Snapshotbezeichnung",
+      "fr": "Libellé de l’instantané",
+      "it": "Etichetta istantanea",
+      "es": "Etiqueta de instantánea",
+      "el": "Ετικέτα στιγμιοτύπου",
+      "pl": "Etykieta migawki",
+      "cs": "Popisek snímku",
+      "ru": "Метка снимка"
+    },
     "Some cue differences need a choice. Swapping the keeper may preserve the preferred preparation.": {},
     "Songs with no cues": {},
     "Source": {
@@ -2604,8 +3486,26 @@
       "cs": "Zdroj",
       "ru": "Источник"
     },
-    "Source analysis": {},
-    "Source analyzer": {},
+    "Source analysis": {
+      "de": "Quellanalyse",
+      "fr": "Analyse de la source",
+      "it": "Analisi origine",
+      "es": "Análisis del origen",
+      "el": "Ανάλυση πηγής",
+      "pl": "Analiza źródła",
+      "cs": "Analýza zdroje",
+      "ru": "Анализ источника"
+    },
+    "Source analyzer": {
+      "de": "Quellanalysator",
+      "fr": "Analyseur de source",
+      "it": "Analizzatore origine",
+      "es": "Analizador del origen",
+      "el": "Αναλυτής πηγής",
+      "pl": "Analizator źródła",
+      "cs": "Analyzátor zdroje",
+      "ru": "Анализатор источника"
+    },
     "Source capture ·": {},
     "Source files stay unchanged": {},
     "Source folder or XML file": {},
@@ -2626,7 +3526,16 @@
     },
     "Stage pairs with matching media evidence and compatible cues and ratings. A sibling with other cues is preferred, followed by your selected usage rule.": {},
     "Stage ready pairs": {},
-    "Stage reference": {},
+    "Stage reference": {
+      "de": "Verweis vormerken",
+      "fr": "Préparer la référence",
+      "it": "Prepara riferimento",
+      "es": "Preparar referencia",
+      "el": "Προετοιμασία αναφοράς",
+      "pl": "Przygotuj odwołanie",
+      "cs": "Připravit odkaz",
+      "ru": "Подготовить ссылку"
+    },
     "Stage this batch": {},
     "Stage this recording group": {},
     "Staged": {
@@ -2641,13 +3550,49 @@
     },
     "Staged edits apply to copy exports from this same workspace.": {},
     "Staging batch decisions": {},
-    "Staging unlocked": {},
+    "Staging unlocked": {
+      "de": "Vormerken freigeschaltet",
+      "fr": "Préparation déverrouillée",
+      "it": "Preparazione sbloccata",
+      "es": "Preparación desbloqueada",
+      "el": "Η προετοιμασία ξεκλειδώθηκε",
+      "pl": "Przygotowanie odblokowane",
+      "cs": "Příprava odemčena",
+      "ru": "Подготовка разблокирована"
+    },
     "Staging unlocked for this snapshot scope. Review edited metadata before generating copies.": {},
-    "Standalone HTML": {},
+    "Standalone HTML": {
+      "de": "Eigenständiges HTML",
+      "fr": "HTML autonome",
+      "it": "HTML autonomo",
+      "es": "HTML autónomo",
+      "el": "Αυτόνομο HTML",
+      "pl": "Samodzielny HTML",
+      "cs": "Samostatné HTML",
+      "ru": "Автономный HTML"
+    },
     "Standalone HTML and offline minisite saved": {},
     "Star ratings conflict": {},
-    "Starred songs": {},
-    "Starred tracks": {},
+    "Starred songs": {
+      "de": "Bewertete Songs",
+      "fr": "Morceaux notés",
+      "it": "Brani valutati",
+      "es": "Canciones valoradas",
+      "el": "Βαθμολογημένα κομμάτια",
+      "pl": "Ocenione utwory",
+      "cs": "Ohodnocené skladby",
+      "ru": "Композиции с оценкой"
+    },
+    "Starred tracks": {
+      "de": "Bewertete Tracks",
+      "fr": "Pistes notées",
+      "it": "Tracce valutate",
+      "es": "Pistas valoradas",
+      "el": "Βαθμολογημένα κομμάτια",
+      "pl": "Ocenione utwory",
+      "cs": "Ohodnocené skladby",
+      "ru": "Треки с оценкой"
+    },
     "Start selected lookups": {},
     "Static visible bubble-map snapshot.": {},
     "Status from captured metadata": {},
@@ -2683,7 +3628,16 @@
     "Tags and recorded evidence": {},
     "Targets outside the XML Collection": {},
     "Technical detail: {detail}": {},
-    "Temporary Files": {},
+    "Temporary Files": {
+      "de": "Temporäre Dateien",
+      "fr": "Fichiers temporaires",
+      "it": "File temporanei",
+      "es": "Archivos temporales",
+      "el": "Προσωρινά αρχεία",
+      "pl": "Pliki tymczasowe",
+      "cs": "Dočasné soubory",
+      "ru": "Временные файлы"
+    },
     "Test generated ZIPs in an isolated rekordbox library with synchronization paused. Review the result before deciding how it should rejoin your synced library.": {},
     "The XML was read without changing it. No native database conversion was performed.": {},
     "The action could not be completed": {},
@@ -2743,8 +3697,26 @@
     },
     "Tonality & tempo": {},
     "Tonality and tempo": {},
-    "Tonality coverage": {},
-    "Tonality snapshot": {},
+    "Tonality coverage": {
+      "de": "Tonartabdeckung",
+      "fr": "Couverture des tonalités",
+      "it": "Copertura tonalità",
+      "es": "Cobertura de tonalidad",
+      "el": "Κάλυψη τονικότητας",
+      "pl": "Pokrycie tonacji",
+      "cs": "Pokrytí tónin",
+      "ru": "Покрытие тональностей"
+    },
+    "Tonality snapshot": {
+      "de": "Tonart-Snapshot",
+      "fr": "Instantané des tonalités",
+      "it": "Istantanea tonalità",
+      "es": "Instantánea de tonalidad",
+      "el": "Στιγμιότυπο τονικότητας",
+      "pl": "Migawka tonacji",
+      "cs": "Snímek tónin",
+      "ru": "Снимок тональностей"
+    },
     "Total songs": {
       "de": "Songs insgesamt",
       "fr": "Total des morceaux",
@@ -2787,7 +3759,16 @@
       "cs": "Barva skladby",
       "ru": "Цвет трека"
     },
-    "Track colours": {},
+    "Track colours": {
+      "de": "Trackfarben",
+      "fr": "Couleurs de piste",
+      "it": "Colori traccia",
+      "es": "Colores de pista",
+      "el": "Χρώματα κομματιών",
+      "pl": "Kolory utworów",
+      "cs": "Barvy skladeb",
+      "ru": "Цвета треков"
+    },
     "Track colours are separate from cue colours. Inferred RGB, unassigned colours and uncaptured values are identified. {slot0}": {},
     "Track count": {
       "de": "Trackanzahl",
@@ -2801,7 +3782,16 @@
     },
     "Track details · loaded collection": {},
     "Track length distribution": {},
-    "Track records": {},
+    "Track records": {
+      "de": "Trackdatensätze",
+      "fr": "Enregistrements de pistes",
+      "it": "Record delle tracce",
+      "es": "Registros de pistas",
+      "el": "Εγγραφές κομματιών",
+      "pl": "Rekordy utworów",
+      "cs": "Záznamy skladeb",
+      "ru": "Записи треков"
+    },
     "Tracks": {
       "de": "Tracks",
       "fr": "Pistes",
@@ -2871,10 +3861,46 @@
     },
     "Unknown / mixed history": {},
     "Unknown / not captured": {},
-    "Unknown count": {},
-    "Unknown genre": {},
-    "Unknown tonality": {},
-    "Unknown usage": {},
+    "Unknown count": {
+      "de": "Unbekannter Zähler",
+      "fr": "Compteur inconnu",
+      "it": "Conteggio sconosciuto",
+      "es": "Recuento desconocido",
+      "el": "Άγνωστος μετρητής",
+      "pl": "Nieznany licznik",
+      "cs": "Neznámý počet",
+      "ru": "Неизвестный счётчик"
+    },
+    "Unknown genre": {
+      "de": "Unbekanntes Genre",
+      "fr": "Genre inconnu",
+      "it": "Genere sconosciuto",
+      "es": "Género desconocido",
+      "el": "Άγνωστο είδος",
+      "pl": "Nieznany gatunek",
+      "cs": "Neznámý žánr",
+      "ru": "Неизвестный жанр"
+    },
+    "Unknown tonality": {
+      "de": "Unbekannte Tonart",
+      "fr": "Tonalité inconnue",
+      "it": "Tonalità sconosciuta",
+      "es": "Tonalidad desconocida",
+      "el": "Άγνωστη τονικότητα",
+      "pl": "Nieznana tonacja",
+      "cs": "Neznámá tónina",
+      "ru": "Неизвестная тональность"
+    },
+    "Unknown usage": {
+      "de": "Unbekannte Nutzung",
+      "fr": "Utilisation inconnue",
+      "it": "Utilizzo sconosciuto",
+      "es": "Uso desconocido",
+      "el": "Άγνωστη χρήση",
+      "pl": "Nieznane użycie",
+      "cs": "Neznámé použití",
+      "ru": "Неизвестное использование"
+    },
     "Unlinked analysis folders": {},
     "Unlock other metadata edits for this snapshot": {},
     "Unlock staging for this snapshot scope": {},
@@ -2900,7 +3926,16 @@
       "cs": "Bez názvu",
       "ru": "Без названия"
     },
-    "Untitled track": {},
+    "Untitled track": {
+      "de": "Track ohne Titel",
+      "fr": "Piste sans titre",
+      "it": "Traccia senza titolo",
+      "es": "Pista sin título",
+      "el": "Κομμάτι χωρίς τίτλο",
+      "pl": "Utwór bez tytułu",
+      "cs": "Skladba bez názvu",
+      "ru": "Трек без названия"
+    },
     "Unverified": {
       "de": "Nicht geprüft",
       "fr": "Non vérifié",
@@ -2913,12 +3948,39 @@
     },
     "Unverified until media inventory": {},
     "Up to 1 minute": {},
-    "Update counters": {},
+    "Update counters": {
+      "de": "Zähler aktualisieren",
+      "fr": "Actualiser les compteurs",
+      "it": "Aggiorna contatori",
+      "es": "Actualizar contadores",
+      "el": "Ενημέρωση μετρητών",
+      "pl": "Zaktualizuj liczniki",
+      "cs": "Aktualizovat počty",
+      "ru": "Обновить счётчики"
+    },
     "Upload cancelled for shutdown": {},
     "Upload connection was interrupted": {},
-    "Upload failed": {},
+    "Upload failed": {
+      "de": "Upload fehlgeschlagen",
+      "fr": "Échec du transfert",
+      "it": "Caricamento non riuscito",
+      "es": "Error de carga",
+      "el": "Αποτυχία μεταφόρτωσης",
+      "pl": "Przesyłanie nie powiodło się",
+      "cs": "Nahrání se nezdařilo",
+      "ru": "Ошибка загрузки"
+    },
     "Upload interrupted": {},
-    "Usage evidence": {},
+    "Usage evidence": {
+      "de": "Nutzungsnachweise",
+      "fr": "Éléments d’utilisation",
+      "it": "Evidenze di utilizzo",
+      "es": "Evidencias de uso",
+      "el": "Στοιχεία χρήσης",
+      "pl": "Dowody użycia",
+      "cs": "Podklady použití",
+      "ru": "Данные использования"
+    },
     "Use existing files": {},
     "Use non-negative limits, with the minimum no greater than the maximum.": {},
     "Use this folder": {},
@@ -2959,14 +4021,41 @@
       "cs": "Probíhá",
       "ru": "Выполняется"
     },
-    "Working comment": {},
+    "Working comment": {
+      "de": "Arbeitskommentar",
+      "fr": "Commentaire de travail",
+      "it": "Commento di lavoro",
+      "es": "Comentario de trabajo",
+      "el": "Σχόλιο εργασίας",
+      "pl": "Komentarz roboczy",
+      "cs": "Pracovní komentář",
+      "ru": "Рабочий комментарий"
+    },
     "Working comment saved": {},
     "Working edits attach to prepared XML/ZIP copies from this workspace.": {},
-    "Working metadata": {},
+    "Working metadata": {
+      "de": "Arbeitsmetadaten",
+      "fr": "Métadonnées de travail",
+      "it": "Metadati di lavoro",
+      "es": "Metadatos de trabajo",
+      "el": "Μεταδεδομένα εργασίας",
+      "pl": "Metadane robocze",
+      "cs": "Pracovní metadata",
+      "ru": "Рабочие метаданные"
+    },
     "Working override removed; the captured comment is restored.": {},
     "Working rekordbox library stays separate": {},
     "Workspace input copies": {},
-    "Workspace root": {},
+    "Workspace root": {
+      "de": "Arbeitsverzeichnis",
+      "fr": "Racine de l’espace de travail",
+      "it": "Cartella di lavoro principale",
+      "es": "Raíz del espacio de trabajo",
+      "el": "Ρίζα χώρου εργασίας",
+      "pl": "Katalog główny obszaru roboczego",
+      "cs": "Kořen pracovního prostoru",
+      "ru": "Корень рабочей области"
+    },
     "XML + NATIVE ZIP + REPORT": {},
     "XML + ZIP + report": {},
     "XML + ZIP validated and saved together": {},
@@ -3032,10 +4121,28 @@
     "ZIP · native library": {},
     "application version not supplied": {},
     "batch decisions undone": {},
-    "candidate pairs": {},
+    "candidate pairs": {
+      "de": "Kandidatenpaare",
+      "fr": "paires candidates",
+      "it": "coppie candidate",
+      "es": "pares candidatos",
+      "el": "υποψήφια ζεύγη",
+      "pl": "pary kandydatów",
+      "cs": "kandidátní dvojice",
+      "ru": "пары кандидатов"
+    },
     "captured entries ·": {},
     "categories have zero/unknown weight and remain in the list. Compare circle areas within this page; full track length is not time played.": {},
-    "cloud placeholders": {},
+    "cloud placeholders": {
+      "de": "Cloud-Platzhalter",
+      "fr": "fichiers cloud non locaux",
+      "it": "segnaposto cloud",
+      "es": "marcadores de nube",
+      "el": "σύμβολα αρχείων cloud",
+      "pl": "pliki zastępcze w chmurze",
+      "cs": "zástupné soubory cloudu",
+      "ru": "облачные заполнители"
+    },
     "cloud/local candidate groups": {},
     "collection XML export": {},
     "comparisons already covered ·": {},
@@ -3050,7 +4157,16 @@
       "ru": "cue"
     },
     "database tracks matched": {},
-    "date unavailable": {},
+    "date unavailable": {
+      "de": "datum nicht verfügbar",
+      "fr": "date indisponible",
+      "it": "data non disponibile",
+      "es": "fecha no disponible",
+      "el": "ημερομηνία μη διαθέσιμη",
+      "pl": "data niedostępna",
+      "cs": "datum není k dispozici",
+      "ru": "дата недоступна"
+    },
     "eligible for this perspective": {},
     "entries": {
       "de": "einträge",
@@ -3072,7 +4188,16 @@
     "file locations ·": {},
     "file paths excluded": {},
     "files · logical file sizes ·": {},
-    "folders checked": {},
+    "folders checked": {
+      "de": "geprüfte Ordner",
+      "fr": "dossiers vérifiés",
+      "it": "cartelle verificate",
+      "es": "carpetas comprobadas",
+      "el": "ελεγμένοι φάκελοι",
+      "pl": "sprawdzone foldery",
+      "cs": "zkontrolované složky",
+      "ru": "проверенные папки"
+    },
     "full captured library": {},
     "group choices held": {},
     "groups": {
@@ -3100,7 +4225,16 @@
     },
     "input files available as suggestions": {},
     "known BPM ·": {},
-    "known counters": {},
+    "known counters": {
+      "de": "bekannte Zähler",
+      "fr": "compteurs connus",
+      "it": "contatori noti",
+      "es": "contadores conocidos",
+      "el": "γνωστοί μετρητές",
+      "pl": "znane liczniki",
+      "cs": "známé počty",
+      "ru": "известные счётчики"
+    },
     "matched DB records": {},
     "media files indexed": {},
     "merges and": {
@@ -3150,7 +4284,16 @@
       "cs": "dvojice",
       "ru": "пары"
     },
-    "percentage points": {},
+    "percentage points": {
+      "de": "Prozentpunkte",
+      "fr": "points de pourcentage",
+      "it": "punti percentuali",
+      "es": "puntos porcentuales",
+      "el": "ποσοστιαίες μονάδες",
+      "pl": "punkty procentowe",
+      "cs": "procentní body",
+      "ru": "процентных пунктов"
+    },
     "physical files ·": {},
     "ranked rows.": {
       "de": "nach Rang sortierte Zeilen.",
@@ -3164,13 +4307,31 @@
     },
     "recorded entries ·": {},
     "recorded paths included": {},
-    "recorded usage": {},
+    "recorded usage": {
+      "de": "erfasste nutzung",
+      "fr": "utilisation enregistrée",
+      "it": "utilizzo registrato",
+      "es": "uso registrado",
+      "el": "καταγεγραμμένη χρήση",
+      "pl": "zapisane użycie",
+      "cs": "zaznamenané použití",
+      "ru": "зафиксированное использование"
+    },
     "reference edits are staged for export.": {},
     "reference edits staged": {},
     "reference edits ·": {},
     "rekordbox version · optional": {},
     "sampled using seed “": {},
-    "saved sessions": {},
+    "saved sessions": {
+      "de": "gespeicherte sitzungen",
+      "fr": "sessions enregistrées",
+      "it": "sessioni salvate",
+      "es": "sesiones guardadas",
+      "el": "αποθηκευμένες συνεδρίες",
+      "pl": "zapisane sesje",
+      "cs": "uložené relace",
+      "ru": "сохранённые сеансы"
+    },
     "selected tracks ·": {},
     "sessions": {
       "de": "Sitzungen",
@@ -3263,7 +4424,16 @@
     },
     "· insufficient play data": {},
     "· no database report linked": {},
-    "· placeholder": {},
+    "· placeholder": {
+      "de": "· Platzhalter",
+      "fr": "· fichier non local",
+      "it": "· segnaposto",
+      "es": "· marcador",
+      "el": "· σύμβολο κράτησης",
+      "pl": "· plik zastępczy",
+      "cs": "· zástupný soubor",
+      "ru": "· заполнитель"
+    },
     "· policy hint:": {},
     "· prepared copies, one decision at a time": {},
     "· some folders need attention": {},

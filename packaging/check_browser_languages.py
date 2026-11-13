@@ -48,7 +48,7 @@ def main():
                 for code in LANGUAGES:
                     page.select_option('#language',code)
                     page.wait_for_function('(code)=>document.documentElement.lang===code && document.documentElement.dataset.languageBusy!=="true"',arg=code)
-                    page.locator('.nav[data-view="insights"]').click();page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]')
+                    page.locator('.nav[data-view="insights"]').click();page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]',state='attached')
                     page.select_option('#dj-snapshot',sid);page.select_option('#dj-perspective','all');page.locator('#dj-filter-form button[type="submit"]').click();page.wait_for_selector('[data-insight-open="t0"]')
                     assert page.locator('[data-insight-open="t0"]').inner_text()=='Unknown'
                     assert page.locator('[data-insight-open="t9"]').inner_text()==titles[9]
