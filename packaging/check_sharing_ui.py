@@ -41,7 +41,7 @@ def check_sharing_ui(page,base,sid,output):
     assert not aggregate['includes_paths']
     assert all(field not in aggregate['aggregates'] for field in ('playlists','play_count','date_added','last_played','id','title'))
     assert 'Local comment Ελληνικά' not in html and 'window.metadataExecuted=1' not in html
-    public_path=Path(output)/'synthetic-public-summary.html';public_path.write_text(html,encoding='utf-8')
+    public_path=(Path(output)/'synthetic-public-summary.html').resolve();public_path.write_text(html,encoding='utf-8')
     offline=page.context.new_page();errors=[];offline.on('pageerror',lambda error:errors.append(str(error)))
     try:
         offline.goto(public_path.as_uri(),wait_until='load')
@@ -77,7 +77,7 @@ def check_sharing_ui(page,base,sid,output):
     xml=b'<DJ_PLAYLISTS><PRODUCT Version="7.0"/><COLLECTION Entries="1"><TRACK TrackID="44" Name="XML only private title" Artist="XML artist" Genre="House" AverageBpm="126" TotalTime="300" Location="file://localhost/C:/private-xml/track.mp3"/></COLLECTION><PLAYLISTS><NODE Name="ROOT" Type="0"/></PLAYLISTS></DJ_PLAYLISTS>'
     page.locator('#quick-xml-input').set_input_files({'name':'synthetic-collection.xml','mimeType':'application/xml','buffer':xml})
     page.locator('#quick-xml-form button[type="submit"]').click()
-    page.wait_for_function('/^[a-f0-9]{32}$/.test(document.querySelector("#quick-source").value)')
+    page.wait_for_function('!busy && /^[a-f0-9]{32}$/.test(document.querySelector("#quick-source").value) && Journeys.context()?.source==="capture:"+document.querySelector("#quick-source").value')
     page.select_option('#share-preset','public');page.locator('#share-working').uncheck()
     page.wait_for_function('document.querySelector("#share-disclosure strong")?.textContent.startsWith("1 tracks") && !document.querySelector("#quick-generate").disabled')
     _,from_xml,xml_html=generate()

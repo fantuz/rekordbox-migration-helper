@@ -202,7 +202,9 @@ def public_aggregates(tracks):
                      if page == "duration" else t.get(field))
             if page == "colours":
                 value = (t.get("color_name") or t.get("color_hex") or "Assigned colour") if t.get("color_status") == "assigned" else "No assigned colour" if t.get("color_status") == "unassigned" else None
-            key = clean(value) or None
+            # Category labels are captured metadata, not UI prose. Preserve
+            # Unicode and meaningful spacing instead of silently normalizing tags.
+            key = str(value) if value is not None and str(value).strip() else None
             if key not in grouped:
                 grouped[key] = {"label": key, "count": 0, "duration": 0, "duration_known": 0, "bpm_total": 0, "bpm_count": 0}
             g = grouped[key]; g["count"] += 1
