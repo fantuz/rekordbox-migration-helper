@@ -1,5 +1,4 @@
 """Synthetic fixtures only; formal execution belongs to GitHub CI."""
-from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
 import json
@@ -44,7 +43,7 @@ def native_fixture(path):
 
 class HistoryTests(unittest.TestCase):
     def setUp(self):
-        temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name)
+        temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name).resolve()
 
     def test_native_history_keeps_order_repeats_and_missing_members(self):
         db=native_fixture(self.root/'private.db');self.addCleanup(db.close)
@@ -94,7 +93,7 @@ class HistoryTests(unittest.TestCase):
 
 class DiscoveryAndMultiScopeTests(unittest.TestCase):
     def setUp(self):
-        temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name)
+        temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name).resolve()
 
     def test_mounted_windows_profile_and_relocated_settings_are_suggestions_only(self):
         profile=self.root/'Users'/'DJ'/'AppData'/'Roaming'/'Pioneer'/'rekordbox';profile.mkdir(parents=True)
@@ -140,7 +139,7 @@ class DiscoveryAndMultiScopeTests(unittest.TestCase):
         archive=self.root/'backup.zip'
         with zipfile.ZipFile(archive,'w') as z:z.writestr('USBANLZ/a/b/ANLZ0000.3EX',b'not proof of stems');z.writestr('STEMS/candidate.bin',b'hint')
         s={'asset_references':[],'capabilities':{'analysis_references':False}}
-        summary,rows=audit_assets(s,[str(folder),str(archive),str(self.root/'drums.rbsc').replace('drums.rbsc','')],lambda *_:None,True)
+        summary,rows=audit_assets(s,[str(folder),str(archive),str(self.root)],lambda *_:None,True)
         self.assertIsNone(summary['stems']['prepared_tracks']);self.assertEqual(summary['stems']['rbsc_drum_capture_files'],1)
         self.assertEqual(summary['stems']['related_candidate_files'],2);self.assertEqual(summary['folders'],2)
         self.assertIsNone(summary['unreferenced_folders']);self.assertTrue(any(r['section']=='asset_ownership_unknown' for r in rows))
