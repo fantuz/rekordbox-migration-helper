@@ -8,9 +8,9 @@ window.I18n=(() => {
   const browserLanguage=()=>[...(navigator.languages || []),navigator.language].map(normalize).find(supported) || 'en';
   const readPreference=()=>{try{return localStorage.getItem(storageKey);}catch{return null;}};
   let language=supported(readPreference())?readPreference():browserLanguage();
-  const missing=new Set(),rich=new WeakMap();
+  const missing=new Set(),rich=new WeakMap(),numberFormats=new Map();
   const escape=value=>String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const number=(value,options={})=>new Intl.NumberFormat(language,options).format(Number(value));
+  const number=(value,options={})=>{const key=language+JSON.stringify(options);if(!numberFormats.has(key))numberFormats.set(key,new Intl.NumberFormat(language,options));return numberFormats.get(key).format(Number(value));};
   function message(key,params={}){
     key=String(key ?? '');
     let text=data.messages[language]?.[key] ?? data.messages.en?.[key];
