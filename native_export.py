@@ -4,6 +4,7 @@ from copy import copy
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
+from time import monotonic
 from uuid import uuid4
 import json
 import os
@@ -38,7 +39,7 @@ class RawMemberInfo(zipfile.ZipInfo):
         return self.filename.encode('utf-8' if self.flag_bits&0x800 else 'cp437'),self.flag_bits
 
 
-def copy_member_raw(source, target, info, end_offset):
+def copy_member_raw(source, target, info, end_offset, on_bytes=None):
     """Preserve compressed bytes, including Zip64 local headers and descriptors.
 
     zipfile has no public compressed-copy API. Only this helper uses its writer
@@ -57,20 +58,40 @@ def copy_member_raw(source, target, info, end_offset):
             raise ValueError("Truncated source ZIP member")
         target.fp.write(chunk)
         remaining-=len(chunk)
+        if on_bytes:on_bytes(len(chunk))
     target.filelist.append(member)
     target.NameToInfo[member.filename]=member
     target.start_dir=target.fp.tell()
     target._didModify=True
 
 
-def rewrite_archive(source_path, destination, replacements, progress):
-    temporary=destination.with_suffix(".partial")
+class _ByteProgress:
+    """Poll cooperative cancellation without emitting a notification per chunk."""
+    def __init__(self,progress,start,end,total,message):
+        self.progress=progress;self.start=start;self.end=end;self.total=max(1,total);self.message=message
+        self.done=0;self.reported=0;self.when=monotonic()
+        progress(start,message)
+
+    def advance(self,count):
+        self.done+=count;now=monotonic()
+        if self.done-self.reported>=16*1024**2 or now-self.when>=.25:
+            self.progress(self.start+(self.end-self.start)*min(self.done/self.total,1),self.message)
+            self.reported=self.done;self.when=now
+
+    def finish(self):self.progress(self.end,self.message)
+
+
+def _rewrite_archive(source_path, temporary, replacements, progress):
     with zipfile.ZipFile(source_path) as source, zipfile.ZipFile(temporary,"w",allowZip64=True) as target:
         infos=sorted(source.infolist(),key=lambda i:i.header_offset)
         names=[i.filename for i in infos]
         if len(names)!=len(set(names)):
             raise ValueError("Backup contains repeated ZIP paths")
-        for n,info in enumerate(infos):
+        ends=[i.header_offset for i in infos[1:]]+[source.start_dir]
+        sizes={name:path.stat().st_size if isinstance(path,Path) else len(path) for name,path in replacements.items()}
+        total=sum(sizes[info.filename] if info.filename in replacements else max(0,end-info.header_offset) for info,end in zip(infos,ends))
+        copying=_ByteProgress(progress,35,90,total,"Copying backup data")
+        for info,end in zip(infos,ends):
             if info.filename in replacements:
                 replacement=replacements[info.filename]
                 member=copy(info)
@@ -80,13 +101,14 @@ def rewrite_archive(source_path, destination, replacements, progress):
                     with replacement.open("rb") as src,target.open(member,"w",force_zip64=True) as dst:
                         while chunk:=src.read(2*1024**2):
                             dst.write(chunk)
+                            copying.advance(len(chunk))
                 else:
                     target.writestr(member,replacement)
+                    copying.advance(len(replacement))
             else:
-                end=infos[n+1].header_offset if n+1<len(infos) else source.start_dir
-                copy_member_raw(source,target,info,end)
-            if n%1500==0:
-                progress(35+int(55*n/max(len(infos),1)),f"Writing backup member {n:,} / {len(infos):,}")
+                copy_member_raw(source,target,info,end,copying.advance)
+        copying.finish()
+    verifying=_ByteProgress(progress,90,99,2*sum(sizes.values()),"Verifying replaced backup data")
     with zipfile.ZipFile(temporary) as checked,zipfile.ZipFile(source_path) as original:
         if checked.namelist()!=[i.filename for i in sorted(original.infolist(),key=lambda i:i.header_offset)]:
             raise ValueError("Backup member list changed unexpectedly")
@@ -99,15 +121,29 @@ def rewrite_archive(source_path, destination, replacements, progress):
             expected=sha256()
             if isinstance(replacement,Path):
                 with replacement.open("rb") as stream:
-                    while chunk:=stream.read(2*1024**2):expected.update(chunk)
+                    while chunk:=stream.read(2*1024**2):expected.update(chunk);verifying.advance(len(chunk))
             else:
                 expected.update(replacement)
+                verifying.advance(len(replacement))
             actual=sha256()
             with checked.open(name) as stream:
-                while chunk:=stream.read(2*1024**2):actual.update(chunk)
+                while chunk:=stream.read(2*1024**2):actual.update(chunk);verifying.advance(len(chunk))
             if actual.digest()!=expected.digest():
                 raise ValueError("Replaced backup member failed verification")
-    os.replace(temporary,destination)
+    verifying.finish()
+
+
+def rewrite_archive(source_path, destination, replacements, progress):
+    temporary=destination.with_suffix(".partial")
+    try:
+        _rewrite_archive(source_path,temporary,replacements,progress)
+        os.replace(temporary,destination)
+    except Exception:
+        # A cancelled copy must never replace a previous validated destination.
+        # The session cleanup also retries removal if the OS temporarily holds it.
+        try:temporary.unlink(missing_ok=True)
+        except OSError:pass
+        raise
 
 
 def export_native(catalog,decisions,relocations,destination,progress):
