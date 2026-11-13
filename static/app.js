@@ -8,6 +8,8 @@ let token = "", session = null, filter = "all", offset = 0, total = 0, selected 
 let searchTimer;
 let currentGroup=null, groupMode=false;
 let workspace=null,analyzerInfo=null,storageAudit=null,storageOffset=0;
+let resumeTarget=null;
+const activeUploads=new Set();
 const metadataFields=["album","artist","genre","label","format","bpm_min","bpm_max","bitrate_min","playlist","availability"];
 function scopeValues() {return {q:$("#search").value,feature:$("#feature-filter").value,min:$("#stats-min").value || "0",max:$("#stats-max").value,cohort:$("#stats-cohort").value,evidence:evidenceValue(),...Object.fromEntries(metadataFields.map(k=>[k,$("#filter-"+k).value]))};}
 const evidenceLabels={
@@ -109,6 +111,7 @@ async function refresh() {
   await loadAnalyzer();
   await loadStorageInfo();
   await loadQuickExports();
+  if (typeof loadLab === 'function') await loadLab();
 }
 
 async function loadQuickExports() {
@@ -147,7 +150,7 @@ function renderWorkflow() {
   $("#backup-ack").disabled=!session || busy;
   $("#backup-ack-state").textContent=acknowledged?"Acknowledged for this workspace · "+new Date(session.backup_acknowledged).toLocaleString():session?"Acknowledge your separate backup to enable export. This records your statement; it does not verify restorability.":"Load a workspace to acknowledge your backup.";
   $("#native-version-note").hidden=!session || nativeVersion;
-  $("#paired-export-summary").textContent=session ? num(session.staged)+" staged merges · "+num(session.relocations)+" reference edits · "+session.name : "Load a library pair to begin.";
+  $("#paired-export-summary").textContent=session ? num(session.staged)+" staged merges · "+num(session.relocations)+" reference edits · "+num(session.metadata_override_fields)+" metadata fields · "+session.name : "Load a library pair to begin.";
   if (!session) return;
   $("#workflow-session-title").textContent=session.name;
   const mode=session.metadata.import_mode;
@@ -169,7 +172,7 @@ function bindExportCopies() {
 }
 async function loadWorkspace() {
   workspace=await api("/api/workspace");
-  for (const [id,value] of Object.entries({"workspace-root":workspace.root,"workspace-inputs":workspace.inputs,"workspace-exports":workspace.exports_root,"import-inbox":workspace.inputs,"upload-destination":workspace.root})) $("#"+id).textContent=value;
+  for (const [id,value] of Object.entries({"workspace-root":workspace.root,"workspace-inputs":workspace.inputs,"workspace-exports":workspace.exports_root,"import-inbox":workspace.inputs,"upload-destination":workspace.temporary_root || workspace.root})) $("#"+id).textContent=value;
   for (const kind of ["zip","xml"]) $("#workspace-"+(kind==="zip"?"zips":"xmls")).innerHTML=workspace.files.filter(f=>f.kind===kind).map(f=>'<option value="'+esc(f.path)+'">'+esc(f.name)+'</option>').join("");
   const history=workspace.exports.map(exportCard).join("") || '<p class="subtle">No completed exports yet. Generated files will appear here after validation.</p>';
   $("#workflow-export-history").innerHTML=history;
@@ -258,11 +261,13 @@ function showView(view) {
   if (view==="analyzer") loadAnalyzer().catch(error=>notify(error.message,true));
   if (view==="storage") loadStorageInfo().catch(error=>notify(error.message,true));
   if (view==="quick") loadQuickExports().catch(error=>notify(error.message,true));
+  if (view==="lab") loadLab().catch(error=>notify(error.message,true));
   if (view==="files" || view==="exports") loadWorkspace().catch(error=>notify(error.message,true));
-  $("#collection-metrics").hidden=["files","analyzer","storage","quick"].includes(view);
-  $(".dataset-bar").hidden=["analyzer","storage","quick"].includes(view);
+  $("#collection-metrics").hidden=["files","analyzer","storage","quick","lab"].includes(view);
+  $(".dataset-bar").hidden=["analyzer","storage","quick","lab"].includes(view);
   $("#page-title").textContent={files:"From backups to a review copy.",analyzer:"Understand the source library.",storage:"See the space behind the library.",quick:"Take your collection with you.",review:"A clearer collection.",reference:"Find the right home.",activity:"Every decision, recorded.",statistics:"Know your collection.",inventory:"Locate the music.",exports:"Ready for the next session."}[view];
   window.scrollTo(0,0);
+  if (view==='lab') $('#page-title').textContent='Evidence for a better collection.';
 }
 async function example() {
   if (busy) return;
@@ -272,6 +277,7 @@ async function example() {
 async function uploadFile(file,url) {
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
+    activeUploads.add(xhr);xhr.onloadend=()=>activeUploads.delete(xhr);xhr.onabort=()=>reject(new Error('Upload cancelled for shutdown'));
     xhr.open("PUT",url);
     xhr.setRequestHeader("X-Workbench-Token",token);
     xhr.setRequestHeader("Content-Type","application/octet-stream");
@@ -287,6 +293,7 @@ async function uploadFile(file,url) {
 }
 $("#load-example").onclick=wrap(example);$("#empty-example").onclick=wrap(example);
 $$("[data-open-import]").forEach(button=>button.onclick=wrap(async()=>{
+  resumeTarget=null;$('#resume-import-note').hidden=true;
   await loadWorkspace();$("#import-dialog").showModal();
 }));
 $("#continue-review").onclick=()=>showView("review");
@@ -311,7 +318,7 @@ $("#import-form").onsubmit=wrap(async e=>{
   if (!zip || !xml) return;
   busy=true;$("#import-dialog").close();
   try {
-    const started=await api("/api/import",{method:"POST",body:JSON.stringify({zip:zip.name,xml:xml.name})});
+    const started=await api("/api/import",{method:"POST",body:JSON.stringify({zip:zip.name,xml:xml.name,resume_session:resumeTarget})});
     await uploadFile(zip,"/api/upload/"+started.session+"/zip");
     await uploadFile(xml,"/api/upload/"+started.session+"/xml");
     const result=await api("/api/import/"+started.session+"/analyze",{method:"POST",body:"{}"});
@@ -320,7 +327,7 @@ $("#import-form").onsubmit=wrap(async e=>{
 });
 $("#local-import-form").onsubmit=wrap(async e=>{
   e.preventDefault();if (busy) return;
-  const started=await api("/api/import/local",{method:"POST",body:JSON.stringify({zip:$("#local-zip").value,xml:$("#local-xml").value})});
+  const started=await api("/api/import/local",{method:"POST",body:JSON.stringify({zip:$("#local-zip").value,xml:$("#local-xml").value,resume_session:resumeTarget})});
   $("#import-dialog").close();
   await poll(started.job);selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify("Existing files analyzed · no input copy created");
 });
@@ -449,7 +456,10 @@ $("#saved-filter").onchange=wrap(async e=>{
 $("#apply-metadata").onclick=wrap(async()=>{offset=0;await loadPairs();});
 $("#open-sessions").onclick=wrap(async()=>{
   const result=await api("/api/sessions");
-  $("#sessions-list").innerHTML=result.sessions.map(s=>'<div class="session-option"><div>'+esc(s.name)+'<small>'+num(s.staged)+' staged · '+esc(new Date(s.updated*1000).toLocaleString())+(s.available?'':' · source files unavailable')+'</small></div><button class="button secondary small" data-resume="'+esc(s.id)+'" '+(s.available?"":"disabled")+'>Resume</button></div>').join("") || "<p>No saved workspace yet. Load a matching ZIP and XML to begin.</p>";
+  $("#sessions-list").innerHTML=result.sessions.map(s=>'<div class="session-option"><div>'+esc(s.name)+'<small>'+num(s.staged)+' staged · '+esc(new Date(s.updated*1000).toLocaleString())+(s.available?'':' · temporary inputs cleaned or originals unavailable')+'</small></div><button class="button secondary small" '+(s.available?'data-resume':'data-reattach')+'="'+esc(s.id)+'">'+(s.available?'Resume':'Reattach originals')+'</button></div>').join("") || "<p>No saved workspace yet. Load a matching ZIP and XML to begin.</p>";
+  $$('[data-reattach]').forEach(b=>b.onclick=wrap(async()=>{
+    resumeTarget=b.dataset.reattach;$('#sessions-dialog').close();await loadWorkspace();$('#resume-import-note').hidden=false;$('#import-dialog').showModal();
+  }));
   $$("[data-resume]").forEach(b=>b.onclick=wrap(async()=>{
     $("#sessions-dialog").close();
     const result=await api("/api/sessions/"+b.dataset.resume+"/resume",{method:"POST",body:"{}"});
@@ -510,9 +520,7 @@ async function loadInventory() {
 $("#inventory-more").onclick=wrap(async()=>{inventoryOffset+=50;await loadInventory();});
 $("#inventory-status").onchange=wrap(async()=>{inventoryOffset=0;await loadInventory();});
 $("#inventory-search").onchange=wrap(async()=>{inventoryOffset=0;await loadInventory();});
-$("#stop-desktop").onclick=wrap(async()=>{
-  await api("/api/desktop/stop",{method:"POST",body:"{}"});notify("The local application has stopped. You can close this tab.");
-});
+$('#stop-desktop').onclick=wrap(()=>openCleanupDialog());
 async function loadAnalyzer() {
   const data=await api("/api/analyzer");
   analyzerInfo=data;
@@ -529,11 +537,12 @@ function renderAnalysis(report) {
   const db=report.database, inventory=report.footprint;
   const status={checked:"Read completed",needs_review:"Needs review",unsupported:"Database unreadable",inventory_only:"File inventory only"}[report.read_status];
   const metric=(label,value,note="")=>'<article class="stat-card"><span>'+esc(label)+'</span><strong>'+(value===null || value===undefined?"Unavailable":num(value))+'</strong><small>'+esc(note)+'</small></article>';
-  const counters=db?.counters || {};
+  const counters=db?.counters || report.xml?.counters || {};
   const health=db?.health || {};
-  target.innerHTML='<article class="wide-card analysis-report"><div class="section-heading"><div><span class="eyebrow">READ-ONLY REPORT · '+esc(status)+'</span><h2>'+esc(report.format)+'</h2><p>'+esc(new Date(report.created).toLocaleString())+' · '+(report.version_hint?'User-supplied version '+esc(report.version_hint):'Exact application version not inferred')+'</p></div><a class="button secondary" href="/api/analyzer/'+esc(report.id)+'/report">Download JSON report ↓</a></div><code class="report-source">'+esc(report.source)+'</code><p class="read-only-confirmation">No changes were written to the source folder. Database queries ran on the private snapshot.</p><div class="analyzer-messages">'+report.messages.map(message=>'<p class="analysis-message '+esc(message.level)+'">'+esc(message.text)+'</p>').join("")+'</div>'+
+  target.innerHTML='<article class="wide-card analysis-report"><div class="section-heading"><div><span class="eyebrow">READ-ONLY REPORT · '+esc(status)+'</span><h2>'+esc(report.format)+'</h2><p>'+esc(new Date(report.created).toLocaleString())+' · '+(report.version_hint?(report.xml?'XML product version ':'User-supplied version ')+esc(report.version_hint):'Exact application version not inferred')+'</p></div><a class="button secondary" href="/api/analyzer/'+esc(report.id)+'/report">Download JSON report ↓</a></div><code class="report-source">'+esc(report.source)+'</code><p class="read-only-confirmation">'+(report.xml?'The XML was read without changing it. No native database conversion was performed.':'No changes were written to the source folder. Database queries ran on a temporary private snapshot.')+'</p><div class="analyzer-messages">'+report.messages.map(message=>'<p class="analysis-message '+esc(message.level)+'">'+esc(message.text)+'</p>').join("")+'</div>'+
     (db?'<div class="database-status"><span>Database integrity <b>'+esc(db.integrity_ok?'Passed':db.integrity.join('; '))+'</b></span><span>Storage <b>'+esc(db.encryption)+'</b></span><span>Schema <b>'+num(db.table_count)+' tables</b></span></div><div class="stats-cards">'+[['Tracks','tracks'],['Analyzed tracks','analysed'],['Starred tracks','rated'],['Playlists','playlists'],['Albums','albums'],['Artists','artists'],['Native cue rows','cue_rows'],['Only auto cues','only_auto'],['Full manual cues','full_manual'],['Half-automated cues','mixed'],['No cues','no_cues'],['No cues · zero plays','no_cues_no_plays']].map(([label,key])=>metric(label,counters[key])).join("")+'</div><h3>References and candidate issues</h3><div class="stats-cards">'+[['Broken track links','broken_track_links'],['Repeated recorded-path groups','duplicate_recorded_path_groups'],['Tracks in repeated paths','tracks_in_duplicate_paths'],['Analysis folders found','analysis_folders_found'],['Analysis folders without active links','unlinked_analysis_folders'],['Referenced analysis folders absent here','analysis_folders_not_found_here']].map(([label,key])=>metric(label,health[key])).join("")+'</div><ul class="analysis-notes">'+db.notes.map(note=>'<li>'+esc(note)+'</li>').join("")+'</ul>':"")+
-    '<h3>Selected-folder footprint</h3><div class="footprint-summary"><strong>'+esc(bytes(inventory.bytes))+'</strong><span>'+num(inventory.files)+' files · logical file sizes · '+num(inventory.cloud_placeholders)+' cloud placeholders</span></div><div class="footprint-table"><div class="footprint-row footprint-header"><span>File type</span><span>Files</span><span>Size</span><span>Share of footprint</span></div>'+inventory.extensions.map(row=>'<div class="footprint-row"><code>'+esc(row.extension)+'</code><span>'+num(row.files)+'</span><span>'+esc(bytes(row.bytes))+'</span><div class="hist-bar"><i style="width:'+Math.max(0,Math.min(100,100*row.bytes/Math.max(1,inventory.bytes)))+'%"></i></div></div>').join("")+'</div>'+(report.track_paths_available?'<button class="button secondary" id="audit-report-storage">Compare music locations for this report →</button>':'')+'</article>';
+    (report.xml?'<h3>Exported XML metadata</h3><div class="stats-cards">'+[['Tracks','tracks'],['Artists','artists'],['Albums','albums'],['Genres','genres'],['Playlists','playlists'],['Tracks with BPM','bpm_known'],['Tracks with duration','duration_known']].map(([label,key])=>metric(label,counters[key])).join('')+'</div><p class="subtle">Title, artist, BPM, duration and other available tags can be browsed in Quick export. These counts describe this XML, rather than native .edb records. Unexported fields remain unknown.</p>':'')+
+    '<h3>Selected-source footprint</h3><div class="footprint-summary"><strong>'+esc(bytes(inventory.bytes))+'</strong><span>'+num(inventory.files)+' files · logical file sizes · '+num(inventory.cloud_placeholders)+' cloud placeholders</span></div><div class="footprint-table"><div class="footprint-row footprint-header"><span>File type</span><span>Files</span><span>Size</span><span>Share of footprint</span></div>'+inventory.extensions.map(row=>'<div class="footprint-row"><code>'+esc(row.extension)+'</code><span>'+num(row.files)+'</span><span>'+esc(bytes(row.bytes))+'</span><div class="hist-bar"><i style="width:'+Math.max(0,Math.min(100,100*row.bytes/Math.max(1,inventory.bytes)))+'%"></i></div></div>').join("")+'</div>'+(report.track_paths_available?'<button class="button secondary" id="audit-report-storage">Compare music locations for this report →</button>':'')+'</article>';
   if ($("#audit-report-storage")) $("#audit-report-storage").onclick=wrap(async()=>{
     await loadAnalyzer();await loadStorageInfo();$("#storage-source-report").value=report.id;showView("storage");
   });

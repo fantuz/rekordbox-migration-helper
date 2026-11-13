@@ -321,9 +321,10 @@ def parse_xml(path, progress):
     return tracks, playlists, version, digest.hexdigest()
 
 
-def analyze(backup, xml, folder, progress):
+def analyze(backup, xml, folder, progress, scratch=None):
     progress(5, "Reading backup directory")
-    master = folder / "master.db"
+    scratch=Path(scratch or folder);scratch.mkdir(parents=True,exist_ok=True)
+    master = scratch / "master.db"
     with zipfile.ZipFile(backup) as archive:
         infos = archive.infolist()
         names = {i.filename for i in infos}
@@ -427,7 +428,9 @@ def analyze(backup, xml, folder, progress):
                         continue
                     db.execute("INSERT INTO match_candidate VALUES (?,?,?)",(a,b,1 if shared else 2))
         db.commit()
+    from file_workflow import pair_signature
     return {"name": backup.name, "zip_path": str(backup), "xml_path": str(xml), "source": str(output),
+            "pair_signature":pair_signature(backup,xml,xml_hash,master),
             "version": version, "xml_sha256": xml_hash, "zip_bytes": backup.stat().st_size,
             "unpacked_bytes": sum(i.file_size for i in infos), "file_count": len(infos),
             "input_check": "XML IDs and declared file sizes match the backup",
@@ -517,9 +520,11 @@ def export_xml(catalog, decisions, relocations, destination, progress):
     """Export supported XML metadata while keeping the source archive as evidence."""
     from lxml import etree
     from xml.sax.saxutils import quoteattr
+    from metadata_overrides import plan as override_plan,apply_xml
     xml = Path(catalog.metadata["xml_path"])
     backup = Path(catalog.metadata["zip_path"])
     mapping, results = decision_map(catalog, decisions)
+    field_edits=override_plan(catalog,mapping)
     in_xml = {i for i,t in catalog.tracks.items() if t["october_xml"]}
     result_ids = {mapping.get(i,i) for i in in_xml}
     replacements = {donor:keeper for donor,keeper in mapping.items() if donor in in_xml and keeper not in in_xml}
@@ -578,6 +583,7 @@ def export_xml(catalog, decisions, relocations, destination, progress):
                            PlayCount=row["DJPlayCount"] or 0,SampleRate=row["SampleRate"] or 0,BitRate=row["BitRate"] or 0,
                            Tonality=row["Tonality"] or "")
                 element=etree.Element("TRACK",{k:str(v) for k,v in attrs.items()})
+                if row.get('ReleaseYear'):element.set('Year',str(row['ReleaseYear']))
                 member=member_index.get(asset_key(t["analysis_path"]))
                 if member:
                     grid=read_tags(archive,member).get(b"PQTZ",b"")
@@ -587,6 +593,7 @@ def export_xml(catalog, decisions, relocations, destination, progress):
                             raise ValueError("A saved grid has an unsupported beat entry")
                         etree.SubElement(element,"TEMPO",Inizio=f"{ms/1000:.3f}",Bpm=f"{bpm/100:.2f}",Metro="4/4",Battito=str(beat))
                 apply_cues(element, results.get(i,{"cues":catalog.cues[i],"rating":row["Rating"] or 0}))
+                apply_xml(element,field_edits.get(i,{}))
                 return element
 
             def apply_cues(element,result):
@@ -630,6 +637,7 @@ def export_xml(catalog, decisions, relocations, destination, progress):
                                     apply_cues(element,results[i])
                             if i in relocations:
                                 element.set("Location",relocations[i])
+                            apply_xml(element,field_edits.get(i,{}))
                             stream.write(etree.tostring(element,encoding="UTF-8"))
                             emitted.add(i)
                         e.clear()
@@ -651,5 +659,14 @@ def export_xml(catalog, decisions, relocations, destination, progress):
     checked,playlists,_,digest=parse_xml(destination,lambda *_:None)
     if set(checked)!=result_ids or any(i not in checked for i in playlists):
         raise ValueError("Export failed track or playlist validation")
+    for identity,fields in field_edits.items():
+        if identity not in checked:continue
+        expected=etree.Element('TRACK');apply_xml(expected,fields)
+        for field in fields:
+            from metadata_overrides import XML_FIELDS
+            key=XML_FIELDS[field]
+            if checked[identity]['attrs'].get(key)!=expected.get(key):raise ValueError('XML metadata verification failed: '+identity+' / '+field)
     return {"track_count":len(result_ids),"merges":len(mapping),"playlist_tracks_recovered":len(needed),
+            "metadata_fields":sum(len(fields) for i,fields in field_edits.items() if i in result_ids),
+            "metadata_tracks_outside_xml":len(field_edits.keys()-result_ids),
             "relocations":len(relocations),"sha256":digest,"native_backup_status":"Windows restore validation required"}

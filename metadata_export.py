@@ -122,7 +122,7 @@ def payload(snapshot, title, include_paths=False):
             "captured": snapshot.get("captured"), "source_kind": snapshot.get("source_kind", "Metadata snapshot"),
             "scope": snapshot.get("scope", "all"), "version": snapshot.get("version"),
             "cue_basis": snapshot.get("cue_basis", ""), "includes_paths": include_paths,
-            "staged_changes_applied": False, "columns": fields,
+            "staged_changes_applied": False, "metadata_overrides_applied":snapshot.get('metadata_overrides_applied',0), "columns": fields,
             "rows": [[t.get(field) for field in fields] for t in snapshot["tracks"]]}
 
 
@@ -130,9 +130,10 @@ def script_json(value):
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
 
-def export_metadata(snapshot, root, export_id, assets, progress, title="My library", include_paths=False):
+def export_metadata(snapshot, root, export_id, assets, progress, title="My library", include_paths=False,temporary_root=None):
     root, assets = Path(root), Path(assets)
-    pending, final = root/(".pending-"+export_id), root/export_id
+    root.mkdir(parents=True,exist_ok=True)
+    pending, final = Path(temporary_root or root)/(".pending-"+export_id), root/export_id
     pending.mkdir(parents=True)
     try:
         data = payload(snapshot, title, include_paths)
@@ -166,6 +167,7 @@ def export_metadata(snapshot, root, export_id, assets, progress, title="My libra
         record = {"id": export_id, "created": data["created"], "title": data["title"], "tracks": len(data["rows"]),
                   "status": "complete", "source_kind": data["source_kind"], "scope": data["scope"],
                   "source_captured": data["captured"], "includes_paths": include_paths, "staged_changes_applied": False,
+                  "metadata_overrides_applied":data.get('metadata_overrides_applied',0),
                   "pages": list(PAGES.values()), "files": files, "directory": str(final.resolve())}
         (pending/"export.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
         pending.rename(final)

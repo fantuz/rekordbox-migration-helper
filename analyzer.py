@@ -15,8 +15,8 @@ from metadata_export import capture_database
 
 
 COMPATIBILITY=[
-    {"version":"5 and earlier","format":"DeviceSQL · datafile.edb","status":"Detection and file inventory only",
-     "detail":"Legacy records are not decoded. Convert a copy with rekordbox if you need modern database analysis."},
+    {"version":"5 and earlier","format":"Legacy .edb database / collection XML","status":"XML statistics; native database file inventory",
+     "detail":"Select a collection XML export for track counts, title, artist, BPM, duration and other exported fields. Native .edb track records are not decoded yet, so their item count is unavailable. Full native checks require a converted copy. This row describes tool support, not the condition of a v6/v7 library."},
     {"version":"6","format":"SQLCipher SQLite · master.db","status":"Schema-based read-only checks",
      "detail":"The reader targets this format family. Validation against a genuine v6 sample is pending."},
     {"version":"7","format":"SQLCipher SQLite · master.db","status":"Reader checked with v7.2.19 backup data",
@@ -190,9 +190,12 @@ def inspect_database(path,asset_folders):
         return result
 
 
-def analyze_folder(source,output,progress,version_hint=""):
+def analyze_folder(source,output,progress,version_hint="",snapshot_root=None):
     root=Path(str(source).strip().strip('"')).expanduser()
-    if not root.is_absolute() or not root.is_dir():raise ValueError("Choose the full path of the rekordbox data folder")
+    if root.is_absolute() and root.is_file() and root.suffix.lower()=='.xml':
+        from xml_analysis import analyze_xml
+        return analyze_xml(root.resolve(),output,progress)
+    if not root.is_absolute() or not root.is_dir():raise ValueError("Choose the full path of a rekordbox data folder or collection XML export")
     root=root.resolve()
     output=Path(output).resolve()
     if output.is_relative_to(root):raise ValueError("Choose the rekordbox data folder, not a parent of this application's workspace")
@@ -202,13 +205,14 @@ def analyze_folder(source,output,progress,version_hint=""):
     device=any((root/name).is_file() for name in ("export.pdb","exportLibrary.db","PIONEER/rekordbox/export.pdb","PIONEER/rekordbox/exportLibrary.db"))
     if not modern and not legacy and not device:raise ValueError("No master.db, legacy .edb or device export database was found. Select the folder containing the database.")
     output.mkdir(parents=True,exist_ok=True)
+    private=Path(snapshot_root or output)/'snapshot'
     result={"id":output.name,"created":datetime.now(timezone.utc).isoformat(),"source":str(root),"version_hint":version_hint or None,
             "mode":"Read-only source-folder analysis","source_writes":False,"compatibility_matrix":COMPATIBILITY,
             "format":"Modern desktop master.db" if modern else "Legacy .edb candidate" if legacy else "USB / device export",
             "source_files":[],"database":None,"messages":[],"directory":str(output)}
     stamps=None
     if modern:
-        result["source_files"],stamps=snapshot_database(root,output/"snapshot",progress)
+        result["source_files"],stamps=snapshot_database(root,private,progress)
         if stamps.get("master.db-wal") or stamps.get("master.db-journal"):
             result["messages"].append({"level":"info","text":"Database journal files were captured with the private copy. Close rekordbox and pause sync before capture for a stable snapshot."})
         if legacy:result["messages"].append({"level":"info","text":"Legacy .edb files are also present. This report inspects master.db; older files were not converted or merged."})
@@ -217,13 +221,17 @@ def analyze_folder(source,output,progress,version_hint=""):
     if modern:
         progress(60,"Checking database integrity and library relationships on the private copy")
         try:
-            result["database"]=inspect_database(output/"snapshot/master.db",assets)
+            result["database"]=inspect_database(private/"master.db",assets)
             db=result["database"]
             metadata=db.pop("metadata_snapshot",None)
             result["metadata_available"]=metadata is not None
             if metadata is not None:
                 metadata["version"]=version_hint or None
                 (output/"metadata.json").write_text(json.dumps(metadata,ensure_ascii=False,separators=(",",":")),encoding="utf-8")
+                from research_capture import open_capture,capture_private_database
+                with closing(open_capture(private/'master.db')) as captured:comparison=capture_private_database(captured,'capture:'+output.name)
+                comparison.update(captured=result['created'],source_kind='Saved source-folder capture',source_captured=result['created'])
+                (output/'comparison.json').write_text(json.dumps(comparison,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
             paths=db.pop("track_paths",[])
             result["track_paths_available"]=bool(paths)
             if paths:(output/"track-paths.json").write_text(json.dumps(paths,ensure_ascii=False),encoding="utf-8")

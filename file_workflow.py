@@ -5,6 +5,24 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import shutil
+import zipfile
+
+
+def pair_signature(backup,xml,xml_sha256=None,master=None):
+    """Identity for reattaching originals after disposable uploads are removed."""
+    def digest(stream):
+        value=sha256()
+        while chunk:=stream.read(2*1024**2):value.update(chunk)
+        return value.hexdigest()
+    if not xml_sha256:
+        with Path(xml).open('rb') as stream:xml_sha256=digest(stream)
+    with zipfile.ZipFile(backup) as archive:
+        index=sha256(json.dumps([(i.filename,i.file_size,i.CRC) for i in archive.infolist()],ensure_ascii=False).encode()).hexdigest()
+        if master:
+            with Path(master).open('rb') as stream:native=digest(stream)
+        else:
+            with archive.open('master.db') as stream:native=digest(stream)
+    return {'xml_sha256':xml_sha256,'master_sha256':native,'archive_index_sha256':index}
 
 
 def select_inputs(values):
@@ -45,7 +63,7 @@ def check_inputs(metadata):
 
 
 def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,progress,
-                   xml_writer=None,native_writer=None):
+                   xml_writer=None,native_writer=None,temporary_root=None):
     """Expose a completed set only after every requested writer has validated it."""
     if kind not in ("xml","zip","pair"):raise ValueError("Unknown export format")
     if xml_writer is None:
@@ -58,7 +76,8 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
     expected=check_inputs(catalog.metadata)
     metadata={**catalog.metadata,"input_fingerprints":expected}
     root=Path(root)
-    pending=root/(".pending-"+export_id)
+    root.mkdir(parents=True,exist_ok=True)
+    pending=Path(temporary_root or root)/(".pending-"+export_id)
     final=root/export_id
     pending.mkdir(parents=True)
     requested=("xml","zip") if kind=="pair" else (kind,)
@@ -79,7 +98,8 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
         for name in ("export-master.db","native-master.db"):
             (pending/name).unlink(missing_ok=True)
         created=datetime.now(timezone.utc).isoformat()
-        review={"session":snapshot,"decisions":decisions,"reference_edits":relocations,"inputs":expected}
+        review={"session":snapshot,"decisions":decisions,"reference_edits":relocations,"inputs":expected,
+                "metadata_overrides":deepcopy(catalog.metadata.get('field_overrides',{}))}
         digest=sha256(json.dumps(review,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
         report={**review,"review_sha256":digest,"export_id":export_id,"created":created,"format":kind,"validation":validations}
         (pending/"report.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")

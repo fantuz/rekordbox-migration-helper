@@ -9,6 +9,7 @@ import sys
 import time
 import urllib.request
 import webbrowser
+import signal
 from platform_paths import default_data_directory
 
 
@@ -53,9 +54,14 @@ def alert(text):
 def smoke_test():
     import tempfile
     import lxml.etree
+    from tinytag import TinyTag
+    import wave
     from engine import open_master
     from native_export import mutable_copy
     with tempfile.TemporaryDirectory() as tmp:
+        audio=Path(tmp)/'synthetic.wav'
+        with wave.open(str(audio),'wb') as out:out.setparams((1,2,8000,0,'NONE','not compressed'));out.writeframes(b'\0\0'*80)
+        assert TinyTag.get(str(audio),image=False).duration>0
         path=Path(tmp)/"smoke.db"
         db=mutable_copy(path)
         db.execute("CREATE TABLE smoke(value TEXT)")
@@ -96,24 +102,39 @@ def main():
     handler=RotatingFileHandler(data/"application.log",maxBytes=2*1024**2,backupCount=2,encoding="utf-8")
     logging.basicConfig(level=logging.INFO,handlers=[handler])
     from app import app
+    serve_application(app,args.port,args.no_browser,instance)
+    file_lock.close()
+
+
+def serve_application(app,port,no_browser=True,instance=None):
     from werkzeug.serving import make_server
     try:
-        server=make_server("127.0.0.1",args.port,app,threaded=True)
+        server=make_server("127.0.0.1",port,app,threaded=True)
     except SystemExit:
         server=make_server("127.0.0.1",0,app,threaded=True)
     url="http://127.0.0.1:"+str(server.server_port)
-    instance.write_text(json.dumps({"url":url,"pid":os.getpid()}),encoding="utf-8")
+    if instance:instance.write_text(json.dumps({"url":url,"pid":os.getpid()}),encoding="utf-8")
     app.config["SHUTDOWN_CALLBACK"]=server.shutdown
+    interrupted=False
+    def on_interrupt(signum,frame):
+        nonlocal interrupted
+        if not interrupted:
+            interrupted=True
+            print('\nStop requested. Temporary XML/ZIP uploads, extracted databases and unfinished exports will be deleted. Originals, reports, decisions and completed exports are kept. Press Ctrl+C again to confirm, or use Stop and clean up in the browser.',flush=True)
+            return
+        app.config['REQUEST_SHUTDOWN'](True,'confirmed Ctrl+C')
+    def on_terminate(signum,frame):app.config['REQUEST_SHUTDOWN'](True,'operating system termination')
+    previous={}
+    for sig,handler in ((signal.SIGINT,on_interrupt),(signal.SIGTERM,on_terminate)):
+        previous[sig]=signal.signal(sig,handler)
     print("Library Workbench is running at "+url,flush=True)
-    if not args.no_browser:webbrowser.open(url)
+    if not no_browser:webbrowser.open(url)
     try:
         server.serve_forever()
-    except KeyboardInterrupt:
-        pass
     finally:
         server.server_close()
-        instance.unlink(missing_ok=True)
-        file_lock.close()
+        if instance:instance.unlink(missing_ok=True)
+        for sig,handler in previous.items():signal.signal(sig,handler)
 
 
 if __name__=="__main__":

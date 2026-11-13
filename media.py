@@ -75,7 +75,7 @@ def scan(tracks,mappings,progress):
                     exact[path_key(recorded),record["size"]].append(record)
                 if len(files)%500==0:
                     progress(10,f"Indexed {len(files):,} media files")
-    matches={}
+    matches={};referenced=set()
     for n,(i,track) in enumerate(tracks.items()):
         recorded=[track.get(k) for k in ("current_path","original_path","xml_location") if track.get(k)]
         candidates=[]
@@ -92,6 +92,7 @@ def scan(tracks,mappings,progress):
             evidence="filename_and_size"
         unique={r["path"]:r for r in candidates}
         candidates=list(unique.values())
+        referenced.update(unique)
         if len(candidates)==1:
             record=candidates[0]
             status="cloud_only" if record["cloud_only"] else "found"
@@ -105,6 +106,7 @@ def scan(tracks,mappings,progress):
             progress(30+int(65*n/max(len(tracks),1)),f"Checked {n:,} / {len(tracks):,} library references")
     from collections import Counter
     return {"roots":validated,"file_count":len(files),"warnings":warnings[:100],"matches":matches,
+            "orphans":[r for r in files if r['path'] not in referenced],
             "counts":dict(Counter(r["status"] for r in matches.values())),
             "note":"Not found means absent from these scanned roots. Other drives and cloud sources may still contain the audio."}
 

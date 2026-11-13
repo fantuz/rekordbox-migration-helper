@@ -2,7 +2,9 @@
 
 The analyzer selects its reader using the file format and required schema columns. It does not guess an exact application release from a `master.db` filename. Optional user-supplied version information is labeled as such. Unsupported or incomplete schemas produce explicit messages and unavailable counters.
 
-Rekordbox v5 used a DeviceSQL `.edb` desktop database. Version 6 introduced SQLCipher-encrypted SQLite `master.db`; version 7 retains this format family. Legacy `.edb` and USB/device databases currently receive detection and footprint reports only. No old-version record decoder or downgrade conversion is claimed.
+Rekordbox v5 used a legacy `.edb` desktop database. Version 6 introduced SQLCipher-encrypted SQLite `master.db`; version 7 retains this format family. Native `.edb` and USB/device databases currently receive detection and footprint reports only; their track counts are unavailable. No native old-version record decoder or downgrade conversion is claimed.
+
+For global statistics without converting a v5 library, select its standalone collection XML in Source analyzer. The adapter reads exported track counts, title, artist, BPM, duration, album, genre, year, format, playlists and any other supported tags that are present. Unknown/unexported values remain unknown. Quick export provides offline category tables. This is metadata-export support, not native `.edb` decoding. Authentic v5 samples remain needed for broader real-world validation. The fields follow the [official rekordbox XML specification](https://cdn.rekordbox.com/files/20200410160904/xml_format_list.pdf).
 
 - [AlphaTheta: conversion from v5 to v6](https://rekordbox.com/en/support/faq/library-6/#faq-q60001)
 - [AlphaTheta: v6 to v7 does not require conversion](https://rekordbox.com/en/support/faq/library-7/#faq-70923)

@@ -77,11 +77,13 @@ jobs:
         with:
           pattern: '*preview*'
           merge-multiple: true
-          path: release-assets
+          path: release-staging
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: linux-source
-          path: release-assets
+          path: release-staging
+      - name: Collect the four archives from native artifact layouts
+        run: python3 packaging/collect_release_assets.py release-staging release-assets "$REQUESTED_RELEASE_VERSION"
       - name: Verify versions, commit, native runtime evidence and all checksums
         run: python3 packaging/prepare_release.py --assets release-assets
       - name: Create the release with all four packages
