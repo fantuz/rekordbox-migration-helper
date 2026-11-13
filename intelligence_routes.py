@@ -20,32 +20,32 @@ def register(owner):
         return value
 
     @owner.app.get('/api/intelligence/options')
-    def options():
+    def intelligence_options():
         s=snapshot()
         return jsonify(playlists=[{k:p[k] for k in ('id','name','order_available')} for p in playlists(s)],
                        histories=[{'id':h['id'],'name':h.get('name',''),'date':h.get('date')} for h in s.get('histories',[]) if not h.get('folder')],
                        history_order=s.get('capabilities',{}).get('history_order',False))
 
     @owner.app.get('/api/intelligence/playlists')
-    def overlap():return jsonify(playlist_overlap(snapshot(),request.args.get('playlist',''),request.args.get('minimum',.5),request.args.get('offset',0)))
+    def intelligence_overlap():return jsonify(playlist_overlap(snapshot(),request.args.get('playlist',''),request.args.get('minimum',.5),request.args.get('offset',0)))
 
     @owner.app.get('/api/intelligence/session')
-    def progression():return jsonify(session_progression(snapshot(),request.args.get('history',''),request.args.get('offset',0)))
+    def intelligence_progression():return jsonify(session_progression(snapshot(),request.args.get('history',''),request.args.get('offset',0)))
 
     @owner.app.get('/api/intelligence/evolution')
-    def changed():
+    def intelligence_changed():
         saved=store()
         return jsonify(evolution(captured(saved,request.args.get('before','')),captured(saved,request.args.get('after',''))))
 
     @owner.app.post('/api/intelligence/duplicate-impact')
-    def duplicates():
+    def intelligence_duplicates():
         with owner.lock:
             session=owner.current();mapping,_=decision_map(session['catalog'],session['decisions'])
             result=duplicate_impact(capture_catalog(session['catalog']),mapping)
         return jsonify(result)
 
     @owner.app.post('/api/intelligence/report')
-    def report():
+    def intelligence_report():
         values=body();kind=values.get('kind');saved=store()
         # Recompute server-side; never treat an arbitrary browser-supplied report as evidence.
         if kind=='evolution':
