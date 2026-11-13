@@ -22,6 +22,10 @@ def build_version():
     return normalized_version(os.environ.get("LIBRARY_WORKBENCH_VERSION") or (ROOT/"VERSION").read_text(encoding="utf-8"))
 
 
+def release_is_preview(version, requested=False):
+    return bool(requested) or '-' in normalized_version(version)
+
+
 def release_plan(requested, ref, default_branch="main"):
     if ref.startswith("refs/tags/"):
         tag=ref.removeprefix("refs/tags/")

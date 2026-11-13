@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 from urllib.parse import quote
 
-from release_tools import ROOT, release_notes, release_plan, verify_assets
+from release_tools import ROOT, release_is_preview, release_notes, release_plan, verify_assets
 
 
 def github_reader(repo):
@@ -63,6 +63,7 @@ def main():
         (args.assets/"RELEASE-NOTES.md").write_text(notes,encoding="utf-8")
         print("Verified",len(names),"archives from the release commit")
     else:
+        plan['prerelease']='true' if release_is_preview(plan['version'],os.environ.get('REQUESTED_PRERELEASE')=='true') else 'false'
         with Path(os.environ["GITHUB_OUTPUT"]).open("a",encoding="utf-8") as output:
             for key,value in plan.items():output.write(key+"="+value+"\n")
         print("Validated",plan["tag"],"from",ref)
