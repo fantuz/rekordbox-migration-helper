@@ -18,6 +18,7 @@ async function loadLab() {
   labSelect('#lab-report-select',labInfo.reports,r=>r.kind+' · '+new Date(r.created).toLocaleString(),'Choose an evidence report');
   $('#lab-pilot-enabled').checked=labInfo.musicbrainz_enabled;$('#lab-pilot-enabled').disabled=labInfo.musicbrainz_forced_off;
   labPilotButtons();await labSnapshotChanged(false);
+  if(typeof renderDiscoveryHints==='function')await renderDiscoveryHints();
 }
 async function labSnapshotChanged(clear=true) {
   const s=labInfo.snapshots.find(r=>r.id===labSnapshot());
@@ -36,7 +37,7 @@ $$('[data-lab-tab]').forEach(b=>b.onclick=()=>{
 });
 $('#lab-capture-form').onsubmit=wrap(async e=>{e.preventDefault();const r=await labRun('snapshots',{source:$('#lab-source').value,label:$('#lab-label').value});$('#lab-snapshot').value=r.id;await labSnapshotChanged();notify('Immutable snapshot saved locally');});
 $('#lab-snapshot').onchange=wrap(()=>labSnapshotChanged());
-for(const kind of ['consistency','coverage','assets'])$('#lab-'+kind).onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind,working:$('#lab-working').checked,min_cues:$('#lab-min-cues').value,min_manual:$('#lab-min-manual').value,require_analysis:$('#lab-analysis-required').checked,path:$('#lab-assets-path').value,verify:$('#lab-assets-verify').checked}));
+for(const kind of ['consistency','coverage','assets'])$('#lab-'+kind).onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind,working:$('#lab-working').checked,min_cues:$('#lab-min-cues').value,min_manual:$('#lab-min-manual').value,require_analysis:$('#lab-analysis-required').checked,paths:pathLines($('#lab-assets-path').value),verify:$('#lab-assets-verify').checked}));
 $('#lab-compare-form').onsubmit=wrap(async e=>{e.preventDefault();await labRun('compare',{before:$('#lab-before').value,after:$('#lab-after').value,tolerance_ms:$('#lab-tolerance').value});});
 
 async function labLoadReport() {
@@ -44,6 +45,10 @@ async function labLoadReport() {
   const section=$('#lab-report-section').value,q=$('#lab-report-search').value;
   labReport=await api('/api/lab/reports/'+encodeURIComponent(id)+'?'+new URLSearchParams({offset:labReportOffset,section,q}));
   $('#lab-report-summary').innerHTML=labSummary(labReport.summary);
+  const summary=labReport.summary;
+  if(summary.scopes)$('#lab-report-summary').insertAdjacentHTML('beforeend','<h4>Inspected locations</h4>'+summary.scopes.map(r=>'<p class="subtle">'+esc(r.kind)+' · <code>'+esc(r.path)+'</code></p>').join('')+'<div class="lab-table"><table><thead><tr><th>Analysis extension</th><th>Files</th><th>Logical size</th></tr></thead><tbody>'+summary.analysis_extensions.map(r=>'<tr><td>'+esc(r.extension)+'</td><td>'+num(r.files)+'</td><td>'+esc(bytes(r.bytes))+'</td></tr>').join('')+'</tbody></table></div>');
+  if(summary.stems)$('#lab-report-summary').insertAdjacentHTML('beforeend','<div class="stems-summary"><h3>STEMS evidence</h3><p>'+esc(summary.stems.preparation_status)+'</p>'+labSummary({prepared_tracks:summary.stems.prepared_tracks,related_candidate_files:summary.stems.related_candidate_files,rbsc_drum_capture_files:summary.stems.rbsc_drum_capture_files})+'<p>Related candidate file size: '+esc(bytes(summary.stems.related_candidate_bytes))+'. '+esc(summary.stems.note)+'</p></div>');
+  if(summary.scope_warnings?.length)$('#lab-report-summary').insertAdjacentHTML('beforeend',summary.scope_warnings.map(w=>'<p class="subtle">'+esc(w)+'</p>').join(''));
   $('#lab-report-section').innerHTML='<option value="">All findings</option>'+labReport.sections.map(r=>'<option value="'+esc(r.section)+'">'+esc(r.section.replaceAll('_',' '))+' · '+num(r.count)+'</option>').join('');$('#lab-report-section').value=section;
   $('#lab-report-download').hidden=false;$('#lab-report-download').href='/api/lab/reports/'+encodeURIComponent(id)+'/download';
   $('#lab-report-rows').innerHTML='<table><thead><tr><th>Finding</th><th>Track / group</th><th>Evidence</th></tr></thead><tbody>'+labReport.rows.map((r,i)=>'<tr><td>'+esc(r.section.replaceAll('_',' '))+'</td><td><strong>'+esc(r.title || r.playlist || r.name || 'Group')+'</strong><br><span class="subtle">'+esc(r.artist || '')+'</span></td><td>'+esc(r.detail)+'<details><summary>Show evidence</summary><pre>'+esc(JSON.stringify(r,null,2))+'</pre></details>'+(r.section==='variant'?'<button class="button secondary" data-lab-normalize="'+i+'">Stage '+num(r.track_ids.length)+' as “'+esc(r.canonical)+'”</button>':'')+'</td></tr>').join('')+'</tbody></table>';

@@ -50,6 +50,8 @@ jobs:
           node --check static/explorer.js
           node --check static/lab.js
           node --check static/cleanup.js
+          node --check static/discovery.js
+          node --check static/history.js
           bash -n start.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

@@ -17,7 +17,7 @@ FIELDS = ("id", "title", "artist", "album", "genre", "year", "bpm", "rating",
           "last_played", "analysed", "manual_cues", "auto_cues", "bitrate",
           "sample_rate", "bit_depth", "playlists")
 PATH_FIELDS = ("current_path", "original_path")
-PAGES = {"index": "Overview", "tracks": "Tracks", "genres": "Genres", "years": "Years",
+PAGES = {"index": "Overview", "tracks": "Tracks", "genres": "Genres", "years": "Release years", "added": "Added by year",
          "artists": "Artists", "albums": "Albums", "bpm": "BPM ranges", "ratings": "Ratings",
          "duration": "Duration", "formats": "Formats", "playlists": "Playlists"}
 

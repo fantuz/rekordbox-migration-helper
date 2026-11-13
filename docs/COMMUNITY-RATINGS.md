@@ -1,6 +1,6 @@
 # Community ratings: a separate, optional enrichment layer
 
-This is a feasibility proposal, not an enabled online feature. The application currently makes no community-rating queries and does not upload library metadata. Artwork is outside the proposed scope.
+The optional MusicBrainz proof of concept is implemented and disabled by default. Other providers below are research candidates, not enabled integrations or a working provider selector. Opt-in retrieval sends only reviewed public tags/identifiers. Artwork is outside the scope. Sources and provider policies were reviewed on 13 November 2026 and must be checked again before integration.
 
 ## Providers and what the number means
 
@@ -8,11 +8,19 @@ This is a feasibility proposal, not an enabled online feature. The application c
 | --- | --- | --- |
 | MusicBrainz | Community ratings for entities including recordings, with vote counts | Best first candidate for a personal-use pilot. Exact recordings/remixes must be matched; unrated and thinly rated tracks must remain unknown. Ratings are supplementary data, not the CC0 core dataset. |
 | Discogs | Community average and vote count for a release | An album/single/pressing score is not a track score. Current API terms restrict data handling and displaying stale data, including a six-hour freshness condition; a permanent offline ratings export is not a straightforward fit. |
+| TheAudioDB | Track/album metadata, genre/year and score/vote fields where populated | Promising second rating candidate, but its official example has missing track scores. Validate entity, scale, vote coverage and API-tier/distribution terms before normalization. Free development access is not blanket permission for all distribution channels. |
+| Last.fm | Crowd tags, corrections, listener/play popularity | Useful for genre suggestions and identity review. An API key is needed. Tags, play counts and personal loves are not community star ratings. |
+| ListenBrainz | Recording feedback and listening statistics | Love/hate feedback and popularity are separate signals, not a numeric quality rating. MusicBrainz identifiers help link evidence. Follow per-client pacing and server limit headers. |
+| AcoustID | Audio fingerprint identification linked to recordings | Helps identify poorly tagged/unreferenced files. No ratings. A later adapter needs Chromaprint, an application key and explicit fingerprint-transfer consent; no audio/fingerprints are sent by the current pilot. |
 | Charts, streaming counts, likes | Popularity or chart position | These do not measure the same thing as a community quality rating. Do not silently convert them into stars or average them with ratings. |
 
 MusicBrainz documents supplementary ratings under CC BY-NC-SA 3.0, while its core metadata is CC0. Any external-score export needs attribution and appropriate data-license handling distinct from this application's MIT code. Discogs terms need particular care before storing or sharing a score indefinitely. This is a design constraint to resolve before enabling a provider, not a claim of provider permission.
 
 Sources: [MusicBrainz API](https://musicbrainz.org/doc/MusicBrainz_API), [database contents](https://musicbrainz.org/doc/MusicBrainz_Database), [data license](https://musicbrainz.org/doc/About/Data_License), [rate limiting](https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting), [Discogs API](https://www.discogs.com/developers/#page:database,header:database-community-release-rating), [Discogs API terms](https://support.discogs.com/hc/en-us/articles/360009334593-API-Terms-of-Use).
+
+Additional primary sources: [TheAudioDB API](https://www.theaudiodb.com/free_music_api), [example score fields](https://www.theaudiodb.com/docs_json), [terms](https://www.theaudiodb.com/docs_terms_of_use.php); [Last.fm track tags](https://www.last.fm/api/show/track.getTopTags), [track information](https://www.last.fm/api/show/track.getInfo), [API terms](https://www.last.fm/api/tos); [ListenBrainz recording feedback](https://listenbrainz.readthedocs.io/en/latest/users/api/recordings.html), [rate limits and authentication](https://listenbrainz.readthedocs.io/en/latest/users/api/); [AcoustID service guidelines](https://acoustid.org/webservice).
+
+For a future multiple-choice provider UI, show capabilities before lookup: recording versus release scope, available fields, query disclosure, credentials, pacing and export policy. Keep an independent cache/adapter per provider and preserve raw values, vote counts, source URL and retrieval date. Do not silently fall back to another provider, scrape undocumented websites or share a developer's private API token in the portable build. Personal/noncommercial use does not remove provider terms or data-license requirements.
 
 ## Recommended first version
 

@@ -8,7 +8,9 @@
 [![Security policy](https://img.shields.io/badge/security-private%20reporting-507269)](SECURITY.md)
 [![GitHub stars](https://img.shields.io/github/stars/fantuz/rekordbox-migration-helper?style=flat)](https://github.com/fantuz/rekordbox-migration-helper/stargazers)
 
-A local browser application for understanding a rekordbox library, reviewing duplicates and preparing edited copies. Linux is the primary development platform. Windows and macOS portable previews are built and exercised by CI.
+A local browser application for understanding a rekordbox library, reviewing duplicates and preparing edited copies. Use it to prepare a move to a new computer or compare a library before and after a version change: inspect references, preparation and history, then verify the target collection. Linux is the primary development platform. Windows and macOS portable previews are built and exercised by CI.
+
+See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XML and native libraries](docs/FORMAT-SOURCES.md), and [path discovery, analysis/STEMS audit and play-history guide](docs/DISCOVERY-ASSETS-HISTORY.md). The light interface uses blue/green emphasis, prominent duplicate-pair counts and compact tables. Statistics and offline explorers separate addition year from release year. Native histories remain private local snapshot data, browsable after temporary database cleanup.
 
 **Keep a fresh, untouched backup created by rekordbox Backup Library outside this workspace before generating transformed files. Preserve the audio separately when it is excluded from the backup. Native ZIP restoration in rekordbox remains experimental.**
 

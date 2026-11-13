@@ -83,12 +83,13 @@ function renderSession() {
   $("#dataset-name").textContent=session.name || session.metadata.name;
   $("#dataset-check").textContent=" · "+session.metadata.input_check;
   $("#metric-tracks").textContent=num(c.tracks);
+  $("#metric-pairs").textContent=num(c.pairs);
   $("#metric-xml").textContent=num(c.xml_tracks)+" tracks represented in the XML";
   $("#metric-ready").textContent=num(c.ready);
   $("#metric-auto").textContent=num(c.auto);
   $("#metric-staged").textContent=num(session.staged);
   $("#nav-staged").textContent=num(session.staged);
-  $("#pair-count").textContent=" / "+num(c.pairs)+" candidate pairs";
+  $("#pair-count").textContent=num(c.pairs)+" candidate pairs";
   $("#policy").value=session.policy;
   $("#reference-count").textContent=num(session.relocations)+" reference edits staged";
   $("#activity-list").innerHTML=session.events.slice().reverse().map(e=>'<div class="event"><time>'+esc(new Date(e.time).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}))+'</time><span>'+esc(e.text)+'</span></div>').join("");
@@ -262,12 +263,14 @@ function showView(view) {
   if (view==="storage") loadStorageInfo().catch(error=>notify(error.message,true));
   if (view==="quick") loadQuickExports().catch(error=>notify(error.message,true));
   if (view==="lab") loadLab().catch(error=>notify(error.message,true));
+  if (view==="history") loadHistory().catch(error=>notify(error.message,true));
   if (view==="files" || view==="exports") loadWorkspace().catch(error=>notify(error.message,true));
-  $("#collection-metrics").hidden=["files","analyzer","storage","quick","lab"].includes(view);
-  $(".dataset-bar").hidden=["analyzer","storage","quick","lab"].includes(view);
+  $("#collection-metrics").hidden=["files","analyzer","storage","quick","lab","history"].includes(view);
+  $(".dataset-bar").hidden=["analyzer","storage","quick","lab","history"].includes(view);
   $("#page-title").textContent={files:"From backups to a review copy.",analyzer:"Understand the source library.",storage:"See the space behind the library.",quick:"Take your collection with you.",review:"A clearer collection.",reference:"Find the right home.",activity:"Every decision, recorded.",statistics:"Know your collection.",inventory:"Locate the music.",exports:"Ready for the next session."}[view];
   window.scrollTo(0,0);
   if (view==='lab') $('#page-title').textContent='Evidence for a better collection.';
+  if (view==='history') $('#page-title').textContent='Your sessions, saved in time.';
 }
 async function example() {
   if (busy) return;
@@ -412,6 +415,7 @@ async function renderStatistics() {
   $("#stats-cards").innerHTML=labels.map(([key,title,note])=>'<article class="stat-card"><span>'+esc(title)+'</span><strong>'+(data.counters[key]===null?"Unverified":num(data.counters[key]))+'</strong><small>'+esc(note)+'</small></article>').join("");
   const max=Math.max(1,...data.histogram.map(b=>b.count));
   $("#length-histogram").innerHTML=data.histogram.map(b=>'<div class="hist-row"><span>'+esc(b.label)+'</span><div class="hist-bar"><i style="width:'+100*b.count/max+'%"></i></div><b>'+num(b.count)+'</b></div>').join("");
+  $('#added-histogram').innerHTML=renderAddedYears(data.addition_dates);
 }
 $("#stats-apply").onclick=wrap(async()=>{await renderStatistics();offset=0;await loadPairs();});
 $("#stats-cohort").onchange=wrap(async()=>{await renderStatistics();offset=0;await loadPairs();});
@@ -524,6 +528,7 @@ $('#stop-desktop').onclick=wrap(()=>openCleanupDialog());
 async function loadAnalyzer() {
   const data=await api("/api/analyzer");
   analyzerInfo=data;
+  if(typeof renderDiscoveryHints==='function')await renderDiscoveryHints(data.discovery);
   $("#analyzer-directory").textContent=data.directory;
   $("#analyzer-sources").innerHTML=data.suggestions.map(path=>'<option value="'+esc(path)+'"></option>').join("");
   $("#analyzer-location-guide").innerHTML='<p class="subtle">'+esc(data.discovery.help)+'</p>'+data.discovery.found.map(row=>'<div class="detected-source"><code>'+esc(row.path)+'</code><small>'+esc(row.origin)+'</small><button class="text-button" data-use-source="'+esc(row.path)+'">Use this folder</button></div>').join("")+(data.discovery.found.length?"":'<p class="subtle">No local database was detected in the standard locations. Enter any accessible source-folder path below.</p>');
