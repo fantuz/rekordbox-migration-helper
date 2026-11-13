@@ -50,7 +50,7 @@ class PlatformPathTests(unittest.TestCase):
             options.write_text(json.dumps({'options':[['db-path',str(current/'master.db')],['analysis-data-root-path',str(analysis)],['dp','private-device-value']]}))
             before=options.read_bytes();result=discover_sources('win32',{'APPDATA':str(appdata)},root)
             self.assertEqual(result['found'][0]['path'],str(current.resolve()));self.assertEqual(len(result['found']),2)
-            self.assertEqual(result['analysis_locations'][0]['path'],str(analysis.resolve()))
+            self.assertEqual(str(Path(result['analysis_locations'][0]['path']).resolve()),str(analysis.resolve()))
             self.assertNotIn('private-device-value',json.dumps(result));self.assertEqual(options.read_bytes(),before)
 
     def test_mac_agent_dictionary_and_nested_master_location(self):

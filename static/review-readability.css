@@ -86,6 +86,21 @@
 #view-review .group-toolbar label{font-size:13px;line-height:1.5}
 #view-review .group-toolbar select{font-size:13px;min-height:42px}
 #view-review .group-toolbar .button{font-size:13px;min-height:42px;white-space:normal}
+#view-review .group-toolbar p{font-size:13px;line-height:1.55;margin:8px 0 12px}
+#view-review .group-options{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#view-review .group-members{margin:12px 0;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+#view-review .group-member{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:8px 12px;padding:12px;border-bottom:1px solid var(--line);font-size:13px}
+#view-review .group-member:last-child{border-bottom:0}
+#view-review .group-member label{display:flex;align-items:flex-start;gap:9px;margin:0;color:var(--text);min-width:0}
+#view-review .group-member b,#view-review .group-member small{display:block;overflow-wrap:anywhere;line-height:1.5}
+#view-review .group-member small{font-size:12px;color:var(--muted)}
+#view-review .group-member-path{grid-column:1/-1;overflow-wrap:anywhere;font-size:11px;color:var(--muted)}
+#view-review .group-member-status{font-weight:600}
+#view-review .group-member-status[data-status=ready],#view-review .group-member-status[data-status=keeper]{color:var(--accent)}
+#view-review .group-member-status[data-status=held]{border-left:3px solid var(--accent);padding-left:9px}
+#view-review .group-flags label{display:flex;align-items:flex-start;gap:10px;color:var(--text)}
+#view-review .group-plan-summary{padding:10px;background:var(--soft-blue);border-radius:4px;font-weight:600}
+@container pair-comparison (max-width:580px){#view-review .group-options,#view-review .group-member{grid-template-columns:minmax(0,1fr)}}
 
 /* Container sizing also handles a wider sidebar without squeezing the cards. */
 @container duplicate-review (max-width:930px){

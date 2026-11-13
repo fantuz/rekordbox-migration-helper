@@ -506,25 +506,51 @@ async function selectGroup(group) {
   const previousKeeper=sameGroup?currentGroup.keeper:null;
   const previousPair=sameGroup?selected?.id:null;
   const previousChosen=sameGroup?chosen:null;
+  const preferences=sameGroup?{excluded:currentGroup.excluded,prefer_auto:currentGroup.prefer_auto,prefer_rating:currentGroup.prefer_rating}:{};
   const detail=await api("/api/group/details?ids="+encodeURIComponent(group.track_ids.join(",")));
-  currentGroup={...group,detail,keeper:group.track_ids.includes(previousKeeper)?previousKeeper:detail.keeper};
+  currentGroup={...group,detail,...preferences,excluded:new Set([...(preferences.excluded || [])].filter(id=>group.track_ids.includes(id))),keeper:group.track_ids.includes(previousKeeper)?previousKeeper:detail.keeper};
+  currentGroup.excluded.delete(currentGroup.keeper);
   // Filtered group rows contain only the comparisons still available in this scope.
   const comparison=group.pair_ids.includes(previousPair)?previousPair:group.representative;
   await selectPair(comparison,comparison===previousPair?previousChosen:null);
 }
+function groupRequest(group) {
+  return {track_ids:group.track_ids,keeper:group.keeper,excluded:[...group.excluded],prefer_auto:!!group.prefer_auto,prefer_rating:!!group.prefer_rating};
+}
+async function refreshGroupPlan(group,box) {
+  const revision=group.previewRevision=(group.previewRevision || 0)+1;
+  const button=box.querySelector('#stage-group');button.disabled=true;
+  box.querySelector('#group-plan-summary').textContent=I18n.t("Checking the combined cue and rating choices…");
+  const result=await api("/api/group/preview",{method:"POST",body:JSON.stringify(groupRequest(group))});
+  if(currentGroup!==group || !box.isConnected || revision!==group.previewRevision)return;
+  const labels={keeper:I18n.t("Keeper"),ready:I18n.t("Ready to stage"),held:I18n.t("Held for review"),excluded:I18n.t("Excluded"),already_staged:I18n.t("Already staged")};
+  for(const row of result.rows){
+    const node=[...box.querySelectorAll('[data-group-status]')].find(n=>n.dataset.groupStatus===row.track_id);
+    if(!node)continue;
+    node.dataset.status=row.status;node.textContent=labels[row.status];
+    if(row.reason){const reason=document.createElement('small');reason.textContent=row.reason;node.append(reason);}
+    const checkbox=[...box.querySelectorAll('[data-group-donor]')].find(n=>n.dataset.groupDonor===row.track_id);
+    if(checkbox && row.status==='already_staged'){checkbox.checked=true;checkbox.disabled=true;}
+  }
+  box.querySelector('#group-plan-summary').textContent=I18n.t("Group plan: {ready} ready · {held} held · {excluded} excluded · {staged} already staged",{...result.counts,staged:result.counts.already_staged});
+  button.disabled=result.counts.ready===0;
+}
 function renderGroupControls() {
   const group=currentGroup;
   const box=document.createElement("div");box.className="group-toolbar";
-  box.innerHTML=("<h4>"+esc(I18n.t("Recording group ·"))+" ")+group.track_count+(" "+esc("siblings")+"</h4><label>"+esc(I18n.t("Keep this sibling"))+"<select id=\"group-keeper\">")+group.detail.tracks.map(t=>'<option value="'+esc(t.track_id)+'" '+(group.keeper===t.track_id?"selected":"")+'>'+esc(t.track_id+" · "+t.cue_summary.other+" "+I18n.t("other cues ·")+" "+date(t.date_added)+" · "+(t.bitrate || "?")+" kbps")+'</option>').join("")+("</select></label><label>"+esc(I18n.t("Inspect a pair"))+"<select id=\"group-comparison\">")+group.pair_ids.map(id=>'<option value="'+esc(id)+'" '+(selected.id===id?"selected":"")+'>'+esc(id.replace("~"," ↔ "))+'</option>').join("")+("</select></label><button class=\"button secondary\" id=\"stage-group\">"+esc(I18n.t("Stage this recording group"))+"</button>");
+  box.innerHTML='<h4>'+esc(I18n.t("Recording group ·"))+' '+num(group.track_count)+' '+esc(I18n.t("siblings"))+'</h4><p>'+esc(I18n.t("Choose one keeper and include the copies to merge. Leave alternate mixes separate. Existing staged merges are unchanged by exclusions."))+'</p><div class="group-options"><label>'+esc(I18n.t("Keep this sibling"))+'<select id="group-keeper">'+group.detail.tracks.map(t=>'<option value="'+esc(t.track_id)+'" '+(group.keeper===t.track_id?'selected':'')+'>'+esc(t.track_id+' · '+t.cue_summary.other+' '+I18n.t("other cues ·")+' '+date(t.date_added))+'</option>').join('')+'</select></label><label>'+esc(I18n.t("Inspect a pair"))+'<select id="group-comparison">'+group.pair_ids.map(id=>'<option value="'+esc(id)+'" '+(selected.id===id?'selected':'')+'>'+esc(id.replace('~',' ↔ '))+'</option>').join('')+'</select></label></div><div class="group-members" role="table" aria-label="'+esc(I18n.t("Recording group members"))+'">'+group.detail.tracks.map(t=>'<div class="group-member" role="row"><label role="cell"><input type="checkbox" data-group-donor="'+esc(t.track_id)+'" '+(t.track_id===group.keeper?'disabled':group.excluded.has(t.track_id)?'':'checked')+'><span><b>'+esc(t.title || t.track_id)+'</b><small>'+esc(t.artist || I18n.t("Unknown"))+' · '+esc(t.track_id)+'</small></span></label><div role="cell"><span>'+num(t.cue_summary.other)+' '+esc(I18n.t("Other cues"))+' · '+num(t.cue_summary.auto)+' '+esc(I18n.t("Auto cues"))+'</span><small>'+num(t.rating)+' / 5 · '+esc(date(t.date_added))+'</small></div><div role="cell" class="group-member-status" data-group-status="'+esc(t.track_id)+'">…</div><code class="group-member-path">'+esc(t.xml_location || t.current_path || t.original_path || '')+'</code></div>').join('')+'</div><div class="group-flags"><label><input type="checkbox" id="group-auto" '+(group.prefer_auto?'checked':'')+'>'+esc(I18n.t("Keep the group keeper’s cue when a donor cue is automatic"))+'</label><label><input type="checkbox" id="group-rating" '+(group.prefer_rating?'checked':'')+'>'+esc(I18n.t("Keep the group keeper’s rating when stars disagree"))+'</label></div><p id="group-plan-summary" class="group-plan-summary" role="status"></p><button class="button" id="stage-group" disabled>'+esc(I18n.t("Stage this recording group"))+'</button>';
   $("#detail-panel").prepend(box);
-  $("#group-keeper").onchange=e=>currentGroup.keeper=e.target.value;
+  $("#group-keeper").onchange=wrap(async e=>{group.keeper=e.target.value;group.excluded.delete(group.keeper);renderDetail();});
   $("#group-comparison").onchange=wrap(async e=>selectPair(e.target.value));
+  box.querySelectorAll('[data-group-donor]').forEach(input=>input.onchange=wrap(async()=>{if(input.checked)group.excluded.delete(input.dataset.groupDonor);else group.excluded.add(input.dataset.groupDonor);await refreshGroupPlan(group,box);}));
+  for(const [id,field] of [['group-auto','prefer_auto'],['group-rating','prefer_rating']])box.querySelector('#'+id).onchange=wrap(async e=>{group[field]=e.target.checked;await refreshGroupPlan(group,box);});
   $("#stage-group").onclick=wrap(async()=>{
-    const result=await api("/api/group/stage",{method:"POST",body:JSON.stringify({track_ids:group.track_ids,keeper:group.keeper,
-        prefer_auto:$("#accept-auto")?.checked || false,prefer_rating:$("#accept-rating")?.checked || false})});
+    const result=await api("/api/group/stage",{method:"POST",body:JSON.stringify(groupRequest(group))});
     session=result.session;renderSession();await loadPairs();notify(result.count+" "+I18n.t("siblings staged ·")+" "+Object.keys(result.held).length+" "+I18n.t("held for review"));
   });
+  refreshGroupPlan(group,box).catch(error=>{if(box.isConnected)box.querySelector('#group-plan-summary').textContent=error.message;});
 }
+
 let inventoryOffset=0;
 function addMediaRoot(root={}) {
   const row=document.createElement("div");row.className="media-root";
