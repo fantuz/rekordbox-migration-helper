@@ -9,13 +9,14 @@ Every pull request and push to `main` runs source tests on Linux, Windows, Mac I
 | Windows x64 portable | `windows-x64-portable` |
 | Mac Apple Silicon | `macos-arm64-portable` |
 | Mac Intel | `macos-x86_64-portable` |
+| Linux x86-64 portable | `linux-x86_64-portable` |
 | Linux source | `linux-source` |
 
 GitHub wraps each artifact in an outer ZIP; extract it to find the actual application archive. The intermediate `windows-portable-assembly` has not passed the native Windows executable check; use `windows-x64-portable`. Development artifacts expire after 14 days. GitHub release assets are retained separately. **Check and package → Run workflow** also builds a selected ref without publishing.
 
 Archive filenames contain the version and architecture without a `-preview` suffix, for example `Library-Workbench-0.4.6-windows-x64.zip` and `Library-Workbench-0.4.6-macos-arm64.zip`. The release channel is separate: alpha/beta/rc versions still publish as prereleases.
 
-The README download buttons always open the latest stable release's **Downloads** table. That table is generated for each release with links to its exact four versioned assets, so no README version edit is needed. Existing published releases keep their original names.
+The README download buttons always open the latest stable release's **Downloads** table. That table is generated for each release with links to its exact five versioned archives, so no README version edit is needed. Existing published releases keep their original names.
 
 ## Release without a shell
 
@@ -24,7 +25,7 @@ Open **Actions → Create release → Run workflow**. Select **main**, enter a v
 - **Publish when complete:** leave unchecked for a draft, or check to publish after every check passes.
 - **Preview / prerelease:** check to publish an optional preview. Plain versions publish as stable/latest by default. Versions containing `-alpha`, `-beta` or `-rc` are always prereleases.
 
-Click **Run workflow**. The workflow audits dependencies, builds the selected default-branch commit, runs the complete source checks and exercises the actual Windows/Mac packaged applications. It attaches four archives, `SHA256SUMS` and `COMMIT-LOG.txt`. The download table links directly to all six files and gives a short start instruction for each platform. The matching section of [CHANGELOG.md](../CHANGELOG.md), installation instructions, compatibility limits and source commit populate the release notes. A collapsed list links every reachable commit, including merged branches, oldest first; the text attachment preserves author, date and complete messages. A comparison link shows changes since the previous stable release. A complete history checkout is required, so a shallow checkout stops publication instead of producing a partial log. No local tag, push, personal access token or signing secret is needed.
+Click **Run workflow**. The workflow audits dependencies, builds the selected default-branch commit, runs the complete source checks and exercises the actual Windows/Mac/Linux packaged applications. It attaches five archives, `SHA256SUMS` and `COMMIT-LOG.txt`. The download table links directly to all seven files and gives a short start instruction for each platform. The matching section of [CHANGELOG.md](../CHANGELOG.md), installation instructions, compatibility limits and source commit populate the release notes. A collapsed list links every reachable commit, including merged branches, oldest first; the text attachment preserves author, date and complete messages. A comparison link shows changes since the previous stable release. A complete history checkout is required, so a shallow checkout stops publication instead of producing a partial log. No local tag, push, personal access token or signing secret is needed.
 
 For draft mode, open **Releases**, inspect the completed draft and click **Publish release**. The workflow summary links to it. Use this Actions form when creating a new release from the website; a hand-written release entry does not run the packaging workflow.
 

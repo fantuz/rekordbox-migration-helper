@@ -215,6 +215,24 @@ class ReleaseTests(unittest.TestCase):
         self.packages(wrong_commit=True)
         with self.assertRaisesRegex(ValueError,'commit'):release.verify_assets(self.root,self.version,self.commit)
 
+    def test_linux_bundle_without_successful_native_evidence_cannot_be_released(self):
+        for field,value,message in (('linux_runtime_test','pending','runtime validation'),
+                                    ('platform','linux-aarch64','platform'),
+                                    ('commit','b'*40,'commit'),
+                                    ('application_sources',{'app.py':'0'*64},'source mismatch')):
+            with self.subTest(field=field):
+                self.packages()
+                file=self.root/release.archive_name(self.version,'linux-x86_64')
+                with tarfile.open(file) as archive:
+                    members=[(m,archive.extractfile(m).read() if m.isfile() else None) for m in archive.getmembers()]
+                with tarfile.open(file,'w:gz') as archive:
+                    for member,content in members:
+                        if member.name.endswith('/BUILD-MANIFEST.json'):
+                            manifest=json.loads(content);manifest[field]=value;content=json.dumps(manifest).encode();member.size=len(content)
+                        archive.addfile(member,BytesIO(content) if content is not None else None)
+                file.with_suffix('.gz.sha256').write_text(sha256(file.read_bytes()).hexdigest()+'  '+file.name+'\n',encoding='utf-8')
+                with self.assertRaisesRegex(ValueError,message):release.verify_assets(self.root,self.version,self.commit)
+
     def test_private_source_inputs_and_extra_archives_are_rejected(self):
         self.packages(private_source=True)
         with self.assertRaisesRegex(ValueError,'Unexpected source'):release.verify_assets(self.root,self.version,self.commit)

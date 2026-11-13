@@ -9,3 +9,9 @@
 7. Record the exact rekordbox version and outcome. Keep the production backup until native restore and the intended cloud reconciliation procedure have both been validated.
 
 A passing archive, SQLCipher or CI check does not replace this application-level test. There is no direct source-folder overwrite operation in the current analyzer.
+
+## User-reported result
+
+The maintainer reported that the Windows utility and restoration worked on **Windows 11**, with the rekordbox version recalled as **approximately 7.2.19**. The report did not specify whether the native ZIP or XML route was used, or enumerate every item in the checklist. This is encouraging user-reported evidence, not a claim of complete validation for that version or other setups.
+
+For the basic file-creation and restore steps, see [Create your input files and restore an edited copy](INPUTS-AND-RESTORE.md).

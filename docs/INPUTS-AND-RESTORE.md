@@ -11,7 +11,7 @@ Menu names below use the English rekordbox interface. Your version or interface 
 1. Open rekordbox on Windows or macOS. Wait for your collection and any pending sync to finish.
 2. Open **File → Library → Backup Library**.
 3. When asked whether to back up music files as well, **No is recommended for this analysis**: the backup is smaller and quicker. Workbench also accepts a backup made with **Yes**. Choosing No does **not** back up your audio; keep a separate copy of your music. When moving to another computer, preserve or transfer that music as well.
-4. Choose a folder you can find easily, for example **Documents → rekordbox review**, and save the backup. Wait until it finishes. Keep the ZIP intact; do not extract it.
+4. Choose a folder you can find easily, for example **Documents → rekordbox review**, and save the backup. Wait until it finishes. Keep the ZIP intact; do not extract it. If rekordbox also creates a **rekordbox_bak** music folder, preserve that folder with the backup; the ZIP alone does not replace it.
 
 This is the desktop library backup, not a USB device export. A backup without audio can still be large because it contains analysis data.
 
@@ -52,7 +52,7 @@ Workbench never overwrites the running rekordbox library itself. The restore abo
 1. In rekordbox, open **Preferences → Advanced → Database**. In **rekordbox xml**, use **Imported Library** to select **edited-collection.xml**.
 2. If **rekordbox xml** is hidden, enable it under **Preferences → View → Layout → Media Browser**.
 3. Open **rekordbox xml** in the browser tree, then **All Tracks**. Review the tracks before dragging the wanted entries into **Collection**.
-4. To import a playlist, expand its folder in the XML tree and right-click the playlist to choose **Import Playlist**. Menu wording can vary by version.
+4. To import a playlist, expand its folder in the XML tree and drag it into the main **Playlists** section (or use the available **Import Playlist** command). Menu wording can vary by version.
 5. Check counts and preparation in the test library before adopting it. The XML file is not an input for **Restore Library**.
 
 ## Sources and tested scope

@@ -7,6 +7,7 @@ from pathlib import Path
 import platform
 import subprocess
 import sys
+import sysconfig
 import tarfile
 from release_tools import build_version, archive_name
 
@@ -27,6 +28,8 @@ def pack(folder, output, version):
 def main():
     if sys.platform!='linux' or platform.machine()!='x86_64':
         raise RuntimeError('Build on Linux x86-64 in the pinned manylinux_2_28 container')
+    if platform.libc_ver()!=('glibc','2.28'):
+        raise RuntimeError('Use the pinned glibc 2.28 build image to preserve the portability baseline')
     version=build_version()
     build=ROOT/'.build/linux-x86_64'; build.mkdir(parents=True, exist_ok=True)
     (build/'VERSION').write_text(version+'\n', encoding='utf-8')
@@ -40,6 +43,7 @@ def main():
              '--collect-all', 'tinytag']
     for name in ('LICENSE', 'THIRD-PARTY-NOTICES.txt', 'README.md', 'CHANGELOG.md', 'SECURITY.md', 'CONTRIBUTING.md'):
         command.extend(['--add-data', str(ROOT/name)+':.'])
+    command.extend(['--add-data',str(Path(sysconfig.get_path('stdlib'))/'LICENSE.txt')+':licenses'])
     command.append(str(ROOT/'desktop_launcher.py'))
     subprocess.run(command, cwd=ROOT, check=True)
     folder=build/'dist/Library Workbench'
@@ -51,6 +55,7 @@ def main():
     manifest={'application':'Library Workbench', 'version':version, 'platform':'linux-x86_64',
               'python':platform.python_version(), 'libc_build':platform.libc_ver(), 'minimum_glibc':'2.28',
               'build_image':os.environ.get('LIBRARY_WORKBENCH_BUILD_IMAGE'),
+              'python_source':json.loads((ROOT/'.build/linux-python-source.json').read_text(encoding='utf-8')),
               'linux_runtime_test':'pending', 'commit':os.environ.get('GITHUB_SHA'),
               'rekordbox_restore':'not exercised',
               'build_runtime_validation':json.loads(validation.read_text(encoding='utf-8')),

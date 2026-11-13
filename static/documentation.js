@@ -9,5 +9,7 @@ async function loadDocumentation(name=currentDocument){
 }
 document.addEventListener('click',event=>{
   const link=event.target.closest('[data-help-doc]');if(!link)return;event.preventDefault();
+  // Input choices stay in the form; the guide must not open behind its modal.
+  const dialog=link.closest('dialog');if(dialog?.id==='import-dialog')dialog.close();
   currentDocument=link.dataset.helpDoc;showView('docs');
 });
