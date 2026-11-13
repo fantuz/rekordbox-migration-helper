@@ -12792,6 +12792,36 @@
       "pl": "Użyj wczytanej biblioteki XML/ZIP lub wybierz zapisany zrzut analizy.",
       "cs": "Použijte načtenou knihovnu XML/ZIP nebo vyberte uložený snímek analýzy.",
       "ru": "Используйте загруженную библиотеку XML/ZIP или выберите сохранённый снимок анализа."
+    },
+    "Expand map": {
+      "de": "Karte vergrößern",
+      "fr": "Agrandir la carte",
+      "it": "Espandi mappa",
+      "es": "Ampliar mapa",
+      "el": "Επέκταση χάρτη",
+      "pl": "Rozwiń mapę",
+      "cs": "Zvětšit mapu",
+      "ru": "Развернуть карту"
+    },
+    "Expanded bubble map": {
+      "de": "Vergrößerte Blasenkarte",
+      "fr": "Carte de bulles agrandie",
+      "it": "Mappa a bolle espansa",
+      "es": "Mapa de burbujas ampliado",
+      "el": "Εκτεταμένος χάρτης φυσαλίδων",
+      "pl": "Rozwinięta mapa bąbelkowa",
+      "cs": "Zvětšená bublinová mapa",
+      "ru": "Развёрнутая пузырьковая карта"
+    },
+    "Cancel": {
+      "de": "Abbrechen",
+      "fr": "Annuler",
+      "it": "Annulla",
+      "es": "Cancelar",
+      "el": "Ακύρωση",
+      "pl": "Anuluj",
+      "cs": "Zrušit",
+      "ru": "Отмена"
     }
   }
 }

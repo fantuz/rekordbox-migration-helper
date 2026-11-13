@@ -37,11 +37,15 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     page.locator('#bubble-colour-cloud').click();page.wait_for_function('document.querySelector("#bubble-dimension").value==="colour" && document.querySelector("#library-bubbles").dataset.state==="ready"')
     assert page.locator('#bubble-metric').input_value()=='tracks'
     assert page.locator('#library-bubbles circle').count()==2
-    assert page.locator('#library-bubbles').get_attribute('viewBox')=='0 0 940 680'
+    assert page.locator('#library-bubbles').evaluate('(el)=>el.viewBox.baseVal.width>0 && el.viewBox.baseVal.height>0')
+    assert page.locator('#library-bubbles').evaluate('''el=>{const circles=[...el.querySelectorAll('circle')].map(c=>{const g=c.parentNode.transform.baseVal.consolidate().matrix;return {x:g.e,y:g.f,r:Number(c.getAttribute('r'))}}),v=el.viewBox.baseVal;return circles.every((a,i)=>a.x-a.r>=v.x && a.y-a.r>=v.y && a.x+a.r<=v.x+v.width && a.y+a.r<=v.y+v.height && circles.slice(i+1).every(b=>Math.hypot(a.x-b.x,a.y-b.y)>=a.r+b.r))}''')
     assert page.locator('#bubble-empty').is_hidden()
     assert page.locator('#library-bubbles circle').evaluate_all('(els)=>els.every(el=>Number(el.getAttribute("r"))>0)')
     page.locator('#library-bubbles').scroll_into_view_if_needed()
+    page.locator('#bubble-expand').click();page.wait_for_selector('#bubble-expanded[open]')
+    assert page.locator('#bubble-expanded').bounding_box()['width']>page.viewport_size['width']*.9
     page.screenshot(path=str(output/'colour-cloud.png'))
+    page.keyboard.press('Escape');page.wait_for_selector('#bubble-expanded',state='hidden')
     page.locator('#library-bubbles g.bubble-node').first.click();page.wait_for_function('document.querySelector("#library-bubbles").dataset.state==="ready" && document.querySelectorAll("#bubble-breadcrumbs button").length===2')
     page.locator('#bubble-reset').click();page.wait_for_function('document.querySelectorAll("#bubble-breadcrumbs button").length===1 && document.querySelector("#library-bubbles").dataset.state==="ready"')
     page.unroute('**/api/lab',library);page.unroute('**/api/lab/snapshots',capture);page.unroute('**/api/tasks/synthetic-capture',task)

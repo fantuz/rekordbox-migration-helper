@@ -171,7 +171,7 @@ function bubbleSourceAvailability(available){
   if($('#bubble-empty'))$('#bubble-empty').hidden=available;
 }
 function bubblePlaceholder(message,state){
-  const svg=$('#library-bubbles');svg.replaceChildren();svg.dataset.state=state;
+  const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state=state;
   const text=svgNode('text',{x:470,y:320,'text-anchor':'middle',fill:'currentColor','font-size':20});
   bubbleLabelLines(message,65).forEach((line,i)=>{const span=svgNode('tspan',{x:470,dy:i?'1.3em':0});span.textContent=line;text.append(span);});
   svg.append(text);
@@ -184,7 +184,7 @@ $('#bubble-choose-source')?.addEventListener('click',()=>{
 async function loadBubbleData(){
   const state=insightState.bubble,revision=++state.revision;
   bubbleDimensionOptions();bubbleSourceAvailability(Boolean(state.options));
-  if(!state.options){state.result=null;$('#bubble-evidence').textContent=I18n.t("Save or choose a collection snapshot to draw the map.");$('#bubble-svg').disabled=true;const svg=$('#library-bubbles');svg.replaceChildren();svg.dataset.state='no-source';for(const id of ['bubble-groups','bubble-summary','bubble-tracks','bubble-breadcrumbs','bubble-group-count','bubble-track-count','bubble-selected','bubble-map-note','bubble-color-note'])$('#'+id).innerHTML='';for(const id of ['bubble-groups-prev','bubble-groups-next','bubble-tracks-prev','bubble-tracks-next'])$('#'+id).disabled=true;$('#bubble-csv').hidden=true;$('#bubble-colour-meanings').hidden=true;return;}
+  if(!state.options){state.result=null;$('#bubble-evidence').textContent=I18n.t("Save or choose a collection snapshot to draw the map.");$('#bubble-svg').disabled=true;const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state='no-source';for(const id of ['bubble-groups','bubble-summary','bubble-tracks','bubble-breadcrumbs','bubble-group-count','bubble-track-count','bubble-selected','bubble-map-note','bubble-color-note'])$('#'+id).innerHTML='';for(const id of ['bubble-groups-prev','bubble-groups-next','bubble-tracks-prev','bubble-tracks-next'])$('#'+id).disabled=true;$('#bubble-csv').hidden=true;$('#bubble-colour-meanings').hidden=true;return;}
   const args=insightArgs('bubble');$('#library-bubbles').setAttribute('aria-busy','true');$('#bubble-groups').classList.add('insight-loading');$('#bubble-svg').disabled=true;
   state.result=null;
   bubblePlaceholder(I18n.t('Loading'),'loading');
@@ -234,15 +234,40 @@ function bubbleLabelLines(label,characters){
   const visible=lines.length>2?[lines[0],lines.slice(1).join(' ')]:lines;
   return visible.slice(0,2).map(text=>text.length>characters?text.slice(0,characters-1)+'…':text);
 }
+function bubbleLayoutHash(value){
+  let hash=2166136261;for(const character of String(value))hash=Math.imul(hash^character.codePointAt(0),16777619);return hash>>>0;
+}
+function bubbleLayout(groups,result){
+  // Stable source identities seed the arrangement, independently of UI language
+  // or colour labels. A bounded pack replaces force animation and random jitter.
+  const seed=JSON.stringify([result.snapshot.id || '',result.dimension,result.metric,result.context.breadcrumbs.map(p=>[p.dimension,p.key]),result.group_offset]);
+  const order=group=>bubbleLayoutHash(JSON.stringify([seed,group.key]));
+  const root=d3.hierarchy({children:groups}).sum(d=>d.value || 0).sort((a,b)=>order(a.data)-order(b.data) || (String(a.data.key)<String(b.data.key)?-1:String(a.data.key)>String(b.data.key)?1:0));
+  d3.pack().size([940,680]).padding(28)(root);
+  const angle=bubbleLayoutHash(seed)/4294967296*Math.PI*2,cos=Math.cos(angle),sin=Math.sin(angle);
+  const nodes=root.children || [];
+  for(const node of nodes){
+    const x=(node.x-root.x)*1.14,y=(node.y-root.y)*1.14;
+    // Uniform rotation and centre-distance expansion cannot introduce overlap;
+    // keep every radius unchanged so circle areas still encode the metric.
+    node.x=root.x+x*cos-y*sin;node.y=root.y+x*sin+y*cos;
+  }
+  return nodes;
+}
+function fitBubbleViewBox(svg,nodes){
+  const margin=24;
+  const left=Math.min(...nodes.map(node=>node.x-node.r))-margin,top=Math.min(...nodes.map(node=>node.y-node.r))-margin;
+  const right=Math.max(...nodes.map(node=>node.x+node.r))+margin,bottom=Math.max(...nodes.map(node=>node.y+node.r))+margin;
+  svg.setAttribute('viewBox',[left,top,right-left,bottom-top].join(' '));svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+}
 function renderBubbleMap(){
-  const state=insightState.bubble,r=state.result;if(!r)return;const svg=$('#library-bubbles');svg.replaceChildren();svg.dataset.state=r.groups.some(g=>g.value>0)?'ready':'empty';
+  const state=insightState.bubble,r=state.result;if(!r)return;const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state=r.groups.some(g=>g.value>0)?'ready':'empty';
   if(r.dimension==='colour')for(const group of r.groups){group.original_label=group.original_label || group.label;group.label=colourDisplayLabel(group.key,group.original_label);}
   const title=svgNode('title');title.textContent=I18n.t("Library bubbles ·")+" "+insightDims[r.dimension];svg.append(title);
   const positive=r.groups.filter(g=>g.value>0);
   if(positive.length){
-    const root=d3.hierarchy({children:positive}).sum(d=>d.value || 0).sort((a,b)=>b.value-a.value);
-    d3.pack().size([940,680]).padding(10)(root);
-    for(const node of root.children || []){
+    const nodes=bubbleLayout(positive,r);fitBubbleViewBox(svg,nodes);
+    for(const node of nodes){
       const group=node.data,g=svgNode('g',{class:'bubble-node',transform:'translate('+node.x+','+node.y+')',role:'button',tabindex:'0','aria-label':group.label+', '+bubbleWeight(group.value,r.metric)+', '+num(group.entries)+' '+I18n.t('entries')+'. '+(r.dimension==='tracks'?I18n.t("Inspect track"):I18n.t("Drill down"))});
       const circle=svgNode('circle',{r:node.r,fill:bubbleColor(group),stroke:'#ffffff','stroke-width':2});g.append(circle);
       const tooltip=svgNode('title');tooltip.textContent=group.label+' · '+num(group.entries)+(" "+I18n.t("entries")+" \u00b7 ")+num(group.recorded_plays)+" "+I18n.t("recorded usage");g.append(tooltip);
@@ -287,7 +312,7 @@ $('#bubble-groups-next').onclick=wrap(async()=>{insightState.bubble.groupOffset+
 $('#bubble-tracks-prev').onclick=wrap(async()=>{insightState.bubble.offset=Math.max(0,insightState.bubble.offset-50);await loadBubbleData();});
 $('#bubble-tracks-next').onclick=wrap(async()=>{insightState.bubble.offset+=50;await loadBubbleData();});
 $('#bubble-svg').onclick=()=>{
-  const svg=$('#library-bubbles').cloneNode(true);svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.setAttribute('width','940');svg.setAttribute('height','680');svg.removeAttribute('aria-busy');
+  const original=$('#library-bubbles'),svg=original.cloneNode(true),bounds=original.viewBox.baseVal;svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.setAttribute('width',String(Math.ceil(bounds.width)));svg.setAttribute('height',String(Math.ceil(bounds.height)));svg.removeAttribute('aria-busy');
   const description=svgNode('desc');description.textContent=I18n.t("Static visible bubble-map snapshot.")+" "+(insightState.bubble.options?.snapshot.label || I18n.t("Collection"))+" "+I18n.t("· Captured")+" "+(insightState.bubble.options?.snapshot.captured || I18n.t("date unavailable"))+'. '+$('#bubble-map-note').textContent+" "+I18n.t("Branch:")+" "+$('#bubble-breadcrumbs').textContent+'. '+$('#bubble-color-note').textContent;svg.prepend(description);
   const content=new XMLSerializer().serializeToString(svg),blob=new Blob([content],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='library-bubbles.svg';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
