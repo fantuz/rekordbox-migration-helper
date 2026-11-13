@@ -40,7 +40,7 @@ def history_session(snapshot,identity,query='',offset=0,all_rows=False):
         item={field:values.get(field) for field in ('title','artist','album','genre','bpm','rating','duration','date_added')}
         item.update(track_id=entry['track_id'],position=entry.get('position'),missing_from_active_collection=missing)
         if not item['title']:item['title']='Track metadata unavailable'
-        if not query or query in ' '.join(str(v or '') for v in item.values()).casefold():rows.append(item)
+        if not query or any(query in str(v or '').casefold() for v in item.values()):rows.append(item)
     offset=max(0,int(offset))
     return {'session':{k:h.get(k) for k in ('id','name','date')},'rows':rows if all_rows else rows[offset:offset+50],
             'total':len(rows),'recorded_entries':len(h['entries']),'offset':offset,'order_available':snapshot['capabilities'].get('history_order',False),

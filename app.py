@@ -20,7 +20,7 @@ from native_export import export_native
 from media import scan as scan_media, verify_pair
 from file_workflow import select_inputs, fingerprint_inputs, check_inputs, prepare_export, list_exports,pair_signature
 from analyzer import analyze_folder, COMPATIBILITY
-from platform_paths import default_data_directory, discover_sources, discover_cloud_roots
+from platform_paths import default_data_directory, discover_cloud_roots
 from discovery import suggestions as discover_locations,scan_roots as discover_scan
 from storage_audit import scan_storage, verify_group
 from metadata_export import capture_catalog, export_metadata, list_metadata_exports
