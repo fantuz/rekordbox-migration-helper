@@ -23,6 +23,8 @@ GitHub builds the package with pinned PyInstaller and CPython 3.13.18 in a diges
 
 Bundled Linux/macOS launchers use the host operating system’s certificate file when available, preserving explicit `SSL_CERT_FILE`/`SSL_CERT_DIR` overrides. No certificate verification is disabled and no extra CA service is queried. The Linux executable also verifies that trusted roots load without making an internet request.
 
+When opening the system browser, the Linux launcher temporarily restores the host shared-library search path, then restores the application's bundled environment. This follows [PyInstaller's external-program guidance](https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html#launching-external-programs-from-the-frozen-application) and avoids passing bundled Python libraries to `xdg-open` or the browser.
+
 The host check extracts into a path with spaces and Unicode, clears Python environment variables and points `PATH` at a nonexistent folder before running the bundled ELF. It exercises encrypted synthetic database reads, source hash preservation, browser-server startup, repeat launch, translated resources, snapshots, offline exports and acknowledged cleanup. The harness uses its own Python only to create synthetic fixtures and send HTTP checks; the application must run independently.
 
 Only after the native check passes is `linux_runtime_test` marked **passed** in `BUILD-MANIFEST.json`. Release collection checks the version, commit, source digests, native evidence and SHA-256 alongside the Windows/Mac packages and source archive. A successful runtime check does not establish native rekordbox restore compatibility; Linux does not run that licensed application in CI.

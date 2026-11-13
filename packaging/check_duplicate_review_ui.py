@@ -188,6 +188,7 @@ def check_duplicate_review_ui(browser,base,output):
         page.select_option('#feature-filter','mixed')
         page.wait_for_function('document.querySelector("#group-comparison")?.value==="synthetic-alternate" && document.querySelector("#detail-panel .detail-head h3")?.textContent==="Synthetic alternate comparison"')
         page.wait_for_selector('[data-group-status="synthetic-c"][data-status="ready"]')
+        page.locator('.group-toolbar').scroll_into_view_if_needed()
         page.screenshot(path=str(output/'duplicate-group-members.png'))
         page.locator('#stage-group').click()
         page.wait_for_function('document.querySelector("#toast")?.textContent.includes("2")')

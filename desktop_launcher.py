@@ -13,6 +13,20 @@ import signal
 from platform_paths import default_data_directory,configure_packaged_certificates
 
 
+def open_browser(url):
+    if not (getattr(sys,'frozen',False) and sys.platform=='linux'):
+        return webbrowser.open(url)
+    # xdg-open/the system browser must use host libraries, not bundled Python's.
+    present='LD_LIBRARY_PATH' in os.environ;bundled=os.environ.get('LD_LIBRARY_PATH')
+    original=os.environ.get('LD_LIBRARY_PATH_ORIG')
+    if original:os.environ['LD_LIBRARY_PATH']=original
+    else:os.environ.pop('LD_LIBRARY_PATH',None)
+    try:return webbrowser.open(url)
+    finally:
+        if present:os.environ['LD_LIBRARY_PATH']=bundled
+        else:os.environ.pop('LD_LIBRARY_PATH',None)
+
+
 def acquire_lock(path):
     stream=path.open("a+b")
     if stream.seek(0,2)==0:
@@ -99,7 +113,7 @@ def main():
         for _ in range(30):
             url=existing_instance(instance)
             if url:
-                if not args.no_browser:webbrowser.open(url)
+                if not args.no_browser:open_browser(url)
                 print("Library Workbench is already running at "+url)
                 return
             time.sleep(.1)
@@ -134,7 +148,7 @@ def serve_application(app,port,no_browser=True,instance=None):
     for sig,handler in ((signal.SIGINT,on_interrupt),(signal.SIGTERM,on_terminate)):
         previous[sig]=signal.signal(sig,handler)
     print("Library Workbench is running at "+url,flush=True)
-    if not no_browser:webbrowser.open(url)
+    if not no_browser:open_browser(url)
     try:
         server.serve_forever()
     finally:
