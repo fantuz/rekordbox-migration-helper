@@ -23,10 +23,36 @@ def build_version():
 
 
 def release_plan(requested, ref, default_branch="main"):
-    if ref != "refs/heads/"+default_branch:
-        raise ValueError("Start releases from the default branch only; merge the reviewed changes first")
-    version = normalized_version(requested or (ROOT/"VERSION").read_text(encoding="utf-8"))
+    if ref.startswith("refs/tags/"):
+        tag=ref.removeprefix("refs/tags/")
+        version=normalized_version(tag)
+        if tag!="v"+version:
+            raise ValueError("Release tags must use the canonical v<version> form")
+        if requested and normalized_version(requested)!=version:
+            raise ValueError("Requested version does not match the release tag")
+    elif ref == "refs/heads/"+default_branch:
+        version = normalized_version(requested or (ROOT/"VERSION").read_text(encoding="utf-8"))
+    else:
+        raise ValueError("Start releases from the default branch or its version tags; merge the reviewed changes first")
     return {"version": version, "tag": "v"+version}
+
+
+def release_notes(version, commit, changelog=""):
+    version=normalized_version(version)
+    match=re.search(r"(?m)^## "+re.escape(version)+r"(?:[ \t].*)?$",changelog)
+    changes=""
+    if match:
+        tail=changelog[match.end():]
+        changes=re.split(r"(?m)^## ",tail,maxsplit=1)[0].strip()
+    intro=changes or "A local library analyzer, duplicate-review utility and offline metadata explorer."
+    return ("Library Workbench "+version+"\n\n"+intro+"\n\n"
+            "### Downloads\n\n"
+            "- Windows x64: extract the complete ZIP and open Library Workbench.exe. Python and dependencies are bundled.\n"
+            "- macOS: choose arm64 (Apple Silicon) or x86_64 (Intel), extract and open Library Workbench.app. These previews are ad-hoc signed, not notarized.\n"
+            "- Linux: extract the source archive and run start.sh with Python 3.13 or newer.\n\n"
+            "All packages passed their native CI runtime checks and share the release source. SHA256SUMS lists the four archives.\n\n"
+            "Keep an untouched rekordbox Backup Library backup before transformation. Native ZIP restore inside rekordbox remains experimental; validate in an isolated library first.\n\n"
+            "Source commit: "+commit+"\n")
 
 
 def verify_assets(directory, version, commit):
@@ -65,9 +91,10 @@ def verify_assets(directory, version, commit):
                 available={}
                 for member in archive.getmembers():
                     parts=Path(member.name).parts
-                    if not member.isfile() or not parts or parts[0]!="library-workbench" or ".." in parts or any(p.startswith(".") for p in parts[1:]):
-                        raise ValueError("Unexpected source archive entry: "+member.name)
                     relative="/".join(parts[1:])
+                    hidden=any(p.startswith(".") for p in parts[1:]) and relative!=".gitattributes"
+                    if not member.isfile() or not parts or parts[0]!="library-workbench" or ".." in parts or hidden:
+                        raise ValueError("Unexpected source archive entry: "+member.name)
                     if relative.endswith((".db",".sqlite3",".xml",".zip")):
                         raise ValueError("Private library data is not a release input")
                     available[relative]=archive.extractfile(member).read()
