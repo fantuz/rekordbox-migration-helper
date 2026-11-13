@@ -96,7 +96,7 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
         other.goto(base,wait_until='networkidle');expected='fr' if blocked else 'pl' if locale=='pl-PL' else 'en'
         assert other.locator('html').get_attribute('lang')==expected
         assert other.locator('#sidebar-size').input_value()=='standard'
-        other.select_option('#language','de');other.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
+        other.select_option('#language','de');other.wait_for_function('document.documentElement.lang==="de" && document.documentElement.dataset.languageBusy!=="true"')
         assert other.evaluate('document.documentElement.scrollWidth<=window.innerWidth+1')
         other.screenshot(path=str(output/('narrow-'+locale+'.png')))
         if not blocked:other.reload(wait_until='networkidle');assert other.locator('html').get_attribute('lang')=='de'

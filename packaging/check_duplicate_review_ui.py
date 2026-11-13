@@ -33,18 +33,34 @@ def check_duplicate_review_ui(browser,base,output):
     """Exercise the real UI handlers; intercept every synthetic decision before HTTP."""
     with urllib.request.urlopen(base+'/api/status') as response:status=json.load(response)
     session,pair=review_fixture();decisions=[];evidence_queries=[];errors=[];unexpected_mutations=[]
+    third={**deepcopy(pair['tracks'][0]),'track_id':'synthetic-c','title':'Synthetic third sibling'}
+    alternate={**deepcopy(pair),'id':'synthetic-alternate','title':'Synthetic alternate comparison',
+               'tracks':[deepcopy(pair['tracks'][1]),third],'keeper':'synthetic-c'}
+    group_scope={'id':'synthetic-group','include_alternate':True,'representative':pair['id']}
     context=browser.new_context(locale='en-US',viewport={'width':1440,'height':1000})
     context.add_init_script("localStorage.setItem('library-workbench.language.v1','en');localStorage.setItem('library-workbench.sidebar-size.v1','standard')")
     def synthetic_api(route):
         request=route.request;url=urlsplit(request.url);path=url.path
         if path=='/api/status':route.fulfill(json={**status,'session':deepcopy(session),'example_available':False});return
         if path=='/api/pairs':
-            evidence_queries.append(parse_qs(url.query).get('evidence',[''])[0])
+            query=parse_qs(url.query);evidence_queries.append(query.get('evidence',[''])[0])
+            if query.get('view')==['groups']:
+                pair_ids=[pair['id'],alternate['id']] if group_scope['include_alternate'] else [pair['id']]
+                track_ids=['synthetic-a','synthetic-b','synthetic-c'] if len(pair_ids)>1 else ['synthetic-a','synthetic-b']
+                group={'id':group_scope['id'],'representative':group_scope['representative'],'title':pair['title'],'artist':pair['artist'],
+                       'category':'review','track_ids':track_ids,'pair_ids':pair_ids,'track_count':len(track_ids),'pair_count':len(pair_ids)}
+                route.fulfill(json={'rows':[group],'total':1,'groups':1,'tracks':len(track_ids),'pair_count':len(pair_ids),
+                                    'review_groups':1,'potential_reduction':len(track_ids)-1,'facets':{}});return
             row={key:pair[key] for key in ('id','title','artist','cue_equal')}
             row.update(category='review',cue_a={'total':2},cue_b={'total':2},decision=pair.get('decision'))
             route.fulfill(json={'rows':[row],'total':1,'groups':1,'tracks':2,'pair_count':1,'review_groups':1,'potential_reduction':1,
                                 'facets':{'files_found_both':1,'manual_present':1,'rating_conflict':1}});return
         if path=='/api/pair/synthetic-pair':route.fulfill(json=deepcopy(pair));return
+        if path=='/api/pair/synthetic-alternate':route.fulfill(json=deepcopy(alternate));return
+        if path=='/api/group/details':
+            ids=parse_qs(url.query)['ids'][0].split(',')
+            tracks=[deepcopy(track) for track in [*pair['tracks'],third] if track['track_id'] in ids]
+            route.fulfill(json={'keeper':'synthetic-a','tracks':tracks});return
         if path=='/api/statistics':
             route.fulfill(json={'counters':{'total':2,'rated':2,'analysed':2},'histogram':[],
                                 'addition_dates':{'years':[{'year':2026,'tracks':2}],'unknown':0}});return
@@ -100,12 +116,17 @@ def check_duplicate_review_ui(browser,base,output):
         with page.expect_response(lambda response:urlsplit(response.url).path=='/api/decision'):
             page.locator('#stage-pair').click()
         page.wait_for_selector('#undo-pair')
+        assert page.locator('#accept-auto').is_checked()
+        assert page.locator('#accept-rating').is_checked()
         page.wait_for_function('document.querySelector("#toast").textContent==="Decision saved to this workspace"')
         assert decisions==[{'pair':'synthetic-pair','action':'merge','keeper':'synthetic-b','prefer_auto':True,'prefer_rating':True}],decisions
         assert page.locator('[data-keeper="synthetic-b"]').evaluate('el=>el.classList.contains("chosen")')
 
         page.set_viewport_size({'width':390,'height':844})
-        page.select_option('#language','de');page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
+        page.select_option('#language','de');page.wait_for_function('document.documentElement.lang==="de" && document.documentElement.dataset.languageBusy!=="true"')
+        assert 'Hinzugefügt' in page.locator('.sibling dl').first.inner_text()
+        assert page.locator('[data-keeper="synthetic-b"]').evaluate('el=>el.classList.contains("chosen")')
+        assert page.locator('#accept-auto').is_checked() and page.locator('#accept-rating').is_checked()
         page.locator('.review-layout').scroll_into_view_if_needed()
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
         candidates=page.locator('#view-review .list-panel').bounding_box();detail=page.locator('#detail-panel').bounding_box()
@@ -115,11 +136,49 @@ def check_duplicate_review_ui(browser,base,output):
         assert first['width']>=detail['width']*.8
         page.locator('.sibling-cards').scroll_into_view_if_needed()
         page.screenshot(path=str(output/'duplicate-review-narrow.png'))
+
+        # A language refresh must keep the inspected comparison and group keeper
+        # together, rather than merely restoring a select's displayed value.
+        page.set_viewport_size({'width':1440,'height':1000})
+        page.select_option('#review-mode','groups')
+        page.wait_for_selector('#group-comparison option[value="synthetic-alternate"]',state='attached')
+        page.select_option('#group-keeper','synthetic-c')
+        page.select_option('#group-comparison','synthetic-alternate')
+        page.wait_for_selector('[data-keeper="synthetic-c"]')
+        page.locator('[data-keeper="synthetic-b"]').click()
+        page.locator('#accept-auto').check();page.locator('#accept-rating').check()
+        page.select_option('#language','fr')
+        page.wait_for_function('document.documentElement.lang==="fr" && document.documentElement.dataset.languageBusy!=="true"')
+        assert page.locator('#group-comparison').input_value()=='synthetic-alternate'
+        assert page.locator('#detail-panel .detail-head h3').inner_text()==alternate['title']
+        assert page.locator('[data-keeper="synthetic-c"]').count()==1 and page.locator('[data-keeper="synthetic-a"]').count()==0
+        assert page.locator('#group-keeper').input_value()=='synthetic-c'
+        assert page.locator('[data-keeper="synthetic-b"]').evaluate('el=>el.classList.contains("chosen")')
+        assert page.locator('#accept-auto').is_checked() and page.locator('#accept-rating').is_checked()
+
+        # Refreshed data can remove that comparison and its keeper. The new valid
+        # defaults must survive language-field restoration instead of becoming blank.
+        group_scope['include_alternate']=False
+        page.select_option('#language','it')
+        page.wait_for_function('document.documentElement.lang==="it" && document.documentElement.dataset.languageBusy!=="true"')
+        assert page.locator('#group-comparison option[value="synthetic-alternate"]').count()==0
+        assert page.locator('#group-comparison').input_value()==pair['id']
+        assert page.locator('#detail-panel .detail-head h3').inner_text()==pair['title']
+        assert page.locator('#group-keeper').input_value()=='synthetic-a'
+        assert page.locator('[data-keeper="synthetic-c"]').count()==0
+
+        # A different filtered group starts from its representative even when
+        # the previous comparison happens to be present among its pair IDs.
+        group_scope.update(id='synthetic-other-group',include_alternate=True,representative=alternate['id'])
+        page.select_option('#feature-filter','mixed')
+        page.wait_for_function('document.querySelector("#group-comparison")?.value==="synthetic-alternate" && document.querySelector("#detail-panel .detail-head h3")?.textContent==="Synthetic alternate comparison"')
+        assert len(decisions)==1,decisions
         assert not errors,errors
         assert not unexpected_mutations,unexpected_mutations
         assert page.locator('#toast').is_hidden() or page.locator('#toast').inner_text()=='Decision saved to this workspace',page.locator('#toast').inner_text()
         return {'readable_native_controls':True,'comparison_width_prioritized':True,'mouse_and_keyboard_keeper':True,
                 'decision_payload_preserved':True,'escaped_unicode_metadata':True,'responsive_german_layout':True,
+                'group_comparison_refresh_preserved':True,'removed_comparison_fallback':True,'different_group_uses_representative':True,
                 'transport':'synthetic browser responses; no source files or real decisions'}
     finally:
         context.close()
