@@ -1,12 +1,17 @@
 """Explicit, validated field edits applied only to generated library copies."""
 from datetime import datetime,timezone
 
-FIELDS=('title','artist','year','rating','album','genre')
-XML_FIELDS={'title':'Name','artist':'Artist','year':'Year','rating':'Rating','album':'Album','genre':'Genre'}
+FIELDS=('title','artist','year','rating','album','genre','comment')
+XML_FIELDS={'title':'Name','artist':'Artist','year':'Year','rating':'Rating','album':'Album','genre':'Genre','comment':'Comments'}
 
 
 def validate(field,value):
     if field not in FIELDS:raise ValueError('Choose title, artist, year, rating, album or genre')
+    if field=='comment':
+        value='' if value is None else str(value)
+        if len(value)>4096 or any((ord(c)<32 and c not in '\t\n\r') or 0xD800<=ord(c)<=0xDFFF or ord(c) in (0xFFFE,0xFFFF) for c in value):
+            raise ValueError('Comments support up to 4,096 characters, including line breaks and tabs, without invalid XML/control characters')
+        return value
     if field in ('year','rating'):
         if value in (None,''):
             return 0 if field=='rating' else None
@@ -24,7 +29,7 @@ def validate(field,value):
 def comparable(field,value):
     if field=='year' and value in (None,'',0):return None
     if field=='rating' and value is None:return 0
-    return value or '' if field in ('title','artist','album','genre') else value
+    return value or '' if field in ('title','artist','album','genre','comment') else value
 
 
 def plan(catalog,mapping):
@@ -52,7 +57,7 @@ def apply_native(db,tables,edits,update,timestamp,next_usn):
     from secrets import randbelow
     from uuid import uuid4
     named={'artist':('djmdArtist','ArtistID'),'album':('djmdAlbum','AlbumID'),'genre':('djmdGenre','GenreID')}
-    columns={'title':'Title','year':'ReleaseYear','rating':'Rating'}
+    columns={'title':'Title','year':'ReleaseYear','rating':'Rating','comment':'Commnt'}
     cache={};created=0
     def lookup(table,name):
         nonlocal created

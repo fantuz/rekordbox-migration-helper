@@ -224,7 +224,7 @@ function renderDetail() {
   const r=selected;
   if (!r) return;
   const names=["A","B"];
-  const trackCards=r.tracks.map((t,i)=>'<article class="sibling '+(chosen===t.track_id?"chosen":"")+'" data-keeper="'+esc(t.track_id)+'" tabindex="0" role="button" aria-label="Choose sibling '+names[i]+'"><div class="sibling-top">SIBLING '+names[i]+'<span>'+(chosen===t.track_id?"◉ KEEPER":"○")+'</span></div><div class="title">'+esc(t.title)+'</div><div class="stars" aria-label="'+t.rating+' stars">'+("★".repeat(Math.min(5,t.rating)))+("☆".repeat(Math.max(0,5-t.rating)))+'</div><dl><dt>Album</dt><dd>'+esc(t.album || "Unknown")+'</dd><dt>Cues</dt><dd>'+t.cue_summary.auto+' auto · '+t.cue_summary.other+' other</dd><dt>Added</dt><dd>'+esc(date(t.date_added))+'</dd><dt>Last played</dt><dd>'+esc(date(t.last_played))+'</dd><dt>Play count</dt><dd>'+num(t.play_count)+'</dd><dt>File size</dt><dd>'+(t.size_bytes/1e6).toFixed(1)+' MB</dd><dt>Source</dt><dd>'+(t.october_xml?"XML + backup":"Backup")+'</dd></dl><div class="path">'+esc(t.xml_location || t.original_path || t.current_path)+'</div><button class="ref-link" data-ref="'+esc(t.track_id)+'">Prepare this reference ↗</button></article>').join("");
+  const trackCards=r.tracks.map((t,i)=>'<article class="sibling '+(chosen===t.track_id?"chosen":"")+'" data-keeper="'+esc(t.track_id)+'" tabindex="0" role="button" aria-label="Choose sibling '+names[i]+'"><div class="sibling-top">SIBLING '+names[i]+'<span>'+(chosen===t.track_id?"◉ KEEPER":"○")+'</span></div><div class="title">'+esc(t.title)+'</div><div class="stars" aria-label="'+t.rating+' stars">'+("★".repeat(Math.min(5,t.rating)))+("☆".repeat(Math.max(0,5-t.rating)))+'</div><dl><dt>Album</dt><dd>'+esc(t.album || "Unknown")+'</dd><dt>Cues</dt><dd>'+t.cue_summary.auto+' auto · '+t.cue_summary.other+' other</dd><dt>Added</dt><dd>'+esc(date(t.date_added))+'</dd><dt>Last played</dt><dd>'+esc(date(t.last_played))+'</dd><dt>Play count</dt><dd>'+num(t.play_count)+'</dd><dt>File size</dt><dd>'+(t.size_bytes/1e6).toFixed(1)+' MB</dd><dt>Source</dt><dd>'+(t.october_xml?"XML + backup":"Backup")+'</dd></dl><div class="path">'+esc(t.xml_location || t.original_path || t.current_path)+'</div><button class="ref-link" data-file-detail="'+esc(t.track_id)+'">File view / comments</button><button class="ref-link" data-ref="'+esc(t.track_id)+'">Prepare this reference ↗</button></article>').join("");
   const ratingConflict=r.conflicts.some(c=>c.type==="rating");
   const autoConflicts=r.conflicts.filter(c=>c.type==="cue_slot" && c.auto);
   const other=r.conflicts.filter(c=>!autoConflicts.includes(c) && c.type!=="rating");
@@ -234,6 +234,7 @@ function renderDetail() {
   if (r.group_note) note+=" Group review · "+r.group_note;
   if (r.grid_differs) note+=" The selected keeper's grid will be used.";
   $("#detail-panel").innerHTML='<div class="detail-head"><span class="eyebrow">PAIR INSPECTION</span><h3>'+esc(r.title)+'</h3><p>'+esc(r.artist)+'</p><span class="subtle">Suggested keeper · '+esc(r.keeper_reason)+'</span></div><div class="sibling-cards">'+trackCards+'</div><div class="cue-comparison"><h4>Saved cue positions</h4><div class="legend"><span><i></i> Automatic labels</span><span><i class="manual"></i> Other cues</span></div>'+r.tracks.map(lane).join("")+'<div class="cue-time"><span>0:00</span><span>'+Math.floor(Math.max(...r.tracks.map(t=>t.duration_seconds))/60)+' minutes</span></div><div class="conflict-note">'+esc(note)+'</div></div><div class="detail-actions"><label><input type="checkbox" id="accept-auto" '+(r.decision?.prefer_auto?"checked":"")+'> Keep selected sibling’s cue when the other cue has an automatic label</label>'+(ratingConflict?'<label><input type="checkbox" id="accept-rating"> Keep selected sibling’s rating</label>':"")+'<div class="action-row"><button class="button" id="stage-pair">Stage merge</button><button class="button secondary" id="skip-pair">Skip</button>'+(r.decision?'<button class="button secondary" id="undo-pair">Undo</button>':"")+'</div></div>';
+  $$("[data-file-detail]").forEach(button=>button.onclick=wrap(async event=>{event.stopPropagation();await openWorkspaceTrack(button.dataset.fileDetail);}));
   $$("[data-keeper]").forEach(el=>{
     const choose=()=>{chosen=el.dataset.keeper;renderDetail();};
     el.onclick=e=>{if (!e.target.closest("[data-ref]")) choose();};
@@ -264,13 +265,19 @@ function showView(view) {
   if (view==="quick") loadQuickExports().catch(error=>notify(error.message,true));
   if (view==="lab") loadLab().catch(error=>notify(error.message,true));
   if (view==="history") loadHistory().catch(error=>notify(error.message,true));
+  if (view==="insights") loadDJInsights().catch(error=>notify(error.message,true));
+  if (view==="bubbles") loadBubbleExplorer().catch(error=>notify(error.message,true));
+  if (view==="tonality") loadTonalityInsights().catch(error=>notify(error.message,true));
   if (view==="files" || view==="exports") loadWorkspace().catch(error=>notify(error.message,true));
-  $("#collection-metrics").hidden=["files","analyzer","storage","quick","lab","history"].includes(view);
-  $(".dataset-bar").hidden=["analyzer","storage","quick","lab","history"].includes(view);
+  $("#collection-metrics").hidden=["files","analyzer","storage","quick","lab","history","insights","bubbles","tonality"].includes(view);
+  $(".dataset-bar").hidden=["analyzer","storage","quick","lab","history","insights","bubbles","tonality"].includes(view);
   $("#page-title").textContent={files:"From backups to a review copy.",analyzer:"Understand the source library.",storage:"See the space behind the library.",quick:"Take your collection with you.",review:"A clearer collection.",reference:"Find the right home.",activity:"Every decision, recorded.",statistics:"Know your collection.",inventory:"Locate the music.",exports:"Ready for the next session."}[view];
   window.scrollTo(0,0);
   if (view==='lab') $('#page-title').textContent='Evidence for a better collection.';
   if (view==='history') $('#page-title').textContent='Your sessions, saved in time.';
+  if (view==='insights') $('#page-title').textContent='A fresh perspective for your next set.';
+  if (view==='bubbles') $('#page-title').textContent='Your collection, one circle at a time.';
+  if (view==='tonality') $('#page-title').textContent='Keys, tempo and room to explore.';
 }
 async function example() {
   if (busy) return;

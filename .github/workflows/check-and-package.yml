@@ -52,6 +52,9 @@ jobs:
           node --check static/cleanup.js
           node --check static/discovery.js
           node --check static/history.js
+          node --check static/insights.js
+          node --check static/track-details.js
+          node --check static/d3-hierarchy-3.1.2.min.js
           bash -n start.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

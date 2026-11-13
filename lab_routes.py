@@ -59,7 +59,7 @@ def register(owner):
         current=owner.sessions.get(owner.active)
         return jsonify(snapshots=store().snapshots(),reports=store().reports(),sources=sources,
                        workspace=current['id'] if current else None,musicbrainz_enabled=enabled(),
-                       musicbrainz_forced_off=os.environ.get('LIBRARY_WORKBENCH_MUSICBRAINZ')=='0',speeds=SPEEDS,fields=FIELDS)
+                       musicbrainz_forced_off=os.environ.get('LIBRARY_WORKBENCH_MUSICBRAINZ')=='0',speeds=SPEEDS,fields=[f for f in FIELDS if f!='comment'])
 
     @app.post('/api/lab/snapshots')
     def lab_capture():
@@ -146,12 +146,24 @@ def register(owner):
 
     @app.route('/api/lab/overrides',methods=['POST','DELETE'])
     def lab_override():
-        b=body();s=snapshot(b);unlocked(s);identity=str(b.get('track_id',''));field=b.get('field')
+        b=body();s=snapshot(b);identity=str(b.get('track_id',''));field=b.get('field')
         t=next((t for t in s['tracks'] if t['id']==identity),None)
         if t is None or field not in FIELDS:raise ValueError('Choose a track and editable field in this snapshot')
+        if field!='comment':unlocked(s)
         if request.method=='DELETE':store().clear_override(s['scope_key'],identity,field);return jsonify(reset=True)
         value=store().save_override(s['scope_key'],identity,field,b.get('value'),t.get(field))
         return jsonify(value=value)
+
+    @app.get('/api/lab/track')
+    def lab_track_detail():
+        s=store().snapshot(request.args.get('snapshot',''));identity=request.args.get('track_id','')
+        t=next((t for t in s['tracks'] if t['id']==identity),None)
+        if t is None:raise ValueError('Choose a track in this snapshot')
+        fields=('id',*FIELDS,'bpm','duration','tonality','color_name','color_hex','color_status','color_basis','play_count','manual_cues','auto_cues','analysed')
+        return jsonify(original={f:t.get(f) for f in fields},overrides=store().overrides(s['scope_key']).get(identity,{}),
+                       editable_fields=[f for f in FIELDS if f!='comment'],unlocked=s['scope_key'] in edit_unlocked,
+                       scope=s['scope_key'],comment_captured=t.get('comment') is not None,
+                       snapshot_label=s.get('label','Library snapshot'))
 
     @app.post('/api/lab/normalize')
     def lab_normalize():

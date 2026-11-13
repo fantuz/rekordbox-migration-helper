@@ -113,10 +113,23 @@ def main():
                     time.sleep(.2)
                 else:raise RuntimeError('Library lab capture timed out')
                 sid=captured['result']['id']
+                insight=request('/api/insights/options?snapshot='+sid)
+                assert insight['entries']==1
+                assert request('/api/insights/tonality?snapshot='+sid)['summary']['entries']==1
+                bubble=request('/api/insights/bubbles?snapshot='+sid)
+                assert bubble['summary']['entries']==1 and sum(g['entries'] for g in bubble['groups'])==1
+                ranked=request('/api/insights/tracks?snapshot='+sid+'&perspective=all')
+                assert ranked['rows'][0]['id']=='synthetic-1'
+                with urllib.request.urlopen(base+'/static/d3-hierarchy-3.1.2.min.js',timeout=10) as response:
+                    assert b'pack' in response.read()
                 assert request('/api/lab/tracks?snapshot='+sid)['unlocked'] is False
                 request('/api/lab/unlock',{'snapshot':sid,'unlocked':True})
                 request('/api/lab/overrides',{'snapshot':sid,'track_id':'synthetic-1','field':'genre','value':'Synthetic House'})
                 assert request('/api/lab/tracks?snapshot='+sid)['override_fields']==1
+                request('/api/lab/unlock',{'snapshot':sid,'unlocked':False})
+                request('/api/lab/overrides',{'snapshot':sid,'track_id':'synthetic-1','field':'comment','value':'Synthetic private working comment'})
+                detail=request('/api/lab/track?snapshot='+sid+'&track_id=synthetic-1')
+                assert detail['unlocked'] is False and detail['overrides']['comment']['value']=='Synthetic private working comment'
                 preview=request('/api/lab/musicbrainz/preview',{'snapshot':sid,'speed':'gentle'})
                 assert preview['summary']['seconds_per_request']==3 and preview['summary']['requests']==0
                 started=request("/api/quick-export",{"source":result["id"],"title":"Synthetic offline CI explorer"})
@@ -145,6 +158,8 @@ def main():
                         "encrypted_sqlcipher_read_write":"passed","http_startup":"passed","unicode_workspace_path":"passed",
                         "read_only_analyzer":"passed","source_sha256_unchanged":True,"json_report_download":"passed",
                         "offline_html_and_minisite_export":"passed","library_lab_capture_and_staged_edit":"passed","musicbrainz_local_preview_no_network":"passed",
+                        "dj_insights_and_bubble_aggregation":"passed",
+                        "free_comment_staging_with_other_fields_locked":"passed",
                         "repeat_launch":"passed" if args.application or args.macos_app else "not exercised","rekordbox_restore":"not exercised"}
             finally:
                 if base and token:
