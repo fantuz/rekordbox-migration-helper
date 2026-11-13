@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 from urllib.parse import quote
 
-from release_tools import ROOT, release_is_preview, release_notes, release_plan, verify_assets
+from release_tools import ROOT, commit_history, full_commit_log, release_is_preview, release_notes, release_plan, verify_assets
 
 
 def github_reader(repo):
@@ -58,8 +58,14 @@ def main():
     validate_release_target(plan,ref,os.environ["GITHUB_SHA"],github_reader(os.environ["GITHUB_REPOSITORY"]),default_branch)
     if args.assets:
         names=verify_assets(args.assets,plan["version"],os.environ["GITHUB_SHA"])
+        history=commit_history(os.environ["GITHUB_SHA"])
+        try:previous_tag=github_reader(os.environ["GITHUB_REPOSITORY"])("releases/latest")["tag_name"]
+        except urllib.error.HTTPError as error:
+            if error.code!=404:raise
+            previous_tag=None
         changelog=ROOT/"CHANGELOG.md"
-        notes=release_notes(plan["version"],os.environ["GITHUB_SHA"],changelog.read_text(encoding="utf-8") if changelog.is_file() else "")
+        notes=release_notes(plan["version"],os.environ["GITHUB_SHA"],changelog.read_text(encoding="utf-8") if changelog.is_file() else "",history,previous_tag)
+        (args.assets/"COMMIT-LOG.txt").write_text(full_commit_log(plan["version"],os.environ["GITHUB_SHA"],history),encoding="utf-8")
         (args.assets/"RELEASE-NOTES.md").write_text(notes,encoding="utf-8")
         print("Verified",len(names),"archives from the release commit")
     else:
