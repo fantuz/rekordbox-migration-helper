@@ -1,13 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.0.1 — 2026-11-13
+
+This update adds a self-contained Linux application, clearer review of duplicate groups and step-by-step instructions for preparing and restoring library copies.
 
 - Self-contained Linux x86-64 TAR.GZ with bundled Python/dependencies, a glibc 2.28 build baseline, Ubuntu 22.04 executable checks and an XDG workspace. Linux source remains available.
-- Five-archive release verification and download tables include the new native Linux package. Existing 1.0.0 assets are unchanged.
+- Five-archive release verification and download tables include the new native Linux package.
 - Source discovery reads location fields from rekordbox Agent options and saved preferences, finds external Master folders, and maps Windows/Mac profile hints inside user-mounted volumes without mounting disks or exposing unrelated options.
 - Multi-copy review lists all members, supports donor exclusions, previews accumulated cue/rating conflicts and direct-match requirements, and stages compatible donors with reversible batch history.
 - Prominent, translated ZIP/XML creation and restore instructions link to a bundled step-by-step guide. The guide distinguishes native restore from alternative XML import and explains separate audio preservation.
-- English interface and Markdown spelling checks run in GitHub CI. A Windows 11 restore report is recorded with the approximate user-recalled version and its limits.
+- English interface and Markdown spelling checks run in GitHub CI. Native builds run independently, with macOS 26 used for Apple Silicon validation. A Windows 11 restore report is recorded with the approximate user-recalled version and its limits.
 
 ## 1.0.0 — 2026-11-13
 
