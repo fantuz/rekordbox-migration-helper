@@ -20,7 +20,8 @@ from native_export import export_native
 from media import scan as scan_media, verify_pair
 from file_workflow import select_inputs, fingerprint_inputs, check_inputs, prepare_export, list_exports,pair_signature
 from analyzer import analyze_folder, COMPATIBILITY
-from platform_paths import default_data_directory, discover_sources, discover_cloud_roots
+from platform_paths import default_data_directory, discover_cloud_roots
+from discovery import suggestions as discover_locations,scan_roots as discover_scan
 from storage_audit import scan_storage, verify_group
 from metadata_export import capture_catalog, export_metadata, list_metadata_exports
 
@@ -199,9 +200,34 @@ def analyzer_info():
                             "track_paths_available":(path.parent/"track-paths.json").is_file(),
                             "metadata_available":(path.parent/"metadata.json").is_file()})
         except (OSError,ValueError):continue
-    discovery=discover_sources()
+    discovery=discover_locations()
     return jsonify(compatibility=COMPATIBILITY,suggestions=[row["path"] for row in discovery["found"]],discovery=discovery,
                    reports=sorted(reports,key=lambda row:row["created"],reverse=True)[:20],directory=str(DATA/"analyzers"))
+
+
+@app.get('/api/discovery')
+def discovery_suggestions():return jsonify(discover_locations())
+
+
+@app.post('/api/discovery/scan')
+def discovery_search():
+    body=request.get_json() or {};roots=deepcopy(body.get('roots',[]));kind=body.get('kind','both');depth=body.get('depth',8)
+    def work(progress):
+        result=discover_scan(roots,progress,kind,depth)
+        report_id=uuid4().hex;result['id']=report_id;result['created']=datetime.now(timezone.utc).isoformat()
+        result['download']='/api/discovery/'+report_id+'/report'
+        output=DATA/'discovery';output.mkdir(exist_ok=True)
+        (output/(report_id+'.json')).write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
+        return result
+    return jsonify(job=launch(work,'Searching selected folders for library databases and analysis trees'))
+
+
+@app.get('/api/discovery/<identity>/report')
+def discovery_report(identity):
+    if not re_uuid(identity):return jsonify(error='Report not found'),404
+    path=DATA/'discovery'/(identity+'.json')
+    if not path.is_file():return jsonify(error='Report not found'),404
+    return send_file(path,as_attachment=True,download_name='location-discovery.json')
 
 
 @app.post("/api/analyzer")
@@ -833,7 +859,9 @@ def statistics():
                     broken_database_links=session["metadata"].get("broken_database_links",0),
                     orphan_analysis_folders=session["metadata"].get("orphan_analysis_folders",0),
                     missing_media=None,orphan_media=None)
+    from history_browser import added_years
     return jsonify(counters=counters,histogram=[{"label":label,"count":count} for (_,label),count in zip(bins,hist)],
+                   addition_dates=added_years(tracks),
                    scope=cohort,min_minutes=minimum/60,max_minutes=maximum/60 if maximum!=float("inf") else None,
                    note="Manual categories mean cues without CUE(Auto) or 1.1Bars labels. Zero play count is the saved count.")
 

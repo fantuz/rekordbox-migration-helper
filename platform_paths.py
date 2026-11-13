@@ -28,15 +28,17 @@ def discover_sources(platform_name=None,environ=None,home=None):
         help_text="Mac suggestions check Library folders and saved rekordbox database locations. Cloud music may be stored in a different folder."
     else:
         bases=[]
-        help_text="On Linux, enter the path to a copied rekordbox data folder. The original Windows or Mac path in copied settings may not exist here."
-    standard=[base/folder for base in bases for folder in ("rekordbox","rekordbox6")]
+        help_text="On Linux, enter the path to a copied library or a real library on an already-mounted Windows volume. Manual path selection is always available."
+    standard=[base/folder for base in bases for folder in ("rekordbox","rekordbox6","rekordbox7")]
     candidates=[(path,"Standard application-data location") for path in standard]
     warnings=[]
     for folder in standard:
         settings=folder/"rekordbox3.settings"
         try:
             if not settings.is_file() or settings.stat().st_size>2*1024**2:continue
-            root=ElementTree.fromstring(settings.read_bytes())
+            data=settings.read_bytes()
+            if b'<!DOCTYPE' in data.upper().replace(b'\0',b'') or b'<!ENTITY' in data.upper().replace(b'\0',b''):continue
+            root=ElementTree.fromstring(data)
             for value in root.iter("VALUE"):
                 if value.get("name","").casefold()!="masterdbdirectory":continue
                 configured=Path(value.get("val","")).expanduser()

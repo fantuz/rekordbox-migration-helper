@@ -12,9 +12,9 @@ Automatic cue origin is inferred from editable CUE(Auto)/1.1Bars labels. It is n
 
 - Metadata consistency proposes conservative case, whitespace and Unicode normalization groups. It flags missing title, artist, album, genre, year or BPM and unusual numeric values. It does not infer that two artist aliases name the same person. Use the group action to stage a canonical value after unlocking the matching snapshot; reset individual edits in the editor.
 - Coverage uses configurable cue/manual-cue counts and analyzed status. Tables group tracks by genre and 10-BPM band, with preparation percentage, saved zero-play counts and unknown status shown separately. No saved plays/history does not establish that a track was never used.
-- Analysis asset audit inventories USBANLZ files in a chosen folder or native ZIP. Missing means absent from the selected scope; unreferenced requires a complete captured native reference set. Matching member names/sizes/CRC are candidates. Explicit SHA-256 verification has a 256 MiB byte budget, skips cloud placeholders and rejects changing files. No asset is deleted.
+- Analysis asset audit inventories USBANLZ files in a chosen folder or native ZIP. Missing means absent from the selected scope; unreferenced requires a complete captured native reference set. Matching member names/sizes are candidates. Explicit SHA-256 verification has a 256 MiB byte budget, skips cloud placeholders and rejects changing files. No asset is deleted.
 
-Reports support finding filters, paging and complete JSON download. All library inputs, reports, working data and real pilot samples stay local and are excluded from source control, public CI and releases.
+Reports support finding filters, paging and complete JSON download. Analysis audit now accepts multiple custom folders/ZIPs, bounded discovery and separate STEMS evidence counters. The Play history page browses native session snapshots and ordered membership, with missing tracks retained. See [discovery, assets and history](DISCOVERY-ASSETS-HISTORY.md) for limits and privacy. All library inputs, reports, working data and real pilot samples stay local and are excluded from source control, public CI and releases.
 
 ## Staged field overrides
 

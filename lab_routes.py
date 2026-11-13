@@ -12,6 +12,7 @@ from workbench_store import Store,encoded,now
 from research_capture import capture_private_database,capture_workspace,open_capture
 from library_checks import compare_snapshots,metadata_consistency,collection_coverage
 from analysis_audit import audit_assets
+from history_browser import list_history,history_session
 from metadata_overrides import FIELDS,comparable
 from musicbrainz_pilot import MusicBrainzClient,RateGate,SPEEDS,create_batch,batch_record,run_batch
 
@@ -102,7 +103,7 @@ def register(owner):
         def work(progress):
             if kind=='consistency':summary,rows=metadata_consistency(working)
             elif kind=='coverage':summary,rows=collection_coverage(working,b.get('min_cues',1),b.get('min_manual',0),b.get('require_analysis',True) is True)
-            elif kind=='assets':summary,rows=audit_assets(s,b.get('path',''),progress,b.get('verify') is True)
+            elif kind=='assets':summary,rows=audit_assets(s,b.get('paths') or b.get('path',''),progress,b.get('verify') is True)
             else:raise ValueError('Choose metadata consistency, collection coverage or analysis asset audit')
             summary['working_metadata_applied']=working.get('metadata_overrides_applied',0)
             return store().save_report(kind,[s['id']],summary,rows)
@@ -122,6 +123,19 @@ def register(owner):
         offset=max(0,int(request.args.get('offset',0)))
         return jsonify(rows=[{'original':{f:t.get(f) for f in ('id',*FIELDS)},'overrides':edits.get(t['id'],{})} for t in tracks[offset:offset+30]],
                        total=len(tracks),offset=offset,unlocked=s['scope_key'] in edit_unlocked,scope=s['scope_key'],override_fields=sum(len(v) for v in edits.values()))
+
+    @app.get('/api/lab/history')
+    def lab_history():
+        s=store().snapshot(request.args.get('snapshot',''))
+        return jsonify(list_history(s,request.args.get('q',''),request.args.get('year',''),request.args.get('offset',0)))
+
+    @app.get('/api/lab/history/<identity>')
+    @app.get('/api/lab/history/<identity>/download')
+    def lab_history_session(identity):
+        s=store().snapshot(request.args.get('snapshot',''));full=request.path.endswith('/download')
+        result=history_session(s,identity,request.args.get('q',''),request.args.get('offset',0),full)
+        if full:return download(result,'saved-play-history.json')
+        return jsonify(result)
 
     @app.post('/api/lab/unlock')
     def lab_unlock():

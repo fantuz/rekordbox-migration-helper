@@ -1,5 +1,7 @@
 # Compatibility and evidence
 
+The [format-source catalogue](FORMAT-SOURCES.md) distinguishes the official shared XML reference, official migration guidance and community native-schema documentation. There is no separately claimed official v6/v7 native format specification. See also [migration preparation](MIGRATION.md) and [discovery, STEMS evidence and saved history](DISCOVERY-ASSETS-HISTORY.md).
+
 The analyzer selects its reader using the file format and required schema columns. It does not guess an exact application release from a `master.db` filename. Optional user-supplied version information is labeled as such. Unsupported or incomplete schemas produce explicit messages and unavailable counters.
 
 Rekordbox v5 used a legacy `.edb` desktop database. Version 6 introduced SQLCipher-encrypted SQLite `master.db`; version 7 retains this format family. Native `.edb` and USB/device databases currently receive detection and footprint reports only; their track counts are unavailable. No native old-version record decoder or downgrade conversion is claimed.
