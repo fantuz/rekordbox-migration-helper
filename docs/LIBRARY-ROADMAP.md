@@ -1,24 +1,26 @@
-# Further library checks worth building
+# Library quality roadmap
 
-The 0.4.5 preview implements snapshot cue/rating/playlist comparisons, conservative metadata variant suggestions, analysis asset audits and configurable genre/BPM preparation coverage in **Library lab**. See [the implementation guide](LIBRARY-LAB.md). The table also includes future work; it is not a list of fully implemented features.
+This roadmap separates implemented tools from work that still needs genuine library examples. It is not a measured ranking of issues reported by rekordbox users.
 
-Official support documentation and release notes describe missing files, inconsistent device playlists and analysis issues. These are useful problem families, not a measured ranking of issue frequency. The proposals below do not diagnose a particular library from symptoms alone.
+| Subject | Current implementation | Remaining validation or expansion |
+| --- | --- | --- |
+| Guided migration | Saved backup, capture, availability, destination-path, cleanup, export, restore and destination-comparison checklist | Run and record a complete native restore checklist on each claimed rekordbox/OS combination |
+| Integrity checking | Quick saved-evidence checks and deep explicit analysis-root audits; Issue, Needs review, Unknown and Not checked stay distinct | Genuine historical schemas and cloud setups; no opaque overall health score |
+| Shared collection context | Selected snapshot, capture date, scope, capabilities and staged-field counts across analysis tools | Save a workspace as a snapshot before snapshot-only tools can inspect the same collection |
+| Shareable summaries | Prominent public aggregate summary, selected list and private explorer; exact field disclosure; XML-only entry | Summaries are not native backups; review disclosed fields before sharing |
+| Export state | Captured versus working metadata labelled explicitly; cleanup/relocation plans remain separate from HTML snapshots | Full cleanup-plan projection into HTML needs matching native/XML export semantics and separate validation |
+| Duplicates | Pair and many-copy review, keeper/donor selection, accumulated conflict checks and duplicate-impact distributions | Audio fingerprinting for renamed/re-encoded copies is future work; metadata similarity is not audio identity |
+| Snapshot drift | Detailed cue/rating/playlist comparison plus collection evolution summaries | Genuine before/after migration examples, preserving ambiguous/unmatched identities |
+| Playlist overlap | Bounded selected-playlist comparison with membership versus order distinction | Device-library comparisons need classic and OneLibrary decoders and fixtures |
+| Session insights | Saved order with BPM/key/colour and adjacent BPM changes | Individual play timestamps and actual set duration are unavailable unless future evidence supports them |
+| Metadata quality | Conservative spelling/spacing/Unicode variants, missing or implausible tags, explicit staged overrides | Artist identity/alias resolution still needs human review |
+| Analysis assets and STEMS | Selected-root/ZIP inventory, ownership evidence, missing/unreferenced candidates, byte-budgeted hashes and STEMS-related counters | Candidate extensions do not prove STEMS readiness or safe deletion; no asset cleanup writer |
+| Coverage | Preparation by genre/BPM, usage evidence, known zero versus unknown counts, rediscovery and random selections | Broader usage questions depend on the available captured history |
+| MusicBrainz | Opt-in paced retrieval, identity review, year/genre staging, separate community scores with real votes | User reports successful candidates; rating coverage is not guaranteed. Wider provider integration is deferred |
+| Performance | Cached duplicate pagination/graphs and GitHub time/memory benchmarks at 33k and 100k synthetic tracks | Measure real-library cases before adding a new search/database architecture |
+| Long operations | Per-operation cooperative cancellation at safe checkpoints; completed reports/decisions/exports kept | Cancellation can wait for a read or database call; it does not roll back completed outputs |
+| Build quality | Exact-commit/version trusted release artifact reuse, repeated package verification, pinned Linux runtime cache | CI runtime checks do not run the licensed rekordbox application |
 
-| Problem or question | Evidence the tool can use | Useful result | Priority / effort |
-| --- | --- | --- | --- |
-| Broken paths and relocation collisions | Recorded/current/original paths, selected-folder inventory, size and explicit hashes | One explainable relocation plan, collisions held for review | High; extend existing inventory |
-| Duplicate records versus extra cloud/local files | Active track graph, path aliases, hashes, allocated bytes | Distinguish database cleanup from potential storage savings | Already available read-only; real cloud fixtures needed |
-| Cue/grid changes between backups | Recording match, cue timestamps/labels, beatgrid signatures, ratings and playlists | Regression report showing lost preparation before a restore | High; medium |
-| Metadata spelling and coverage gaps | Normalized artist/genre/album labels, year, duration, bitrate and format | Review clusters for aliases, missing fields and unlikely values | High; small–medium; do not rewrite tags automatically |
-| Missing analysis assets or stale owners | Track-to-analysis relationships, asset inventory, source scopes | Explain absent versus unreferenced analysis and estimate footprint | Existing read-only foundation; medium for safe cleanup plans |
-| Half/double-tempo disagreements | BPM and grid differences inside matched recordings | Review probable octave disagreements without erasing hand-edited grids | Medium; medium; audio confirmation may be necessary |
-| USB playlists diverge by device format | Matched classic/OneLibrary export fixtures, IDs and playlist order | Report tracks/playlists present in only one device library | Later; substantial decoder/fixture work |
-| Export readiness for a specific player | Hardware-supported formats, sample rates, filenames, actual file presence | A per-device preparation checklist with explicit rule versions | Medium; medium plus ongoing compatibility maintenance |
-| Collection coverage and usage patterns | Genres, BPM, duration, plays, ratings, dates and playlist membership | Find neglected tracks, long sets/samples and unprepared subcollections | Offline explorer foundation now available |
-| Unexpected library drift | Consecutive snapshots, stable IDs/hashes, row counts and metadata changes | Incremental audit history and restore comparisons | Medium; medium; local SQLite is sufficient for libraries of this scale |
+The [validation matrix](VALIDATION-MATRIX.md) describes evidence still needed for v6, cloud Copy/Move, native restore and device formats. See [guided journeys](JOURNEYS.md), [sharing](OFFLINE-EXPLORER.md), [intelligence](LIBRARY-INTELLIGENCE.md), [performance](PERFORMANCE.md) and [compatibility](COMPATIBILITY.md) for current limits.
 
-The next useful sequence is a snapshot-diff report, metadata-normalization suggestions, then an export-readiness report. Audio fingerprinting or similarity embeddings could help with renamed/re-encoded files later, but require explicit audio reads, more dependencies and a separate confidence model. Saved preview-waveform agreement is candidate evidence, not proof of identical audio.
-
-SQLite indexes and incremental scans can support much larger collections than the current sample without a hosted “big data” system. Keep extraction, evidence, proposed decisions and applied exports separate. Count unknown/unscanned data explicitly and show how every suggested change was derived.
-
-Sources: [rekordbox FAQ](https://rekordbox.com/en/support/faq/rekordbox7/), [release notes](https://rekordbox.com/en/support/releasenote/), [official OneLibrary/Device Library notice](https://alphatheta.com/en/information/important-notice-for-customers-using-usb-devices-with-our-dj-equipment/), [official Cloud Library Sync guide](https://cdn.rekordbox.com/files/20251202174725/rekordbox7.2.8_cloud_library_sync_operation_guide_EN.pdf).
+Future ideas include versioned hardware export-readiness rules, half/double-tempo disagreement review and optional audio identification. These are proposals rather than supported features. Audio reads, dependencies, identity confidence and maintenance costs should be evaluated separately.

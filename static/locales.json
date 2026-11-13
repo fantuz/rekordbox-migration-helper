@@ -13320,6 +13320,1396 @@
       "pl": "XML to alternatywny sposób importu, nie drugi etap przywracania. Nie importuj go po przywróceniu ZIP.",
       "cs": "XML je alternativní způsob importu, ne druhý krok obnovení. Po obnovení ZIP jej neimportujte.",
       "ru": "XML — альтернативный способ импорта, а не второй этап восстановления. Не импортируйте его после восстановления ZIP."
+    },
+    "A browser-ready summary without audio": {
+      "de": "Eine Zusammenfassung für den Browser ohne Audio",
+      "fr": "Un résumé à consulter dans le navigateur, sans audio",
+      "it": "Un riepilogo per il browser senza audio",
+      "es": "Un resumen para el navegador sin audio",
+      "el": "Σύνοψη για το πρόγραμμα περιήγησης χωρίς ήχο",
+      "pl": "Podsumowanie do przeglądarki bez dźwięku",
+      "cs": "Přehled pro prohlížeč bez audia",
+      "ru": "Сводка для браузера без аудио"
+    },
+    "A saved checklist from backup to destination comparison": {
+      "de": "Eine gespeicherte Checkliste von der Sicherung bis zum Zielvergleich",
+      "fr": "Une liste de suivi enregistrée, de la sauvegarde à la comparaison de destination",
+      "it": "Una lista salvata, dal backup al confronto della destinazione",
+      "es": "Una lista guardada, desde el respaldo hasta la comparación del destino",
+      "el": "Αποθηκευμένη λίστα από το αντίγραφο ασφαλείας έως τη σύγκριση προορισμού",
+      "pl": "Zapisana lista od kopii zapasowej do porównania celu",
+      "cs": "Uložený seznam od zálohy po porovnání cíle",
+      "ru": "Сохранённый план от резервной копии до сравнения назначения"
+    },
+    "Aggregate summary": {
+      "de": "Aggregierte Zusammenfassung",
+      "fr": "Résumé agrégé",
+      "it": "Riepilogo aggregato",
+      "es": "Resumen agregado",
+      "el": "Συγκεντρωτική σύνοψη",
+      "pl": "Podsumowanie zbiorcze",
+      "cs": "Souhrnný přehled",
+      "ru": "Агрегированная сводка"
+    },
+    "Aggregate summary only. Individual tracks and personal usage are excluded.": {
+      "de": "Nur aggregierte Zusammenfassung. Einzelne Titel und persönliche Nutzung sind ausgeschlossen.",
+      "fr": "Résumé agrégé uniquement. Les morceaux individuels et l’utilisation personnelle sont exclus.",
+      "it": "Solo riepilogo aggregato. I singoli brani e l’utilizzo personale sono esclusi.",
+      "es": "Solo resumen agregado. Se excluyen las pistas individuales y el uso personal.",
+      "el": "Μόνο συγκεντρωτική σύνοψη. Εξαιρούνται μεμονωμένα κομμάτια και προσωπική χρήση.",
+      "pl": "Tylko podsumowanie zbiorcze. Pojedyncze utwory i osobiste dane użytkowania są wykluczone.",
+      "cs": "Pouze souhrnný přehled. Jednotlivé skladby a osobní používání jsou vyloučeny.",
+      "ru": "Только агрегированная сводка. Отдельные треки и личная статистика использования исключены."
+    },
+    "Analysis folders or backup ZIPs · one per line": {
+      "de": "Analyseordner oder Sicherungs-ZIPs · einer pro Zeile",
+      "fr": "Dossiers d’analyse ou ZIP de sauvegarde · un par ligne",
+      "it": "Cartelle di analisi o ZIP di backup · uno per riga",
+      "es": "Carpetas de análisis o ZIP de respaldo · uno por línea",
+      "el": "Φάκελοι ανάλυσης ή ZIP ασφαλείας · ένα ανά γραμμή",
+      "pl": "Foldery analizy lub archiwa ZIP · jeden w wierszu",
+      "cs": "Složky analýzy nebo záložní ZIP · jedno na řádek",
+      "ru": "Папки анализа или ZIP-копии · по одной на строку"
+    },
+    "Apply working metadata overrides": {
+      "de": "Arbeitsänderungen der Metadaten anwenden",
+      "fr": "Appliquer les modifications des métadonnées de travail",
+      "it": "Applica le modifiche ai metadati di lavoro",
+      "es": "Aplica los cambios de metadatos de trabajo",
+      "el": "Εφαρμογή αλλαγών μεταδεδομένων εργασίας",
+      "pl": "Zastosuj robocze zmiany metadanych",
+      "cs": "Použít pracovní změny metadat",
+      "ru": "Применить рабочие изменения метаданных"
+    },
+    "BPM change": {
+      "de": "BPM-Änderung",
+      "fr": "Variation du BPM",
+      "it": "Variazione BPM",
+      "es": "Cambio de BPM",
+      "el": "Μεταβολή BPM",
+      "pl": "Zmiana BPM",
+      "cs": "Změna BPM",
+      "ru": "Изменение BPM"
+    },
+    "Broken record references": {
+      "de": "Defekte Datensatzverweise",
+      "fr": "Références de fiches rompues",
+      "it": "Riferimenti ai record interrotti",
+      "es": "Referencias a registros rotas",
+      "el": "Κατεστραμμένες αναφορές εγγραφών",
+      "pl": "Uszkodzone odwołania rekordów",
+      "cs": "Nefunkční odkazy záznamů",
+      "ru": "Нарушенные ссылки записей"
+    },
+    "Cancelling at the next safe checkpoint": {
+      "de": "Abbruch am nächsten sicheren Kontrollpunkt",
+      "fr": "Annulation au prochain point sûr",
+      "it": "Annullamento al prossimo punto sicuro",
+      "es": "Cancelando en el siguiente punto seguro",
+      "el": "Ακύρωση στο επόμενο ασφαλές σημείο",
+      "pl": "Anulowanie przy najbliższym bezpiecznym punkcie",
+      "cs": "Rušení při nejbližším bezpečném bodě",
+      "ru": "Отмена при следующей безопасной контрольной точке"
+    },
+    "Capture a source or destination": {
+      "de": "Quelle oder Ziel erfassen",
+      "fr": "Capturer une source ou une destination",
+      "it": "Acquisisci origine o destinazione",
+      "es": "Captura un origen o destino",
+      "el": "Καταγραφή προέλευσης ή προορισμού",
+      "pl": "Zapisz źródło lub cel",
+      "cs": "Zachytit zdroj nebo cíl",
+      "ru": "Создать снимок источника или назначения"
+    },
+    "Capture and compare the destination": {
+      "de": "Ziel erfassen und vergleichen",
+      "fr": "Capturer et comparer la destination",
+      "it": "Acquisisci e confronta la destinazione",
+      "es": "Captura y compara el destino",
+      "el": "Καταγραφή και σύγκριση προορισμού",
+      "pl": "Zapisz i porównaj bibliotekę docelową",
+      "cs": "Zachytit a porovnat cíl",
+      "ru": "Создать и сравнить снимок назначения"
+    },
+    "Capture the source library": {
+      "de": "Quellbibliothek erfassen",
+      "fr": "Capturer la bibliothèque source",
+      "it": "Acquisisci la libreria di origine",
+      "es": "Captura la biblioteca de origen",
+      "el": "Καταγραφή βιβλιοθήκης προέλευσης",
+      "pl": "Zapisz bibliotekę źródłową",
+      "cs": "Zachytit zdrojovou knihovnu",
+      "ru": "Создать снимок исходной библиотеки"
+    },
+    "Captured metadata": {
+      "de": "Erfasste Metadaten",
+      "fr": "Métadonnées capturées",
+      "it": "Metadati acquisiti",
+      "es": "Metadatos capturados",
+      "el": "Καταγεγραμμένα μεταδεδομένα",
+      "pl": "Zapisane metadane",
+      "cs": "Zachycená metadata",
+      "ru": "Сохранённые метаданные"
+    },
+    "Captured record counts after excluding donors from validated staged merges. This is not a count of distinct recordings or freed audio bytes.": {
+      "de": "Erfasste Datensatzanzahlen nach Ausschluss der abzugebenden Datensätze aus geprüften vorgemerkten Zusammenführungen. Dies zählt weder unterschiedliche Aufnahmen noch freigegebene Audiobytes.",
+      "fr": "Nombres de fiches capturées après exclusion des fiches absorbées par les fusions préparées et validées. Il ne s’agit ni du nombre d’enregistrements distincts ni d’octets audio libérés.",
+      "it": "Conteggi dei record acquisiti dopo l’esclusione dei donatori nelle unioni preparate e validate. Non è un conteggio di registrazioni distinte o di byte audio liberati.",
+      "es": "Recuentos de registros capturados tras excluir los donantes de fusiones preparadas y validadas. No cuentan grabaciones distintas ni bytes de audio liberados.",
+      "el": "Πλήθη καταγεγραμμένων εγγραφών μετά την εξαίρεση δοτών από επικυρωμένες συγχωνεύσεις. Δεν μετρώνται ξεχωριστές ηχογραφήσεις ή ελευθερωμένα byte ήχου.",
+      "pl": "Liczby zapisanych rekordów po wykluczeniu dawców ze zweryfikowanych przygotowanych scaleń. To nie jest liczba odrębnych nagrań ani zwolnionych bajtów audio.",
+      "cs": "Počty zachycených záznamů po vyloučení dárců z ověřených připravených sloučení. Nejde o počet různých nahrávek ani uvolněných bajtů audia.",
+      "ru": "Число сохранённых записей после исключения доноров из проверенных подготовленных слияний. Это не число уникальных записей музыки и не объём освобождённого аудио."
+    },
+    "Category counts": {
+      "de": "Kategorieanzahlen",
+      "fr": "Effectifs par catégorie",
+      "it": "Conteggi per categoria",
+      "es": "Recuentos por categoría",
+      "el": "Πλήθη κατηγοριών",
+      "pl": "Liczebność kategorii",
+      "cs": "Počty kategorií",
+      "ru": "Количество по категориям"
+    },
+    "Category duration totals": {
+      "de": "Gesamtdauer je Kategorie",
+      "fr": "Durée totale par catégorie",
+      "it": "Durata totale per categoria",
+      "es": "Duración total por categoría",
+      "el": "Συνολικές διάρκειες κατηγοριών",
+      "pl": "Łączny czas trwania kategorii",
+      "cs": "Celková délka kategorií",
+      "ru": "Общая длительность по категориям"
+    },
+    "Category labels": {
+      "de": "Kategoriebezeichnungen",
+      "fr": "Libellés des catégories",
+      "it": "Etichette delle categorie",
+      "es": "Nombres de categorías",
+      "el": "Ετικέτες κατηγοριών",
+      "pl": "Nazwy kategorii",
+      "cs": "Názvy kategorií",
+      "ru": "Названия категорий"
+    },
+    "Category mean BPM": {
+      "de": "Mittlere BPM je Kategorie",
+      "fr": "BPM moyen par catégorie",
+      "it": "BPM medio per categoria",
+      "es": "BPM medio por categoría",
+      "el": "Μέσο BPM ανά κατηγορία",
+      "pl": "Średnie BPM kategorii",
+      "cs": "Průměrné BPM kategorií",
+      "ru": "Средний BPM по категориям"
+    },
+    "Change": {
+      "de": "Änderung",
+      "fr": "Variation",
+      "it": "Variazione",
+      "es": "Cambio",
+      "el": "Μεταβολή",
+      "pl": "Zmiana",
+      "cs": "Změna",
+      "ru": "Изменение"
+    },
+    "Changed records": {
+      "de": "Geänderte Datensätze",
+      "fr": "Fiches modifiées",
+      "it": "Record modificati",
+      "es": "Registros modificados",
+      "el": "Τροποποιημένες εγγραφές",
+      "pl": "Zmienione rekordy",
+      "cs": "Změněné záznamy",
+      "ru": "Изменённые записи"
+    },
+    "Check audio and cloud availability": {
+      "de": "Audio- und Cloud-Verfügbarkeit prüfen",
+      "fr": "Vérifier la disponibilité audio et cloud",
+      "it": "Verifica la disponibilità audio e cloud",
+      "es": "Comprueba la disponibilidad de audio y nube",
+      "el": "Έλεγχος διαθεσιμότητας ήχου και cloud",
+      "pl": "Sprawdź dostępność plików audio i chmury",
+      "cs": "Zkontrolovat dostupnost audia a cloudu",
+      "ru": "Проверить доступность аудио и облака"
+    },
+    "Check library health": {
+      "de": "Bibliothekszustand prüfen",
+      "fr": "Vérifier l’état de la bibliothèque",
+      "it": "Verifica lo stato della libreria",
+      "es": "Comprueba el estado de la biblioteca",
+      "el": "Έλεγχος κατάστασης βιβλιοθήκης",
+      "pl": "Sprawdź stan biblioteki",
+      "cs": "Zkontrolovat stav knihovny",
+      "ru": "Проверить состояние библиотеки"
+    },
+    "Check scope": {
+      "de": "Prüfbereich",
+      "fr": "Périmètre de vérification",
+      "it": "Ambito del controllo",
+      "es": "Alcance de la comprobación",
+      "el": "Εμβέλεια ελέγχου",
+      "pl": "Zakres kontroli",
+      "cs": "Rozsah kontroly",
+      "ru": "Область проверки"
+    },
+    "Checking export contents…": {
+      "de": "Exportinhalt wird geprüft…",
+      "fr": "Vérification du contenu de l’export…",
+      "it": "Verifica del contenuto dell’esportazione…",
+      "es": "Comprobando el contenido de la exportación…",
+      "el": "Έλεγχος περιεχομένων εξαγωγής…",
+      "pl": "Sprawdzanie zawartości eksportu…",
+      "cs": "Kontrola obsahu exportu…",
+      "ru": "Проверка содержимого экспорта…"
+    },
+    "Choose a journey": {
+      "de": "Ablauf wählen",
+      "fr": "Choisir un parcours",
+      "it": "Scegli un percorso",
+      "es": "Elige un recorrido",
+      "el": "Επιλέξτε διαδικασία",
+      "pl": "Wybierz proces",
+      "cs": "Vyberte postup",
+      "ru": "Выберите процесс"
+    },
+    "Choose a metadata source to preview the export.": {
+      "de": "Wählen Sie eine Metadatenquelle für die Exportvorschau.",
+      "fr": "Choisissez une source de métadonnées pour prévisualiser l’export.",
+      "it": "Scegli una fonte di metadati per l’anteprima dell’esportazione.",
+      "es": "Elige una fuente de metadatos para previsualizar la exportación.",
+      "el": "Επιλέξτε πηγή μεταδεδομένων για προεπισκόπηση της εξαγωγής.",
+      "pl": "Wybierz źródło metadanych, aby wyświetlić podgląd eksportu.",
+      "cs": "Vyberte zdroj metadat pro náhled exportu.",
+      "ru": "Выберите источник метаданных для предварительного просмотра экспорта."
+    },
+    "Choose a playlist": {
+      "de": "Playlist wählen",
+      "fr": "Choisir une playlist",
+      "it": "Scegli una playlist",
+      "es": "Elige una lista de reproducción",
+      "el": "Επιλέξτε λίστα αναπαραγωγής",
+      "pl": "Wybierz playlistę",
+      "cs": "Vyberte playlist",
+      "ru": "Выберите плейлист"
+    },
+    "Choose a valid page offset": {
+      "de": "Wählen Sie einen gültigen Seitenversatz.",
+      "fr": "Choisissez un décalage de page valide.",
+      "it": "Scegli un offset di pagina valido.",
+      "es": "Elige un desplazamiento de página válido.",
+      "el": "Επιλέξτε έγκυρη μετατόπιση σελίδας.",
+      "pl": "Wybierz prawidłowe przesunięcie strony.",
+      "cs": "Zvolte platný posun stránky.",
+      "ru": "Выберите допустимое смещение страницы."
+    },
+    "Choose an overlap threshold from 0 to 1": {
+      "de": "Wählen Sie einen Überschneidungsgrenzwert von 0 bis 1.",
+      "fr": "Choisissez un seuil de chevauchement entre 0 et 1.",
+      "it": "Scegli una soglia di sovrapposizione da 0 a 1.",
+      "es": "Elige un umbral de coincidencia entre 0 y 1.",
+      "el": "Επιλέξτε όριο επικάλυψης από 0 έως 1.",
+      "pl": "Wybierz próg nakładania od 0 do 1.",
+      "cs": "Zvolte práh překryvu od 0 do 1.",
+      "ru": "Выберите порог совпадения от 0 до 1."
+    },
+    "Choose included metadata fields": {
+      "de": "Enthaltene Metadatenfelder wählen",
+      "fr": "Choisir les champs de métadonnées inclus",
+      "it": "Scegli i campi di metadati da includere",
+      "es": "Elige los campos de metadatos incluidos",
+      "el": "Επιλέξτε τα πεδία μεταδεδομένων που θα περιληφθούν",
+      "pl": "Wybierz pola metadanych do uwzględnienia",
+      "cs": "Vyberte zahrnutá pole metadat",
+      "ru": "Выберите включаемые поля метаданных"
+    },
+    "Cleanup decisions are separate": {
+      "de": "Bereinigungsentscheidungen bleiben getrennt",
+      "fr": "Les décisions de nettoyage sont distinctes",
+      "it": "Le decisioni di pulizia sono separate",
+      "es": "Las decisiones de limpieza son independientes",
+      "el": "Οι αποφάσεις εκκαθάρισης παραμένουν ξεχωριστές",
+      "pl": "Decyzje porządkowania są oddzielne",
+      "cs": "Rozhodnutí o čištění jsou oddělená",
+      "ru": "Решения по очистке учитываются отдельно"
+    },
+    "Cloud copy or move setting": {
+      "de": "Cloud-Einstellung Kopieren oder Verschieben",
+      "fr": "Réglage cloud copie ou déplacement",
+      "it": "Impostazione cloud copia o sposta",
+      "es": "Opción de nube copiar o mover",
+      "el": "Ρύθμιση cloud αντιγραφής ή μετακίνησης",
+      "pl": "Ustawienie kopiowania lub przenoszenia w chmurze",
+      "cs": "Nastavení kopírování nebo přesunu v cloudu",
+      "ru": "Настройка копирования или переноса в облако"
+    },
+    "Cloud handling (your statement)": {
+      "de": "Cloud-Verwendung (Ihre Angabe)",
+      "fr": "Gestion du cloud (votre déclaration)",
+      "it": "Gestione cloud (tua dichiarazione)",
+      "es": "Gestión de la nube (tu declaración)",
+      "el": "Χειρισμός cloud (δική σας δήλωση)",
+      "pl": "Obsługa chmury (Twoja deklaracja)",
+      "cs": "Práce s cloudem (vaše prohlášení)",
+      "ru": "Работа с облаком (ваше заявление)"
+    },
+    "Collection context": {
+      "de": "Sammlungskontext",
+      "fr": "Contexte de la collection",
+      "it": "Contesto della raccolta",
+      "es": "Contexto de la colección",
+      "el": "Πλαίσιο συλλογής",
+      "pl": "Kontekst kolekcji",
+      "cs": "Kontext sbírky",
+      "ru": "Контекст коллекции"
+    },
+    "Collection evolution": {
+      "de": "Sammlungsentwicklung",
+      "fr": "Évolution de la collection",
+      "it": "Evoluzione della raccolta",
+      "es": "Evolución de la colección",
+      "el": "Εξέλιξη συλλογής",
+      "pl": "Ewolucja kolekcji",
+      "cs": "Vývoj sbírky",
+      "ru": "Изменения коллекции"
+    },
+    "Compare captured collections, playlists and saved sessions. Counts describe library records, including duplicates.": {
+      "de": "Vergleichen Sie erfasste Sammlungen, Playlists und gespeicherte Sitzungen. Die Anzahlen beziehen sich auf Bibliotheksdatensätze einschließlich Duplikaten.",
+      "fr": "Comparez les collections capturées, les playlists et les sessions enregistrées. Les nombres décrivent les fiches de la bibliothèque, doublons compris.",
+      "it": "Confronta raccolte acquisite, playlist e sessioni salvate. I conteggi descrivono i record della libreria, inclusi i duplicati.",
+      "es": "Compara colecciones capturadas, listas y sesiones guardadas. Los recuentos describen registros de la biblioteca, incluidos los duplicados.",
+      "el": "Συγκρίνετε καταγεγραμμένες συλλογές, λίστες και αποθηκευμένες συνεδρίες. Οι μετρήσεις αφορούν εγγραφές βιβλιοθήκης, μαζί με τα διπλότυπα.",
+      "pl": "Porównuj zapisane kolekcje, playlisty i sesje. Liczby opisują rekordy biblioteki, w tym duplikaty.",
+      "cs": "Porovnejte zachycené sbírky, playlisty a uložené relace. Počty popisují záznamy knihovny včetně duplicit.",
+      "ru": "Сравнивайте снимки коллекций, плейлисты и сохранённые сессии. Подсчитываются записи библиотеки, включая дубликаты."
+    },
+    "Compare collections": {
+      "de": "Sammlungen vergleichen",
+      "fr": "Comparer les collections",
+      "it": "Confronta le raccolte",
+      "es": "Compara colecciones",
+      "el": "Σύγκριση συλλογών",
+      "pl": "Porównaj kolekcje",
+      "cs": "Porovnat sbírky",
+      "ru": "Сравнить коллекции"
+    },
+    "Compare destination": {
+      "de": "Ziel vergleichen",
+      "fr": "Comparer la destination",
+      "it": "Confronta la destinazione",
+      "es": "Compara el destino",
+      "el": "Σύγκριση προορισμού",
+      "pl": "Porównaj bibliotekę docelową",
+      "cs": "Porovnat cíl",
+      "ru": "Сравнить назначение"
+    },
+    "Compare evidence and stage copy changes": {
+      "de": "Nachweise vergleichen und Änderungen für Kopien vormerken",
+      "fr": "Comparer les éléments et préparer les modifications des copies",
+      "it": "Confronta i dati e prepara modifiche sulle copie",
+      "es": "Compara pruebas y prepara cambios en copias",
+      "el": "Σύγκριση στοιχείων και προετοιμασία αλλαγών σε αντίγραφα",
+      "pl": "Porównaj dane i przygotuj zmiany w kopiach",
+      "cs": "Porovnat podklady a připravit změny kopií",
+      "ru": "Сравнить данные и подготовить изменения копий"
+    },
+    "Compare playlists": {
+      "de": "Playlists vergleichen",
+      "fr": "Comparer les playlists",
+      "it": "Confronta le playlist",
+      "es": "Compara listas de reproducción",
+      "el": "Σύγκριση λιστών αναπαραγωγής",
+      "pl": "Porównaj playlisty",
+      "cs": "Porovnat playlisty",
+      "ru": "Сравнить плейлисты"
+    },
+    "Confirm": {
+      "de": "Bestätigen",
+      "fr": "Confirmer",
+      "it": "Conferma",
+      "es": "Confirmar",
+      "el": "Επιβεβαίωση",
+      "pl": "Potwierdź",
+      "cs": "Potvrdit",
+      "ru": "Подтвердить"
+    },
+    "Confirmed by you": {
+      "de": "Von Ihnen bestätigt",
+      "fr": "Confirmé par vous",
+      "it": "Confermato da te",
+      "es": "Confirmado por ti",
+      "el": "Επιβεβαιώθηκε από εσάς",
+      "pl": "Potwierdzone przez Ciebie",
+      "cs": "Vámi potvrzeno",
+      "ru": "Подтверждено вами"
+    },
+    "Create copy exports": {
+      "de": "Kopien exportieren",
+      "fr": "Exporter des copies",
+      "it": "Esporta copie",
+      "es": "Exporta copias",
+      "el": "Δημιουργία εξαγωγών αντιγράφων",
+      "pl": "Utwórz eksporty kopii",
+      "cs": "Vytvořit exporty kopií",
+      "ru": "Создать экспортированные копии"
+    },
+    "Dates": {
+      "de": "Datumsangaben",
+      "fr": "Dates",
+      "it": "Date",
+      "es": "Fechas",
+      "el": "Ημερομηνίες",
+      "pl": "Daty",
+      "cs": "Data",
+      "ru": "Даты"
+    },
+    "Deep · selected analysis locations": {
+      "de": "Gründlich · gewählte Analyseorte",
+      "fr": "Approfondi · emplacements d’analyse choisis",
+      "it": "Approfondito · posizioni di analisi selezionate",
+      "es": "Profundo · ubicaciones de análisis seleccionadas",
+      "el": "Σε βάθος · επιλεγμένες τοποθεσίες ανάλυσης",
+      "pl": "Dokładna · wybrane lokalizacje analizy",
+      "cs": "Důkladně · vybraná umístění analýzy",
+      "ru": "Подробно · выбранные папки анализа"
+    },
+    "Destination music folder (planning only)": {
+      "de": "Musikordner am Ziel (nur Planung)",
+      "fr": "Dossier musical de destination (planification uniquement)",
+      "it": "Cartella musica di destinazione (solo pianificazione)",
+      "es": "Carpeta de música de destino (solo planificación)",
+      "el": "Φάκελος μουσικής προορισμού (μόνο σχεδιασμός)",
+      "pl": "Docelowy folder muzyki (tylko planowanie)",
+      "cs": "Cílová složka hudby (pouze plánování)",
+      "ru": "Целевая папка музыки (только планирование)"
+    },
+    "Destination paths are notes only. Use File references to stage actual path changes. Capture the restored destination in Source analyzer, then save it in Library lab.": {
+      "de": "Zielpfade sind nur Notizen. Nutzen Sie Dateiverweise zum Vormerken tatsächlicher Pfadänderungen. Erfassen Sie das wiederhergestellte Ziel im Quellenanalysator und speichern Sie es anschließend im Bibliothekslabor.",
+      "fr": "Les chemins de destination sont de simples notes. Utilisez Références des fichiers pour préparer les vrais changements de chemin. Capturez la destination restaurée dans l’analyseur de source, puis enregistrez-la dans le laboratoire.",
+      "it": "I percorsi di destinazione sono solo note. Usa Riferimenti ai file per preparare modifiche effettive ai percorsi. Acquisisci la destinazione ripristinata nell’analizzatore di origine, poi salvala nel laboratorio.",
+      "es": "Las rutas de destino son solo notas. Usa Referencias de archivos para preparar cambios reales de rutas. Captura el destino restaurado en el analizador de origen y guárdalo en el laboratorio.",
+      "el": "Οι διαδρομές προορισμού είναι μόνο σημειώσεις. Χρησιμοποιήστε τις αναφορές αρχείων για πραγματικές αλλαγές διαδρομών. Καταγράψτε τον αποκατεστημένο προορισμό στον αναλυτή πηγής και αποθηκεύστε τον στο εργαστήριο.",
+      "pl": "Ścieżki docelowe to tylko notatki. Użyj Odwołań do plików, aby przygotować rzeczywiste zmiany ścieżek. Zapisz przywrócony cel w analizatorze źródła, a następnie w laboratorium.",
+      "cs": "Cílové cesty jsou pouze poznámky. Skutečné změny cest připravte v Odkazech na soubory. Obnovený cíl zachyťte v analyzátoru zdroje a poté uložte v laboratoři.",
+      "ru": "Целевые пути — только заметки. Реальные изменения путей подготовьте в разделе ссылок на файлы. Создайте снимок восстановленной библиотеки в анализаторе источника, затем сохраните его в лаборатории."
+    },
+    "Destination snapshot": {
+      "de": "Zielmomentaufnahme",
+      "fr": "Instantané de destination",
+      "it": "Istantanea di destinazione",
+      "es": "Instantánea de destino",
+      "el": "Στιγμιότυπο προορισμού",
+      "pl": "Migawka docelowa",
+      "cs": "Cílový snímek",
+      "ru": "Снимок назначения"
+    },
+    "Duplicate impact": {
+      "de": "Auswirkung von Duplikaten",
+      "fr": "Impact des doublons",
+      "it": "Impatto dei duplicati",
+      "es": "Impacto de los duplicados",
+      "el": "Επίδραση διπλοτύπων",
+      "pl": "Wpływ duplikatów",
+      "cs": "Dopad duplicit",
+      "ru": "Влияние дубликатов"
+    },
+    "Evidence report saved": {
+      "de": "Nachweisbericht gespeichert",
+      "fr": "Rapport d’éléments enregistré",
+      "it": "Rapporto delle evidenze salvato",
+      "es": "Informe de pruebas guardado",
+      "el": "Η αναφορά στοιχείων αποθηκεύτηκε",
+      "pl": "Raport dowodowy zapisano",
+      "cs": "Zpráva s podklady uložena",
+      "ru": "Отчёт по данным сохранён"
+    },
+    "Excluded fields": {
+      "de": "Ausgeschlossene Felder",
+      "fr": "Champs exclus",
+      "it": "Campi esclusi",
+      "es": "Campos excluidos",
+      "el": "Πεδία που εξαιρούνται",
+      "pl": "Wykluczone pola",
+      "cs": "Vyloučená pole",
+      "ru": "Исключённые поля"
+    },
+    "File paths": {
+      "de": "Dateipfade",
+      "fr": "Chemins des fichiers",
+      "it": "Percorsi dei file",
+      "es": "Rutas de archivos",
+      "el": "Διαδρομές αρχείων",
+      "pl": "Ścieżki plików",
+      "cs": "Cesty k souborům",
+      "ru": "Пути к файлам"
+    },
+    "Find changed cues, ratings and playlist membership.": {
+      "de": "Geänderte Cue-Punkte, Bewertungen und Playlist-Zuordnungen finden.",
+      "fr": "Repérer les changements de points cue, notes et appartenance aux playlists.",
+      "it": "Trova modifiche a cue, valutazioni e appartenenza alle playlist.",
+      "es": "Encuentra cambios en cues, valoraciones y pertenencia a listas.",
+      "el": "Εντοπισμός αλλαγών σε cue, βαθμολογίες και συμμετοχή σε λίστες.",
+      "pl": "Znajdź zmienione punkty cue, oceny i przynależność do playlist.",
+      "cs": "Najít změny cue bodů, hodnocení a členství v playlistech.",
+      "ru": "Найти изменения точек cue, оценок и состава плейлистов."
+    },
+    "For a shareable summary, upload your collection XML. A ZIP backup is only needed for native library review and copy exports.": {
+      "de": "Laden Sie für eine teilbare Zusammenfassung die Sammlungs-XML hoch. Eine ZIP-Sicherung ist nur für die native Bibliotheksprüfung und den Export von Kopien nötig.",
+      "fr": "Pour un résumé à partager, importez le XML de votre collection. Une sauvegarde ZIP est nécessaire uniquement pour examiner la bibliothèque native et exporter des copies.",
+      "it": "Per un riepilogo condivisibile, carica l’XML della raccolta. Il backup ZIP serve solo per esaminare la libreria nativa ed esportarne copie.",
+      "es": "Para un resumen que puedas compartir, carga el XML de tu colección. El respaldo ZIP solo es necesario para revisar la biblioteca nativa y exportar copias.",
+      "el": "Για κοινοποιήσιμη σύνοψη, μεταφορτώστε το XML της συλλογής. Το αντίγραφο ZIP απαιτείται μόνο για έλεγχο εγγενούς βιβλιοθήκης και εξαγωγή αντιγράφων.",
+      "pl": "Aby utworzyć podsumowanie do udostępnienia, prześlij XML kolekcji. Kopia ZIP jest potrzebna tylko do przeglądu natywnej biblioteki i eksportowania kopii.",
+      "cs": "Pro sdílený přehled nahrajte XML sbírky. Záloha ZIP je nutná pouze pro kontrolu nativní knihovny a export kopií.",
+      "ru": "Для сводки, которой можно поделиться, загрузите XML коллекции. ZIP-копия нужна только для проверки исходной базы библиотеки и экспорта её копий."
+    },
+    "Included fields": {
+      "de": "Enthaltene Felder",
+      "fr": "Champs inclus",
+      "it": "Campi inclusi",
+      "es": "Campos incluidos",
+      "el": "Πεδία που περιλαμβάνονται",
+      "pl": "Uwzględnione pola",
+      "cs": "Zahrnutá pole",
+      "ru": "Включённые поля"
+    },
+    "Individual tracks": {
+      "de": "Einzelne Titel",
+      "fr": "Morceaux individuels",
+      "it": "Singoli brani",
+      "es": "Pistas individuales",
+      "el": "Μεμονωμένα κομμάτια",
+      "pl": "Pojedyncze utwory",
+      "cs": "Jednotlivé skladby",
+      "ru": "Отдельные треки"
+    },
+    "Inspect session": {
+      "de": "Sitzung prüfen",
+      "fr": "Examiner la session",
+      "it": "Esamina la sessione",
+      "es": "Examina la sesión",
+      "el": "Έλεγχος συνεδρίας",
+      "pl": "Przejrzyj sesję",
+      "cs": "Prozkoumat relaci",
+      "ru": "Просмотреть сессию"
+    },
+    "Integrity checker": {
+      "de": "Integritätsprüfung",
+      "fr": "Vérification d’intégrité",
+      "it": "Verifica di integrità",
+      "es": "Comprobación de integridad",
+      "el": "Έλεγχος ακεραιότητας",
+      "pl": "Kontrola integralności",
+      "cs": "Kontrola integrity",
+      "ru": "Проверка целостности"
+    },
+    "Integrity, references and preparation evidence": {
+      "de": "Integrität, Verweise und Vorbereitungsnachweise",
+      "fr": "Intégrité, références et éléments de préparation",
+      "it": "Integrità, riferimenti e dati di preparazione",
+      "es": "Integridad, referencias y pruebas de preparación",
+      "el": "Ακεραιότητα, αναφορές και στοιχεία προετοιμασίας",
+      "pl": "Integralność, odwołania i dane przygotowania",
+      "cs": "Integrita, odkazy a podklady přípravy",
+      "ru": "Целостность, ссылки и данные подготовки"
+    },
+    "Issue": {
+      "de": "Problem",
+      "fr": "Problème",
+      "it": "Problema",
+      "es": "Problema",
+      "el": "Πρόβλημα",
+      "pl": "Problem",
+      "cs": "Problém",
+      "ru": "Проблема"
+    },
+    "Keep a separate backup": {
+      "de": "Separate Sicherung aufbewahren",
+      "fr": "Conserver une sauvegarde distincte",
+      "it": "Conserva un backup separato",
+      "es": "Conserva una copia de seguridad independiente",
+      "el": "Διατήρηση ξεχωριστού αντιγράφου ασφαλείας",
+      "pl": "Zachowaj oddzielną kopię zapasową",
+      "cs": "Uchovat samostatnou zálohu",
+      "ru": "Сохранить отдельную резервную копию"
+    },
+    "Keep a separate backup before transforming a library. These confirmations record your progress; they do not verify a successful restore.": {
+      "de": "Bewahren Sie vor der Bearbeitung eine separate Sicherung auf. Diese Bestätigungen dokumentieren Ihren Fortschritt; sie prüfen keine erfolgreiche Wiederherstellung.",
+      "fr": "Conservez une sauvegarde distincte avant de transformer une bibliothèque. Ces confirmations enregistrent votre progression, sans vérifier la réussite d’une restauration.",
+      "it": "Conserva un backup separato prima di trasformare una libreria. Queste conferme registrano i tuoi progressi, senza verificare il successo del ripristino.",
+      "es": "Conserva un respaldo independiente antes de transformar una biblioteca. Estas confirmaciones registran tu progreso; no verifican que la restauración haya funcionado.",
+      "el": "Διατηρήστε ξεχωριστό αντίγραφο ασφαλείας πριν από μετασχηματισμό βιβλιοθήκης. Οι επιβεβαιώσεις καταγράφουν την πρόοδο και δεν επαληθεύουν επιτυχημένη επαναφορά.",
+      "pl": "Zachowaj oddzielną kopię zapasową przed przekształceniem biblioteki. Te potwierdzenia zapisują postęp, ale nie weryfikują udanego przywrócenia.",
+      "cs": "Před úpravou knihovny uchovejte samostatnou zálohu. Tato potvrzení zaznamenávají postup, neověřují však úspěšné obnovení.",
+      "ru": "Сохраните отдельную резервную копию перед преобразованием библиотеки. Эти подтверждения отмечают ваш прогресс, но не проверяют успешность восстановления."
+    },
+    "Library intelligence": {
+      "de": "Bibliotheksanalyse",
+      "fr": "Analyse de la bibliothèque",
+      "it": "Analisi della libreria",
+      "es": "Análisis de la biblioteca",
+      "el": "Ανάλυση βιβλιοθήκης",
+      "pl": "Analiza biblioteki",
+      "cs": "Analýza knihovny",
+      "ru": "Аналитика библиотеки"
+    },
+    "Load a workspace or save a source snapshot.": {
+      "de": "Laden Sie einen Arbeitsbereich oder speichern Sie eine Quellenmomentaufnahme.",
+      "fr": "Chargez un espace de travail ou enregistrez un instantané de la source.",
+      "it": "Carica un’area di lavoro o salva un’istantanea della fonte.",
+      "es": "Carga un espacio de trabajo o guarda una instantánea de la fuente.",
+      "el": "Φορτώστε χώρο εργασίας ή αποθηκεύστε στιγμιότυπο πηγής.",
+      "pl": "Wczytaj obszar roboczy lub zapisz migawkę źródła.",
+      "cs": "Načtěte pracovní prostor nebo uložte snímek zdroje.",
+      "ru": "Загрузите рабочую область или сохраните снимок источника."
+    },
+    "Metadata state": {
+      "de": "Metadatenstand",
+      "fr": "État des métadonnées",
+      "it": "Stato dei metadati",
+      "es": "Estado de los metadatos",
+      "el": "Κατάσταση μεταδεδομένων",
+      "pl": "Stan metadanych",
+      "cs": "Stav metadat",
+      "ru": "Состояние метаданных"
+    },
+    "Migrate a library": {
+      "de": "Bibliothek migrieren",
+      "fr": "Migrer une bibliothèque",
+      "it": "Migra una libreria",
+      "es": "Migra una biblioteca",
+      "el": "Μεταφορά βιβλιοθήκης",
+      "pl": "Przenieś bibliotekę",
+      "cs": "Přenést knihovnu",
+      "ru": "Перенести библиотеку"
+    },
+    "Migration assistant": {
+      "de": "Migrationsassistent",
+      "fr": "Assistant de migration",
+      "it": "Assistente alla migrazione",
+      "es": "Asistente de migración",
+      "el": "Βοηθός μεταφοράς",
+      "pl": "Asystent przenoszenia",
+      "cs": "Průvodce přenosem",
+      "ru": "Помощник переноса"
+    },
+    "Minimum overlap": {
+      "de": "Mindestüberschneidung",
+      "fr": "Chevauchement minimal",
+      "it": "Sovrapposizione minima",
+      "es": "Coincidencia mínima",
+      "el": "Ελάχιστη επικάλυψη",
+      "pl": "Minimalne nakładanie",
+      "cs": "Minimální překryv",
+      "ru": "Минимальное совпадение"
+    },
+    "MusicBrainz metadata": {
+      "de": "MusicBrainz-Metadaten",
+      "fr": "Métadonnées MusicBrainz",
+      "it": "Metadati MusicBrainz",
+      "es": "Metadatos de MusicBrainz",
+      "el": "Μεταδεδομένα MusicBrainz",
+      "pl": "Metadane MusicBrainz",
+      "cs": "Metadata MusicBrainz",
+      "ru": "Метаданные MusicBrainz"
+    },
+    "Name": {
+      "de": "Name",
+      "fr": "Nom",
+      "it": "Nome",
+      "es": "Nombre",
+      "el": "Όνομα",
+      "pl": "Nazwa",
+      "cs": "Název",
+      "ru": "Название"
+    },
+    "No cloud": {
+      "de": "Keine Cloud",
+      "fr": "Sans cloud",
+      "it": "Nessun cloud",
+      "es": "Sin nube",
+      "el": "Χωρίς cloud",
+      "pl": "Bez chmury",
+      "cs": "Bez cloudu",
+      "ru": "Без облака"
+    },
+    "No finding in scope": {
+      "de": "Kein Befund im Prüfbereich",
+      "fr": "Aucune anomalie dans le périmètre",
+      "it": "Nessun rilievo nell’ambito",
+      "es": "Sin hallazgos en el alcance",
+      "el": "Κανένα εύρημα εντός εμβέλειας",
+      "pl": "Brak ustaleń w zakresie",
+      "cs": "Žádný nález v rozsahu",
+      "ru": "В проверенной области замечаний нет"
+    },
+    "No finding in scope does not mean every location, cloud download or restore has been checked.": {
+      "de": "Kein Befund im Prüfbereich bedeutet nicht, dass alle Speicherorte, Cloud-Downloads oder Wiederherstellungen geprüft wurden.",
+      "fr": "L’absence d’anomalie dans le périmètre ne signifie pas que chaque emplacement, téléchargement cloud ou restauration a été vérifié.",
+      "it": "L’assenza di rilievi nell’ambito non significa che ogni posizione, download cloud o ripristino sia stato verificato.",
+      "es": "No tener hallazgos en el alcance no significa que se hayan comprobado todas las ubicaciones, descargas de la nube o restauraciones.",
+      "el": "Η απουσία ευρημάτων εντός εμβέλειας δεν σημαίνει ότι ελέγχθηκαν όλες οι τοποθεσίες, λήψεις cloud ή επαναφορές.",
+      "pl": "Brak ustaleń w zakresie nie oznacza sprawdzenia każdej lokalizacji, pobrania z chmury ani przywrócenia.",
+      "cs": "Žádný nález v rozsahu neznamená, že bylo zkontrolováno každé umístění, stažení z cloudu nebo obnovení.",
+      "ru": "Отсутствие замечаний в проверенной области не означает, что проверены все папки, облачные загрузки или восстановление."
+    },
+    "No rating returned": {
+      "de": "Keine Bewertung zurückgegeben",
+      "fr": "Aucune note reçue",
+      "it": "Nessuna valutazione ricevuta",
+      "es": "No se ha recibido valoración",
+      "el": "Δεν επιστράφηκε βαθμολογία",
+      "pl": "Nie otrzymano oceny",
+      "cs": "Nebyla vrácena žádná známka",
+      "ru": "Оценка не получена"
+    },
+    "Not checked": {
+      "de": "Nicht geprüft",
+      "fr": "Non vérifié",
+      "it": "Non verificato",
+      "es": "No comprobado",
+      "el": "Δεν ελέγχθηκε",
+      "pl": "Nie sprawdzono",
+      "cs": "Nezkontrolováno",
+      "ru": "Не проверено"
+    },
+    "Notes": {
+      "de": "Notizen",
+      "fr": "Notes",
+      "it": "Note",
+      "es": "Notas",
+      "el": "Σημειώσεις",
+      "pl": "Notatki",
+      "cs": "Poznámky",
+      "ru": "Заметки"
+    },
+    "Open Media inventory": {
+      "de": "Medieninventar öffnen",
+      "fr": "Ouvrir l’inventaire des médias",
+      "it": "Apri l’inventario multimediale",
+      "es": "Abre el inventario multimedia",
+      "el": "Άνοιγμα απογραφής πολυμέσων",
+      "pl": "Otwórz inwentaryzację mediów",
+      "cs": "Otevřít inventář médií",
+      "ru": "Открыть инвентаризацию медиа"
+    },
+    "Open tool": {
+      "de": "Werkzeug öffnen",
+      "fr": "Ouvrir l’outil",
+      "it": "Apri strumento",
+      "es": "Abre la herramienta",
+      "el": "Άνοιγμα εργαλείου",
+      "pl": "Otwórz narzędzie",
+      "cs": "Otevřít nástroj",
+      "ru": "Открыть инструмент"
+    },
+    "Open tool →": {
+      "de": "Werkzeug öffnen →",
+      "fr": "Ouvrir l’outil →",
+      "it": "Apri strumento →",
+      "es": "Abre la herramienta →",
+      "el": "Άνοιγμα εργαλείου →",
+      "pl": "Otwórz narzędzie →",
+      "cs": "Otevřít nástroj →",
+      "ru": "Открыть инструмент →"
+    },
+    "Operation cancelled. Completed reports and decisions are kept.": {
+      "de": "Vorgang abgebrochen. Fertige Berichte und Entscheidungen bleiben erhalten.",
+      "fr": "Opération annulée. Les rapports terminés et les décisions sont conservés.",
+      "it": "Operazione annullata. I rapporti completati e le decisioni vengono conservati.",
+      "es": "Operación cancelada. Se conservan los informes terminados y las decisiones.",
+      "el": "Η λειτουργία ακυρώθηκε. Οι ολοκληρωμένες αναφορές και οι αποφάσεις διατηρούνται.",
+      "pl": "Operacja anulowana. Gotowe raporty i decyzje są zachowane.",
+      "cs": "Operace zrušena. Dokončené zprávy a rozhodnutí zůstávají zachovány.",
+      "ru": "Операция отменена. Готовые отчёты и решения сохранены."
+    },
+    "Optional step skipped": {
+      "de": "Optionaler Schritt übersprungen",
+      "fr": "Étape facultative ignorée",
+      "it": "Passaggio facoltativo saltato",
+      "es": "Paso opcional omitido",
+      "el": "Παραλείφθηκε προαιρετικό βήμα",
+      "pl": "Pominięto krok opcjonalny",
+      "cs": "Volitelný krok přeskočen",
+      "ru": "Необязательный шаг пропущен"
+    },
+    "Overlap": {
+      "de": "Überschneidung",
+      "fr": "Chevauchement",
+      "it": "Sovrapposizione",
+      "es": "Coincidencia",
+      "el": "Επικάλυψη",
+      "pl": "Nakładanie",
+      "cs": "Překryv",
+      "ru": "Совпадение"
+    },
+    "Pending": {
+      "de": "Ausstehend",
+      "fr": "En attente",
+      "it": "In attesa",
+      "es": "Pendiente",
+      "el": "Σε αναμονή",
+      "pl": "Oczekuje",
+      "cs": "Čeká",
+      "ru": "Ожидает"
+    },
+    "Plan destination paths": {
+      "de": "Zielpfade planen",
+      "fr": "Planifier les chemins de destination",
+      "it": "Pianifica i percorsi di destinazione",
+      "es": "Planifica las rutas de destino",
+      "el": "Σχεδιασμός διαδρομών προορισμού",
+      "pl": "Zaplanuj ścieżki docelowe",
+      "cs": "Naplánovat cílové cesty",
+      "ru": "Спланировать пути назначения"
+    },
+    "Play counts": {
+      "de": "Wiedergabezähler",
+      "fr": "Compteurs de lecture",
+      "it": "Conteggi di riproduzione",
+      "es": "Contadores de reproducción",
+      "el": "Μετρητές αναπαραγωγής",
+      "pl": "Liczniki odtworzeń",
+      "cs": "Počty přehrání",
+      "ru": "Счётчики воспроизведений"
+    },
+    "Playlist overlap": {
+      "de": "Playlist-Überschneidung",
+      "fr": "Chevauchement des playlists",
+      "it": "Sovrapposizione delle playlist",
+      "es": "Coincidencia entre listas",
+      "el": "Επικάλυψη λιστών αναπαραγωγής",
+      "pl": "Nakładanie się playlist",
+      "cs": "Překryv playlistů",
+      "ru": "Совпадение плейлистов"
+    },
+    "Preview community matches, years, genres and available ratings.": {
+      "de": "Community-Zuordnungen, Jahre, Genres und verfügbare Bewertungen ansehen.",
+      "fr": "Prévisualiser les correspondances communautaires, années, genres et notes disponibles.",
+      "it": "Anteprima degli abbinamenti della comunità, anni, generi e valutazioni disponibili.",
+      "es": "Vista previa de coincidencias de la comunidad, años, géneros y valoraciones disponibles.",
+      "el": "Προεπισκόπηση αντιστοιχίσεων κοινότητας, ετών, ειδών και διαθέσιμων βαθμολογιών.",
+      "pl": "Podgląd dopasowań społeczności, lat, gatunków i dostępnych ocen.",
+      "cs": "Náhled shod komunity, roků, žánrů a dostupných hodnocení.",
+      "ru": "Предпросмотр совпадений сообщества, годов, жанров и доступных оценок."
+    },
+    "Preview duplicate impact": {
+      "de": "Auswirkung von Duplikaten anzeigen",
+      "fr": "Prévisualiser l’impact des doublons",
+      "it": "Anteprima dell’impatto dei duplicati",
+      "es": "Vista previa del impacto de duplicados",
+      "el": "Προεπισκόπηση επίδρασης διπλοτύπων",
+      "pl": "Podgląd wpływu duplikatów",
+      "cs": "Náhled dopadu duplicit",
+      "ru": "Предпросмотр влияния дубликатов"
+    },
+    "Private explorer": {
+      "de": "Privater Explorer",
+      "fr": "Explorateur privé",
+      "it": "Esploratore privato",
+      "es": "Explorador privado",
+      "el": "Ιδιωτική εξερεύνηση",
+      "pl": "Eksplorator prywatny",
+      "cs": "Soukromý prohlížeč",
+      "ru": "Личный обозреватель"
+    },
+    "Progress saved locally": {
+      "de": "Fortschritt lokal gespeichert",
+      "fr": "Progression enregistrée localement",
+      "it": "Progressi salvati localmente",
+      "es": "Progreso guardado localmente",
+      "el": "Η πρόοδος αποθηκεύτηκε τοπικά",
+      "pl": "Postęp zapisano lokalnie",
+      "cs": "Postup uložen místně",
+      "ru": "Прогресс сохранён локально"
+    },
+    "Provide an intelligence report request": {
+      "de": "Geben Sie eine Anfrage für einen Analysebericht an.",
+      "fr": "Fournissez une demande de rapport d’analyse.",
+      "it": "Fornisci una richiesta di rapporto di analisi.",
+      "es": "Proporciona una solicitud de informe de análisis.",
+      "el": "Δώστε αίτημα αναφοράς ανάλυσης.",
+      "pl": "Podaj żądanie raportu analitycznego.",
+      "cs": "Zadejte požadavek na analytickou zprávu.",
+      "ru": "Укажите запрос аналитического отчёта."
+    },
+    "Provide an offline summary request": {
+      "de": "Geben Sie eine Anfrage für eine Offline-Zusammenfassung an.",
+      "fr": "Fournissez une demande de résumé hors ligne.",
+      "it": "Fornisci una richiesta di riepilogo offline.",
+      "es": "Proporciona una solicitud de resumen sin conexión.",
+      "el": "Δώστε αίτημα σύνοψης εκτός σύνδεσης.",
+      "pl": "Podaj żądanie podsumowania offline.",
+      "cs": "Zadejte požadavek na offline přehled.",
+      "ru": "Укажите запрос автономной сводки."
+    },
+    "Public summaries contain category totals, without individual tracks, playlists, dates, play counts or file paths.": {
+      "de": "Öffentliche Zusammenfassungen enthalten Kategoriesummen ohne einzelne Titel, Playlists, Datumsangaben, Wiedergabezähler oder Dateipfade.",
+      "fr": "Les résumés publics contiennent les totaux par catégorie, sans morceaux individuels, playlists, dates, compteurs de lecture ni chemins de fichiers.",
+      "it": "I riepiloghi pubblici contengono totali per categoria, senza singoli brani, playlist, date, conteggi di riproduzione o percorsi dei file.",
+      "es": "Los resúmenes públicos contienen totales por categoría, sin pistas individuales, listas, fechas, contadores de reproducción ni rutas de archivos.",
+      "el": "Οι δημόσιες συνόψεις περιέχουν σύνολα κατηγοριών, χωρίς μεμονωμένα κομμάτια, λίστες, ημερομηνίες, μετρητές αναπαραγωγής ή διαδρομές αρχείων.",
+      "pl": "Publiczne podsumowania zawierają sumy kategorii, bez pojedynczych utworów, playlist, dat, liczników odtworzeń ani ścieżek plików.",
+      "cs": "Veřejné přehledy obsahují součty kategorií bez jednotlivých skladeb, playlistů, dat, počtů přehrání nebo cest k souborům.",
+      "ru": "Общедоступные сводки содержат итоги по категориям без отдельных треков, плейлистов, дат, счётчиков воспроизведений и путей к файлам."
+    },
+    "Public summary": {
+      "de": "Öffentliche Zusammenfassung",
+      "fr": "Résumé public",
+      "it": "Riepilogo pubblico",
+      "es": "Resumen público",
+      "el": "Δημόσια σύνοψη",
+      "pl": "Podsumowanie publiczne",
+      "cs": "Veřejný přehled",
+      "ru": "Общедоступная сводка"
+    },
+    "Quick checks use saved evidence. Deep checks add only the analysis locations you choose. Audio availability requires a separate Media inventory scan.": {
+      "de": "Schnellprüfungen nutzen gespeicherte Nachweise. Gründliche Prüfungen ergänzen nur die gewählten Analyseorte. Die Audioverfügbarkeit erfordert einen separaten Medieninventarscan.",
+      "fr": "Les vérifications rapides utilisent les éléments enregistrés. Les vérifications approfondies ajoutent uniquement les emplacements d’analyse choisis. La disponibilité audio nécessite un inventaire des médias distinct.",
+      "it": "I controlli rapidi usano dati salvati. Quelli approfonditi aggiungono solo le posizioni di analisi selezionate. La disponibilità audio richiede una scansione separata nell’inventario multimediale.",
+      "es": "Las comprobaciones rápidas usan pruebas guardadas. Las profundas añaden solo las ubicaciones de análisis elegidas. La disponibilidad de audio requiere un escaneo aparte del inventario multimedia.",
+      "el": "Οι γρήγοροι έλεγχοι χρησιμοποιούν αποθηκευμένα στοιχεία. Οι σε βάθος προσθέτουν μόνο τις τοποθεσίες ανάλυσης που επιλέγετε. Η διαθεσιμότητα ήχου απαιτεί ξεχωριστή απογραφή πολυμέσων.",
+      "pl": "Szybkie kontrole używają zapisanych danych. Dokładne dodają tylko wybrane lokalizacje analizy. Dostępność audio wymaga oddzielnego skanowania inwentaryzacji mediów.",
+      "cs": "Rychlé kontroly používají uložené podklady. Důkladné přidají pouze vybraná umístění analýzy. Dostupnost audia vyžaduje samostatné skenování inventáře médií.",
+      "ru": "Быстрые проверки используют сохранённые данные. Подробные добавляют только выбранные папки анализа. Доступность аудио требует отдельного сканирования медиафайлов."
+    },
+    "Quick · captured evidence": {
+      "de": "Schnell · erfasste Nachweise",
+      "fr": "Rapide · éléments capturés",
+      "it": "Rapido · dati acquisiti",
+      "es": "Rápido · pruebas capturadas",
+      "el": "Γρήγορος · καταγεγραμμένα στοιχεία",
+      "pl": "Szybka · zapisane dane",
+      "cs": "Rychle · zachycené údaje",
+      "ru": "Быстро · сохранённые данные"
+    },
+    "Read XML metadata": {
+      "de": "XML-Metadaten lesen",
+      "fr": "Lire les métadonnées XML",
+      "it": "Leggi i metadati XML",
+      "es": "Lee los metadatos XML",
+      "el": "Ανάγνωση μεταδεδομένων XML",
+      "pl": "Odczytaj metadane XML",
+      "cs": "Načíst metadata XML",
+      "ru": "Прочитать метаданные XML"
+    },
+    "Repeated recorded paths": {
+      "de": "Mehrfach gespeicherte Pfade",
+      "fr": "Chemins enregistrés répétés",
+      "it": "Percorsi registrati ripetuti",
+      "es": "Rutas registradas repetidas",
+      "el": "Επαναλαμβανόμενες καταγεγραμμένες διαδρομές",
+      "pl": "Powtarzające się zapisane ścieżki",
+      "cs": "Opakované zaznamenané cesty",
+      "ru": "Повторяющиеся сохранённые пути"
+    },
+    "Required database fields": {
+      "de": "Erforderliche Datenbankfelder",
+      "fr": "Champs requis de la base",
+      "it": "Campi richiesti del database",
+      "es": "Campos obligatorios de la base de datos",
+      "el": "Απαιτούμενα πεδία βάσης δεδομένων",
+      "pl": "Wymagane pola bazy danych",
+      "cs": "Požadovaná pole databáze",
+      "ru": "Обязательные поля базы данных"
+    },
+    "Restore on the destination": {
+      "de": "Am Ziel wiederherstellen",
+      "fr": "Restaurer sur la destination",
+      "it": "Ripristina sulla destinazione",
+      "es": "Restaura en el destino",
+      "el": "Επαναφορά στον προορισμό",
+      "pl": "Przywróć na komputerze docelowym",
+      "cs": "Obnovit v cíli",
+      "ru": "Восстановить на новом компьютере"
+    },
+    "Resume a journey": {
+      "de": "Ablauf fortsetzen",
+      "fr": "Reprendre un parcours",
+      "it": "Riprendi un percorso",
+      "es": "Reanuda un recorrido",
+      "el": "Συνέχιση διαδικασίας",
+      "pl": "Wznów proces",
+      "cs": "Pokračovat v postupu",
+      "ru": "Продолжить процесс"
+    },
+    "Review duplicates": {
+      "de": "Duplikate prüfen",
+      "fr": "Examiner les doublons",
+      "it": "Esamina i duplicati",
+      "es": "Revisa duplicados",
+      "el": "Έλεγχος διπλοτύπων",
+      "pl": "Przejrzyj duplikaty",
+      "cs": "Zkontrolovat duplicity",
+      "ru": "Проверить дубликаты"
+    },
+    "Review optional cleanup": {
+      "de": "Optionale Bereinigung prüfen",
+      "fr": "Examiner le nettoyage facultatif",
+      "it": "Esamina la pulizia facoltativa",
+      "es": "Revisa la limpieza opcional",
+      "el": "Έλεγχος προαιρετικής εκκαθάρισης",
+      "pl": "Przejrzyj opcjonalne porządkowanie",
+      "cs": "Zkontrolovat volitelné čištění",
+      "ru": "Проверить необязательную очистку"
+    },
+    "Review tags and stage field, comment or colour edits.": {
+      "de": "Tags prüfen und Feld-, Kommentar- oder Farbänderungen vormerken.",
+      "fr": "Examiner les tags et préparer les modifications de champs, commentaires ou couleurs.",
+      "it": "Esamina i tag e prepara modifiche a campi, commenti o colori.",
+      "es": "Revisa etiquetas y prepara cambios de campos, comentarios o colores.",
+      "el": "Έλεγχος ετικετών και προετοιμασία αλλαγών πεδίων, σχολίων ή χρωμάτων.",
+      "pl": "Przejrzyj tagi i przygotuj zmiany pól, komentarzy lub kolorów.",
+      "cs": "Zkontrolovat tagy a připravit změny polí, komentářů nebo barev.",
+      "ru": "Проверить теги и подготовить изменения полей, комментариев и цветов."
+    },
+    "Run integrity checks": {
+      "de": "Integritätsprüfung starten",
+      "fr": "Lancer les vérifications d’intégrité",
+      "it": "Avvia i controlli di integrità",
+      "es": "Ejecuta las comprobaciones de integridad",
+      "el": "Εκτέλεση ελέγχων ακεραιότητας",
+      "pl": "Uruchom kontrolę integralności",
+      "cs": "Spustit kontroly integrity",
+      "ru": "Запустить проверку целостности"
+    },
+    "Same order": {
+      "de": "Gleiche Reihenfolge",
+      "fr": "Même ordre",
+      "it": "Stesso ordine",
+      "es": "Mismo orden",
+      "el": "Ίδια σειρά",
+      "pl": "Ta sama kolejność",
+      "cs": "Stejné pořadí",
+      "ru": "Одинаковый порядок"
+    },
+    "Save a snapshot for insight tools": {
+      "de": "Momentaufnahme für Analysetools speichern",
+      "fr": "Enregistrer un instantané pour les outils d’analyse",
+      "it": "Salva un’istantanea per gli strumenti di analisi",
+      "es": "Guarda una instantánea para las herramientas de análisis",
+      "el": "Αποθήκευση στιγμιότυπου για εργαλεία ανάλυσης",
+      "pl": "Zapisz migawkę dla narzędzi analitycznych",
+      "cs": "Uložit snímek pro analytické nástroje",
+      "ru": "Сохранить снимок для инструментов анализа"
+    },
+    "Save evidence report": {
+      "de": "Nachweisbericht speichern",
+      "fr": "Enregistrer le rapport d’éléments",
+      "it": "Salva il rapporto delle evidenze",
+      "es": "Guarda el informe de pruebas",
+      "el": "Αποθήκευση αναφοράς στοιχείων",
+      "pl": "Zapisz raport dowodowy",
+      "cs": "Uložit zprávu s podklady",
+      "ru": "Сохранить отчёт по данным"
+    },
+    "Save progress": {
+      "de": "Fortschritt speichern",
+      "fr": "Enregistrer la progression",
+      "it": "Salva i progressi",
+      "es": "Guarda el progreso",
+      "el": "Αποθήκευση προόδου",
+      "pl": "Zapisz postęp",
+      "cs": "Uložit postup",
+      "ru": "Сохранить прогресс"
+    },
+    "Saved BPM, key and colour in session order. Requires a native history capture.": {
+      "de": "Gespeicherte BPM, Tonart und Farbe in Sitzungsreihenfolge. Eine native Verlaufserfassung ist erforderlich.",
+      "fr": "BPM, tonalité et couleur enregistrés dans l’ordre de la session. Nécessite une capture de l’historique natif.",
+      "it": "BPM, tonalità e colore salvati nell’ordine della sessione. Richiede l’acquisizione della cronologia nativa.",
+      "es": "BPM, tonalidad y color guardados en el orden de la sesión. Requiere una captura del historial nativo.",
+      "el": "Αποθηκευμένα BPM, τονικότητα και χρώμα στη σειρά της συνεδρίας. Απαιτείται καταγραφή εγγενούς ιστορικού.",
+      "pl": "Zapisane BPM, tonacja i kolor w kolejności sesji. Wymaga zapisu natywnej historii.",
+      "cs": "Uložené BPM, tónina a barva v pořadí relace. Vyžaduje zachycení nativní historie.",
+      "ru": "Сохранённые BPM, тональность и цвет в порядке сессии. Требуется снимок исходной истории."
+    },
+    "Saved evidence report": {
+      "de": "Gespeicherter Nachweisbericht",
+      "fr": "Rapport d’éléments enregistré",
+      "it": "Rapporto delle evidenze salvato",
+      "es": "Informe de pruebas guardado",
+      "el": "Αποθηκευμένη αναφορά στοιχείων",
+      "pl": "Zapisany raport dowodowy",
+      "cs": "Uložená zpráva s podklady",
+      "ru": "Сохранённый отчёт по данным"
+    },
+    "Saved history session": {
+      "de": "Gespeicherte Verlaufssitzung",
+      "fr": "Session d’historique enregistrée",
+      "it": "Sessione salvata nella cronologia",
+      "es": "Sesión de historial guardada",
+      "el": "Αποθηκευμένη συνεδρία ιστορικού",
+      "pl": "Zapisana sesja historii",
+      "cs": "Uložená relace historie",
+      "ru": "Сохранённая сессия истории"
+    },
+    "Saved session order with tags from this capture. BPM differences describe stored tags, not measured transitions. No individual play times, energy or gig duration is inferred.": {
+      "de": "Gespeicherte Sitzungsreihenfolge mit Tags dieser Erfassung. BPM-Unterschiede beschreiben gespeicherte Tags, keine gemessenen Übergänge. Einzelne Abspielzeiten, Energie oder Auftrittsdauer werden nicht abgeleitet.",
+      "fr": "Ordre de session enregistré avec les tags de cette capture. Les écarts de BPM décrivent les tags stockés, pas des transitions mesurées. Aucune heure de lecture individuelle, énergie ou durée de prestation n’est déduite.",
+      "it": "Ordine della sessione salvato con i tag acquisiti. Le differenze BPM descrivono i tag salvati, non transizioni misurate. Non si deducono orari delle singole riproduzioni, energia o durata del set.",
+      "es": "Orden de sesión guardado con las etiquetas de esta captura. Las diferencias de BPM describen etiquetas guardadas, no transiciones medidas. No se deducen horas individuales, energía ni duración del set.",
+      "el": "Αποθηκευμένη σειρά συνεδρίας με ετικέτες από αυτή την καταγραφή. Οι διαφορές BPM περιγράφουν αποθηκευμένες ετικέτες, όχι μετρημένες μεταβάσεις. Δεν συνάγονται χρόνοι αναπαραγωγής, ενέργεια ή διάρκεια εμφάνισης.",
+      "pl": "Zapisana kolejność sesji z tagami tej migawki. Różnice BPM opisują zapisane tagi, nie zmierzone przejścia. Nie są wywnioskowywane godziny odtworzeń, energia ani czas występu.",
+      "cs": "Uložené pořadí relace s tagy tohoto snímku. Rozdíly BPM popisují uložené tagy, ne změřené přechody. Neodvozují se časy jednotlivých přehrání, energie ani délka vystoupení.",
+      "ru": "Сохранённый порядок сессии с тегами из этого снимка. Разница BPM описывает сохранённые теги, а не измеренные переходы. Время отдельных воспроизведений, энергия и длительность выступления не выводятся."
+    },
+    "See how validated staged merges change record totals and artist/genre distributions in the loaded workspace. No audio is deleted.": {
+      "de": "Sehen Sie, wie geprüfte vorgemerkte Zusammenführungen Datensatzanzahlen und Künstler-/Genreverteilungen im geladenen Arbeitsbereich ändern. Audio wird nicht gelöscht.",
+      "fr": "Voyez comment les fusions préparées et validées modifient les nombres de fiches et les répartitions artistes/genres dans l’espace chargé. Aucun audio n’est supprimé.",
+      "it": "Scopri come le unioni preparate e validate cambiano i totali dei record e le distribuzioni per artista/genere nell’area caricata. Nessun audio viene eliminato.",
+      "es": "Consulta cómo las fusiones preparadas y validadas cambian los totales de registros y las distribuciones por artista/género en el espacio cargado. No se elimina audio.",
+      "el": "Δείτε πώς οι επικυρωμένες συγχωνεύσεις αλλάζουν τα σύνολα εγγραφών και τις κατανομές καλλιτεχνών/ειδών στον φορτωμένο χώρο. Δεν διαγράφεται ήχος.",
+      "pl": "Zobacz, jak zweryfikowane przygotowane scalenia zmieniają liczby rekordów i rozkłady artystów/gatunków we wczytanym obszarze. Audio nie jest usuwane.",
+      "cs": "Zjistěte, jak ověřená připravená sloučení mění počty záznamů a rozložení interpretů/žánrů v načteném prostoru. Audio se nemaže.",
+      "ru": "Посмотрите, как проверенные подготовленные слияния меняют число записей и распределение исполнителей и жанров в рабочей области. Аудиофайлы не удаляются."
+    },
+    "Select a playlist, enter track IDs, or combine both.": {
+      "de": "Wählen Sie eine Playlist, geben Sie Titel-IDs ein oder kombinieren Sie beides.",
+      "fr": "Choisissez une playlist, saisissez des identifiants de morceaux ou combinez les deux.",
+      "it": "Scegli una playlist, inserisci gli ID dei brani o combina entrambi.",
+      "es": "Elige una lista, introduce ID de pistas o combina ambas opciones.",
+      "el": "Επιλέξτε λίστα, εισαγάγετε αναγνωριστικά κομματιών ή συνδυάστε τα δύο.",
+      "pl": "Wybierz playlistę, wpisz identyfikatory utworów lub połącz obie opcje.",
+      "cs": "Vyberte playlist, zadejte ID skladeb nebo zkombinujte obě možnosti.",
+      "ru": "Выберите плейлист, введите идентификаторы треков или совместите оба способа."
+    },
+    "Selected metadata": {
+      "de": "Ausgewählte Metadaten",
+      "fr": "Métadonnées sélectionnées",
+      "it": "Metadati selezionati",
+      "es": "Metadatos seleccionados",
+      "el": "Επιλεγμένα μεταδεδομένα",
+      "pl": "Wybrane metadane",
+      "cs": "Vybraná metadata",
+      "ru": "Выбранные метаданные"
+    },
+    "Selected track list": {
+      "de": "Ausgewählte Titelliste",
+      "fr": "Liste de morceaux sélectionnés",
+      "it": "Elenco brani selezionati",
+      "es": "Lista de pistas seleccionadas",
+      "el": "Λίστα επιλεγμένων κομματιών",
+      "pl": "Lista wybranych utworów",
+      "cs": "Seznam vybraných skladeb",
+      "ru": "Список выбранных треков"
+    },
+    "Session progression": {
+      "de": "Sitzungsverlauf",
+      "fr": "Déroulement de la session",
+      "it": "Andamento della sessione",
+      "es": "Progresión de la sesión",
+      "el": "Εξέλιξη συνεδρίας",
+      "pl": "Przebieg sesji",
+      "cs": "Průběh relace",
+      "ru": "Ход сессии"
+    },
+    "Share & offline summary": {
+      "de": "Teilen & Offline-Zusammenfassung",
+      "fr": "Partager et résumé hors ligne",
+      "it": "Condividi e riepilogo offline",
+      "es": "Compartir y resumen sin conexión",
+      "el": "Κοινοποίηση και σύνοψη εκτός σύνδεσης",
+      "pl": "Udostępnianie i podsumowanie offline",
+      "cs": "Sdílení a offline přehled",
+      "ru": "Публикация и автономная сводка"
+    },
+    "Shared captured track IDs / union of IDs. Intentional playlist overlap is not an error. Name-only captures can combine playlists with the same name; saved order is unavailable there.": {
+      "de": "Gemeinsame erfasste Titel-IDs geteilt durch die Vereinigungsmenge der IDs. Beabsichtigte Playlist-Überschneidungen sind kein Fehler. Erfassungen nur anhand von Namen können gleichnamige Playlists zusammenfassen; ihre gespeicherte Reihenfolge ist nicht verfügbar.",
+      "fr": "Identifiants de morceaux capturés communs divisés par l’union des identifiants. Le chevauchement volontaire n’est pas une erreur. Les captures par noms seuls peuvent réunir des playlists homonymes ; leur ordre enregistré est indisponible.",
+      "it": "ID dei brani acquisiti in comune divisi per l’unione degli ID. La sovrapposizione intenzionale non è un errore. Le acquisizioni basate solo sui nomi possono unire playlist omonime; l’ordine salvato non è disponibile.",
+      "es": "ID de pistas capturadas compartidos divididos por la unión de ID. La coincidencia intencional no es un error. Las capturas solo con nombres pueden combinar listas homónimas; su orden guardado no está disponible.",
+      "el": "Κοινά καταγεγραμμένα αναγνωριστικά κομματιών προς την ένωσή τους. Η σκόπιμη επικάλυψη δεν είναι σφάλμα. Καταγραφές μόνο με ονόματα μπορεί να συνδυάζουν ομώνυμες λίστες· η αποθηκευμένη σειρά δεν είναι διαθέσιμη.",
+      "pl": "Wspólne zapisane identyfikatory utworów podzielone przez ich sumę zbiorów. Celowe nakładanie playlist nie jest błędem. Zapis oparty tylko na nazwach może łączyć playlisty o tej samej nazwie; zapisana kolejność jest niedostępna.",
+      "cs": "Společná zachycená ID skladeb dělená sjednocením ID. Záměrný překryv playlistů není chyba. Snímky pouze s názvy mohou spojit stejnojmenné playlisty; uložené pořadí v nich není dostupné.",
+      "ru": "Общие сохранённые идентификаторы треков, делённые на объединение идентификаторов. Намеренное совпадение плейлистов не является ошибкой. Снимки только с названиями могут объединять одноимённые плейлисты; сохранённый порядок в них недоступен."
+    },
+    "Shared tracks": {
+      "de": "Gemeinsame Titel",
+      "fr": "Morceaux communs",
+      "it": "Brani in comune",
+      "es": "Pistas compartidas",
+      "el": "Κοινά κομμάτια",
+      "pl": "Wspólne utwory",
+      "cs": "Společné skladby",
+      "ru": "Общие треки"
+    },
+    "Sharing preset": {
+      "de": "Freigabeprofil",
+      "fr": "Profil de partage",
+      "it": "Profilo di condivisione",
+      "es": "Perfil para compartir",
+      "el": "Προφίλ κοινοποίησης",
+      "pl": "Profil udostępniania",
+      "cs": "Profil sdílení",
+      "ru": "Профиль публикации"
+    },
+    "Skip optional cleanup": {
+      "de": "Optionale Bereinigung überspringen",
+      "fr": "Ignorer le nettoyage facultatif",
+      "it": "Salta la pulizia facoltativa",
+      "es": "Omite la limpieza opcional",
+      "el": "Παράλειψη προαιρετικής εκκαθάρισης",
+      "pl": "Pomiń opcjonalne porządkowanie",
+      "cs": "Přeskočit volitelné čištění",
+      "ru": "Пропустить необязательную очистку"
+    },
+    "Source snapshot": {
+      "de": "Quellenmomentaufnahme",
+      "fr": "Instantané source",
+      "it": "Istantanea di origine",
+      "es": "Instantánea de origen",
+      "el": "Στιγμιότυπο προέλευσης",
+      "pl": "Migawka źródłowa",
+      "cs": "Zdrojový snímek",
+      "ru": "Снимок источника"
+    },
+    "Start with XML only": {
+      "de": "Nur mit XML beginnen",
+      "fr": "Commencer avec un XML seul",
+      "it": "Inizia con il solo XML",
+      "es": "Empieza solo con XML",
+      "el": "Έναρξη μόνο με XML",
+      "pl": "Zacznij tylko od XML",
+      "cs": "Začít pouze s XML",
+      "ru": "Начать только с XML"
+    },
+    "The XML is copied for analysis and removed on exit. Your original stays unchanged. Reports and completed summaries are kept.": {
+      "de": "Die XML wird zur Analyse kopiert und beim Beenden entfernt. Das Original bleibt unverändert. Berichte und fertige Zusammenfassungen bleiben erhalten.",
+      "fr": "Le XML est copié pour l’analyse puis supprimé à la fermeture. Votre original reste inchangé. Les rapports et résumés terminés sont conservés.",
+      "it": "L’XML viene copiato per l’analisi e rimosso all’uscita. L’originale resta invariato. Rapporti e riepiloghi completati vengono conservati.",
+      "es": "El XML se copia para analizarlo y se elimina al salir. El original permanece intacto. Se conservan los informes y resúmenes terminados.",
+      "el": "Το XML αντιγράφεται για ανάλυση και αφαιρείται κατά την έξοδο. Το πρωτότυπο παραμένει αμετάβλητο. Αναφορές και ολοκληρωμένες συνόψεις διατηρούνται.",
+      "pl": "XML jest kopiowany do analizy i usuwany przy wyjściu. Oryginał pozostaje bez zmian. Raporty i gotowe podsumowania są zachowane.",
+      "cs": "XML se zkopíruje pro analýzu a při ukončení odstraní. Originál zůstane beze změny. Zprávy a dokončené přehledy zůstanou zachovány.",
+      "ru": "XML копируется для анализа и удаляется при выходе. Оригинал остаётся без изменений. Отчёты и готовые сводки сохраняются."
+    },
+    "This source has no usable metadata snapshot. Capture it again.": {
+      "de": "Diese Quelle enthält keine nutzbare Metadatenmomentaufnahme. Erfassen Sie sie erneut.",
+      "fr": "Cette source ne contient pas d’instantané de métadonnées utilisable. Capturez-la à nouveau.",
+      "it": "Questa fonte non contiene un’istantanea di metadati utilizzabile. Acquisiscila di nuovo.",
+      "es": "Esta fuente no tiene una instantánea de metadatos utilizable. Vuelve a capturarla.",
+      "el": "Αυτή η πηγή δεν έχει χρησιμοποιήσιμο στιγμιότυπο μεταδεδομένων. Καταγράψτε την ξανά.",
+      "pl": "To źródło nie ma użytecznej migawki metadanych. Zapisz je ponownie.",
+      "cs": "Tento zdroj nemá použitelný snímek metadat. Zachyťte jej znovu.",
+      "ru": "В этом источнике нет пригодного снимка метаданных. Создайте его заново."
+    },
+    "Track IDs": {
+      "de": "Titel-IDs",
+      "fr": "Identifiants des morceaux",
+      "it": "ID dei brani",
+      "es": "ID de pistas",
+      "el": "Αναγνωριστικά κομματιών",
+      "pl": "Identyfikatory utworów",
+      "cs": "ID skladeb",
+      "ru": "Идентификаторы треков"
+    },
+    "Unique UUID, compatible ID, ISRC or recorded-path matches. Unmatched records may be new, removed or ambiguous; no deletion is inferred. Distributions count records, including duplicates.": {
+      "de": "Eindeutige UUID-, kompatible ID-, ISRC- oder gespeicherte Pfadübereinstimmungen. Nicht zugeordnete Datensätze können neu, entfernt oder mehrdeutig sein; daraus wird keine Löschung abgeleitet. Verteilungen zählen Datensätze einschließlich Duplikaten.",
+      "fr": "Correspondances uniques par UUID, ID compatible, ISRC ou chemin enregistré. Les fiches sans correspondance peuvent être nouvelles, retirées ou ambiguës ; aucune suppression n’est déduite. Les répartitions comptent les fiches, doublons compris.",
+      "it": "Abbinamenti univoci per UUID, ID compatibile, ISRC o percorso registrato. I record non abbinati possono essere nuovi, rimossi o ambigui; non si deduce alcuna eliminazione. Le distribuzioni contano i record, inclusi i duplicati.",
+      "es": "Coincidencias únicas por UUID, ID compatible, ISRC o ruta registrada. Los registros sin coincidencia pueden ser nuevos, eliminados o ambiguos; no se deduce ninguna eliminación. Las distribuciones cuentan registros, incluidos duplicados.",
+      "el": "Μοναδικές αντιστοιχίσεις UUID, συμβατού ID, ISRC ή καταγεγραμμένης διαδρομής. Μη αντιστοιχισμένες εγγραφές μπορεί να είναι νέες, αφαιρεμένες ή αμφίσημες· δεν συνάγεται διαγραφή. Οι κατανομές μετρούν εγγραφές μαζί με διπλότυπα.",
+      "pl": "Unikalne dopasowania UUID, zgodnego ID, ISRC lub zapisanej ścieżki. Niedopasowane rekordy mogą być nowe, usunięte lub niejednoznaczne; usunięcie nie jest wywnioskowywane. Rozkłady liczą rekordy, w tym duplikaty.",
+      "cs": "Jedinečné shody UUID, kompatibilního ID, ISRC nebo zaznamenané cesty. Nespárované záznamy mohou být nové, odebrané nebo nejednoznačné; smazání se neodvozuje. Rozložení počítá záznamy včetně duplicit.",
+      "ru": "Уникальные совпадения по UUID, совместимому ID, ISRC или сохранённому пути. Несопоставленные записи могут быть новыми, удалёнными или неоднозначными; удаление не предполагается. Распределения подсчитывают записи, включая дубликаты."
+    },
+    "Upload cancelled": {
+      "de": "Upload abgebrochen",
+      "fr": "Envoi annulé",
+      "it": "Caricamento annullato",
+      "es": "Carga cancelada",
+      "el": "Η μεταφόρτωση ακυρώθηκε",
+      "pl": "Przesyłanie anulowane",
+      "cs": "Nahrávání zrušeno",
+      "ru": "Загрузка отменена"
+    },
+    "XML metadata is ready for sharing": {
+      "de": "XML-Metadaten sind zum Teilen bereit",
+      "fr": "Les métadonnées XML sont prêtes à être partagées",
+      "it": "I metadati XML sono pronti per la condivisione",
+      "es": "Los metadatos XML están listos para compartir",
+      "el": "Τα μεταδεδομένα XML είναι έτοιμα για κοινοποίηση",
+      "pl": "Metadane XML są gotowe do udostępnienia",
+      "cs": "Metadata XML jsou připravena ke sdílení",
+      "ru": "Метаданные XML готовы к публикации"
+    },
+    "after records": {
+      "de": "Datensätze danach",
+      "fr": "fiches après",
+      "it": "record successivi",
+      "es": "registros posteriores",
+      "el": "εγγραφές μετά",
+      "pl": "rekordy po",
+      "cs": "záznamy po",
+      "ru": "записи после"
+    },
+    "before records": {
+      "de": "Datensätze vorher",
+      "fr": "fiches avant",
+      "it": "record precedenti",
+      "es": "registros anteriores",
+      "el": "εγγραφές πριν",
+      "pl": "rekordy przed",
+      "cs": "záznamy před",
+      "ru": "записи до"
+    },
+    "matched records": {
+      "de": "Zugeordnete Datensätze",
+      "fr": "fiches correspondantes",
+      "it": "record abbinati",
+      "es": "registros coincidentes",
+      "el": "αντιστοιχισμένες εγγραφές",
+      "pl": "dopasowane rekordy",
+      "cs": "spárované záznamy",
+      "ru": "сопоставленные записи"
+    },
+    "removed records": {
+      "de": "Entfernte Datensätze",
+      "fr": "fiches retirées",
+      "it": "record rimossi",
+      "es": "registros eliminados",
+      "el": "εγγραφές που αφαιρούνται",
+      "pl": "usunięte rekordy",
+      "cs": "odebrané záznamy",
+      "ru": "удалённые записи"
+    },
+    "retained records": {
+      "de": "Beibehaltene Datensätze",
+      "fr": "fiches conservées",
+      "it": "record conservati",
+      "es": "registros conservados",
+      "el": "εγγραφές που διατηρούνται",
+      "pl": "zachowane rekordy",
+      "cs": "zachované záznamy",
+      "ru": "сохранённые записи"
+    },
+    "staged metadata fields": {
+      "de": "vorgemerkte Metadatenfelder",
+      "fr": "champs de métadonnées préparés",
+      "it": "campi di metadati preparati",
+      "es": "campos de metadatos preparados",
+      "el": "πεδία μεταδεδομένων σε αναμονή",
+      "pl": "przygotowane pola metadanych",
+      "cs": "připravená pole metadat",
+      "ru": "подготовленные поля метаданных"
+    },
+    "unmatched after": {
+      "de": "Danach nicht zugeordnet",
+      "fr": "sans correspondance après",
+      "it": "successivi non abbinati",
+      "es": "posteriores sin coincidencia",
+      "el": "χωρίς αντιστοίχιση μετά",
+      "pl": "niedopasowane po",
+      "cs": "nespárované po",
+      "ru": "без соответствия после"
+    },
+    "unmatched before": {
+      "de": "Vorher nicht zugeordnet",
+      "fr": "sans correspondance avant",
+      "it": "precedenti non abbinati",
+      "es": "anteriores sin coincidencia",
+      "el": "χωρίς αντιστοίχιση πριν",
+      "pl": "niedopasowane przed",
+      "cs": "nespárované před",
+      "ru": "без соответствия до"
     }
   }
 }

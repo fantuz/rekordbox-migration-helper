@@ -19,9 +19,16 @@ FIELDS = ("id", "title", "artist", "album", "genre", "year", "bpm", "rating",
           "last_played", "analysed", "manual_cues", "auto_cues", "bitrate",
           "sample_rate", "bit_depth", "playlists", "tonality", "color_name", "color_hex", "color_status")
 PATH_FIELDS = ("current_path", "original_path")
+SHARE_FIELDS = ("title", "artist", "album", "genre", "year", "bpm", "duration", "format")
+PUBLIC_DIMENSIONS = {"genres": "genre", "years": "year", "artists": "artist", "albums": "album",
+                     "bpm": "bpm", "duration": "duration", "formats": "format", "tonality": "tonality",
+                     "colours": "color_name"}
 PAGES = {"index": "Overview", "tracks": "Tracks", "genres": "Genres", "years": "Release years", "added": "Added by year",
          "artists": "Artists", "albums": "Albums", "bpm": "BPM ranges", "ratings": "Ratings",
          "duration": "Duration", "formats": "Formats", "playlists": "Playlists", "tonality": "Tonality", "colours": "Track colours"}
+PAGE_FIELDS = {"genres": "genre", "years": "year", "added": "date_added", "artists": "artist", "albums": "album",
+               "bpm": "bpm", "ratings": "rating", "duration": "duration", "formats": "format", "playlists": "playlists",
+               "tonality": "tonality", "colours": "color_status"}
 
 
 def number(value, minimum=0, maximum=None):
@@ -129,27 +136,124 @@ def capture_database(db, columns):
             "cue_basis": "Active native djmdCue rows; automatic origin is inferred from editable labels."}
 
 
-def payload(snapshot, title, include_paths=False):
-    fields = [*FIELDS, *(PATH_FIELDS if include_paths else ())]
+def _selection(snapshot, preset="private", fields=None, track_ids=None, playlist=None, include_paths=False,
+               allow_empty_selection=False):
+    if preset not in ("public", "selected", "private"):
+        raise ValueError("Choose public summary, selected list or private explorer")
+    if fields is not None and (not isinstance(fields, list) or any(not isinstance(f, str) or f not in (*FIELDS, *PATH_FIELDS) for f in fields)):
+        raise ValueError("Choose supported metadata fields")
+    if track_ids is not None and (not isinstance(track_ids, list) or any(not isinstance(t, str) for t in track_ids) or len(track_ids)>200000):
+        raise ValueError("Choose track IDs from the selected source")
+    if playlist is not None and not isinstance(playlist, str):
+        raise ValueError("Choose a playlist from the selected source")
+    tracks = snapshot["tracks"]
+    if preset == "selected":
+        wanted = set(track_ids or ())
+        if not wanted and not playlist and not allow_empty_selection:
+            raise ValueError("Choose at least one track ID or a playlist for the selected list")
+        tracks = [t for t in tracks if str(t.get("id")) in wanted or (playlist and playlist in t.get("playlists", []))]
+        if not tracks and not allow_empty_selection:
+            raise ValueError("No selected tracks were found in this source")
+    if preset == "public":
+        selected_fields = []
+    else:
+        requested = fields if fields is not None else (list(SHARE_FIELDS) if preset == "selected" else list(FIELDS))
+        selected_fields = list(dict.fromkeys(f for f in requested if f not in PATH_FIELDS or include_paths))
+        if include_paths:
+            selected_fields.extend(f for f in PATH_FIELDS if f not in selected_fields)
+        if not selected_fields:
+            raise ValueError("Choose at least one metadata field")
+    return tracks, selected_fields
+
+
+def disclosure(snapshot, preset="private", fields=None, track_ids=None, playlist=None, include_paths=False,
+               allow_empty_selection=True):
+    """Describe the exact serialized selection without returning track values or paths."""
+    tracks, selected_fields = _selection(snapshot, preset, fields, track_ids, playlist, include_paths, allow_empty_selection)
+    return {"preset": preset, "track_count": len(tracks), "aggregates_only": preset == "public",
+            "fields": (["Category labels", "Category counts", "Category duration totals", "Category mean BPM"]
+                       if preset == "public" else selected_fields),
+            "available_fields": list(FIELDS),
+            "available_playlists": sorted({str(p) for t in snapshot["tracks"] for p in t.get("playlists", [])}, key=str.casefold),
+            "includes_paths": any(f in PATH_FIELDS for f in selected_fields),
+            "data_state": (snapshot.get("data_state") if snapshot.get("data_state") in ("working", "captured") else "working" if snapshot.get("metadata_overrides_applied") else "captured"),
+            "metadata_overrides_applied": snapshot.get("metadata_overrides_applied", 0),
+            "staged_changes_applied": False,
+            "omitted": (["Individual tracks", "Track IDs", "Playlists", "Dates", "Play counts", "Personal stars", "Cues", "File paths"]
+                        if preset == "public" else [f for f in (*FIELDS, *PATH_FIELDS) if f not in selected_fields])}
+
+
+def _bucket(value, bins):
+    n = number(value)
+    return None if n is None else next(label for limit, label in bins if n < limit)
+
+
+def public_aggregates(tracks):
+    """Only labels and aggregates survive; personal usage, IDs and track rows never enter this object."""
+    result = {}
+    bpm_bins = [(80,"Under 80"),(100,"80–99.99"),(120,"100–119.99"),(130,"120–129.99"),(140,"130–139.99"),
+                (160,"140–159.99"),(180,"160–179.99"),(math.inf,"180+")]
+    duration_bins = [(60,"Under 1 min"),(180,"1–2.99 min"),(360,"3–5.99 min"),(600,"6–9.99 min"),
+                     (1800,"10–29.99 min"),(math.inf,"30 min+")]
+    for page, field in PUBLIC_DIMENSIONS.items():
+        grouped = {}
+        for t in tracks:
+            value = (_bucket(t.get(field), bpm_bins) if page == "bpm" else _bucket(t.get(field), duration_bins)
+                     if page == "duration" else t.get(field))
+            if page == "colours":
+                value = (t.get("color_name") or t.get("color_hex") or "Assigned colour") if t.get("color_status") == "assigned" else "No assigned colour" if t.get("color_status") == "unassigned" else None
+            # Category labels are captured metadata, not UI prose. Preserve
+            # Unicode and meaningful spacing instead of silently normalizing tags.
+            key = str(value) if value is not None and str(value).strip() else None
+            if key not in grouped:
+                grouped[key] = {"label": key, "count": 0, "duration": 0, "duration_known": 0, "bpm_total": 0, "bpm_count": 0}
+            g = grouped[key]; g["count"] += 1
+            duration_value, bpm_value = number(t.get("duration")), number(t.get("bpm"), .001)
+            if duration_value is not None:g["duration"] += duration_value; g["duration_known"] += 1
+            if bpm_value is not None:g["bpm_total"] += bpm_value; g["bpm_count"] += 1
+        result[page] = []
+        for g in sorted(grouped.values(), key=lambda g: (-g["count"], str(g["label"]).casefold())):
+            total = g.pop("bpm_total"); count = g.pop("bpm_count")
+            g["average_bpm"] = round(total/count, 1) if count else None
+            result[page].append(g)
+    durations = [number(t.get("duration")) for t in tracks]
+    bpms = [number(t.get("bpm"), .001) for t in tracks]
+    known_bpms = [n for n in bpms if n is not None]
+    return {"tracks": len(tracks), "duration": sum(n for n in durations if n is not None),
+            "duration_known": sum(n is not None for n in durations), "bpm_known": len(known_bpms),
+            "average_bpm": round(sum(known_bpms)/len(known_bpms), 1) if known_bpms else None,
+            "categories": result}
+
+
+def payload(snapshot, title, include_paths=False, preset="private", fields=None, track_ids=None, playlist=None):
+    tracks, fields = _selection(snapshot, preset, fields, track_ids, playlist, include_paths)
+    info = disclosure(snapshot, preset, fields, track_ids, playlist, include_paths)
     return {"schema": 1, "title": clean(title)[:160] or "My library", "created": datetime.now(timezone.utc).isoformat(),
-            "captured": snapshot.get("captured"), "source_kind": snapshot.get("source_kind", "Metadata snapshot"),
+            "captured": None if preset == "public" else snapshot.get("captured"), "source_kind": "Public collection summary" if preset == "public" else snapshot.get("source_kind", "Metadata snapshot"),
             "scope": snapshot.get("scope", "all"), "version": snapshot.get("version"),
-            "cue_basis": snapshot.get("cue_basis", ""), "includes_paths": include_paths,
+            "cue_basis": snapshot.get("cue_basis", "") if any(f in fields for f in ("manual_cues", "auto_cues")) else "", "includes_paths": info["includes_paths"],
             "staged_changes_applied": False, "metadata_overrides_applied":snapshot.get('metadata_overrides_applied',0), "columns": fields,
-            "rows": [[t.get(field) for field in fields] for t in snapshot["tracks"]]}
+            "preset": preset, "data_state": info["data_state"], "track_count": len(tracks),
+            "disclosure": {k:info[k] for k in ("fields", "omitted", "aggregates_only")},
+            "aggregates": public_aggregates(tracks) if preset == "public" else None,
+            "rows": [] if preset == "public" else [[t.get(field) for field in fields] for t in tracks]}
 
 
 def script_json(value):
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
 
-def export_metadata(snapshot, root, export_id, assets, progress, title="My library", include_paths=False,temporary_root=None):
+def export_metadata(snapshot, root, export_id, assets, progress, title="My library", include_paths=False,temporary_root=None,
+                    preset="private", fields=None, track_ids=None, playlist=None):
     root, assets = Path(root), Path(assets)
     root.mkdir(parents=True,exist_ok=True)
     pending, final = Path(temporary_root or root)/(".pending-"+export_id), root/export_id
     pending.mkdir(parents=True)
     try:
-        data = payload(snapshot, title, include_paths)
+        data = payload(snapshot, title, include_paths, preset, fields, track_ids, playlist)
+        exported_pages = {key: name for key, name in PAGES.items()
+                          if key == "index" or (key in PUBLIC_DIMENSIONS if preset == "public" else
+                                                key == "tracks" or PAGE_FIELDS.get(key) in data['columns'])}
         serialized = script_json(data)
         css, js = (assets/"explorer.css").read_text(encoding="utf-8"), (assets/"explorer.js").read_text(encoding="utf-8")
         translations=browser_catalogues(assets)+'\n'+(assets/'i18n.js').read_text(encoding='utf-8')
@@ -165,13 +269,13 @@ def export_metadata(snapshot, root, export_id, assets, progress, title="My libra
         (pending/"library.html").write_bytes(standalone)
         progress(55, "Building the offline category pages")
         with zipfile.ZipFile(pending/"metadata-explorer.zip", "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
-            for view in PAGES:
+            for view in exported_pages:
                 archive.writestr(view+".html", page(view, False).encode("utf-8"))
             archive.writestr("explorer.css", css.encode("utf-8"))
             archive.writestr("explorer.js", js.encode("utf-8"))
             archive.writestr('translations.js',translations.encode('utf-8'))
             archive.writestr("library-data.js", ("window.METADATA_SNAPSHOT="+serialized+";").encode("utf-8"))
-            archive.writestr("START HERE.txt", "Extract the entire ZIP, then open index.html in a browser.\nNo server, application, internet connection or installation is required.\nThis is a captured metadata explorer, not a rekordbox backup or editable library.\nStaged cleanup decisions are not applied. No audio, artwork, waveforms or native database is included.\n"+("Recorded file paths were included by your explicit choice.\n" if include_paths else "Recorded file paths are excluded.\n"))
+            archive.writestr("START HERE.txt", "Extract the entire ZIP, then open index.html in a browser.\nNo server, application, internet connection or installation is required.\nThis is a metadata explorer, not a rekordbox backup or editable library.\nMerge and relocation decisions are not applied. No audio, artwork, waveforms or native database is included.\nPreset: "+data['preset']+". Metadata state: "+data['data_state']+".\n"+("Recorded file paths were included by your explicit choice.\n" if data['includes_paths'] else "Recorded file paths are excluded.\n")+"Included fields: "+", ".join(data['disclosure']['fields'])+".\n")
         with zipfile.ZipFile(pending/"metadata-explorer.zip") as checked:
             if checked.testzip() is not None:
                 raise ValueError("The offline explorer ZIP did not validate")
@@ -179,11 +283,12 @@ def export_metadata(snapshot, root, export_id, assets, progress, title="My libra
                   "sha256": sha256((pending/name).read_bytes()).hexdigest(),
                   "download": "/api/quick-export/"+export_id+"/"+kind}
                  for kind, name in (("html", "library.html"), ("zip", "metadata-explorer.zip"))]
-        record = {"id": export_id, "created": data["created"], "title": data["title"], "tracks": len(data["rows"]),
+        record = {"id": export_id, "created": data["created"], "title": data["title"], "tracks": data["track_count"],
                   "status": "complete", "source_kind": data["source_kind"], "scope": data["scope"],
-                  "source_captured": data["captured"], "includes_paths": include_paths, "staged_changes_applied": False,
+                  "source_captured": data["captured"], "includes_paths": data['includes_paths'], "staged_changes_applied": False,
+                  "preset": data['preset'], "data_state": data['data_state'], "disclosure": data['disclosure'],
                   "metadata_overrides_applied":data.get('metadata_overrides_applied',0),
-                  "pages": list(PAGES.values()), "files": files, "directory": str(final.resolve())}
+                  "pages": list(exported_pages.values()), "files": files, "directory": str(final.resolve())}
         (pending/"export.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
         pending.rename(final)
     except Exception:

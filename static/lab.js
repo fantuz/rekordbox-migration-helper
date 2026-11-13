@@ -1,5 +1,5 @@
 /* All library-derived strings are escaped; mutations use the local action token. */
-let labInfo=null,labReport=null,labReportOffset=0,labTrackOffset=0,labTrackRows=[],labEdited=null,labUnlocked=false;
+let labInfo=null,labReport=null,labReportOffset=0,labTrackOffset=0,labTrackRows=[],labEdited=null,labUnlocked=false,labTracksRevision=0;
 let labBatch=null,labPilotOffset=0,labPilotTimer=null;
 const labPost=(url,data)=>api('/api/lab/'+url,{method:'POST',body:JSON.stringify(data)});
 const labSnapshot=()=>$('#lab-snapshot').value;
@@ -14,7 +14,10 @@ async function loadLab() {
   labSelect('#lab-source',sources,r=>r.label,I18n.t("Choose input capture"));
   const label=r=>r.label+' · '+new Date(r.created).toLocaleString(I18n.language);
   for(const selector of ['#lab-snapshot','#lab-before','#lab-after'])labSelect(selector,labInfo.snapshots,label);
-  if(!labSnapshot() && labInfo.snapshots.length)$('#lab-snapshot').value=labInfo.snapshots[0].id;
+  const shared=window.Journeys?.context?.();
+  if(shared?.snapshot && labInfo.snapshots.some(r=>r.id===shared.snapshot))$('#lab-snapshot').value=shared.snapshot;
+  if(shared && !shared.snapshot){$('#lab-snapshot').value='';$('#lab-tracks').replaceChildren();$('#lab-edit-form').hidden=true;}
+  if(!shared && !labSnapshot() && labInfo.snapshots.length)$('#lab-snapshot').value=labInfo.snapshots[0].id;
   labSelect('#lab-report-select',labInfo.reports,r=>r.kind+' · '+new Date(r.created).toLocaleString(I18n.language),I18n.t("Choose an evidence report"));
   $('#lab-pilot-enabled').checked=labInfo.musicbrainz_enabled;$('#lab-pilot-enabled').disabled=labInfo.musicbrainz_forced_off;
   labPilotButtons();await labSnapshotChanged(false);
@@ -22,6 +25,8 @@ async function loadLab() {
 }
 async function labSnapshotChanged(clear=true) {
   const s=labInfo.snapshots.find(r=>r.id===labSnapshot());
+  $('#lab-unlock').disabled=!s;
+  if(!s){labEdited=null;labUnlocked=false;$('#lab-unlock').checked=false;$('#lab-tracks').replaceChildren();$('#lab-tracks-count').textContent='';$('#lab-edit-form').hidden=true;$('#lab-edit-state').textContent=I18n.t('Read-only');}
   $('#lab-snapshot-info').textContent=s?I18n.t("Scope:")+" "+s.scope_key+" "+I18n.t("· Original snapshots remain immutable.")+" "+(s.scope_key.startsWith('session:')?I18n.t("Staged edits apply to copy exports from this same workspace."):I18n.t("Edits apply to offline HTML; they do not attach to a different XML/ZIP workspace.")):I18n.t("Save a snapshot from a loaded workspace or Source analyzer capture.");
   if(clear){labTrackOffset=0;labEdited=null;$('#lab-edit-form').hidden=true;}
   if(s)await labLoadTracks();
@@ -35,7 +40,7 @@ $$('[data-lab-tab]').forEach(b=>b.onclick=()=>{
   $$('.lab-panel').forEach(p=>p.hidden=p.id!=='lab-panel-'+b.dataset.labTab);
   $$('[data-lab-tab]').forEach(t=>t.classList.toggle('selected',t===b));
 });
-$('#lab-capture-form').onsubmit=wrap(async e=>{e.preventDefault();const r=await labRun('snapshots',{source:$('#lab-source').value,label:$('#lab-label').value});$('#lab-snapshot').value=r.id;await labSnapshotChanged();notify(I18n.t("Immutable snapshot saved locally"));});
+$('#lab-capture-form').onsubmit=wrap(async e=>{e.preventDefault();const r=await labRun('snapshots',{source:$('#lab-source').value,label:$('#lab-label').value});if(window.Journeys){await Journeys.load();await Journeys.selectContext('snapshot:'+r.id);}$('#lab-snapshot').value=r.id;await labSnapshotChanged();notify(I18n.t("Immutable snapshot saved locally"));});
 $('#lab-snapshot').onchange=wrap(()=>labSnapshotChanged());
 for(const kind of ['consistency','coverage','assets'])$('#lab-'+kind).onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind,working:$('#lab-working').checked,min_cues:$('#lab-min-cues').value,min_manual:$('#lab-min-manual').value,require_analysis:$('#lab-analysis-required').checked,paths:pathLines($('#lab-assets-path').value),verify:$('#lab-assets-verify').checked}));
 $('#lab-compare-form').onsubmit=wrap(async e=>{e.preventDefault();await labRun('compare',{before:$('#lab-before').value,after:$('#lab-after').value,tolerance_ms:$('#lab-tolerance').value});});
@@ -67,8 +72,9 @@ $('#lab-report-prev').onclick=wrap(async()=>{labReportOffset=Math.max(0,labRepor
 $('#lab-report-next').onclick=wrap(async()=>{labReportOffset+=50;await labLoadReport();});
 
 async function labLoadTracks() {
-  if(!labSnapshot())return;
-  const r=await api('/api/lab/tracks?'+new URLSearchParams({snapshot:labSnapshot(),offset:labTrackOffset,q:$('#lab-track-search').value}));
+  const revision=++labTracksRevision,snapshot=labSnapshot();if(!snapshot)return;
+  const r=await api('/api/lab/tracks?'+new URLSearchParams({snapshot,offset:labTrackOffset,q:$('#lab-track-search').value}));
+  if(revision!==labTracksRevision || snapshot!==labSnapshot())return;
   labTrackRows=r.rows;labUnlocked=r.unlocked;$('#lab-unlock').checked=labUnlocked;
   $('#lab-edit-state').textContent=(labUnlocked?I18n.t("Staging unlocked"):I18n.t("Read-only"))+' · '+num(r.override_fields)+" "+I18n.t("field overrides in this scope. Source database and audio tags stay unchanged.");
   $('#lab-tracks').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Track"))+"</th><th>"+esc(I18n.t("Artist"))+"</th><th>"+esc(I18n.t("Year / stars / genre"))+"</th><th></th></tr></thead><tbody>")+r.rows.map((item,i)=>{const t={...item.original,...Object.fromEntries(Object.entries(item.overrides).map(([k,v])=>[k,v.value]))};return '<tr><td>'+esc(t.title)+'<br><span class="subtle">'+esc(t.id)+'</span></td><td>'+esc(t.artist)+'</td><td>'+esc(t.year || '—')+' · '+esc(t.rating ?? I18n.t("Unknown"))+' ★ · '+esc(t.genre || I18n.t("Unknown"))+'</td><td><button class="button secondary" data-lab-edit="'+i+("\">"+esc(I18n.t("Inspect / edit"))+"")+(Object.keys(item.overrides).length?" "+I18n.t("· staged"):'')+'</button></td></tr>';}).join('')+'</tbody></table>';
@@ -118,7 +124,7 @@ async function labLoadPilot() {
   $('#lab-pilot-summary').innerHTML=labSummary(r.summary)+'<p class="subtle">'+r.summary.groups.map(g=>esc(g.genre)+': '+num(g.sampled)+' / '+num(g.requested)).join(' · ')+'</p>';
   $('#lab-pilot-results').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Local tags"))+"</th><th>"+esc(I18n.t("Best candidate · review required"))+"</th><th>"+esc(I18n.t("Community evidence"))+"</th></tr></thead><tbody>")+r.rows.map(t=>{
     const c=t.candidates?.[0],p=t.proposal;
-    return '<tr><td>'+esc(t.title)+'<br><span class="subtle">'+esc(t.artist)+' · '+esc(t.genre || I18n.t("Unknown genre"))+'</span></td><td>'+(c?'<a href="https://musicbrainz.org/recording/'+encodeURIComponent(c.mbid)+'" target="_blank" rel="noopener noreferrer">'+esc(c.title)+' · '+esc(c.artist)+("</a><br><span class=\"subtle\">"+esc(I18n.t("Similarity"))+" ")+esc(c.confidence)+" "+I18n.t("· duration Δ")+" "+esc(c.duration_delta ?? 'unknown')+'s'+(c.version_needs_review?" "+I18n.t("· version mismatch"):'')+'</span><br><button class="button secondary" data-lab-approve="'+esc(t.id)+'" data-approved="'+(t.match_approved?'false':'true')+'">'+(t.match_approved?I18n.t("Undo identity approval"):I18n.t("Approve this identity"))+'</button>':esc(t.error || t.status))+'</td><td>'+(p?'<strong>'+esc(p.community_score ?? I18n.t("No rating"))+'</strong> / 5 · '+num(p.votes)+(" votes<br>"+esc(I18n.t("Year"))+" ")+esc(p.year ?? 'unknown')+' · '+esc(p.genre || I18n.t("No genre"))+'<br><span class="subtle">'+esc(p.year_basis)+'</span>'+(t.match_approved?'<div class="lab-actions">'+(['year','genre'].filter(f=>p[f]!=null).map(f=>'<button class="text-button" data-lab-proposal="'+esc(t.id)+'" data-field="'+f+("\">"+esc(I18n.t("Stage"))+" "+"")+f+': '+esc(p[f])+'</button>').join(''))+'</div>':''):'—')+'</td></tr>';
+    return '<tr><td>'+esc(t.title)+'<br><span class="subtle">'+esc(t.artist)+' · '+esc(t.genre || I18n.t("Unknown genre"))+'</span></td><td>'+(c?'<a href="https://musicbrainz.org/recording/'+encodeURIComponent(c.mbid)+'" target="_blank" rel="noopener noreferrer">'+esc(c.title)+' · '+esc(c.artist)+("</a><br><span class=\"subtle\">"+esc(I18n.t("Similarity"))+" ")+esc(c.confidence)+" "+I18n.t("· duration Δ")+" "+esc(c.duration_delta ?? 'unknown')+'s'+(c.version_needs_review?" "+I18n.t("· version mismatch"):'')+'</span><br><button class="button secondary" data-lab-approve="'+esc(t.id)+'" data-approved="'+(t.match_approved?'false':'true')+'">'+(t.match_approved?I18n.t("Undo identity approval"):I18n.t("Approve this identity"))+'</button>':esc(t.error || t.status))+'</td><td>'+(p?'<strong>'+esc(p.community_score ?? I18n.t("No rating returned"))+'</strong> / 5 · '+num(p.votes)+(" votes<br>"+esc(I18n.t("Year"))+" ")+esc(p.year ?? 'unknown')+' · '+esc(p.genre || I18n.t("No genre"))+'<br><span class="subtle">'+esc(p.year_basis)+'</span>'+(t.match_approved?'<div class="lab-actions">'+(['year','genre'].filter(f=>p[f]!=null).map(f=>'<button class="text-button" data-lab-proposal="'+esc(t.id)+'" data-field="'+f+("\">"+esc(I18n.t("Stage"))+" "+"")+f+': '+esc(p[f])+'</button>').join(''))+'</div>':''):'—')+'</td></tr>';
   }).join('')+'</tbody></table>';
   $('#lab-pilot-count').textContent=num(r.total)+" "+I18n.t("selected tracks ·")+" "+num(labPilotOffset+1)+'–'+num(Math.min(labPilotOffset+50,r.total));$('#lab-pilot-prev').disabled=!labPilotOffset;$('#lab-pilot-next').disabled=labPilotOffset+50>=r.total;
   $$('[data-lab-approve]').forEach(b=>b.onclick=wrap(async()=>{await labPost('musicbrainz/'+labBatch+'/review',{track_id:b.dataset.labApprove,approved:b.dataset.approved==='true'});await labLoadPilot();}));

@@ -1,4 +1,4 @@
-# Library lab (0.4.5 preview)
+# Library lab
 
 Keep an untouched rekordbox **Backup Library** backup outside the workspace before transforming files. Preserve audio separately if it is excluded from the backup. Generated native ZIPs require an isolated rekordbox restore test; automated file checks do not prove restore compatibility.
 

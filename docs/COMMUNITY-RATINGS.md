@@ -41,3 +41,9 @@ The main risks are incorrect remix matches, poor rating coverage, small-vote bia
 MusicBrainz normally limits a client IP to approximately one request per second. One request for each of 33,000 tracks is already about 9.2 hours; a search plus a lookup can roughly double that before retries. Batch selection, persistent matching and deduplication matter more than raw CPU. A local pilot need not have a hosting bill, but future commercial use or provider licensing can change costs.
 
 The 0.4.5 preview implements the bounded MusicBrainz-only, user-confirmed pilot in [Library lab](LIBRARY-LAB.md), with public retrieval code, local-only working data, a force-off flag and selectable pacing. Community scores stay in the sidecar; personal stars remain an explicit manual choice. Treat no available rating as a normal outcome. The estimates above describe engineering/maintenance scope, not a guarantee of match or rating coverage.
+
+## User-reported pilot result
+
+The maintainer reports candidate matches in a real private library sample. The reported 150-track batch contained 21 candidate matches, 21 available years, two available genres, no returned ratings and three service errors. These are candidate counts, not 21 independently verified identities or a general accuracy estimate. No private tags or API responses are published. Wider provider integration remains deferred.
+
+The current lookup already requests recording `ratings`. MusicBrainz supports aggregate ratings, but a recording can have no votes even when its release group has a rating. A missing recording rating remains unknown; album-level ratings and search relevance scores are never substituted for it. See the [MusicBrainz API include arguments](https://musicbrainz.org/doc/MusicBrainz_API#Misc_inc=_arguments).

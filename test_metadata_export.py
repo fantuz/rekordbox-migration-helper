@@ -9,7 +9,7 @@ from unittest.mock import patch
 import zipfile
 
 import app as application
-from metadata_export import capture_catalog, export_metadata, list_metadata_exports, number, track
+from metadata_export import capture_catalog, disclosure, export_metadata, list_metadata_exports, number, payload, track
 
 
 ASSETS=Path(__file__).parent/"static"
@@ -78,6 +78,60 @@ class MetadataExportTests(unittest.TestCase):
             with self.assertRaises(OSError):export_metadata(capture_catalog(example_catalog()),self.root,'c'*32,ASSETS,lambda *_:None)
         self.assertFalse((self.root/('c'*32)).exists())
         self.assertEqual(list(self.root.iterdir()),[])
+
+    def test_public_summary_does_not_embed_individual_or_personal_metadata(self):
+        snapshot=capture_catalog(example_catalog())
+        snapshot['tracks'][0].update(id='PRIVATE-ID',title='PRIVATE-TITLE',play_count=987654,
+                                     date_added='PRIVATE-DATE',last_played='PRIVATE-LAST',comment='PRIVATE-COMMENT')
+        data=payload(snapshot,'Shared preferences',include_paths=True,preset='public')
+        self.assertEqual(data['rows'],[]);self.assertEqual(data['columns'],[])
+        self.assertEqual(data['track_count'],2);self.assertFalse(data['includes_paths'])
+        encoded=json.dumps(data)
+        for private in ('PRIVATE-ID','PRIVATE-TITLE','PRIVATE-DATE','PRIVATE-LAST','PRIVATE-COMMENT','987654','My playlist','private-name'):
+            self.assertNotIn(private,encoded)
+        self.assertEqual(data['aggregates']['tracks'],2)
+        self.assertEqual(data['aggregates']['categories']['genres'][0]['count'],1)
+        result=export_metadata(snapshot,self.root,'f'*32,ASSETS,lambda *_:None,preset='public')
+        self.assertEqual(result['tracks'],2);self.assertEqual(result['preset'],'public')
+        with zipfile.ZipFile(Path(result['directory'])/'metadata-explorer.zip') as archive:
+            self.assertNotIn('tracks.html',archive.namelist());self.assertNotIn('playlists.html',archive.namelist())
+            self.assertNotIn('ratings.html',archive.namelist());self.assertNotIn('added.html',archive.namelist())
+            embedded=archive.read('library-data.js').decode('utf-8')
+            self.assertNotIn('PRIVATE-TITLE',embedded);self.assertNotIn('My playlist',embedded)
+            self.assertEqual(json.loads(embedded.removeprefix('window.METADATA_SNAPSHOT=').removesuffix(';'))['rows'],[])
+
+    def test_selected_track_list_and_private_field_choices_are_enforced_in_data(self):
+        snapshot=capture_catalog(example_catalog())
+        data=payload(snapshot,'One track',preset='selected',track_ids=['a'])
+        self.assertEqual(data['track_count'],1)
+        self.assertNotIn('id',data['columns']);self.assertNotIn('play_count',data['columns'])
+        self.assertNotIn('playlists',data['columns']);self.assertNotIn('date_added',data['columns'])
+        by_playlist=payload(snapshot,'Playlist',preset='selected',playlist='My playlist')
+        self.assertEqual(by_playlist['rows'],data['rows'])
+        minimal=payload(snapshot,'Minimal',preset='private',fields=['genre'])
+        self.assertEqual(minimal['columns'],['genre']);self.assertEqual(minimal['rows'],[['House'],['']])
+        self.assertNotIn('Artist & friend',json.dumps(minimal))
+        for choices in ({'preset':'selected'},{'preset':'selected','track_ids':['missing']},{'fields':['password']},
+                        {'fields':[]},{'preset':'invalid'},{'track_ids':'a'}):
+            with self.assertRaises(ValueError):payload(snapshot,'Invalid',**choices)
+
+    def test_preview_matches_export_fields_and_state_without_returning_track_values(self):
+        snapshot=capture_catalog(example_catalog());snapshot['metadata_overrides_applied']=2
+        choices={'preset':'private','fields':['artist','year'],'include_paths':True}
+        preview=disclosure(snapshot,**choices);data=payload(snapshot,'Private',**choices)
+        self.assertEqual(preview['fields'],data['columns']);self.assertEqual(preview['track_count'],len(data['rows']))
+        self.assertEqual(preview['data_state'],'working');self.assertFalse(preview['staged_changes_applied'])
+        self.assertNotIn('rows',preview);self.assertNotIn('private-name',json.dumps(preview))
+        selected=disclosure(snapshot,preset='selected')
+        self.assertEqual(selected['track_count'],0);self.assertIn('My playlist',selected['available_playlists'])
+
+    def test_public_aggregation_keeps_unknowns_unicode_and_empty_collections(self):
+        snapshot={'tracks':[track({'id':'é-𝄞','genre':'</script>日本\u2028','bpm':None,'duration':0})]}
+        data=payload(snapshot,'Unicode',preset='public')
+        self.assertEqual(data['aggregates']['categories']['genres'][0]['label'],'</script>日本\u2028')
+        self.assertIsNone(data['aggregates']['average_bpm'])
+        empty=payload({'tracks':[]},'Empty',preset='public')
+        self.assertEqual(empty['aggregates']['tracks'],0);self.assertEqual(empty['aggregates']['categories']['genres'],[])
 
 
 class QuickExportAPITests(unittest.TestCase):

@@ -26,10 +26,10 @@ window.addEventListener('workbench-language',async()=>{
   try{
     await refresh();
     if(selected)renderDetail();
-    const loaders={history:loadHistory,insights:loadDJInsights,bubbles:loadBubbleExplorer,tonality:loadTonalityInsights,docs:loadDocumentation};
+    const loaders={history:loadHistory,insights:loadDJInsights,bubbles:loadBubbleExplorer,tonality:loadTonalityInsights,docs:loadDocumentation,intelligence:()=>Intelligence.load()};
     if(loaders[view])await loaders[view]();
     if(track)await openTrackDetails(track.snapshot,track.trackId);
-    const titles={files:'Library preparation',analyzer:'Source analysis',storage:'Cloud and local storage',quick:'Offline metadata export',review:'Duplicate review',reference:'File references',activity:'Activity and reports',statistics:'Collection statistics',inventory:'Media inventory',exports:'Library export',lab:'Library lab',history:'Play history',insights:'DJ insights',bubbles:'Library bubbles',tonality:'Tonality and tempo',docs:'Documentation'};
+    const titles={files:'Library preparation',analyzer:'Source analysis',storage:'Cloud and local storage',quick:'Share & offline summary',review:'Duplicate review',reference:'File references',activity:'Activity and reports',statistics:'Collection statistics',inventory:'Media inventory',exports:'Library export',lab:'Library lab',intelligence:'Library intelligence',history:'Play history',insights:'DJ insights',bubbles:'Library bubbles',tonality:'Tonality and tempo',docs:'Documentation'};
     const activeView=document.querySelector('.nav.active')?.dataset.view || 'files';
     $('#page-title').textContent=I18n.t(titles[activeView] || 'Library preparation');
   }catch(error){notify(error.message,true);}

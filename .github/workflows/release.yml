@@ -32,10 +32,14 @@ jobs:
     name: Validate the requested release
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
     outputs:
       version: ${{ steps.plan.outputs.version }}
       tag: ${{ steps.plan.outputs.tag }}
       prerelease: ${{ steps.plan.outputs.prerelease }}
+      reuse_run_id: ${{ steps.reuse.outputs.reuse_run_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -55,10 +59,18 @@ jobs:
         uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266 # v1.1.0
         with:
           inputs: requirements.txt requirements-build.txt requirements-test.txt requirements-browser.txt
+      - name: Look for an exact-source validated main build
+        id: reuse
+        env:
+          REQUESTED_RELEASE_VERSION: ${{ steps.plan.outputs.version }}
+          RELEASE_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 packaging/select_release_build.py
 
   packages:
     name: Validate and build every platform
     needs: plan
+    if: needs.plan.outputs.reuse_run_id == ''
     uses: ./.github/workflows/check-and-package.yml
     with:
       release_version: ${{ needs.plan.outputs.version }}
@@ -66,10 +78,15 @@ jobs:
   publish:
     name: Attach tested packages and finish the release
     needs: [plan, packages]
+    if: >-
+      always() && needs.plan.result == 'success' &&
+      (needs.packages.result == 'success' ||
+       (needs.packages.result == 'skipped' && needs.plan.outputs.reuse_run_id != ''))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
+      actions: read
     env:
       GH_TOKEN: ${{ github.token }}
       REQUESTED_RELEASE_VERSION: ${{ needs.plan.outputs.version }}
@@ -85,11 +102,15 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
+          run-id: ${{ needs.plan.outputs.reuse_run_id || github.run_id }}
+          github-token: ${{ github.token }}
           pattern: '*-portable'
           merge-multiple: true
           path: release-staging
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
+          run-id: ${{ needs.plan.outputs.reuse_run_id || github.run_id }}
+          github-token: ${{ github.token }}
           name: linux-source
           path: release-staging
       - name: Collect the five archives from native artifact layouts

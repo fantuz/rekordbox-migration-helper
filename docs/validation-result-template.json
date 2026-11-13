@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "purpose": "Copy and fill this template using observed results. Null and not_checked mean untested or unknown. Do not publish private libraries, audio, credentials, usernames or personal paths.",
+  "recorded_at": null,
+  "reporter": "optional public alias",
+  "evidence_type": "user_report",
+  "application": {
+    "version": null,
+    "commit": null,
+    "package": null
+  },
+  "environment": {
+    "operating_system": null,
+    "architecture": null,
+    "rekordbox_version": null,
+    "rekordbox_version_is_approximate": null
+  },
+  "source": {
+    "format": null,
+    "capture_date": null,
+    "fixture_is_genuine": null,
+    "redistribution_permission": "not_provided",
+    "contains_audio": null,
+    "track_count_in_rekordbox": null,
+    "playlist_count_in_rekordbox": null,
+    "xml_sha256": null,
+    "zip_sha256": null,
+    "device_database_names": []
+  },
+  "cloud": {
+    "provider": null,
+    "user_confirmed_mode": "unknown",
+    "files_physically_available": null,
+    "online_only_placeholders_present": null,
+    "duplicate_database_records_observed": null,
+    "duplicate_physical_files_hash_verified": null,
+    "synchronization_paused_for_isolated_test": null,
+    "reconciliation_after_restore": "not_checked"
+  },
+  "restore": {
+    "status": "not_checked",
+    "route": "unspecified",
+    "isolated_destination": null,
+    "untouched_backup_kept": null,
+    "generated_file_sha256": null,
+    "expected_track_count_after": null,
+    "observed_track_count_after": null,
+    "representative_tracks_checked": null,
+    "checks": {
+      "application_startup": "not_checked",
+      "source_read_only_analysis": "not_checked",
+      "native_zip_restore": "not_checked",
+      "xml_import": "not_checked",
+      "playlist_membership": "not_checked",
+      "playlist_order": "not_checked",
+      "audio_file_availability": "not_checked",
+      "ratings": "not_checked",
+      "comments": "not_checked",
+      "colours": "not_checked",
+      "cue_positions_and_labels": "not_checked",
+      "beatgrids": "not_checked",
+      "analysis_assets": "not_checked",
+      "history": "not_checked"
+    }
+  },
+  "errors": [],
+  "limitations": [],
+  "private_fixture_published": false
+}

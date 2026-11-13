@@ -63,7 +63,7 @@ function notify(text, error=false) {
   clearTimeout(toast.timeout);
   toast.timeout = setTimeout(() => toast.hidden = true, error ? 9000 : 4500);
 }
-function wrap(fn) { return async e => {try {await fn(e);} catch(error) {notify(error.message,true);}}; }
+function wrap(fn) { return async e => {try {await fn(e);} catch(error) {notify(error.message,error.name!=='OperationCancelled');}}; }
 let progressCancel=null;
 function progress(n, text, cancel) {
   const dialog=$("#progress"),value=Number.isFinite(n)?Math.max(0,Math.min(100,n)):null;
@@ -82,12 +82,16 @@ $("#progress").addEventListener('cancel',event=>event.preventDefault());
 $("#progress-stop").onclick=()=>openCleanupDialog();
 $("#progress-cancel").onclick=wrap(async()=>{$("#progress-cancel").disabled=true;if(progressCancel)await progressCancel();});
 async function poll(job) {
-  const wasBusy=busy;busy=true;progress(null,I18n.t("Working"));
+  const wasBusy=busy;busy=true;progress(null,I18n.t("Working"),async()=>{
+    await api('/api/tasks/'+encodeURIComponent(job)+'/cancel',{method:'POST',body:'{}'});
+    $('#progress-label').textContent=I18n.t('Cancelling at the next safe checkpoint');
+  });
   try {
     while (true) {
       const state=await api("/api/tasks/"+job);
       progress(state.progress,state.message);
       if (state.status==="error") throw new Error(state.message);
+      if (state.status==="cancelled") {const error=new Error(I18n.t('Operation cancelled. Completed reports and decisions are kept.'));error.name='OperationCancelled';throw error;}
       if (state.status==="complete") return state.result;
       await new Promise(resolve=>setTimeout(resolve,900));
     }
@@ -129,18 +133,22 @@ async function refresh() {
   await loadStorageInfo();
   await loadQuickExports();
   if (typeof loadLab === 'function') await loadLab();
+  if (window.Journeys) await Journeys.load();
 }
 
 async function loadQuickExports() {
   const info=await api("/api/quick-export"),select=$("#quick-source"),old=select.value;
   const options=[];
   if(session) options.push(("<option value=\"session\">"+esc(I18n.t("Loaded XML/ZIP workspace ·"))+" ")+num(session.counts.tracks)+(" "+esc("tracks")+"</option>"));
+  options.push(...(info.snapshots || []).map(s=>'<option value="lab:'+esc(s.id)+'">'+esc(s.label)+' · '+esc(date(s.created))+'</option>'));
   options.push(...info.sources.map(s=>'<option value="'+esc(s.id)+("\">"+esc(I18n.t("Source snapshot ·"))+" "+"")+esc(new Date(s.created).toLocaleString(I18n.language))+' · '+num(s.tracks)+(" "+esc("tracks")+"</option>")));
   select.innerHTML=options.join("") || ("<option value=\"\">"+esc(I18n.t("Load a workspace or analyze a source folder first"))+"</option>");
-  if([...select.options].some(o=>o.value===old))select.value=old;
+  const shared=window.Journeys?.context?.();
+  const wanted=shared?(shared.snapshot?'lab:'+shared.snapshot:shared.source==='workspace'?'session':shared.source?.startsWith('capture:')?shared.source.slice(8):''):old;
+  if([...select.options].some(o=>o.value===wanted))select.value=wanted;else if(shared)select.value='';
   updateQuickSource();
   $("#quick-directory").textContent=info.directory;
-  $("#quick-history").innerHTML=info.exports.map(e=>'<article class="export-record"><div class="export-record-heading"><strong>'+esc(e.title)+'</strong><span>'+esc(new Date(e.created).toLocaleString(I18n.language))+'</span></div><p>'+num(e.tracks)+(" "+I18n.t("tracks")+" \u00b7 ")+esc(e.source_kind)+' · '+(e.includes_paths?I18n.t("recorded paths included"):I18n.t("file paths excluded"))+'</p><div class="download-links">'+e.files.map(f=>'<a class="button secondary small" href="'+esc(f.download)+'">'+(f.kind==='html'?I18n.t("Standalone HTML"):I18n.t("Minisite ZIP"))+' ↓</a>').join("")+'<a class="text-button" href="/api/quick-export/'+esc(e.id)+("/report\">"+esc(I18n.t("Export details ↓"))+"</a></div><div class=\"folder-row\"><span>"+esc(I18n.t("Saved explorer folder"))+"</span><code>")+esc(e.directory)+'</code><button class="text-button" data-export-path="'+esc(e.directory)+("\">"+esc(I18n.t("Copy path"))+"</button></div></article>")).join("") || ("<p class=\"subtle\">"+esc(I18n.t("No offline explorers generated yet."))+"</p>");
+  $("#quick-history").innerHTML=info.exports.map(e=>'<article class="export-record"><div class="export-record-heading"><strong>'+esc(e.title)+'</strong><span>'+esc(new Date(e.created).toLocaleString(I18n.language))+'</span></div><p>'+num(e.tracks)+(" "+I18n.t("tracks")+" \u00b7 ")+esc(e.source_kind)+' · '+esc(I18n.t(({public:'Public summary',selected:'Selected track list',private:'Private explorer'})[e.preset] || 'Private explorer'))+' · '+esc(I18n.t(e.data_state==='working'?'Working metadata':'Captured metadata'))+' · '+(e.includes_paths?I18n.t("recorded paths included"):I18n.t("file paths excluded"))+'</p><div class="download-links">'+e.files.map(f=>'<a class="button secondary small" href="'+esc(f.download)+'">'+(f.kind==='html'?I18n.t("Standalone HTML"):I18n.t("Minisite ZIP"))+' ↓</a>').join("")+'<a class="text-button" href="/api/quick-export/'+esc(e.id)+("/report\">"+esc(I18n.t("Export details ↓"))+"</a></div><div class=\"folder-row\"><span>"+esc(I18n.t("Saved explorer folder"))+"</span><code>")+esc(e.directory)+'</code><button class="text-button" data-export-path="'+esc(e.directory)+("\">"+esc(I18n.t("Copy path"))+"</button></div></article>")).join("") || ("<p class=\"subtle\">"+esc(I18n.t("No offline explorers generated yet."))+"</p>");
   bindExportCopies();
 }
 function updateQuickSource() {
@@ -148,11 +156,12 @@ function updateQuickSource() {
   $("#quick-generate").disabled=!source || busy;
   $("#quick-scope").disabled=source!=="session";
   if(source!=="session")$("#quick-scope").value="all";
+  if(window.SharingUI)SharingUI.refresh();
 }
 $("#quick-source").onchange=updateQuickSource;
 $("#quick-export-form").onsubmit=wrap(async event=>{
   event.preventDefault();if(busy)return;
-  const result=await api("/api/quick-export",{method:"POST",body:JSON.stringify({source:$("#quick-source").value,title:$("#quick-title").value,scope:$("#quick-scope").value,include_paths:$("#quick-paths").checked})});
+  const result=await api("/api/quick-export",{method:"POST",body:JSON.stringify({source:$("#quick-source").value,title:$("#quick-title").value,scope:$("#quick-scope").value,include_paths:$("#quick-paths").checked,...(window.SharingUI?SharingUI.options():{})})});
   await poll(result.job);await loadQuickExports();notify(I18n.t("Standalone HTML and offline minisite saved"));
 });
 
@@ -286,6 +295,8 @@ function showView(view) {
   if (view==="bubbles") loadBubbleExplorer().catch(error=>notify(error.message,true));
   if (view==="tonality") loadTonalityInsights().catch(error=>notify(error.message,true));
   if (view==="docs" && typeof loadDocumentation==='function') loadDocumentation().catch(error=>notify(error.message,true));
+  if (view==="intelligence") Intelligence.load().catch(error=>notify(error.message,true));
+  if (view==="files" && window.Journeys) Journeys.load().catch(error=>notify(error.message,true));
   if (view==="files" || view==="exports") loadWorkspace().catch(error=>notify(error.message,true));
   $("#collection-metrics").hidden=["files","analyzer","storage","quick","lab","history","insights","bubbles","tonality"].includes(view);
   $(".dataset-bar").hidden=["analyzer","storage","quick","lab","history","insights","bubbles","tonality"].includes(view);
@@ -296,6 +307,8 @@ function showView(view) {
   if (view==='insights') $('#page-title').textContent=I18n.t("DJ insights");
   if (view==='bubbles') $('#page-title').textContent=I18n.t("Library bubbles");
   if (view==='tonality') $('#page-title').textContent=I18n.t("Tonality and tempo");
+  if (view==='intelligence'){$('#page-title').textContent=I18n.t('Library intelligence');$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;}
+  if (view==='quick') $('#page-title').textContent=I18n.t('Share & offline summary');
   if (view==='docs'){$('#page-title').textContent=I18n.t('Documentation');$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;}
 }
 async function example() {
@@ -307,7 +320,8 @@ async function uploadFile(file,url) {
   progress(null,I18n.t("Loading")+" "+file.name);
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
-    activeUploads.add(xhr);xhr.onloadend=()=>activeUploads.delete(xhr);xhr.onabort=()=>reject(new Error(I18n.t("Upload cancelled for shutdown")));
+    activeUploads.add(xhr);xhr.onloadend=()=>activeUploads.delete(xhr);xhr.onabort=()=>reject(new Error(I18n.t("Upload cancelled")));
+    progress(null,I18n.t('Loading')+' '+file.name,()=>xhr.abort());
     xhr.open("PUT",url);
     xhr.setRequestHeader("X-Workbench-Token",token);
     xhr.setRequestHeader("Content-Type","application/octet-stream");

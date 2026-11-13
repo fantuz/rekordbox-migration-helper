@@ -259,5 +259,6 @@ def register(owner):
         from uuid import uuid4
         b=body();s=snapshot(b)
         if b.get('working') is True:s=store().effective(s)
+        s['data_state']='working' if b.get('working') is True else 'captured'
         identity=uuid4().hex
         return jsonify(job=owner.launch(lambda p:export_metadata(s,owner.DATA/'quick-exports',identity,owner.ROOT/'static',p,title=b.get('title') or s['label'],include_paths=False,temporary_root=owner.TEMPORARY.folder('exports')),'Exporting the selected snapshot as offline HTML'))

@@ -30,6 +30,14 @@ See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XM
 
 **Keep a fresh, untouched backup created by rekordbox Backup Library outside this workspace before generating transformed files. Preserve the audio separately when it is excluded from the backup. Native ZIP restoration in rekordbox remains experimental.**
 
+## Start with a goal
+
+Choose **Check library health**, **Migrate a library**, **Review duplicates** or **Share & offline summary** on the home page. Migration progress is saved locally. A shared collection context keeps the selected snapshot and evidence scope visible.
+
+**Share & offline summary** turns your collection into a standalone HTML page or an offline minisite ZIP. Start with XML alone, preview the included fields, then choose a public aggregate summary, selected track list or private explorer. Recipients can browse it with the app closed; no music is included. [Sharing guide](docs/OFFLINE-EXPLORER.md).
+
+Prominent tool cards open **Snapshot comparison**, **Metadata editor** and **MusicBrainz**. **Library intelligence** adds playlist overlap, saved session progression, collection evolution and duplicate-impact summaries. [Guided workflows](docs/JOURNEYS.md) · [Insights](docs/LIBRARY-INTELLIGENCE.md) · [Validation still needed](docs/VALIDATION-MATRIX.md).
+
 ## Start
 
 <!-- project-downloads:start -->

@@ -31,6 +31,18 @@ def check_track_details_ui(browser,base,output):
         nonlocal fail_colour
         request=route.request;path=urlsplit(request.url).path
         if path=='/api/status':route.fulfill(json={**status,'session':None,'example_available':False});return
+        if path=='/api/journeys':
+            assert request.method=='GET'
+            route.fulfill(json={'selected':'snapshot:'+sid,'sources':[{'id':'snapshot:'+sid,'label':'Synthetic quick edits','created':'2026-11-01T12:00:00Z'}],
+                                'context':{'source':'snapshot:'+sid,'snapshot':sid,'label':'Synthetic quick edits','tracks':1,
+                                           'scope':'all','scope_key':'capture:synthetic-quick-edits','captured':'2026-11-01T12:00:00Z',
+                                           'working_override_fields':len(edits),'capabilities':{},'cleanup_plan_applied':False},
+                                'plans':[],'steps':[]});return
+        if path=='/api/journeys/context':
+            assert request.method=='POST' and request.post_data_json=={'source':'snapshot:'+sid}
+            route.fulfill(json={'source':'snapshot:'+sid,'snapshot':sid,'label':'Synthetic quick edits','tracks':1,
+                                'scope':'all','scope_key':'capture:synthetic-quick-edits','captured':'2026-11-01T12:00:00Z',
+                                'working_override_fields':len(edits),'capabilities':{},'cleanup_plan_applied':False});return
         if path=='/api/lab':
             route.fulfill(json={'snapshots':[{'id':sid,'label':'Synthetic quick edits','scope_key':'capture:synthetic-quick-edits','created':'2026-11-01T12:00:00Z'}],
                                 'sources':[],'reports':[],'workspace':None,'musicbrainz_enabled':False,
