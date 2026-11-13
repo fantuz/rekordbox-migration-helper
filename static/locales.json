@@ -12822,6 +12822,206 @@
       "pl": "Anuluj",
       "cs": "Zrušit",
       "ru": "Отмена"
+    },
+    "Blue": {
+      "de": "Blau",
+      "fr": "Bleu",
+      "it": "Blu",
+      "es": "Azul",
+      "el": "Μπλε",
+      "pl": "Niebieski",
+      "cs": "Modrá",
+      "ru": "Синий"
+    },
+    "Choose a colour to save a working edit. No unlock is required.": {
+      "de": "Farbe wählen, um eine Arbeitsänderung zu speichern. Keine Freigabe nötig.",
+      "fr": "Choisissez une couleur pour enregistrer une modification locale. Aucun déverrouillage requis.",
+      "it": "Scegli un colore per salvare una modifica di lavoro. Non serve sbloccare.",
+      "es": "Elija un color para guardar un cambio de trabajo. No requiere desbloqueo.",
+      "el": "Επιλέξτε χρώμα για αποθήκευση τοπικής αλλαγής. Δεν απαιτείται ξεκλείδωμα.",
+      "pl": "Wybierz kolor, aby zapisać zmianę roboczą. Odblokowanie nie jest wymagane.",
+      "cs": "Výběrem barvy uložíte pracovní změnu. Odemknutí není nutné.",
+      "ru": "Выберите цвет для сохранения рабочего изменения. Разблокировка не требуется."
+    },
+    "Empty value": {
+      "de": "Leerer Wert",
+      "fr": "Valeur vide",
+      "it": "Valore vuoto",
+      "es": "Valor vacío",
+      "el": "Κενή τιμή",
+      "pl": "Pusta wartość",
+      "cs": "Prázdná hodnota",
+      "ru": "Пустое значение"
+    },
+    "Green": {
+      "de": "Grün",
+      "fr": "Vert",
+      "it": "Verde",
+      "es": "Verde",
+      "el": "Πράσινο",
+      "pl": "Zielony",
+      "cs": "Zelená",
+      "ru": "Зелёный"
+    },
+    "No staged changes": {
+      "de": "Keine Änderungen vorgemerkt",
+      "fr": "Aucune modification préparée",
+      "it": "Nessuna modifica preparata",
+      "es": "Sin cambios preparados",
+      "el": "Δεν υπάρχουν προετοιμασμένες αλλαγές",
+      "pl": "Brak przygotowanych zmian",
+      "cs": "Žádné připravené změny",
+      "ru": "Нет подготовленных изменений"
+    },
+    "Only saved edits appear here. Review the final export report before restoring a prepared copy.": {
+      "de": "Hier erscheinen nur gespeicherte Änderungen. Vor dem Wiederherstellen einer vorbereiteten Kopie den abschließenden Exportbericht prüfen.",
+      "fr": "Seules les modifications enregistrées apparaissent ici. Vérifiez le rapport final d’export avant de restaurer une copie préparée.",
+      "it": "Qui compaiono solo le modifiche salvate. Verifica il rapporto finale di esportazione prima di ripristinare una copia preparata.",
+      "es": "Aquí solo aparecen cambios guardados. Revise el informe final de exportación antes de restaurar una copia preparada.",
+      "el": "Εδώ εμφανίζονται μόνο αποθηκευμένες αλλαγές. Ελέγξτε την τελική αναφορά εξαγωγής πριν επαναφέρετε ένα προετοιμασμένο αντίγραφο.",
+      "pl": "Tutaj widoczne są tylko zapisane zmiany. Przed przywróceniem przygotowanej kopii sprawdź końcowy raport eksportu.",
+      "cs": "Zde se zobrazují pouze uložené změny. Před obnovením připravené kopie zkontrolujte závěrečnou zprávu exportu.",
+      "ru": "Здесь показаны только сохранённые изменения. Перед восстановлением подготовленной копии проверьте итоговый отчёт экспорта."
+    },
+    "Orange": {
+      "de": "Orange",
+      "fr": "Orange",
+      "it": "Arancione",
+      "es": "Naranja",
+      "el": "Πορτοκαλί",
+      "pl": "Pomarańczowy",
+      "cs": "Oranžová",
+      "ru": "Оранжевый"
+    },
+    "Other metadata is locked. Comments and colours remain editable.": {
+      "de": "Andere Metadaten sind gesperrt. Kommentare und Farben bleiben bearbeitbar.",
+      "fr": "Les autres métadonnées sont verrouillées. Commentaires et couleurs restent modifiables.",
+      "it": "Gli altri metadati sono bloccati. Commenti e colori restano modificabili.",
+      "es": "Los demás metadatos están bloqueados. Los comentarios y colores siguen siendo editables.",
+      "el": "Τα άλλα μεταδεδομένα είναι κλειδωμένα. Τα σχόλια και τα χρώματα παραμένουν επεξεργάσιμα.",
+      "pl": "Pozostałe metadane są zablokowane. Komentarze i kolory można nadal edytować.",
+      "cs": "Ostatní metadata jsou zamčená. Komentáře a barvy lze nadále upravovat.",
+      "ru": "Остальные метаданные заблокированы. Комментарии и цвета доступны для изменения."
+    },
+    "Pink": {
+      "de": "Rosa",
+      "fr": "Rose",
+      "it": "Rosa",
+      "es": "Rosa",
+      "el": "Ροζ",
+      "pl": "Różowy",
+      "cs": "Růžová",
+      "ru": "Розовый"
+    },
+    "Red": {
+      "de": "Rot",
+      "fr": "Rouge",
+      "it": "Rosso",
+      "es": "Rojo",
+      "el": "Κόκκινο",
+      "pl": "Czerwony",
+      "cs": "Červená",
+      "ru": "Красный"
+    },
+    "Reset to captured colour": {
+      "de": "Erfasste Farbe wiederherstellen",
+      "fr": "Rétablir la couleur capturée",
+      "it": "Ripristina il colore acquisito",
+      "es": "Restablecer el color capturado",
+      "el": "Επαναφορά καταγεγραμμένου χρώματος",
+      "pl": "Przywróć zarejestrowany kolor",
+      "cs": "Obnovit zachycenou barvu",
+      "ru": "Восстановить зафиксированный цвет"
+    },
+    "Saving working edits…": {
+      "de": "Arbeitsänderungen werden gespeichert…",
+      "fr": "Enregistrement des modifications locales…",
+      "it": "Salvataggio delle modifiche di lavoro…",
+      "es": "Guardando cambios de trabajo…",
+      "el": "Αποθήκευση τοπικών αλλαγών…",
+      "pl": "Zapisywanie zmian roboczych…",
+      "cs": "Ukládání pracovních změn…",
+      "ru": "Сохранение рабочих изменений…"
+    },
+    "Staged working edits": {
+      "de": "Vorgemerkte Arbeitsänderungen",
+      "fr": "Modifications locales préparées",
+      "it": "Modifiche di lavoro preparate",
+      "es": "Cambios de trabajo preparados",
+      "el": "Προετοιμασμένες τοπικές αλλαγές",
+      "pl": "Przygotowane zmiany robocze",
+      "cs": "Připravené pracovní změny",
+      "ru": "Подготовленные рабочие изменения"
+    },
+    "Track colour is unavailable for this snapshot.": {
+      "de": "Die Trackfarbe ist für diesen Snapshot nicht verfügbar.",
+      "fr": "La couleur de piste est indisponible pour cet instantané.",
+      "it": "Colore traccia non disponibile per questa istantanea.",
+      "es": "El color de pista no está disponible en esta instantánea.",
+      "el": "Το χρώμα κομματιού δεν είναι διαθέσιμο για αυτό το στιγμιότυπο.",
+      "pl": "Kolor utworu jest niedostępny w tej migawce.",
+      "cs": "Barva skladby není pro tento snímek dostupná.",
+      "ru": "Цвет трека недоступен для этого снимка."
+    },
+    "Track colour saved locally. It will be reviewed with the export.": {
+      "de": "Trackfarbe lokal gespeichert. Sie wird beim Export geprüft.",
+      "fr": "Couleur de piste enregistrée localement. Elle sera vérifiée avec l’export.",
+      "it": "Colore traccia salvato localmente. Verrà verificato con l’esportazione.",
+      "es": "Color de pista guardado localmente. Se revisará con la exportación.",
+      "el": "Το χρώμα κομματιού αποθηκεύτηκε τοπικά. Θα ελεγχθεί κατά την εξαγωγή.",
+      "pl": "Kolor utworu zapisano lokalnie. Zostanie sprawdzony przy eksporcie.",
+      "cs": "Barva skladby byla místně uložena. Bude zkontrolována při exportu.",
+      "ru": "Цвет трека сохранён локально. Он будет проверен при экспорте."
+    },
+    "Turquoise": {
+      "de": "Türkis",
+      "fr": "Turquoise",
+      "it": "Turchese",
+      "es": "Turquesa",
+      "el": "Τυρκουάζ",
+      "pl": "Turkusowy",
+      "cs": "Tyrkysová",
+      "ru": "Бирюзовый"
+    },
+    "Unsaved comment changes": {
+      "de": "Ungespeicherte Kommentaränderungen",
+      "fr": "Modifications du commentaire non enregistrées",
+      "it": "Modifiche al commento non salvate",
+      "es": "Cambios del comentario sin guardar",
+      "el": "Μη αποθηκευμένες αλλαγές σχολίου",
+      "pl": "Niezapisane zmiany komentarza",
+      "cs": "Neuložené změny komentáře",
+      "ru": "Несохранённые изменения комментария"
+    },
+    "Violet": {
+      "de": "Violett",
+      "fr": "Violet",
+      "it": "Viola",
+      "es": "Violeta",
+      "el": "Μωβ",
+      "pl": "Fioletowy",
+      "cs": "Fialová",
+      "ru": "Фиолетовый"
+    },
+    "Working colour saved": {
+      "de": "Arbeitsfarbe gespeichert",
+      "fr": "Couleur locale enregistrée",
+      "it": "Colore di lavoro salvato",
+      "es": "Color de trabajo guardado",
+      "el": "Το τοπικό χρώμα αποθηκεύτηκε",
+      "pl": "Zapisano kolor roboczy",
+      "cs": "Pracovní barva uložena",
+      "ru": "Рабочий цвет сохранён"
+    },
+    "Yellow": {
+      "de": "Gelb",
+      "fr": "Jaune",
+      "it": "Giallo",
+      "es": "Amarillo",
+      "el": "Κίτρινο",
+      "pl": "Żółty",
+      "cs": "Žlutá",
+      "ru": "Жёлтый"
     }
   }
 }

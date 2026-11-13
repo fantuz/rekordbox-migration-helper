@@ -70,7 +70,7 @@ def main():
                     report['languages'].append({'code':code,'app':'passed','metadata_unchanged':True})
                     if code in ('en','de','el','ru'):page.screenshot(path=str(args.output/(code+'-insights.png')),full_page=False)
                 page.locator('[data-insight-open="t0"]').click();page.wait_for_selector('#track-detail-dialog[open]')
-                page.locator('#track-comments-panel summary').click();note='Unsaved comment Σ Ł Č Русский 🎧 {slot0}'
+                assert page.locator('#track-comment-text').is_visible();note='Unsaved comment Σ Ł Č Русский 🎧 {slot0}'
                 page.fill('#track-comment-text',note);page.select_option('#language','fr');page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
                 assert page.locator('#track-comment-text').input_value()==note
                 assert page.locator('#track-detail-unlock').is_checked() is False

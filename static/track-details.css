@@ -1,0 +1,18 @@
+/* Quick edits remain local; each colour has a text label and selected state. */
+#track-detail-dialog .track-colour-editor,#track-detail-dialog .track-working-recap{border-top:1px solid var(--line);padding-top:14px;margin-top:18px}
+#track-detail-dialog h3{font-size:14px;line-height:1.5;margin:0 0 8px}
+.track-colour-palette{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.track-colour-choice{display:flex;align-items:center;gap:8px;min-height:42px;min-width:0;padding:7px 10px;border:1px solid var(--line);border-radius:5px;background:var(--panel2);color:var(--text);font-size:12px;line-height:1.4;text-align:left;cursor:pointer}
+.track-colour-choice>span:not(.track-colour-swatch){overflow-wrap:anywhere}
+.track-colour-choice[aria-pressed=true]{border:2px solid var(--accent);padding:6px 9px;background:var(--soft-blue);font-weight:650}
+.track-colour-choice:disabled{cursor:default;opacity:.6}
+.track-colour-choice:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.track-colour-swatch{flex:0 0 20px;width:20px;height:20px;border:1px solid #777;border-radius:50%;background:var(--track-colour)}
+.track-colour-swatch.unassigned{background:linear-gradient(135deg,transparent 44%,var(--muted) 45%,var(--muted) 55%,transparent 56%)}
+.track-colour-check{margin-left:auto;min-width:1em}
+#track-detail-dialog .track-working-recap h3{display:flex;align-items:center;gap:8px}
+#track-working-count{font-size:12px;border:1px solid var(--line);border-radius:4px;padding:0 6px;font-variant-numeric:tabular-nums}
+#track-working-list{padding:0;list-style:none;margin:8px 0}
+#track-working-list li{display:grid;grid-template-columns:minmax(100px,1fr) minmax(0,3fr);gap:12px;border-top:1px solid var(--line);padding:8px 0;font-size:12px;line-height:1.5}
+#track-working-list li>span{white-space:pre-wrap;overflow-wrap:anywhere;max-height:100px;overflow:auto}
+@media(max-width:500px){.track-colour-palette{grid-template-columns:repeat(2,minmax(0,1fr))}#track-working-list li{grid-template-columns:minmax(80px,1fr) minmax(0,2fr)}}

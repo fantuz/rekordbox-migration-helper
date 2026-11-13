@@ -14,7 +14,7 @@ import zipfile
 from xml.etree import ElementTree
 
 from engine import decision_map, open_master, position
-from metadata_overrides import plan as override_plan,apply_native
+from metadata_overrides import plan as override_plan,apply_native,change_summary
 
 
 def mutable_copy(path):
@@ -296,6 +296,7 @@ def export_native(catalog,decisions,relocations,destination,progress):
     rewrite_archive(backup,destination,{"master.db":master,"contents.xml":contents},progress)
     return {"active_tracks_before":before,"active_tracks_after":after,"merges":len(mapping),"changed_rows":changed,
             "relocations":len(relocations),"metadata_fields":sum(len(v) for v in field_edits.values()),"new_metadata_rows":new_metadata_rows,
+            "metadata_changes_by_field":change_summary(field_edits)["by_field"],
             "bytes":destination.stat().st_size,"local_update_count":usn,
             "format":"Experimental native rekordbox Backup Library ZIP",
             "restore_validation":"Verify in an isolated Windows library with Cloud Library Sync paused before replacing your working library."}

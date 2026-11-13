@@ -4,6 +4,7 @@ from urllib.parse import urlsplit
 import urllib.request
 
 from check_duplicate_review_ui import check_duplicate_review_ui
+from check_track_details_ui import check_track_details_ui
 
 
 def check_workspace_ui(browser,page,base,sid,output,offline):
@@ -87,6 +88,7 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     page.locator('#bubble-reset').click();page.wait_for_function('document.querySelectorAll("#bubble-breadcrumbs button").length===1 && document.querySelector("#library-bubbles").dataset.state==="ready"')
     page.unroute('**/api/lab',library);page.unroute('**/api/lab/snapshots',capture);page.unroute('**/api/tasks/synthetic-capture',task)
     duplicate_review=check_duplicate_review_ui(browser,base,output)
+    quick_edits=check_track_details_ui(browser,base,output)
     # Browser locale fallback, persistence and blocked local storage must not stop startup.
     for locale,blocked in [('pl-PL',False),('nl-NL',False),('fr-FR',True)]:
         context=browser.new_context(locale=locale,viewport={'width':390,'height':844})
@@ -102,4 +104,4 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
         if not blocked:other.reload(wait_until='networkidle');assert other.locator('html').get_attribute('lang')=='de'
         assert not errors,errors
         context.close()
-    return {'grouped_navigation':True,'sidebar_preference':True,'loaded_workspace_capture_ui':True,'centered_modal_progress':True,'colour_cloud_and_drilldown':True,'stable_horizontal_inspector':True,'summary_card_readability':True,'locale_fallback_and_blocked_storage':True,'narrow_layout':True,'capture_transport':'synthetic stub; no personal input files','duplicate_review':duplicate_review}
+    return {'grouped_navigation':True,'sidebar_preference':True,'loaded_workspace_capture_ui':True,'centered_modal_progress':True,'colour_cloud_and_drilldown':True,'stable_horizontal_inspector':True,'summary_card_readability':True,'locale_fallback_and_blocked_storage':True,'narrow_layout':True,'capture_transport':'synthetic stub; no personal input files','duplicate_review':duplicate_review,'quick_edits':quick_edits}

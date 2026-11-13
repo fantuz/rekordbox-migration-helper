@@ -5,6 +5,8 @@
 - Colour cloud: explicit loaded-library capture, visible source/loading/empty states, bounded group-detail calculations and a large-library regression.
 - Bubble maps: expanded canvas, stable wider circle spacing and a fixed horizontal category-detail panel.
 - Readability: grouped, resizable text navigation, compact header, balanced summary cards and larger duplicate-review controls and comparison details.
+- File view: comments open directly, labelled colour palette saves without unlocking, and private export recaps retain saves and resets. Working colour edits map to verified native IDs or documented XML RGB values.
+- Language changes preserve inspected comparisons, keeper choices and draft options; removed comparisons use a valid fallback.
 - Centred operation progress blocks navigation during long tasks. Native ZIP copying and verification report progress inside large members.
 - Download badges follow the project platform layout; new package/artifact names omit the preview suffix and release notes generate platform links.
 - Additional translation-catalogue, locale/storage, responsive-layout and three-engine browser checks run on GitHub alongside native package validation.

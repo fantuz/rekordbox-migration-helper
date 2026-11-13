@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import json
 from pathlib import Path
+from metadata_overrides import change_summary
 import shutil
 import zipfile
 
@@ -102,7 +103,13 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
         for name in ("export-master.db","native-master.db"):
             (pending/name).unlink(missing_ok=True)
         created=datetime.now(timezone.utc).isoformat()
-        review={"session":snapshot,"decisions":decisions,"reference_edits":relocations,"inputs":expected,
+        applied_by_format={name:{key:checked[key] for key in ('metadata_fields','metadata_changes_by_field','metadata_tracks_outside_xml') if key in checked}
+                           for name,checked in validations.items()}
+        recap={**change_summary(catalog.metadata.get('field_overrides',{}),snapshot.get('metadata_override_evidence')),
+               'count_scope':'staged',
+               'scope_note':'Staged working edits frozen for this export. See applied_by_format for fields applied after merging and XML scope limits.',
+               'applied_by_format':applied_by_format}
+        review={"metadata_change_recap":recap,"session":snapshot,"decisions":decisions,"reference_edits":relocations,"inputs":expected,
                 "metadata_overrides":deepcopy(catalog.metadata.get('field_overrides',{}))}
         digest=sha256(json.dumps(review,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
         report={**review,"review_sha256":digest,"export_id":export_id,"created":created,"format":kind,"validation":validations}
@@ -114,7 +121,9 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
                           "download":"/api/download/"+export_id+"/"+name})
         record={"id":export_id,"status":"complete","format":kind,"created":created,"session_id":snapshot["id"],
                 "session_name":snapshot.get("name",snapshot["id"]),"directory":str(final.resolve()),
-                "review_sha256":digest,"merges":next(iter(validations.values()))["merges"],"files":files}
+                "review_sha256":digest,"merges":next(iter(validations.values()))["merges"],
+                "metadata_fields":recap["fields"],"metadata_tracks":recap["tracks"],"metadata_changes_by_field":recap["by_field"],
+                "metadata_count_scope":"staged","applied_by_format":applied_by_format,"files":files}
         (pending/"export.json").write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding="utf-8")
         pending.rename(final)
     except Exception:

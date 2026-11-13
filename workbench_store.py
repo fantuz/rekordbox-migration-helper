@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import sqlite3
 from uuid import uuid4
-from metadata_overrides import validate
+from metadata_overrides import validate,baseline,comparable
 
 
 def now():return datetime.now(timezone.utc).isoformat()
@@ -86,7 +86,8 @@ class Store:
     def save_override(self,scope,track_id,field,value,baseline,origin='manual'):
         value=validate(field,value)
         with self.connection() as db:
-            old=db.execute('SELECT value FROM overrides WHERE scope_key=? AND track_id=? AND field=?',(scope,track_id,field)).fetchone()
+            old=db.execute('SELECT value,baseline FROM overrides WHERE scope_key=? AND track_id=? AND field=?',(scope,track_id,field)).fetchone()
+            if old is not None and comparable(field,json.loads(old[1]))!=comparable(field,baseline):raise ValueError('Metadata baseline changed; reset this edit and review the current snapshot')
             db.execute('INSERT INTO override_history VALUES (?,?,?,?,?,?,?)',(uuid4().hex,scope,track_id,field,old[0] if old else None,encoded(value),now()))
             db.execute('INSERT OR REPLACE INTO overrides VALUES (?,?,?,?,?,?,?)',(scope,track_id,field,encoded(value),encoded(baseline),str(origin)[:120],now()))
         return value
@@ -97,9 +98,10 @@ class Store:
         scope=snapshot['scope_key'];created=now()
         with self.connection() as db:
             for identity in set(track_ids):
-                old=db.execute('SELECT value FROM overrides WHERE scope_key=? AND track_id=? AND field=?',(scope,identity,field)).fetchone()
+                old=db.execute('SELECT value,baseline FROM overrides WHERE scope_key=? AND track_id=? AND field=?',(scope,identity,field)).fetchone()
+                if old is not None and comparable(field,json.loads(old[1]))!=comparable(field,baseline(field,tracks[identity])):raise ValueError('Metadata baseline changed; reset this edit and review the current snapshot')
                 db.execute('INSERT INTO override_history VALUES (?,?,?,?,?,?,?)',(uuid4().hex,scope,identity,field,old[0] if old else None,encoded(value),created))
-                db.execute('INSERT OR REPLACE INTO overrides VALUES (?,?,?,?,?,?,?)',(scope,identity,field,encoded(value),encoded(tracks[identity].get(field)),'manual normalization',created))
+                db.execute('INSERT OR REPLACE INTO overrides VALUES (?,?,?,?,?,?,?)',(scope,identity,field,encoded(value),encoded(baseline(field,tracks[identity])),'manual normalization',created))
         return len(set(track_ids))
 
     def clear_override(self,scope,track_id,field):
@@ -107,6 +109,13 @@ class Store:
             old=db.execute('SELECT value FROM overrides WHERE scope_key=? AND track_id=? AND field=?',(scope,track_id,field)).fetchone()
             if old:db.execute('INSERT INTO override_history VALUES (?,?,?,?,?,?,?)',(uuid4().hex,scope,track_id,field,old[0],None,now()))
             db.execute('DELETE FROM overrides WHERE scope_key=? AND track_id=? AND field=?',(scope,track_id,field))
+
+    def override_history(self,scope):
+        """Private audit records, including replaced values and resets."""
+        with self.connection() as db:
+            return [{**dict(row),'previous':json.loads(row['previous']) if row['previous'] is not None else None,
+                     'current':json.loads(row['current']) if row['current'] is not None else None}
+                    for row in db.execute('SELECT * FROM override_history WHERE scope_key=? ORDER BY created,id',(scope,))]
 
     def setting(self,name,default=None):
         with self.connection() as db:r=db.execute('SELECT value FROM settings WHERE name=?',(name,)).fetchone()
@@ -119,7 +128,12 @@ class Store:
         result=deepcopy(snapshot);overrides=self.overrides(snapshot['scope_key']);count=0
         for track in result['tracks']:
             for field,edit in overrides.get(track['id'],{}).items():
+                if comparable(field,baseline(field,track))!=comparable(field,edit['baseline']):raise ValueError('Metadata baseline changed; capture again and review the edit for '+track['id']+' / '+field)
                 track[field]=edit['value'];count+=1
+                if field=='colour':
+                    from track_tags import xml_colour
+                    track.update(xml_colour(edit['value']))
+                    track['color_basis']='Staged local colour override; source metadata is unchanged'
                 if field in track.get('raw_tags',{}):track['raw_tags'][field]=edit['value']
         result['metadata_overrides_applied']=count
         return result

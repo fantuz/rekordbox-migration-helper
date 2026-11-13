@@ -1,12 +1,19 @@
 """Explicit, validated field edits applied only to generated library copies."""
 from datetime import datetime,timezone
 
-FIELDS=('title','artist','year','rating','album','genre','comment')
-XML_FIELDS={'title':'Name','artist':'Artist','year':'Year','rating':'Rating','album':'Album','genre':'Genre','comment':'Comments'}
+FIELDS=('title','artist','year','rating','album','genre','comment','colour')
+FREE_FIELDS=('comment','colour')
+XML_FIELDS={'title':'Name','artist':'Artist','year':'Year','rating':'Rating','album':'Album','genre':'Genre','comment':'Comments','colour':'Colour'}
 
 
 def validate(field,value):
-    if field not in FIELDS:raise ValueError('Choose title, artist, year, rating, album, genre or comment')
+    if field not in FIELDS:raise ValueError('Choose title, artist, year, rating, album, genre, comment or colour')
+    if field=='colour':
+        from track_tags import PALETTE,rgb
+        if value=='':return ''
+        code=rgb(value) if isinstance(value,str) else None
+        if code not in {c for _,c in PALETTE}:raise ValueError('Choose a standard track colour or explicitly clear the assigned colour')
+        return code
     if field=='comment':
         value='' if value is None else str(value)
         if len(value)>4096 or any((ord(c)<32 and c not in '\t\n\r') or 0xD800<=ord(c)<=0xDFFF or ord(c) in (0xFFFE,0xFFFF) for c in value):
@@ -49,6 +56,7 @@ def apply_xml(element,fields):
     for field,value in fields.items():
         key=XML_FIELDS[field]
         if field=='year' and value is None:element.attrib.pop(key,None)
+        elif field=='colour':element.set(key,'0x'+value[1:] if value else '')
         else:element.set(key,str(value*51 if field=='rating' else value))
 
 
@@ -59,6 +67,23 @@ def apply_native(db,tables,edits,update,timestamp,next_usn):
     named={'artist':('djmdArtist','ArtistID'),'album':('djmdAlbum','AlbumID'),'genre':('djmdGenre','GenreID')}
     columns={'title':'Title','year':'ReleaseYear','rating':'Rating','comment':'Commnt'}
     cache={};created=0
+    def colour_id(value,identity):
+        from track_tags import native_colour
+        if 'ColorID' not in tables.get('djmdContent',set()):raise ValueError('Native colour export is unsupported: ColorID is unavailable')
+        if value=='':
+            from track_tags import native_clear_value
+            return native_clear_value(db,identity)
+        key=('colour',value)
+        if key in cache:return cache[key]
+        columns=tables.get('djmdColor',set())
+        if 'ID' not in columns:raise ValueError('Native colour export is unsupported: configured colour rows are unavailable')
+        names=('ID','ColorCode','SortKey','Commnt')
+        selected=','.join('"'+n+'"' if n in columns else 'NULL AS "'+n+'"' for n in names)
+        active=' WHERE coalesce(rb_local_deleted,0)=0' if 'rb_local_deleted' in columns else ''
+        candidates=[dict(zip(names,r)) for r in db.execute('SELECT '+selected+' FROM djmdColor'+active)]
+        matches=[r['ID'] for r in candidates if r['ID'] not in (None,'',0,'0') and native_colour(r['ID'],r)['color_hex']==value]
+        if len(matches)!=1:raise ValueError('Native colour export requires one unique configured colour row for '+value+'; no ColorID was invented')
+        cache[key]=matches[0];return cache[key]
     def lookup(table,name):
         nonlocal created
         if not name:return None
@@ -82,13 +107,20 @@ def apply_native(db,tables,edits,update,timestamp,next_usn):
     for identity,fields in edits.items():
         values={}
         for field,value in fields.items():
-            if field in named:
+            if field=='colour':values['ColorID']=colour_id(value,identity)
+            elif field in named:
                 table,column=named[field];values[column]=lookup(table,value)
             else:values[columns[field]]=0 if field=='year' and value is None else value
         if not set(values)<=tables['djmdContent']:raise ValueError('Unsupported content metadata schema')
         update('djmdContent','ID=? AND rb_local_deleted=0',(identity,),values)
         for field,value in fields.items():
-            if field in named:
+            if field=='colour':
+                actual=db.execute('SELECT ColorID FROM djmdContent WHERE ID=?',(identity,)).fetchone()
+                expected=values['ColorID']
+                # SQLite applies the declared foreign-key column affinity.
+                if actual is not None and actual[0] is not None and expected is not None:
+                    actual=(str(actual[0]),);expected=str(expected)
+            elif field in named:
                 table,column=named[field]
                 actual=db.execute('SELECT n.Name FROM djmdContent c LEFT JOIN "'+table+'" n ON n.ID=c."'+column+'" WHERE c.ID=?',(identity,)).fetchone()
                 expected=value or None
@@ -97,3 +129,20 @@ def apply_native(db,tables,edits,update,timestamp,next_usn):
                 expected=0 if field=='year' and value is None else value
             if actual is None or actual[0]!=expected:raise ValueError('Native metadata verification failed: '+identity+' / '+field)
     return created
+
+
+def baseline(field,track):
+    if field=='colour':
+        from track_tags import colour_baseline
+        return colour_baseline(track)
+    return track.get(field)
+
+
+def change_summary(edits,evidence=None):
+    """Private review-only recap. Comments are not part of shareable metadata."""
+    counts={field:sum(field in fields for fields in edits.values()) for field in FIELDS}
+    rows=[{'track_id':identity,'field':field,'value':value,
+           **({'baseline':evidence[identity][field]['baseline'],'origin':evidence[identity][field]['origin']}
+              if evidence and identity in evidence and field in evidence[identity] else {})}
+          for identity,fields in edits.items() for field,value in fields.items()]
+    return {'tracks':len(edits),'fields':sum(counts.values()),'by_field':{k:v for k,v in counts.items() if v},'changes':rows}
