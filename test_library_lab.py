@@ -144,19 +144,21 @@ class StoreAndOverrideTests(unittest.TestCase):
             z.write(master,'master.db');z.writestr('contents.xml','<ROOT><VALUE name="CONTENT_NUM" val="1"/></ROOT>');z.writestr('USBANLZ/a/b/ANLZ0000.DAT',b'unchanged analysis')
         xml.write_text('<DJ_PLAYLISTS><PRODUCT Version="7.0.0"/><COLLECTION Entries="1"><TRACK TrackID="one" Name="Original" Artist="" Year="2000" Rating="51"><TEMPO Inizio="0" Bpm="120" Metro="4/4" Battito="1"/><POSITION_MARK Name="Drop" Num="0" Type="0" Start="1.000"/></TRACK></COLLECTION><PLAYLISTS><NODE><TRACK Key="one"/></NODE></PLAYLISTS></DJ_PLAYLISTS>',encoding='utf-8')
         original=[sha256(p.read_bytes()).hexdigest() for p in (backup,xml)]
-        edits={'one':{'title':'Edited title','artist':'Edited artist','album':'Edited album','genre':'Edited genre','year':2024,'rating':4,'comment':'First line\nSecond & café <mix>'}}
+        edits={'one':{'title':'Łódź · Ελληνικά · Česky · Русский · 🎧','artist':'Grüße & Français','album':'Città più · Español ñ','genre':'House · Δοκιμή','year':2024,'rating':4,'comment':'First line\nGrüße Français Città Español Ελληνικά Łódź Český Русский 🎧 & <mix>'}}
         c=SimpleNamespace(tracks={'one':{'october_xml':True}},metadata={'xml_path':str(xml),'zip_path':str(backup),'version':'7.0.0','field_overrides':edits})
         outxml=self.root/'edited.xml';outzip=self.root/'edited.zip'
         x=export_xml(c,{}, {},outxml,lambda *_:None);n=export_native(c,{}, {},outzip,lambda *_:None)
         self.assertEqual((x['metadata_fields'],n['metadata_fields']),(7,7))
-        checked=parse_xml(outxml,lambda *_:None)[0]['one'];self.assertEqual(checked['attrs']['Genre'],'Edited genre');self.assertEqual(checked['attrs']['Rating'],'204')
+        checked=parse_xml(outxml,lambda *_:None)[0]['one'];self.assertEqual(checked['attrs']['Genre'],edits['one']['genre']);self.assertEqual(checked['attrs']['Rating'],'204')
+        self.assertEqual(checked['attrs']['Name'],edits['one']['title']);self.assertEqual(checked['attrs']['Artist'],edits['one']['artist']);self.assertEqual(checked['attrs']['Album'],edits['one']['album'])
         self.assertEqual(checked['tempo'],1);self.assertEqual(checked['marks'][0]['Name'],'Drop')
         self.assertEqual(checked['attrs']['Comments'],edits['one']['comment'])
         with zipfile.ZipFile(outzip) as z:
             extracted=self.root/'check.db';extracted.write_bytes(z.read('master.db'));self.assertEqual(z.read('USBANLZ/a/b/ANLZ0000.DAT'),b'unchanged analysis')
         with closing(open_master(extracted.resolve())) as db:
-            self.assertEqual(tuple(db.execute('SELECT Title,ReleaseYear,Rating FROM djmdContent').fetchone()),('Edited title',2024,4))
-            self.assertEqual(db.execute('SELECT Name FROM djmdGenre').fetchone()[0],'Edited genre')
+            self.assertEqual(tuple(db.execute('SELECT Title,ReleaseYear,Rating FROM djmdContent').fetchone()),(edits['one']['title'],2024,4))
+            self.assertEqual(db.execute('SELECT Name FROM djmdGenre').fetchone()[0],edits['one']['genre'])
+            self.assertEqual(db.execute('SELECT Name FROM djmdArtist').fetchone()[0],edits['one']['artist']);self.assertEqual(db.execute('SELECT Name FROM djmdAlbum').fetchone()[0],edits['one']['album'])
             self.assertEqual(db.execute('SELECT Commnt FROM djmdContent').fetchone()[0],edits['one']['comment'])
         self.assertEqual([sha256(p.read_bytes()).hexdigest() for p in (backup,xml)],original)
 

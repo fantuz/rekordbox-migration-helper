@@ -27,13 +27,24 @@ def mutable_copy(path):
     return db
 
 
+class RawMemberInfo(zipfile.ZipInfo):
+    """Keep the central filename encoding consistent with the raw local header."""
+    __slots__=()
+    def __init__(self,source):
+        super().__init__(source.filename,source.date_time)
+        for attribute in zipfile.ZipInfo.__slots__:
+            if hasattr(source,attribute):setattr(self,attribute,getattr(source,attribute))
+    def _encodeFilenameFlags(self):
+        return self.filename.encode('utf-8' if self.flag_bits&0x800 else 'cp437'),self.flag_bits
+
+
 def copy_member_raw(source, target, info, end_offset):
     """Preserve compressed bytes, including Zip64 local headers and descriptors.
 
     zipfile has no public compressed-copy API. Only this helper uses its writer
     bookkeeping. Finalization by zipfile rebuilds the central directory offsets.
     """
-    member=copy(info)
+    member=RawMemberInfo(info)
     target.fp.seek(target.start_dir)
     member.header_offset=target.fp.tell()
     source.fp.seek(info.header_offset)

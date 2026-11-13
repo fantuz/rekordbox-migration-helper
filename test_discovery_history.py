@@ -95,6 +95,22 @@ class DiscoveryAndMultiScopeTests(unittest.TestCase):
     def setUp(self):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name).resolve()
 
+    def test_inaccessible_mount_does_not_break_analyzer_or_hide_other_libraries(self):
+        denied=self.root/'restricted-volume';denied.mkdir()
+        readable=self.root/'readable-volume';readable.mkdir()
+        database=readable/'master.db';original=b'discovery must not open or modify this database';database.write_bytes(original)
+        real_exists=Path.exists
+        def exists(path,*args,**kwargs):
+            if path==denied/'Users':raise PermissionError('Synthetic inaccessible mounted directory')
+            return real_exists(path,*args,**kwargs)
+        def discover():
+            return suggestions('linux',{},self.root/'home',volumes=[{'path':str(p),'kind':'synthetic mounted volume'} for p in (denied,readable)])
+        with patch.object(Path,'exists',exists),patch.object(application,'discover_locations',side_effect=discover),patch.object(application,'DATA',self.root/'workspace'):
+            response=application.app.test_client().get('/api/analyzer')
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.json['suggestions'],[str(readable)])
+        self.assertEqual(database.read_bytes(),original)
+
     def test_mounted_windows_profile_and_relocated_settings_are_suggestions_only(self):
         profile=self.root/'Users'/'DJ'/'AppData'/'Roaming'/'Pioneer'/'rekordbox';profile.mkdir(parents=True)
         relocated=self.root/'DJ Music'/'Library';relocated.mkdir(parents=True)

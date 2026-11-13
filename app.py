@@ -14,7 +14,6 @@ import sqlite3
 import sys
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
-from werkzeug.utils import secure_filename
 from engine import Catalog, analyze, enrich_usage, decision_map, export_xml
 from native_export import export_native
 from media import scan as scan_media, verify_pair
@@ -24,6 +23,8 @@ from platform_paths import default_data_directory, discover_cloud_roots
 from discovery import suggestions as discover_locations,scan_roots as discover_scan
 from storage_audit import scan_storage, verify_group
 from metadata_export import capture_catalog, export_metadata, list_metadata_exports
+import localization
+import documentation
 
 ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT.parent
@@ -36,6 +37,8 @@ INPUTS=DATA/"inputs"
 INPUTS.mkdir(exist_ok=True)
 app = Flask(__name__, static_folder="static")
 app.config.update(MAX_CONTENT_LENGTH=48*1024**3, TRUSTED_HOSTS=["127.0.0.1","localhost"])
+localization.register(app,ROOT/'static')
+documentation.register(app)
 TOKEN = secrets.token_urlsafe(32)
 executor = ThreadPoolExecutor(max_workers=1)
 lock = RLock()
@@ -722,15 +725,23 @@ def re_uuid(value):
 @app.post("/api/import")
 def start_import():
     body=request.get_json()
+    if not isinstance(body,dict):raise ValueError('Choose one ZIP library backup and one XML collection')
     for key,ext in (("zip",".zip"),("xml",".xml")):
         if not str(body.get(key,"")).lower().endswith(ext):
             raise ValueError("Choose one ZIP library backup and one XML collection")
-    sid=uuid4().hex
-    folder=TEMPORARY.folder(sid)
     target=str(body.get('resume_session') or '')
     if target:resume_state(target)
-    info={"zip":secure_filename(body["zip"]),"xml":secure_filename(body["xml"]),'resume_session':target}
-    (folder/"upload.json").write_text(json.dumps(info),encoding="utf-8")
+    import ntpath
+    names={key:ntpath.basename(str(body[key]).replace('/','\\')) for key in ('zip','xml')}
+    try:
+        if any('\x00' in name for name in names.values()):raise UnicodeError()
+        for name in names.values():name.encode('utf-8')
+    except UnicodeError:raise ValueError('Filenames must contain valid Unicode without null characters') from None
+    sid=uuid4().hex
+    folder=TEMPORARY.folder(sid)
+    # Upload bytes always use fixed session paths; these names are display metadata.
+    info={**names,'resume_session':target}
+    (folder/"upload.json").write_text(json.dumps(info,ensure_ascii=False),encoding="utf-8")
     return jsonify(session=sid)
 
 

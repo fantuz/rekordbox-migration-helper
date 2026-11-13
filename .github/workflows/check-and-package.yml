@@ -46,7 +46,7 @@ jobs:
         with:
           python-version: '3.13'
           cache: pip
-      - run: python -m pip install -r requirements.txt
+      - run: python -m pip install -r requirements.txt -r requirements-test.txt
       - run: python -m unittest discover -v
       - run: python packaging/smoke_desktop.py --source . --report ci-output/source-smoke.json
       - name: Check browser JavaScript syntax
@@ -60,6 +60,9 @@ jobs:
           node --check static/history.js
           node --check static/insights.js
           node --check static/track-details.js
+          node --check static/i18n.js
+          node --check static/ui-language.js
+          node --check static/documentation.js
           node --check static/d3-hierarchy-3.1.2.min.js
           bash -n start.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -168,10 +171,37 @@ jobs:
             releases/*macos*.zip
             releases/*macos*.sha256
 
+  browser-language:
+    name: Language and Unicode UI · ${{ matrix.browser }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: python -m pip install -r requirements.txt -r requirements-test.txt -r requirements-browser.txt
+      - run: python -m playwright install --with-deps ${{ matrix.browser }}
+      - run: python packaging/check_browser_languages.py --browser ${{ matrix.browser }} --output ci-output/languages
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: language-validation-${{ matrix.browser }}
+          path: ci-output/languages/
+          if-no-files-found: error
+          retention-days: 14
+
   pr-checks:
     name: Workbench PR checks
     if: always()
-    needs: [test, windows-build, windows-portable, macos-app]
+    needs: [test, windows-build, windows-portable, macos-app, browser-language]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

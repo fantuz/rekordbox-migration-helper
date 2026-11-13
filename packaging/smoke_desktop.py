@@ -103,6 +103,11 @@ def main():
                 saved=request("/api/analyzer/"+result["id"]+"/report")
                 assert saved["database"]["counters"]["tracks"]==1
                 lab=request('/api/lab')
+                assert request('/api/docs')['chapters']
+                assert 'html' in request('/api/docs/interface')
+                with urllib.request.urlopen(base+'/api/i18n.js',timeout=10) as response:
+                    translations=response.read().decode('utf-8')
+                assert 'WORKBENCH_LOCALES' in translations and 'Ελληνικά' in translations and 'Русский' in translations
                 assert lab['musicbrainz_enabled'] is False
                 started=request('/api/lab/snapshots',{'source':result['id'],'label':'Synthetic CI lab'})
                 deadline=time.monotonic()+30

@@ -8,6 +8,7 @@ import math
 from pathlib import Path
 import shutil
 import zipfile
+from localization import browser_catalogues
 
 from engine import is_auto
 from track_tags import native_colour,rgb
@@ -40,7 +41,7 @@ def clean(value):
 def track(values):
     """Keep a bounded metadata allowlist; unavailable values stay unknown."""
     text = ("id", "title", "artist", "album", "genre", "label", "composer", "date_added", "last_played", "tonality", *PATH_FIELDS)
-    result = {field: clean(values.get(field)) for field in text}
+    result = {field: str(values.get(field) or '') for field in text}
     result['comment']=None if values.get('comment') is None else str(values['comment'])
     result.update({field:clean(values.get(field)) for field in ('color_name','color_key','color_basis')})
     result['color_status']=values.get('color_status') if values.get('color_status') in ('assigned','unassigned','unknown') else 'unknown'
@@ -53,7 +54,7 @@ def track(values):
     result["analysed"] = None if values.get("analysed") is None else bool(values["analysed"])
     path = result["current_path"].replace("\\", "/")
     result["format"] = clean(values.get("format") or Path(path).suffix.lstrip(".")).upper()
-    result["playlists"] = sorted({clean(p) for p in values.get("playlists", []) if clean(p)}, key=str.casefold)
+    result["playlists"] = sorted({str(p) for p in values.get("playlists", []) if clean(p)}, key=str.casefold)
     return result
 
 
@@ -148,13 +149,14 @@ def export_metadata(snapshot, root, export_id, assets, progress, title="My libra
         data = payload(snapshot, title, include_paths)
         serialized = script_json(data)
         css, js = (assets/"explorer.css").read_text(encoding="utf-8"), (assets/"explorer.js").read_text(encoding="utf-8")
+        translations=browser_catalogues(assets)+'\n'+(assets/'i18n.js').read_text(encoding='utf-8')
         template = (assets/"explorer.html").read_text(encoding="utf-8")
         def page(view, single):
             return (template.replace("@@TITLE@@", html.escape(data["title"]))
                     .replace("@@VIEW@@", view).replace("@@MODE@@", "single" if single else "multi")
                     .replace("@@STYLES@@", "<style>"+css+"</style>" if single else '<link rel="stylesheet" href="explorer.css">')
                     .replace("@@DATA@@", "<script>window.METADATA_SNAPSHOT="+serialized+";</script>" if single else '<script src="library-data.js"></script>')
-                    .replace("@@APP@@", "<script>"+js+"</script>" if single else '<script src="explorer.js"></script>'))
+                    .replace("@@APP@@", "<script>"+translations+'\n'+js+"</script>" if single else '<script src="translations.js"></script><script src="explorer.js"></script>'))
         progress(20, "Writing standalone HTML with metadata only")
         standalone = page("index", True).encode("utf-8")
         (pending/"library.html").write_bytes(standalone)
@@ -164,6 +166,7 @@ def export_metadata(snapshot, root, export_id, assets, progress, title="My libra
                 archive.writestr(view+".html", page(view, False).encode("utf-8"))
             archive.writestr("explorer.css", css.encode("utf-8"))
             archive.writestr("explorer.js", js.encode("utf-8"))
+            archive.writestr('translations.js',translations.encode('utf-8'))
             archive.writestr("library-data.js", ("window.METADATA_SNAPSHOT="+serialized+";").encode("utf-8"))
             archive.writestr("START HERE.txt", "Extract the entire ZIP, then open index.html in a browser.\nNo server, application, internet connection or installation is required.\nThis is a captured metadata explorer, not a rekordbox backup or editable library.\nStaged cleanup decisions are not applied. No audio, artwork, waveforms or native database is included.\n"+("Recorded file paths were included by your explicit choice.\n" if include_paths else "Recorded file paths are excluded.\n"))
         with zipfile.ZipFile(pending/"metadata-explorer.zip") as checked:

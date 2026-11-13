@@ -24,11 +24,11 @@ def main():
              "--name","Library Workbench","--distpath",str(dist),"--workpath",str(build/"work"),
              "--specpath",str(build),"--target-architecture",architecture,
              "--osx-bundle-identifier","org.fantuz.rekordbox-migration-helper",
-             "--add-data",str(ROOT/"static")+":static","--collect-all","pyrekordbox",
+             "--add-data",str(ROOT/"static")+":static","--add-data",str(ROOT/'docs')+':docs',"--collect-all","markdown_it","--collect-all","pyrekordbox",
              "--collect-all","sqlcipher3","--copy-metadata","sqlcipher3-wheels",
              "--hidden-import","sqlcipher3.dbapi2","--collect-all","tinytag",str(ROOT/"desktop_launcher.py")]
     # Insert data arguments before the entry point; Python's -m invocation stays intact.
-    for name in ("LICENSE","THIRD-PARTY-NOTICES.txt"):
+    for name in ("LICENSE","THIRD-PARTY-NOTICES.txt","README.md","CHANGELOG.md","SECURITY.md","CONTRIBUTING.md"):
         if (ROOT/name).is_file():command[-1:-1]=["--add-data",str(ROOT/name)+":."]
     subprocess.run(command,cwd=ROOT,check=True)
     app=dist/"Library Workbench.app"
@@ -39,7 +39,7 @@ def main():
               "signing":"ad-hoc; not Apple Developer ID signed or notarized","rekordbox_restore":"not exercised",
               "commit":os.environ.get("GITHUB_SHA"),"runtime_validation":json.loads(validation.read_text(encoding="utf-8")),
               "dependencies":[{"name":d.metadata["Name"],"version":d.version} for d in importlib.metadata.distributions()],
-              "application_sources":{str(path.relative_to(ROOT)):sha256(path.read_bytes()).hexdigest() for path in [*ROOT.glob("*.py"),*list((ROOT/"static").glob("*"))] if path.is_file() and not path.name.startswith("test_")}}
+              "application_sources":{str(path.relative_to(ROOT)):sha256(path.read_bytes()).hexdigest() for path in [*ROOT.glob("*.py"),*list((ROOT/"static").glob("*")),*list((ROOT/'docs').glob('*')),*[ROOT/name for name in ('README.md','CHANGELOG.md','SECURITY.md','CONTRIBUTING.md')]] if path.is_file() and not path.name.startswith("test_")}}
     resources=app/"Contents/Resources"
     (resources/"VERSION").write_text(VERSION+"\n",encoding="utf-8")
     (resources/"BUILD-MANIFEST.json").write_text(json.dumps(manifest,indent=2),encoding="utf-8")

@@ -63,10 +63,10 @@ def _case_path(base,*parts):
         if part in ('','.') :continue
         if part=='..':return None
         exact=path/part
-        if exact.exists():
-            if exact.is_symlink() or exact.is_junction():return None
-            path=exact;continue
         try:
+            if exact.exists():
+                if exact.is_symlink() or exact.is_junction():return None
+                path=exact;continue
             matches=[p for p in path.iterdir() if p.name.casefold()==part.casefold() and not p.is_symlink() and not p.is_junction()]
         except OSError:return None
         if len(matches)!=1:return None
