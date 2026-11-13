@@ -3,9 +3,11 @@ import importlib.util
 from io import BytesIO
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tarfile
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 import urllib.error
@@ -159,6 +161,40 @@ class ReleaseTests(unittest.TestCase):
         windows=self.root/('Library-Workbench-'+self.version+'-windows-x64.zip')
         windows.rename(windows.with_name(windows.stem+'-preview.zip'))
         with self.assertRaisesRegex(ValueError,'exactly the four'):release.verify_assets(self.root,self.version,self.commit)
+
+    def test_full_history_includes_merged_features_and_complete_unicode_messages(self):
+        repo=self.root/'history';repo.mkdir()
+        def git(*args):
+            return subprocess.run(['git',*args],cwd=repo,check=True,capture_output=True,text=True,encoding='utf-8').stdout.strip()
+        git('init','--initial-branch=main');git('config','user.name','Release fixture');git('config','user.email','fixture@example.invalid')
+        (repo/'base.txt').write_text('base',encoding='utf-8');git('add','base.txt');git('commit','-m','Initial feature')
+        first=git('rev-parse','HEAD');git('checkout','-b','feature')
+        (repo/'feature.txt').write_text('colour',encoding='utf-8');git('add','feature.txt')
+        message='Colour [links] <tag> @mention\n\nFull details: Ελληνικά · Łódź · 日本語 🎧\nSecond body line.'
+        git('commit','-m',message);feature=git('rev-parse','HEAD')
+        git('checkout','main');(repo/'main.txt').write_text('metadata',encoding='utf-8')
+        git('add','main.txt');git('commit','-m','Main metadata');git('merge','--no-ff','feature','-m','Merge colour feature')
+        head=git('rev-parse','HEAD');history=release.commit_history(head,repo)
+        self.assertEqual(len(history),4);self.assertEqual(history[0]['sha'],first);self.assertEqual(history[-1]['sha'],head)
+        self.assertEqual(next(r['message'].rstrip('\n') for r in history if r['sha']==feature),message)
+        text=release.full_commit_log('1.0.0',head,history)
+        self.assertIn(message,text)
+        for record in history:
+            for key in ('sha','author','date','message'):self.assertIn(record[key],text)
+        with patch.dict('os.environ',{'GITHUB_REPOSITORY':'example/workbench'}):
+            notes=release.release_notes('1.0.0',head,'',history,'v0.4.5')
+        for record in history:self.assertIn('/commit/'+record['sha'],notes)
+        self.assertIn('Full commit log',notes);self.assertIn('Show all 4 commits',notes)
+        self.assertIn('/compare/v0.4.5...v1.0.0',notes)
+        self.assertIn('/releases/download/v1.0.0/COMMIT-LOG.txt',notes)
+        self.assertIn('/releases/download/v1.0.0/SHA256SUMS',notes)
+        self.assertIn('&#64;mention',notes);self.assertIn('&lt;tag&gt;',notes);self.assertIn(r'\[links\]',notes)
+
+    def test_partial_history_and_unchecked_refs_cannot_be_published_as_full(self):
+        with patch.object(release.subprocess,'run',return_value=SimpleNamespace(stdout='true\n')):
+            with self.assertRaisesRegex(ValueError,'complete checkout'):release.commit_history(self.commit,self.root)
+        for ref in ('--all','main','a'*40+'\nextra'):
+            with self.assertRaisesRegex(ValueError,'checked release commit'):release.commit_history(ref,self.root)
 
     def test_four_native_validated_archives_must_share_release_source(self):
         self.packages()

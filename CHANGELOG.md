@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 — 2026-11-13
+
+The first 1.0 milestone brings the current library analysis, cleanup preparation and migration tools together in Windows x64, Mac Intel, Mac Apple Silicon and Linux source downloads. Native rekordbox ZIP restoration remains experimental and needs an isolated Windows restore test.
+
+- Library tools include duplicate/cue review, reference and cloud-copy checks, snapshot comparison, analysis/STEMS audits, history browsing and genre/BPM preparation coverage.
+- DJ insights, tonality/tempo statistics and offline HTML/ZIP metadata explorers support reviewing a collection without sharing audio or private comments.
+- Nine interface languages, retained decisions/reports and acknowledged temporary-copy cleanup support repeatable local workflows. MusicBrainz remains an optional, explicitly enabled proof of concept.
+- Release notes now list all six downloads directly: four platform archives, checksums and the complete commit log with full messages. Linked commit summaries include merged branches and a comparison with the previous stable release.
 
 - Colour cloud: explicit loaded-library capture, visible source/loading/empty states, bounded group-detail calculations and a large-library regression.
 - Bubble maps: expanded canvas, stable wider circle spacing and a fixed horizontal category-detail panel.

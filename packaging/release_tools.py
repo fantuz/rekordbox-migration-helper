@@ -1,9 +1,11 @@
 """Release planning and artifact verification, also used by the web-run workflow."""
 from hashlib import sha256
+from html import escape
 import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import tarfile
 import zipfile
 
@@ -50,7 +52,27 @@ def release_plan(requested, ref, default_branch="main"):
     return {"version": version, "tag": "v"+version}
 
 
-def release_notes(version, commit, changelog=""):
+def commit_history(commit, root=ROOT):
+    """Read every reachable commit, including merged branches and full messages."""
+    if not re.fullmatch(r'[0-9a-f]{40}',commit):raise ValueError('Use the checked release commit SHA')
+    def git(*args):
+        return subprocess.run(['git',*args],cwd=root,check=True,capture_output=True,
+                              text=True,encoding='utf-8',timeout=30).stdout
+    if git('rev-parse','--is-shallow-repository').strip()!='false':
+        raise ValueError('Full commit history requires a complete checkout')
+    values=git('log','--reverse','--topo-order','-z','--format=%H%x00%aI%x00%an%x00%B',commit,'--').split('\0')
+    if values[-1]!='' or (len(values)-1)%4:raise ValueError('Incomplete release commit history')
+    records=[dict(zip(('sha','date','author','message'),values[i:i+4])) for i in range(0,len(values)-1,4)]
+    if not records or records[-1]['sha']!=commit:raise ValueError('Commit history does not end at the release source')
+    return records
+
+
+def full_commit_log(version,commit,history):
+    header='Library Workbench '+normalized_version(version)+' — full commit log\nSource commit: '+commit+'\nCommits: '+str(len(history))+'\nOrder: oldest to newest, including merges and full messages.\n\n'
+    return header+'\n'.join('commit '+r['sha']+'\nAuthor: '+r['author']+'\nDate: '+r['date']+'\n\n'+r['message'] for r in history)
+
+
+def release_notes(version, commit, changelog="", history=None, previous_tag=None):
     version=normalized_version(version)
     match=re.search(r"(?m)^## "+re.escape(version)+r"(?:[ \t].*)?$",changelog)
     changes=""
@@ -59,9 +81,29 @@ def release_notes(version, commit, changelog=""):
         changes=re.split(r"(?m)^## ",tail,maxsplit=1)[0].strip()
     intro=changes or "A local library analyzer, duplicate-review utility and offline metadata explorer."
     repository=os.environ.get('GITHUB_REPOSITORY','fantuz/rekordbox-migration-helper')
-    downloads='| Platform | Download |\n| --- | --- |\n'+''.join(
-        '| '+label+' | [Download now](https://github.com/'+repository+'/releases/download/v'+version+'/'+archive_name(version,platform)+') |\n'
-        for platform,label in (('windows-x64','Windows x64 portable'),('macos-x86_64','Mac Intel'),('macos-arm64','Mac Apple Silicon'),('linux-source','Linux source')))
+    base='https://github.com/'+repository
+    asset=base+'/releases/download/v'+version+'/'
+    downloads='| Platform / file | Direct download | Start here |\n| --- | --- | --- |\n'+''.join(
+        '| '+label+' | [Download now]('+asset+archive_name(version,platform)+') | '+instruction+' |\n'
+        for platform,label,instruction in (
+            ('windows-x64','Windows x64','Extract ZIP; open **Library Workbench.exe**'),
+            ('macos-x86_64','Mac Intel','Extract ZIP; open **Library Workbench.app**'),
+            ('macos-arm64','Mac Apple Silicon / ARM64','Extract ZIP; open **Library Workbench.app**'),
+            ('linux-source','Linux source','Extract TAR.GZ; run **start.sh** with Python 3.13+')))
+    downloads+='| Checksums | [SHA256SUMS]('+asset+'SHA256SUMS) | Verify the four archives |\n'
+    history_notes=''
+    if history is not None:
+        downloads+='| Complete commit history | [COMMIT-LOG.txt]('+asset+'COMMIT-LOG.txt) | All '+str(len(history))+' commits and full messages |\n'
+        def subject(record):
+            value=escape(record['message'].split('\n',1)[0],quote=False).replace('@','&#64;')
+            return re.sub(r'([\\\[\]_*`])',r'\\\1',value)
+        history_notes='\n### Full commit log\n\nAll '+str(len(history))+' commits reachable from this release, oldest first. The attached [COMMIT-LOG.txt]('+asset+'COMMIT-LOG.txt) includes author, date and complete messages.\n\n'
+        if previous_tag:
+            from urllib.parse import quote
+            history_notes+='[Changes since '+escape(previous_tag)+']('+base+'/compare/'+quote(previous_tag,safe='')+'...v'+version+')\n\n'
+        history_notes+='<details>\n<summary>Show all '+str(len(history))+' commits</summary>\n\n'
+        history_notes+=''.join('- [`'+r['sha'][:7]+'`]('+base+'/commit/'+r['sha']+') '+subject(r)+'\n' for r in history)
+        history_notes+='\n</details>\n'
     return ("Library Workbench "+version+"\n\n"+intro+"\n\n"
             "### Downloads\n\n"+downloads+"\n"
             "- Windows x64: extract the complete ZIP and open Library Workbench.exe. Python and dependencies are bundled.\n"
@@ -69,7 +111,7 @@ def release_notes(version, commit, changelog=""):
             "- Linux: extract the source archive and run start.sh with Python 3.13 or newer.\n\n"
             "All packages passed their native CI runtime checks and share the release source. SHA256SUMS lists the four archives.\n\n"
             "Keep an untouched rekordbox Backup Library backup before transformation. Native ZIP restore inside rekordbox remains experimental; validate in an isolated library first.\n\n"
-            "Source commit: "+commit+"\n")
+            "Source commit: [`"+commit[:7]+"`]("+base+"/commit/"+commit+")\n"+history_notes)
 
 
 def verify_assets(directory, version, commit):
