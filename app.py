@@ -1101,6 +1101,10 @@ from track_playback import register as register_playback
 register_playback(sys.modules[__name__])
 from intelligence_routes import register as register_intelligence
 register_intelligence(sys.modules[__name__])
+from collection_views import register as register_collection_views
+register_collection_views(sys.modules[__name__])
+from investigations import register as register_investigations
+register_investigations(sys.modules[__name__])
 from journeys_routes import register as register_journeys
 register_journeys(sys.modules[__name__])
 

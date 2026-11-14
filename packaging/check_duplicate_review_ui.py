@@ -41,6 +41,8 @@ def check_duplicate_review_ui(browser,base,output):
     context.add_init_script("localStorage.setItem('library-workbench.language.v1','en');localStorage.setItem('library-workbench.sidebar-size.v1','standard')")
     def synthetic_api(route):
         request=route.request;url=urlsplit(request.url);path=url.path
+        if path=='/api/journeys':
+            route.fulfill(json={'sources':[], 'selected':'workspace', 'context':{'source':'workspace','tracks':2}, 'plans':[], 'steps':[]});return
         if path=='/api/status':route.fulfill(json={**status,'session':deepcopy(session),'example_available':False});return
         if path=='/api/pairs':
             query=parse_qs(url.query);evidence_queries.append(query.get('evidence',[''])[0])

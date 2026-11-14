@@ -65,7 +65,7 @@ def capture_private_database(db,scope_key):
     for r in rows('djmdSongPlaylist',('PlaylistID','ContentID','TrackNo','ID')):members[str(r['PlaylistID'])].append(r)
     snapshot['playlists']=[]
     for r in rows('djmdPlaylist',('ID','UUID','Name','ParentID','Attribute','SmartList')):
-        entries=sorted(members[str(r['ID'])],key=lambda x:(x['TrackNo'] or 0,str(x['ID'])))
+        entries=sorted(members[str(r['ID'])],key=lambda x:(order(x['TrackNo']),str(x['ID'])))
         snapshot['playlists'].append({'id':str(r['ID']),'uuid':r['UUID'],'name':r['Name'] or '', 'parent':r['ParentID'],
                                       'folder':r['Attribute']==1,'smart':bool(r['SmartList']),
                                       'criteria_sha256':sha256(str(r['SmartList'] or '').encode()).hexdigest(),

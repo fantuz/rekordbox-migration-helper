@@ -2,10 +2,11 @@
 let historyOffset=0,historyEntryOffset=0,historySelected=null,historyListRevision=0,historySessionRevision=0;
 async function loadHistory(){
   const info=await api('/api/lab');
-  labSelect('#history-snapshot',info.snapshots,r=>r.label+' · '+date(r.created),I18n.t("Choose a saved snapshot"));
+  const choices=[...info.snapshots,...info.sources.map(s=>({...s,id:'capture:'+s.id}))];
+  labSelect('#history-snapshot',choices,r=>r.label+' · '+date(r.created),I18n.t("Choose a saved snapshot"));
   const shared=window.Journeys?.context();
-  if(shared)$('#history-snapshot').value=info.snapshots.some(s=>s.id===shared.snapshot)?shared.snapshot:'';
-  else if(!$('#history-snapshot').value && info.snapshots.length)$('#history-snapshot').value=info.snapshots[0].id;
+  if(shared){const selected=shared.snapshot || (shared.source?.startsWith('capture:')?shared.source:'');$('#history-snapshot').value=choices.some(s=>s.id===selected)?selected:'';}
+  else if(!$('#history-snapshot').value && choices.length)$('#history-snapshot').value=choices[0].id;
   const sources=[...(info.workspace?[{id:'session',get label(){return I18n.t("Loaded XML + ZIP workspace");}}]:[]),...info.sources.map(r=>({id:r.id,label:I18n.t("Source capture ·")+" "+date(r.created)+' · '+r.label}))];
   labSelect('#history-source',sources,r=>r.label,I18n.t("Choose a native input capture"));$('#history-capture').disabled=!sources.length;
   historyOffset=0;historySelected=null;$('#history-session').hidden=true;await loadHistoryList();

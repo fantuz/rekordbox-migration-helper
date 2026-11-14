@@ -78,7 +78,8 @@ def register(owner):
             session=owner.sessions.get(owner.active)
             if not session or session['id']!=value['workspace']:raise ValueError('This workspace is no longer loaded')
             return session['catalog'].tracks
-        saved=Store(owner.DATA/'workbench-sidecar.sqlite3').snapshot(value.get('snapshot',''))
+        from collection_sources import history_source
+        saved=history_source(owner, value)
         return {str(t['id']):t for t in saved['tracks']}
     @app.post('/api/playback/availability')
     def availability():
