@@ -12,22 +12,24 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     audio=root/'Synthetic preview.wav'
     with wave.open(str(audio),'wb') as stream:
         stream.setnchannels(1);stream.setsampwidth(2);stream.setframerate(8000);stream.writeframes(b'\0\0'*800)
-    names=['Blue Horizon','Harbour Lights','After the Rain','Glass Garden','Midnight Transit','Slow Current','Amber Sky','Northern Echo']
-    artists=['Canal Ensemble','Quiet Signal','Late Platform','Juniper Rooms']
     tracks=[]
-    for i in range(48):
-        tracks.append({**track({'id':'demo'+str(i),'title':names[i%8]+(' (Dub)' if i>=24 else '')+' '+str(i//8+1),
-            'artist':artists[i%4],'album':'Synthetic sessions','genre':['Deep House','Dub Techno','Ambient'][i%3],
+    for i in range(12):
+        tracks.append({**track({'id':'demo'+str(i),'title':'Test Track '+str(i+1).zfill(2)+' · '+['Ω','Ł','🎧'][i%3]+(' (Dub)' if i>=6 else ''),
+            'artist':'Test Artist '+str(i%4+1),'album':'Generated test collection','genre':['Deep House','Dub Techno','Ambient'][i%3],
             'bpm':116+i%16,'duration':240+i*3,'rating':i%6,'play_count':i*3,'manual_cues':i%5,'auto_cues':0,'analysed':True,
             'tonality':['8A','9A','10A','11A'][i%4],'comment':'Synthetic fixture. No personal music or library data.',
             'current_path':str(audio) if i==0 else '/Synthetic music/missing-'+str(i)+'.flac',
             'color_status':'assigned','color_key':'blue','color_name':'Blue','color_hex':'#2478bc'}),'cues':[]})
     source={'schema':1,'scope_key':'synthetic:readme','source_kind':'Synthetic demonstration','tracks':tracks,
-        'playlists':[{'id':'warmup','name':'Warm-up selection','tracks':['demo'+str(i) for i in range(12)]},
-                     {'id':'late','name':'Late session','tracks':['demo'+str(i) for i in range(8,24)]}],
-        'histories':[{'id':'set1','name':'Harbour session','date':'2026-01-10','entries':[{'track_id':'demo'+str(i),'position':i+1} for i in range(12)]},
-                     {'id':'set2','name':'Garden session','date':'2026-02-14','entries':[{'track_id':'demo'+str(i),'position':i-3} for i in range(4,18)]}],
+        'playlists':[{'id':'warmup','name':'Warm-up selection','tracks':['demo'+str(i) for i in range(8)]},
+                     {'id':'late','name':'Late session','tracks':['demo'+str(i) for i in range(4,12)]}],
+        'histories':[{'id':'set1','name':'Test session A','date':'2026-01-10','entries':[{'track_id':'demo'+str(i),'position':i+1} for i in range(8)]},
+                     {'id':'set2','name':'Test session B','date':'2026-02-14','entries':[{'track_id':'demo'+str(i),'position':i-3} for i in range(4,10)]}],
         'capabilities':{'playlist_order':True,'history_details':True,'history_order':True,'cue_positions':True},'asset_references':[]}
+    inventory={'records':len(tracks),'serialized_metadata_bytes':len(encoded(source).encode('utf-8')),
+               'generated_silence_bytes':audio.stat().st_size,'audio_seconds':0.1,
+               'distributed_catalogue_records':0,'distributed_audio_bytes':0}
+    print('SYNTHETIC_DATA_INVENTORY '+json.dumps(inventory))
     sid=store.save_snapshot(source,'Demo collection · synthetic data')['id'];before=store.snapshot(sid)
     page.evaluate('()=>Journeys.load()')
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',sid)
@@ -59,12 +61,12 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.locator('.nav[data-view="intelligence"]').click()
     page.wait_for_selector('#intelligence-playlist option[value="warmup"]',state='attached')
     page.select_option('#intelligence-playlist','warmup');page.locator('#intelligence-contents').click()
-    page.wait_for_function('document.querySelectorAll("#intelligence-results tbody tr").length===12')
-    assert page.locator('#intelligence-results [data-play-track]').count()==12
+    page.wait_for_function('document.querySelectorAll("#intelligence-results tbody tr").length===8')
+    assert page.locator('#intelligence-results [data-play-track]').count()==8
     page.locator('#intelligence-results').scroll_into_view_if_needed()
     page.screenshot(path=str(output/'readme-playlist-explorer.png'))
     page.select_option('#intelligence-lens','recurring');page.locator('#intelligence-lenses').click()
-    page.wait_for_function('document.querySelectorAll("#intelligence-results tbody tr").length===8')
+    page.wait_for_function('document.querySelectorAll("#intelligence-results tbody tr").length===4')
     assert page.locator('#intelligence-results [data-play-track="demo4"]').count()==1
 
     chart={'report_id':'synthetic-report','snapshot_id':sid,'period':'week','retrieved_at':'2026-02-15T12:00:00Z',
@@ -98,4 +100,4 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     assert store.snapshot(sid)==before
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',original_id)
     return {'playback_identity':True,'unavailable_audio':True,'playlist_contents':True,'recurring_sessions':True,
-            'chart_review':True,'background_completion':True,'immutable_capture':True,'screenshots':'synthetic'}
+            'chart_review':True,'background_completion':True,'immutable_capture':True,'screenshots':'synthetic','fixture_inventory':inventory}

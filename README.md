@@ -202,7 +202,7 @@ The optional MusicBrainz proof of concept sends selected metadata queries only a
 
 Set `LIBRARY_WORKBENCH_DATA_DIR` to use a different local workspace. The optional `inputs/` folder accepts any ZIP/XML filenames. Import sessions, private analyzer snapshots and exports are separated. Export folders contain `edited-collection.xml`, `edited-library.zip`, `report.json` and an export manifest as applicable. Input files, databases, music, decisions and generated archives are excluded from source control and release source allowlists.
 
-A private precomputed example can be configured in `.data/example.json` or through `LIBRARY_WORKBENCH_EXAMPLE`. No personal library or example database is distributed.
+A private precomputed example can be configured in `.data/example.json` or through `LIBRARY_WORKBENCH_EXAMPLE`. No personal library, example database or music is distributed. README screenshots use only 12 invented test records; GitHub generates and discards them while testing. A 0.1-second silent WAV used by the playback test is never packaged. Source archives include the test generators, not their generated libraries. Release verification rejects audio files and recognized rekordbox/Serato library databases.
 
 ## Development and packaging
 

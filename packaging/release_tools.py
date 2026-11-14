@@ -116,6 +116,16 @@ def release_notes(version, commit, changelog="", history=None, previous_tag=None
             "Source commit: [`"+commit[:7]+"`]("+base+"/commit/"+commit+")\n"+history_notes)
 
 
+def reject_library_payloads(names):
+    """Release packages contain software and documentation, never music or library databases."""
+    audio=('.mp3','.flac','.wav','.wave','.aif','.aiff','.aac','.m4a','.ogg','.opus','.wma','.alac')
+    databases={'master.db','datafile.edb','extdata.edb','database v2'}
+    for name in names:
+        normalized=name.replace('\\','/').lower()
+        if normalized.endswith(audio) or normalized.rsplit('/',1)[-1] in databases:
+            raise ValueError('Music or library data is not a release input: '+name)
+
+
 def verify_assets(directory, version, commit):
     directory=Path(directory)
     version=normalized_version(version)
@@ -143,6 +153,7 @@ def verify_assets(directory, version, commit):
         checksums.append(digest+"  "+name)
         if name.endswith(".zip"):
             with zipfile.ZipFile(path) as archive:
+                reject_library_payloads(archive.namelist())
                 if archive.testzip() is not None:raise ValueError("Corrupt package: "+name)
                 manifest_names=[n for n in archive.namelist() if n.endswith("/BUILD-MANIFEST.json")]
                 if len(manifest_names)!=1:raise ValueError("Missing or ambiguous build manifest")
@@ -150,6 +161,7 @@ def verify_assets(directory, version, commit):
                 validate_manifest(manifest,'windows_runtime_test' if name.endswith('-windows-x64.zip') else 'macos_runtime_test')
         elif name.endswith('-linux-x86_64.tar.gz'):
             with tarfile.open(path) as archive:
+                reject_library_payloads(archive.getnames())
                 manifests=[m for m in archive.getmembers() if m.name.endswith('/BUILD-MANIFEST.json')]
                 if len(manifests)!=1 or not manifests[0].isfile():raise ValueError('Missing or ambiguous build manifest')
                 manifest=json.load(archive.extractfile(manifests[0]))
@@ -157,6 +169,7 @@ def verify_assets(directory, version, commit):
                 validate_manifest(manifest,'linux_runtime_test')
         else:
             with tarfile.open(path) as archive:
+                reject_library_payloads(archive.getnames())
                 available={}
                 for member in archive.getmembers():
                     parts=Path(member.name).parts
