@@ -64,6 +64,26 @@ class LargerPilotTests(unittest.TestCase):
             self.assertEqual(client.get('/api/lab/musicbrainz/'+batch['id']).json['status'],'interrupted')
 
 
+    def test_cancellation_keeps_worker_slot_until_it_has_stopped(self):
+        import app
+        with tempfile.TemporaryDirectory() as temp,patch.object(app,'DATA',Path(temp)):
+            saved=Store(Path(temp)/'workbench-sidecar.sqlite3');s=saved.save_snapshot(snapshot(),'Synthetic')
+            batch=create_batch(saved,saved.snapshot(s['id']),sample_size=300)
+            saved.set_setting('musicbrainz_enabled',True)
+            client=app.app.test_client();headers={'X-Workbench-Token':app.TOKEN}
+            endpoint='/api/lab/musicbrainz/'+batch['id'];work=[]
+            def launch(function,*args,**kwargs):work.append(function);return 'synthetic'
+            with patch.object(app,'launch',side_effect=launch):
+                self.assertEqual(client.post(endpoint+'/start',json={'query_consent':True},headers=headers).status_code,200)
+                try:
+                    self.assertEqual(client.post(endpoint+'/cancel',json={},headers=headers).status_code,200)
+                    self.assertEqual(client.get(endpoint).json['status'],'queued')
+                    self.assertEqual(client.post(endpoint+'/start',json={'query_consent':True},headers=headers).status_code,400)
+                finally:
+                    work[0](lambda *_:None)  # Cancelled before a provider request.
+            self.assertEqual(client.get(endpoint).json['status'],'cancelled')
+
+
 class DiscoveryExtensions(unittest.TestCase):
     def test_direct_mixed_case_master_is_read_from_a_copy(self):
         with tempfile.TemporaryDirectory() as temp:

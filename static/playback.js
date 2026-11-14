@@ -58,6 +58,7 @@ window.TrackPlayback=(()=>{
   document.addEventListener('keydown',event=>{if(event.target.matches('[data-play-track]'))event.stopPropagation();},true);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)recheck();});
   window.addEventListener('focus',recheck);
+  window.addEventListener('workbench-language',()=>{for(const b of document.querySelectorAll('[data-play-track]'))if(b.dataset.available)status(b,b.dataset.available==='true');});
   function recheck(){cache.clear();for(const b of document.querySelectorAll('[data-play-track]')){observer.unobserve(b);observer.observe(b);}}
   function bind(selector,snapshot){
     for(const title of document.querySelectorAll(selector+' [data-insight-open]')){

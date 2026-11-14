@@ -115,7 +115,8 @@ def main():
                 browser.close()
             report.update(status='passed',errors=errors,language_changes_submit_no_mutations=True,unexpected_network_requests=0,unsaved_comment_preserved=True,locked_fields_preserved=True)
         except Exception as error:
-            report.update(status='failed',error=str(error),errors=errors,api_issues=api_issues);raise
+            report.update(status='failed',error=str(error),errors=errors,api_issues=api_issues)
+            print(json.dumps(report,ensure_ascii=False,indent=2));raise
         finally:
             process.terminate()
             try:process.wait(timeout=15)

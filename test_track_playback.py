@@ -16,7 +16,7 @@ class PlaybackTests(TestCase):
             original={'current_path':str(root/'missing.mp3'),'original_path':audio.as_uri()}
             self.assertEqual(available_audio(original),audio.resolve())
             self.assertEqual(audio.read_bytes(),b'synthetic')
-            for value in ['https://example.com/test.mp3','file://remote/music/a.mp3',str(root/'code.py'),'../track.mp3',str(audio)+'\0']:
+            for value in ['https://example.com/test.mp3','file://remote/music/a.mp3','file://[broken/a.mp3',str(root/'code.py'),'../track.mp3',str(audio)+'\0']:
                 self.assertIsNone(recorded_path(value))
             self.assertIsNone(available_audio({'current_path':str(root/'missing.mp3')}))
             executable=root/'script.py';executable.write_text('raise Exception')

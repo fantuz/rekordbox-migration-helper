@@ -64,7 +64,14 @@ def database_names(path):
 
 def linked_directory(path):
     """Auto-discovery must not cross redirected profile/settings directories."""
-    return any(p.is_symlink() or p.is_junction() for p in (Path(path),*Path(path).parents))
+    for part in (Path(path),*Path(path).parents):
+        if not (part.is_symlink() or part.is_junction()):continue
+        # macOS itself aliases /var, /tmp and /etc into /private. These system
+        # aliases must not hide ordinary libraries or temporary test fixtures.
+        if sys.platform=='darwin' and str(part) in ('/var','/tmp','/etc') and part.resolve()==Path('/private')/part.name:
+            continue
+        return True
+    return False
 
 
 def location_hints(settings_folders,agent_folders):
