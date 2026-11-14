@@ -30,6 +30,22 @@ See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XM
 
 **Keep a fresh, untouched backup created by rekordbox Backup Library outside this workspace before generating transformed files. Preserve the audio separately when it is excluded from the backup. Native ZIP restoration in rekordbox remains experimental.**
 
+## Interface
+
+These captures use 12 invented test records. No real music catalogue or audio is bundled.
+
+![DJ insights with track preparation, play distribution and compact summary cards](docs/screenshots/readme-library-insights.png)
+
+DJ insights brings saved metadata, preparation evidence and play distribution into one view.
+
+![Track details with comments, colours and a local playback button](docs/screenshots/readme-track-editor.png)
+
+Track details keeps listening, comments, colour choices and working edits together.
+
+![Playlist explorer with captured track order and per-track playback controls](docs/screenshots/readme-playlist-explorer.png)
+
+Library intelligence explores saved playlist membership and order. See [screenshot provenance and regeneration](docs/SCREENSHOTS.md).
+
 ## Feature inventory
 
 A factual overview of the current source tree. Release downloads may lag behind `main`; the draft items below retain their stated limits.
