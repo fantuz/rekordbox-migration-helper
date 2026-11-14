@@ -435,7 +435,7 @@ let statsRevision=0;
 async function renderStatistics() {
   const revision=++statsRevision;
   const native=window.NativeCollection?.active();
-  if (!session && !native) return;
+  if (!session && !native){for(const id of ['stats-cards','length-histogram','added-histogram'])$('#'+id).innerHTML='';if($('#stats-source-note'))$('#stats-source-note').hidden=true;$('#stats-cohort').disabled=false;return;}
   const params=new URLSearchParams({min:$("#stats-min").value || "0",max:$("#stats-max").value,cohort:$("#stats-cohort").value});
   const selectedSource=window.NativeCollection?.source();
   if(native)params.set('source',selectedSource);

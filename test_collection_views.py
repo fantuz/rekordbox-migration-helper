@@ -151,6 +151,36 @@ class NativeViewsTests(unittest.TestCase):
         self.assertEqual(self.post('/api/investigations/' + r.json['id'] + '/restore', {}).status_code, 200)
         self.assertTrue((folder / 'state.json').exists())
 
+    def test_restore_conflict_rolls_back_file_moves_and_keeps_archive(self):
+        s = json.loads((self.capture / 'comparison.json').read_text())
+        saved = self.store.save_snapshot(s, 'Original snapshot')
+        with self.store.connection() as db:
+            row = tuple(db.execute('SELECT * FROM snapshots WHERE id=?', (saved['id'],)).fetchone())
+        keys = ['captures:' + self.identity, 'snapshots:' + saved['id']]
+        preview = self.post('/api/investigations/preview', {'keys': keys}).json
+        archived = self.post('/api/investigations/archive', {'keys': keys, 'token': preview['token']}).json
+        with self.store.connection() as db:
+            db.execute('INSERT INTO snapshots VALUES (?,?,?,?,?,?,?)', row)
+        r = self.post('/api/investigations/' + archived['id'] + '/restore', {})
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(self.capture.exists())
+        self.assertEqual(len(self.client.get('/api/investigations').json['archives']), 1)
+        self.assertEqual(self.store.snapshot(saved['id'])['label'], 'Original snapshot')
+        self.assertEqual(self.dbpath.read_bytes(), self.original)
+
+    def test_metadata_only_capture_can_use_shared_snapshot_action(self):
+        (self.capture / 'comparison.json').unlink()
+        for path in (self.capture / 'snapshot').glob('*'):
+            path.unlink()
+        results = []
+        def launch(work, message):
+            results.append(work(lambda *_: None))
+            return 'synthetic-job'
+        with patch.object(application, 'launch', launch):
+            r = self.post('/api/lab/snapshots', {'source': self.identity, 'label': 'Metadata-only capture'})
+        self.assertEqual(r.status_code, 200, r.json)
+        self.assertEqual(len(self.store.snapshot(results[0]['id'])['tracks']), 3)
+
 
 if __name__ == '__main__':
     unittest.main()

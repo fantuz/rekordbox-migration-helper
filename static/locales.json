@@ -15134,6 +15134,326 @@
       "pl": "Zaktualizowano zapisane analizy",
       "cs": "Uložené analýzy aktualizovány",
       "ru": "Сохранённые исследования обновлены"
+    },
+    "All references": {
+      "de": "Alle Referenzen",
+      "fr": "Toutes les références",
+      "it": "Tutti i riferimenti",
+      "es": "Todas las referencias",
+      "el": "Όλες οι αναφορές",
+      "pl": "Wszystkie odwołania",
+      "cs": "Všechny odkazy",
+      "ru": "Все ссылки"
+    },
+    "Analysis path": {
+      "de": "Analysepfad",
+      "fr": "Chemin d’analyse",
+      "it": "Percorso analisi",
+      "es": "Ruta de análisis",
+      "el": "Διαδρομή ανάλυσης",
+      "pl": "Ścieżka analizy",
+      "cs": "Cesta analýzy",
+      "ru": "Путь анализа"
+    },
+    "Apply": {
+      "de": "Anwenden",
+      "fr": "Appliquer",
+      "it": "Applica",
+      "es": "Aplicar",
+      "el": "Εφαρμογή",
+      "pl": "Zastosuj",
+      "cs": "Použít",
+      "ru": "Применить"
+    },
+    "Archive selected investigations": {
+      "de": "Ausgewählte Untersuchungen archivieren",
+      "fr": "Archiver les analyses sélectionnées",
+      "it": "Archivia le analisi selezionate",
+      "es": "Archivar los análisis seleccionados",
+      "el": "Αρχειοθέτηση επιλεγμένων αναλύσεων",
+      "pl": "Archiwizuj wybrane analizy",
+      "cs": "Archivovat vybrané analýzy",
+      "ru": "Архивировать выбранные исследования"
+    },
+    "Automatic cues": {
+      "de": "Automatische Cues",
+      "fr": "Repères automatiques",
+      "it": "Cue automatici",
+      "es": "Cues automáticos",
+      "el": "Αυτόματα cues",
+      "pl": "Automatyczne punkty cue",
+      "cs": "Automatické body cue",
+      "ru": "Автоматические метки cue"
+    },
+    "Candidate for later cleanup": {
+      "de": "Kandidat für spätere Bereinigung",
+      "fr": "Candidat pour un nettoyage ultérieur",
+      "it": "Candidato per pulizia successiva",
+      "es": "Candidato para limpieza posterior",
+      "el": "Υποψήφιο για μελλοντική εκκαθάριση",
+      "pl": "Kandydat do późniejszego porządkowania",
+      "cs": "Kandidát pro pozdější úklid",
+      "ru": "Кандидат для последующей очистки"
+    },
+    "Captured duplicate candidates": {
+      "de": "Erfasste Duplikatkandidaten",
+      "fr": "Doublons potentiels capturés",
+      "it": "Potenziali duplicati acquisiti",
+      "es": "Posibles duplicados capturados",
+      "el": "Καταγεγραμμένα πιθανά διπλότυπα",
+      "pl": "Zapisane potencjalne duplikaty",
+      "cs": "Zachycené možné duplicity",
+      "ru": "Возможные дубликаты из снимка"
+    },
+    "Captured file references": {
+      "de": "Erfasste Dateireferenzen",
+      "fr": "Références de fichiers capturées",
+      "it": "Riferimenti ai file acquisiti",
+      "es": "Referencias de archivos capturadas",
+      "el": "Καταγεγραμμένες αναφορές αρχείων",
+      "pl": "Zapisane odwołania do plików",
+      "cs": "Zachycené odkazy na soubory",
+      "ru": "Ссылки на файлы из снимка"
+    },
+    "Cleanup preview": {
+      "de": "Bereinigungsvorschau",
+      "fr": "Aperçu du nettoyage",
+      "it": "Anteprima pulizia",
+      "es": "Vista previa de limpieza",
+      "el": "Προεπισκόπηση εκκαθάρισης",
+      "pl": "Podgląd porządkowania",
+      "cs": "Náhled úklidu",
+      "ru": "Предпросмотр очистки"
+    },
+    "Compare captured records": {
+      "de": "Erfasste Datensätze vergleichen",
+      "fr": "Comparer les enregistrements capturés",
+      "it": "Confronta i record acquisiti",
+      "es": "Comparar los registros capturados",
+      "el": "Σύγκριση καταγεγραμμένων εγγραφών",
+      "pl": "Porównaj zapisane rekordy",
+      "cs": "Porovnat zachycené záznamy",
+      "ru": "Сравнить записи снимка"
+    },
+    "Duration spread": {
+      "de": "Dauerspanne",
+      "fr": "Écart de durée",
+      "it": "Differenza di durata",
+      "es": "Diferencia de duración",
+      "el": "Διαφορά διάρκειας",
+      "pl": "Różnica czasu trwania",
+      "cs": "Rozdíl délky",
+      "ru": "Разница длительности"
+    },
+    "Keep separate": {
+      "de": "Getrennt behalten",
+      "fr": "Garder séparés",
+      "it": "Mantieni separati",
+      "es": "Mantener separados",
+      "el": "Διατήρηση χωριστά",
+      "pl": "Zachowaj osobno",
+      "cs": "Ponechat odděleně",
+      "ru": "Оставить раздельно"
+    },
+    "No recorded current path": {
+      "de": "Kein aktueller Pfad erfasst",
+      "fr": "Aucun chemin actuel enregistré",
+      "it": "Nessun percorso attuale registrato",
+      "es": "Sin ruta actual registrada",
+      "el": "Χωρίς καταγεγραμμένη τρέχουσα διαδρομή",
+      "pl": "Brak zapisanej bieżącej ścieżki",
+      "cs": "Bez zaznamenané aktuální cesty",
+      "ru": "Текущий путь не записан"
+    },
+    "Original path differs": {
+      "de": "Ursprünglicher Pfad weicht ab",
+      "fr": "Chemin d’origine différent",
+      "it": "Percorso originale diverso",
+      "es": "La ruta original difiere",
+      "el": "Η αρχική διαδρομή διαφέρει",
+      "pl": "Oryginalna ścieżka jest inna",
+      "cs": "Původní cesta se liší",
+      "ru": "Исходный путь отличается"
+    },
+    "Preview cleanup": {
+      "de": "Bereinigung prüfen",
+      "fr": "Prévisualiser le nettoyage",
+      "it": "Anteprima pulizia",
+      "es": "Previsualizar limpieza",
+      "el": "Προεπισκόπηση εκκαθάρισης",
+      "pl": "Podgląd porządkowania",
+      "cs": "Zobrazit náhled úklidu",
+      "ru": "Предпросмотр очистки"
+    },
+    "Rating": {
+      "de": "Bewertung",
+      "fr": "Note",
+      "it": "Valutazione",
+      "es": "Valoración",
+      "el": "Βαθμολογία",
+      "pl": "Ocena",
+      "cs": "Hodnocení",
+      "ru": "Оценка"
+    },
+    "Records": {
+      "de": "Datensätze",
+      "fr": "Enregistrements",
+      "it": "Record",
+      "es": "Registros",
+      "el": "Εγγραφές",
+      "pl": "Rekordy",
+      "cs": "Záznamy",
+      "ru": "Записи"
+    },
+    "Refresh": {
+      "de": "Aktualisieren",
+      "fr": "Actualiser",
+      "it": "Aggiorna",
+      "es": "Actualizar",
+      "el": "Ανανέωση",
+      "pl": "Odśwież",
+      "cs": "Obnovit",
+      "ru": "Обновить"
+    },
+    "Restore archived investigations": {
+      "de": "Archivierte Untersuchungen wiederherstellen",
+      "fr": "Restaurer les analyses archivées",
+      "it": "Ripristina le analisi archiviate",
+      "es": "Restaurar los análisis archivados",
+      "el": "Επαναφορά αρχειοθετημένων αναλύσεων",
+      "pl": "Przywróć zarchiwizowane analizy",
+      "cs": "Obnovit archivované analýzy",
+      "ru": "Восстановить архивированные исследования"
+    },
+    "Restore cleanup": {
+      "de": "Bereinigung rückgängig machen",
+      "fr": "Annuler le nettoyage",
+      "it": "Annulla la pulizia",
+      "es": "Deshacer la limpieza",
+      "el": "Αναίρεση εκκαθάρισης",
+      "pl": "Cofnij porządkowanie",
+      "cs": "Vrátit úklid",
+      "ru": "Отменить очистку"
+    },
+    "Review status": {
+      "de": "Prüfstatus",
+      "fr": "État de l’examen",
+      "it": "Stato revisione",
+      "es": "Estado de revisión",
+      "el": "Κατάσταση αξιολόγησης",
+      "pl": "Stan przeglądu",
+      "cs": "Stav kontroly",
+      "ru": "Статус проверки"
+    },
+    "Same artist and title": {
+      "de": "Gleicher Interpret und Titel",
+      "fr": "Même artiste et titre",
+      "it": "Stesso artista e titolo",
+      "es": "Mismo artista y título",
+      "el": "Ίδιος καλλιτέχνης και τίτλος",
+      "pl": "Ten sam wykonawca i tytuł",
+      "cs": "Stejný interpret a název",
+      "ru": "Одинаковые исполнитель и название"
+    },
+    "Same recorded path": {
+      "de": "Gleicher erfasster Pfad",
+      "fr": "Même chemin enregistré",
+      "it": "Stesso percorso registrato",
+      "es": "Misma ruta registrada",
+      "el": "Ίδια καταγεγραμμένη διαδρομή",
+      "pl": "Ta sama zapisana ścieżka",
+      "cs": "Stejná zaznamenaná cesta",
+      "ru": "Одинаковый записанный путь"
+    },
+    "Save review": {
+      "de": "Prüfung speichern",
+      "fr": "Enregistrer l’examen",
+      "it": "Salva revisione",
+      "es": "Guardar revisión",
+      "el": "Αποθήκευση αξιολόγησης",
+      "pl": "Zapisz przegląd",
+      "cs": "Uložit kontrolu",
+      "ru": "Сохранить проверку"
+    },
+    "Unreviewed": {
+      "de": "Ungeprüft",
+      "fr": "Non examiné",
+      "it": "Non revisionato",
+      "es": "Sin revisar",
+      "el": "Χωρίς αξιολόγηση",
+      "pl": "Nieprzejrzane",
+      "cs": "Nezkontrolováno",
+      "ru": "Не проверено"
+    },
+    "candidate groups": {
+      "de": "Kandidatengruppen",
+      "fr": "groupes candidats",
+      "it": "gruppi candidati",
+      "es": "grupos candidatos",
+      "el": "ομάδες υποψηφίων",
+      "pl": "grupy kandydatów",
+      "cs": "skupiny kandidátů",
+      "ru": "группы кандидатов"
+    },
+    "different original paths": {
+      "de": "abweichende ursprüngliche Pfade",
+      "fr": "chemins d’origine différents",
+      "it": "percorsi originali diversi",
+      "es": "rutas originales diferentes",
+      "el": "διαφορετικές αρχικές διαδρομές",
+      "pl": "różne oryginalne ścieżki",
+      "cs": "odlišné původní cesty",
+      "ru": "различающиеся исходные пути"
+    },
+    "empty current paths": {
+      "de": "leere aktuelle Pfade",
+      "fr": "chemins actuels vides",
+      "it": "percorsi attuali vuoti",
+      "es": "rutas actuales vacías",
+      "el": "κενές τρέχουσες διαδρομές",
+      "pl": "puste bieżące ścieżki",
+      "cs": "prázdné aktuální cesty",
+      "ru": "пустые текущие пути"
+    },
+    "items": {
+      "de": "Elemente",
+      "fr": "éléments",
+      "it": "elementi",
+      "es": "elementos",
+      "el": "στοιχεία",
+      "pl": "elementy",
+      "cs": "položky",
+      "ru": "элементы"
+    },
+    "results": {
+      "de": "Ergebnisse",
+      "fr": "résultats",
+      "it": "risultati",
+      "es": "resultados",
+      "el": "αποτελέσματα",
+      "pl": "wyniki",
+      "cs": "výsledky",
+      "ru": "результаты"
+    },
+    "Review notes are saved locally. Merging and path edits require the XML + ZIP export workspace.": {
+      "de": "Prüfnotizen werden lokal gespeichert. Zusammenführen und Pfadänderungen erfordern den XML + ZIP-Exportarbeitsbereich.",
+      "fr": "Les notes sont enregistrées localement. La fusion et les modifications de chemins nécessitent l’espace d’export XML + ZIP.",
+      "it": "Le note di revisione vengono salvate localmente. Unioni e modifiche dei percorsi richiedono lo spazio di esportazione XML + ZIP.",
+      "es": "Las notas se guardan localmente. La fusión y los cambios de rutas requieren el espacio de exportación XML + ZIP.",
+      "el": "Οι σημειώσεις αποθηκεύονται τοπικά. Η συγχώνευση και οι αλλαγές διαδρομών απαιτούν τον χώρο εξαγωγής XML + ZIP.",
+      "pl": "Notatki są zapisywane lokalnie. Scalanie i zmiany ścieżek wymagają obszaru eksportu XML + ZIP.",
+      "cs": "Poznámky se ukládají místně. Sloučení a úpravy cest vyžadují pracovní prostor exportu XML + ZIP.",
+      "ru": "Заметки сохраняются локально. Объединение и изменение путей требуют рабочего пространства экспорта XML + ZIP."
+    },
+    "Archive saved investigations to remove them from active menus. Restore a cleanup below. Original libraries, music, uploaded inputs and exports are preserved. Archives retain their disk space.": {
+      "de": "Archivieren Sie gespeicherte Untersuchungen, um sie aus aktiven Menüs zu entfernen. Die Wiederherstellung ist unten möglich. Originalbibliotheken, Musik, hochgeladene Eingaben und Exporte bleiben erhalten. Archive belegen weiterhin Speicherplatz.",
+      "fr": "Archivez les analyses pour les retirer des menus actifs. Vous pouvez les restaurer ci-dessous. Les bibliothèques originales, la musique, les fichiers importés et les exports sont conservés. Les archives occupent toujours de l’espace disque.",
+      "it": "Archivia le analisi salvate per rimuoverle dai menu attivi. Puoi ripristinarle qui sotto. Librerie originali, musica, file caricati ed esportazioni vengono conservati. Gli archivi continuano a occupare spazio su disco.",
+      "es": "Archive los análisis guardados para retirarlos de los menús activos. Puede restaurarlos abajo. Se conservan las bibliotecas originales, la música, los archivos cargados y las exportaciones. Los archivos siguen ocupando espacio en disco.",
+      "el": "Αρχειοθετήστε τις αποθηκευμένες αναλύσεις για να αφαιρεθούν από τα ενεργά μενού. Μπορείτε να τις επαναφέρετε παρακάτω. Οι αρχικές βιβλιοθήκες, η μουσική, τα μεταφορτωμένα αρχεία και οι εξαγωγές διατηρούνται. Τα αρχεία συνεχίζουν να καταλαμβάνουν χώρο στον δίσκο.",
+      "pl": "Archiwizuj zapisane analizy, aby usunąć je z aktywnych menu. Możesz je przywrócić poniżej. Oryginalne biblioteki, muzyka, przesłane pliki i eksporty pozostają zachowane. Archiwa nadal zajmują miejsce na dysku.",
+      "cs": "Archivujte uložené analýzy, aby zmizely z aktivních nabídek. Níže je můžete obnovit. Původní knihovny, hudba, nahrané vstupy a exporty zůstanou zachovány. Archivy nadále zabírají místo na disku.",
+      "ru": "Архивируйте сохранённые исследования, чтобы убрать их из активных меню. Восстановление доступно ниже. Исходные библиотеки, музыка, загруженные файлы и экспорты сохраняются. Архивы продолжают занимать место на диске."
     }
   }
 }

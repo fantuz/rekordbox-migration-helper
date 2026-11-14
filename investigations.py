@@ -199,6 +199,9 @@ def register(owner):
                         columns = [v[1] for v in db.execute('PRAGMA table_info(' + table + ')')]
                         if set(r) != set(columns):
                             raise ValueError('Archived schema differs; restore with the matching application version')
+                        primary = [v[1] for v in db.execute('PRAGMA table_info(' + table + ')') if v[5]]
+                        if primary and db.execute('SELECT 1 FROM ' + table + ' WHERE ' + ' AND '.join(c + '=?' for c in primary), [r[c] for c in primary]).fetchone():
+                            raise ValueError('An investigation with this identity already exists; nothing was restored')
                         db.execute('INSERT INTO ' + table + ' (' + ','.join(columns) + ') VALUES (' + ','.join('?' for _ in columns) + ')', [r[c] for c in columns])
                 for name, value in payload['settings'].items():
                     db.execute('INSERT INTO settings VALUES (?,?)', (name, value))

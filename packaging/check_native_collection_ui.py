@@ -59,6 +59,7 @@ def check_native_collection_ui(browser, base, data, output, root):
         page.locator('[data-history-id="h"]').click()
         page.wait_for_selector('#history-tracks tbody tr')
         assert page.locator('#history-tracks tbody tr').count() == 5
+        page.screenshot(path=str(output / 'native-collection-context.png'))
         # Explicit snapshot action captures the chosen source and updates the shared context.
         action.click()
         page.wait_for_function('Boolean(window.Journeys.context()?.snapshot)')
