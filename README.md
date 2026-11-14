@@ -30,6 +30,17 @@ See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XM
 
 **Keep a fresh, untouched backup created by rekordbox Backup Library outside this workspace before generating transformed files. Preserve the audio separately when it is excluded from the backup. Native ZIP restoration in rekordbox remains experimental.**
 
+## Native collection views and saved investigations
+
+- Selecting a captured `master.db` supplies Collection statistics, Duplicate review, File references and Play history without an XML/ZIP workspace.
+- Native duplicate review compares recorded paths or artist/title groups, durations, ratings, play counts and cues. Review classifications are saved locally; candidates are not proof of identical audio.
+- File references show recorded current, original and analysis paths with search and pagination. Availability still depends on files accessible on the computer running the app.
+- Saved investigations offers item/category selection, a dependency preview and reversible archiving of captures, snapshots, reports, MusicBrainz batches, journeys and inactive workspaces.
+- Restore a cleanup from the same page. Archiving clears menus but retains disk space; original libraries, audio, uploaded inputs and exports are preserved.
+- The shared collection header provides a direct **Save a snapshot for insight tools** action. Snapshot creation is an explicit choice.
+
+See [Native views and investigation cleanup](docs/NATIVE-COLLECTION-VIEWS.md) for scope and limitations.
+
 ## Interface
 
 These captures use 12 invented test records. No real music catalogue or audio is bundled.

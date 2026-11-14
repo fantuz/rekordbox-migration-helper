@@ -206,7 +206,7 @@ async function loadWorkspace() {
   bindExportCopies();renderWorkflow();
 }
 async function loadPairs() {
-  if (!session) return;
+  if (!session || window.NativeCollection?.active()) return;
   const scope=new URLSearchParams({...scopeValues(),filter,offset,view:groupMode?"groups":"pairs"});
   const result=await api("/api/pairs?"+scope);
   total=result.total;
@@ -310,6 +310,8 @@ function showView(view) {
   if (view==='intelligence'){$('#page-title').textContent=I18n.t('Library intelligence');$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;}
   if (view==='quick') $('#page-title').textContent=I18n.t('Share & offline summary');
   if (view==='docs'){$('#page-title').textContent=I18n.t('Documentation');$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;}
+  if(view==='investigations'){$('#page-title').textContent=I18n.t('Saved investigations');$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;Investigations.load().catch(e=>notify(e.message,true));}
+  window.NativeCollection?.update(view);
 }
 async function example() {
   if (busy) return;
@@ -429,11 +431,19 @@ function applyTheme(value) {
 applyTheme(preferences.get("workbench-theme") || "dark");
 $("#theme").onchange=e=>applyTheme(e.target.value);
 matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{if ($("#theme").value==="system") applyTheme("system");});
+let statsRevision=0;
 async function renderStatistics() {
-  if (!session) return;
+  const revision=++statsRevision;
+  const native=window.NativeCollection?.active();
+  if (!session && !native) return;
   const params=new URLSearchParams({min:$("#stats-min").value || "0",max:$("#stats-max").value,cohort:$("#stats-cohort").value});
-  const data=await api("/api/statistics?"+params);
+  const selectedSource=window.NativeCollection?.source();
+  if(native)params.set('source',selectedSource);
+  $('#stats-cohort').disabled=!!native;
+  const data=await api((native?'/api/collection/statistics?':'/api/statistics?')+params);
+  if(revision!==statsRevision || selectedSource!==window.NativeCollection?.source())return;
   $("#review-scope").textContent=I18n.t("Review scope ·")+" "+($("#stats-min").value || "0")+"–"+($("#stats-max").value || I18n.t("Unlimited"))+" "+I18n.t("Minutes")+" · "+($("#stats-cohort").value==="xml"?I18n.t("XML siblings"):I18n.t("All backup tracks"));
+  if(native)$('#review-scope').textContent=I18n.t('Captured collection')+' · '+data.note;
   const labels=[
     ["total",I18n.t("Total songs"),I18n.t("Within the selected length range")],
     ["analysed",I18n.t("Analyzed songs"),I18n.t("Saved analysis flag in the backup")],
@@ -457,6 +467,8 @@ async function renderStatistics() {
   const max=Math.max(1,...data.histogram.map(b=>b.count));
   $("#length-histogram").innerHTML=data.histogram.map(b=>'<div class="hist-row"><span>'+esc(b.label)+'</span><div class="hist-bar"><i style="width:'+100*b.count/max+'%"></i></div><b>'+num(b.count)+'</b></div>').join("");
   $('#added-histogram').innerHTML=renderAddedYears(data.addition_dates);
+  let note=$('#stats-source-note');if(!note){note=document.createElement('p');note.id='stats-source-note';note.className='callout';$('#stats-cards').before(note);}
+  note.hidden=!native;if(native)note.textContent=data.note+' '+num(data.unknown_duration)+' tracks have no captured duration.';
 }
 $("#stats-apply").onclick=wrap(async()=>{await renderStatistics();offset=0;await loadPairs();});
 $("#stats-cohort").onchange=wrap(async()=>{await renderStatistics();offset=0;await loadPairs();});
@@ -607,7 +619,7 @@ async function loadAnalyzer() {
   $$("[data-use-source]").forEach(button=>button.onclick=()=>{$("#analyzer-path").value=button.dataset.useSource;});
   $("#compatibility-matrix").innerHTML=data.compatibility.map(row=>'<div class="compatibility-row"><strong>'+esc(row.version)+'</strong><div><b>'+esc(row.format)+'</b><span>'+esc(row.status)+'</span><small>'+esc(row.detail)+'</small></div></div>').join("");
   $("#analyzer-history").innerHTML=data.reports.map(report=>'<article class="analyzer-history-record"><div><strong>'+esc(report.format)+'</strong><span>'+esc(new Date(report.created).toLocaleString(I18n.language))+' · '+esc(report.read_status.replaceAll("_"," "))+'</span><code>'+esc(report.source)+'</code></div><button class="button secondary small" data-open-analysis="'+esc(report.id)+("\">"+esc(I18n.t("Open report"))+"</button></article>")).join("") || ("<p class=\"subtle\">"+esc(I18n.t("No saved source-folder reports yet."))+"</p>");
-  $$("[data-open-analysis]").forEach(button=>button.onclick=wrap(async()=>{renderAnalysis(await api("/api/analyzer/"+button.dataset.openAnalysis));$("#analyzer-result").scrollIntoView({behavior:"smooth",block:"start"});}));
+  $$("[data-open-analysis]").forEach(button=>button.onclick=wrap(async()=>{const report=await api('/api/analyzer/'+button.dataset.openAnalysis);renderAnalysis(report);if(report.metadata_available && window.Journeys){await Journeys.load();await Journeys.selectContext('capture:'+report.id,true);}$("#analyzer-result").scrollIntoView({behavior:"smooth",block:"start"});}));
 }
 function renderAnalysis(report) {
   const target=$("#analyzer-result");target.hidden=false;
@@ -629,7 +641,7 @@ $("#analyzer-form").onsubmit=wrap(async event=>{
   const button=event.target.querySelector('button[type="submit"]');button.disabled=true;
   try {
     const started=await api("/api/analyzer",{method:"POST",body:JSON.stringify({path:$("#analyzer-path").value,version:$("#analyzer-version").value})});
-    const report=await poll(started.job);renderAnalysis(report);await loadAnalyzer();
+    const report=await poll(started.job);renderAnalysis(report);await loadAnalyzer();if(report.metadata_available && window.Journeys){await Journeys.load();await Journeys.selectContext('capture:'+report.id,true);}
     notify(I18n.t("Read-only source report saved"));$("#analyzer-result").scrollIntoView({behavior:"smooth",block:"start"});
   } finally {button.disabled=false;}
 });

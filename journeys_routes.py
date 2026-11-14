@@ -32,26 +32,8 @@ def register(owner):
             raise ValueError('Journey not found')
         return result
     def resolve(source):
-        if source == 'workspace':
-            session = owner.current()
-            result = capture_workspace(session['catalog'], 'session:' + session['id'])
-            result.update(label=session['name'], captured=None)
-            return result
-        if isinstance(source, str) and source.startswith('snapshot:'):
-            return store().snapshot(source[9:])
-        if isinstance(source, str) and source.startswith('capture:') and re.fullmatch('[a-f0-9]{32}', source[8:]):
-            folder = owner.DATA / 'analyzers' / source[8:]
-            path = folder / 'comparison.json'
-            if not path.is_file():
-                path = folder / 'metadata.json'
-            report_path = folder / 'report.json'
-            if path.is_file() and report_path.is_file():
-                result = json.loads(path.read_text(encoding='utf-8'))
-                report = json.loads(report_path.read_text(encoding='utf-8'))
-                result.update(scope_key=source, source_capture=source[8:], captured=report.get('created'),
-                              label=report.get('format', 'Saved source capture'))
-                return result
-        raise ValueError('Choose a loaded workspace or saved collection snapshot')
+        from collection_sources import resolve as resolve_collection
+        return resolve_collection(owner, source)
     def describe(source):
         if source == 'workspace':
             # The global header must not rebuild every cue/track row per refresh.

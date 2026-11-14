@@ -96,6 +96,8 @@ def main():
                 report['enrichment_ui']=check_enrichment_ui(page,base,sid,args.output,store,root)
                 from check_workspace_ui import check_workspace_ui
                 report['workspace_ui']=check_workspace_ui(browser,page,base,sid,args.output,offline)
+                from check_native_collection_ui import check_native_collection_ui
+                report['native_collection_ui']=check_native_collection_ui(browser,base,data,args.output,root)
                 page.goto(Path(offline['directory']).joinpath('library.html').as_uri(),wait_until='load')
                 for code in LANGUAGES:
                     page.select_option('#language',code);page.wait_for_function('(code)=>document.documentElement.lang===code',arg=code)

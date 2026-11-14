@@ -15094,6 +15094,46 @@
       "pl": "Otwarto w domyślnym odtwarzaczu",
       "cs": "Otevřeno ve výchozím přehrávači",
       "ru": "Открыто в проигрывателе по умолчанию"
+    },
+    "Saved investigations": {
+      "de": "Gespeicherte Untersuchungen",
+      "fr": "Analyses enregistrées",
+      "it": "Analisi salvate",
+      "es": "Análisis guardados",
+      "el": "Αποθηκευμένες αναλύσεις",
+      "pl": "Zapisane analizy",
+      "cs": "Uložené analýzy",
+      "ru": "Сохранённые исследования"
+    },
+    "Captured collection": {
+      "de": "Erfasste Sammlung",
+      "fr": "Collection capturée",
+      "it": "Collezione acquisita",
+      "es": "Colección capturada",
+      "el": "Καταγεγραμμένη συλλογή",
+      "pl": "Zapisana kolekcja",
+      "cs": "Zachycená kolekce",
+      "ru": "Снимок коллекции"
+    },
+    "Review saved locally": {
+      "de": "Prüfung lokal gespeichert",
+      "fr": "Examen enregistré localement",
+      "it": "Revisione salvata localmente",
+      "es": "Revisión guardada localmente",
+      "el": "Η αξιολόγηση αποθηκεύτηκε τοπικά",
+      "pl": "Przegląd zapisany lokalnie",
+      "cs": "Kontrola uložena místně",
+      "ru": "Проверка сохранена локально"
+    },
+    "Saved investigations updated": {
+      "de": "Gespeicherte Untersuchungen aktualisiert",
+      "fr": "Analyses enregistrées mises à jour",
+      "it": "Analisi salvate aggiornate",
+      "es": "Análisis guardados actualizados",
+      "el": "Οι αποθηκευμένες αναλύσεις ενημερώθηκαν",
+      "pl": "Zaktualizowano zapisane analizy",
+      "cs": "Uložené analýzy aktualizovány",
+      "ru": "Сохранённые исследования обновлены"
     }
   }
 }

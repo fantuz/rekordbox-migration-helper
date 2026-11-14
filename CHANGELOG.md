@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Connect captured master.db sources to statistics, native duplicate review, recorded file references and saved play history without requiring XML/ZIP imports.
+- Add granular, reversible saved-investigation cleanup with dependency previews and restore support.
+- Space the shared collection label and selector, emphasize the direct snapshot action, and reduce the temporary-copy banner to one sentence.
+- Test native source switching, unknown metadata, history ordering, cleanup/restore and immutable inputs with synthetic regression fixtures.
+
 - Hardened database discovery and direct-file selection, with explicit legacy v5 companion-file inspection and stricter XML ratings/key handling.
 - Added larger resumable MusicBrainz background pilots, saved-batch progress and separate tag evidence.
 - Added playlist contents, collection lenses, repeated-history detail, reviewed ListenBrainz chart M3U8 export and a detached Serato database/crate draft.

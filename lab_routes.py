@@ -42,6 +42,7 @@ def register(owner):
         with network_lock:
             for event in cancellations.values():event.set()
     owner.cancel_lab_jobs=cancel_all
+    owner.lab_jobs_active=lambda: bool(cancellations)
     def snapshot(body):return store().snapshot(body.get('snapshot',''))
     def unlocked(s):
         if s['scope_key'] not in edit_unlocked:raise ValueError('Metadata is read-only. Unlock edits for this snapshot first.')
@@ -91,12 +92,16 @@ def register(owner):
             if not isinstance(source,str) or not owner.re_uuid(source):raise ValueError('Choose a saved source capture')
             private=owner.DATA/'analyzers'/source/'snapshot/master.db';scope='capture:'+source
             comparison=owner.DATA/'analyzers'/source/'comparison.json'
-            if not private.is_file() and not comparison.is_file():raise ValueError('Capture this source folder with Source analyzer first')
+            metadata=owner.DATA/'analyzers'/source/'metadata.json'
+            if not private.is_file() and not comparison.is_file() and not metadata.is_file():raise ValueError('Capture this source folder with Source analyzer first')
         def work(progress):
             progress(10,'Reading the already detached private database copy')
             if source!='session' and comparison.is_file():s=json.loads(comparison.read_text(encoding='utf-8'))
             elif private.is_file():
                 with closing(open_capture(private.resolve())) as db:s=capture_private_database(db,scope)
+            elif source!='session':
+                from collection_sources import resolve
+                s=resolve(owner,scope)
             else:s=capture_workspace(session['catalog'],scope)
             s.update(captured=now(),source_kind='Loaded XML + ZIP' if source=='session' else 'Saved source-folder capture',source_capture=source)
             if source!='session':s['source_captured']=json.loads((owner.DATA/'analyzers'/source/'report.json').read_text(encoding='utf-8')).get('created')
@@ -140,13 +145,15 @@ def register(owner):
 
     @app.get('/api/lab/history')
     def lab_history():
-        s=store().snapshot(request.args.get('snapshot',''))
+        from collection_sources import history_source
+        s=history_source(owner, request.args)
         return jsonify(list_history(s,request.args.get('q',''),request.args.get('year',''),request.args.get('offset',0)))
 
     @app.get('/api/lab/history/<identity>')
     @app.get('/api/lab/history/<identity>/download')
     def lab_history_session(identity):
-        s=store().snapshot(request.args.get('snapshot',''));full=request.path.endswith('/download')
+        from collection_sources import history_source
+        s=history_source(owner, request.args);full=request.path.endswith('/download')
         result=history_session(s,identity,request.args.get('q',''),request.args.get('offset',0),full)
         if full:return download(result,'saved-play-history.json')
         return jsonify(result)
