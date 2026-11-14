@@ -26,9 +26,93 @@ A local browser application for understanding a rekordbox library, reviewing dup
 
 The interface offers German, French, Italian, Spanish, Greek, Polish, Czech and Russian alongside English. Controls and offline explorers are localized; source metadata, paths, machine-readable fields and raw diagnostics retain their values. Routine panels use concise technical wording, with detailed procedures in the built-in **Documentation** view. See [translations](docs/LOCALIZATION.md), [Unicode/input checks](docs/UNICODE-INPUTS.md) and [contributing](CONTRIBUTING.md).
 
-See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XML and native libraries](docs/FORMAT-SOURCES.md), and [path discovery, analysis/STEMS audit and play-history guide](docs/DISCOVERY-ASSETS-HISTORY.md). The light interface uses blue/green emphasis, prominent duplicate-pair counts and compact tables. Statistics and offline explorers separate addition year from release year. Native histories remain private local snapshot data, browsable after temporary database cleanup.
+See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XML and native libraries](docs/FORMAT-SOURCES.md), and [path discovery, analysis/STEMS audit and play-history guide](docs/DISCOVERY-ASSETS-HISTORY.md). The light interface uses blue, teal, amber and purple navigation accents, compact counters and rounded, spaced sections. Statistics and offline explorers separate addition year from release year. Native histories remain private local snapshot data, browsable after temporary database cleanup.
 
 **Keep a fresh, untouched backup created by rekordbox Backup Library outside this workspace before generating transformed files. Preserve the audio separately when it is excluded from the backup. Native ZIP restoration in rekordbox remains experimental.**
+
+## Interface
+
+These captures use 12 invented test records. No real music catalogue or audio is bundled.
+
+![DJ insights with track preparation, play distribution and compact summary cards](docs/screenshots/readme-library-insights.png)
+
+DJ insights brings saved metadata, preparation evidence and play distribution into one view.
+
+![Track details with comments, colours and a local playback button](docs/screenshots/readme-track-editor.png)
+
+Track details keeps listening, comments, colour choices and working edits together.
+
+![Playlist explorer with captured track order and per-track playback controls](docs/screenshots/readme-playlist-explorer.png)
+
+Library intelligence explores saved playlist membership and order. See [screenshot provenance and regeneration](docs/SCREENSHOTS.md).
+
+## Feature inventory
+
+A factual overview of the current source tree. Release downloads may lag behind `main`; the draft items below retain their stated limits.
+
+**Inputs, discovery and compatibility**
+
+- Discover likely rekordbox data folders from platform defaults, saved application settings and selected search roots.
+- Inspect `master.db` directly or through its containing folder, including differently cased filenames.
+- Capture modern databases and their journals into private copies before querying them; detect changing sources.
+- Report database integrity, required schema fields, track counts, cues, playlists and reference issues.
+- Inspect standalone collection XML without requiring a backup ZIP.
+- Detect legacy v5 `.edb` files and report their footprint and missing companion files; native legacy records remain undecoded.
+- Distinguish desktop libraries from USB/device exports; device detection does not imply conversion.
+- Load matching XML and Backup Library ZIP inputs for duplicate review and copy preparation.
+
+**Library exploration and preparation**
+
+- Keep immutable metadata snapshots in a separate local SQLite store.
+- Compare snapshots using recorded identity evidence and inspect changes in tags and collection distributions.
+- Browse playlists, captured order, repeated entries and missing track metadata.
+- Compare playlist overlap and saved order, including tracks shared across several lists.
+- Explore tracks outside playlists, recurring across saved sessions, or absent from the captured history.
+- Browse native saved history by session and year, retaining repeated entries and unavailable metadata.
+- Inspect session progression using saved BPM, key and colour tags; no actual transition timing is inferred.
+- Rank rotation and discovery candidates using disclosed play-count, history, cue and date evidence.
+- Draw reproducible, genre-balanced random selections with a selection seed.
+- Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
+- Audit preparation coverage, saved analysis references and STEMS-related evidence.
+- Inspect comments, personal stars, colour assignments and other captured metadata in a single-track view.
+- Stage metadata edits in a private sidecar; quick comments and colours remain separate from the original files.
+- Play available recorded audio files in the computer's default media player from live track views.
+- Save bounded evidence reports for later inspection.
+
+**Duplicates, references and storage**
+
+- Review connected duplicate groups with keeper selection, donor exclusions and cue/rating conflict evidence.
+- Compare automatic/manual cue labels, saved waveforms, grids, usage and path evidence.
+- Stage compatible merges, retain unresolved conflicts and undo batch decisions.
+- Filter candidates by tags, duration, cue category, BPM, bitrate, playlist and media availability.
+- Scan selected music folders for relocation candidates and stage reference corrections.
+- Perform optional SHA-256 verification when explicitly requested.
+- Audit local and cloud-synced folders for logical size, local allocation, placeholders and possible extra copies.
+- Distinguish several records referring to one file from several physical copies; account for overlapping roots and hard links.
+- Retain local decisions, saved views, reports and completed exports across restarts.
+
+**External metadata and interoperability**
+
+- Preview MusicBrainz samples of up to 150, 300 or 1,000 tracks, balanced across selected genres.
+- Run opted-in lookups in the background with pacing, cached results, cancellation, resume and an in-app completion notice.
+- Review recording matches, separate community ratings and vote counts, genres, tags and release-year suggestions.
+- Preserve unknown ratings and personal stars; identity approval is required before staging supported suggestions.
+- Retrieve public ListenBrainz weekly, monthly or yearly listening charts and match them locally to the selected snapshot.
+- Review ambiguous versions and duplicate matches before exporting a chart-ordered M3U8 playlist.
+- Generate a detached Serato `database V2` and static crate ZIP as an interoperability draft. Real Serato import remains unverified; cues, grids, ratings, history and audio tags are not transferred.
+
+**Outputs and interface**
+
+- Prepare XML and native backup ZIP copies from one frozen decision set, with validation and export reports.
+- Keep native backup preparation limited to supported v7 inputs and an explicit backup acknowledgement.
+- Export standalone HTML explorers and offline minisites, including filtered CSV downloads.
+- Choose public aggregates, a selected track list or a private explorer; file paths are optional and audio is excluded.
+- Use shared collection context and guided health-check, migration, duplicate-review and sharing workflows.
+- Use compact summary cards, colour-coded navigation and light/dark themes.
+- Switch between nine interface languages without translating source metadata.
+- Run Python source or packaged applications on Windows, macOS and Linux; GitHub builds and checks the supported packages.
+
+This inventory describes implemented behavior, not a compatibility certification. See [compatibility](docs/COMPATIBILITY.md), [MusicBrainz](docs/COMMUNITY-RATINGS.md), [chart playlists](docs/CHART-PLAYLISTS.md) and [Serato draft limits](docs/SERATO-BRIDGE.md). Feature changes must update this inventory and their detailed guide in the same PR.
 
 ## Start with a goal
 
@@ -82,7 +166,7 @@ To test a generated native backup, use **File → Library → Restore Library** 
 1. **Source analyzer** reads a source data folder through a private database/journal snapshot. It reports integrity, schema compatibility, track/cue/playlist counters, reference issues and selected-folder footprint. It does not modify the source. Close rekordbox and pause Cloud Library Sync during capture. No XML or ZIP input is required for this mode.
 2. **Import XML + ZIP** loads a consecutive Backup Library ZIP and collection XML export. Choose files to copy them into a workspace, or use existing files by full path without another large copy. Compare duplicate groups, cues, ratings and file references, then generate XML and native ZIP together from one frozen decision snapshot.
 
-**Library lab** includes snapshot comparison, metadata consistency, analysis asset audits, genre/BPM preparation coverage and a locked metadata editor backed by a separate local SQLite store. An opt-in MusicBrainz pilot previews 20 tracks per top genre plus 50 unknown-genre tracks, with selectable lookup pacing and separate community-rating evidence. Sources stay unchanged. See the [Library lab guide](docs/LIBRARY-LAB.md) for scope, privacy, export behavior and limits, and the [changelog](CHANGELOG.md) for additions since 0.4.0.
+**Library lab** includes snapshot comparison, metadata consistency, analysis asset audits, genre/BPM preparation coverage and a locked metadata editor backed by a separate local SQLite store. An opt-in MusicBrainz pilot previews up to 150, 300 or 1,000 tracks across selected genres, with background lookup pacing, saved batches and separate community-rating/tag evidence. Sources stay unchanged. See the [Library lab guide](docs/LIBRARY-LAB.md) for scope, privacy, export behavior and limits, and the [changelog](CHANGELOG.md) for additions since 0.4.0.
 
 Source analyzer also reads standalone collection XML for v5 statistics (track counts, artist, title, BPM, duration and other available tags). Native v5 `.edb` records remain undecoded. Analysis copies are removed on acknowledged shutdown; reports, decisions and completed exports are retained. See [temporary-file cleanup and resuming](docs/TEMPORARY-FILES.md).
 
@@ -134,7 +218,7 @@ The optional MusicBrainz proof of concept sends selected metadata queries only a
 
 Set `LIBRARY_WORKBENCH_DATA_DIR` to use a different local workspace. The optional `inputs/` folder accepts any ZIP/XML filenames. Import sessions, private analyzer snapshots and exports are separated. Export folders contain `edited-collection.xml`, `edited-library.zip`, `report.json` and an export manifest as applicable. Input files, databases, music, decisions and generated archives are excluded from source control and release source allowlists.
 
-A private precomputed example can be configured in `.data/example.json` or through `LIBRARY_WORKBENCH_EXAMPLE`. No personal library or example database is distributed.
+A private precomputed example can be configured in `.data/example.json` or through `LIBRARY_WORKBENCH_EXAMPLE`. No personal library, example database or music is distributed. README screenshots use only 12 invented test records; GitHub generates and discards them while testing. A 0.1-second silent WAV used by the playback test is never packaged. Source archives include the test generators, not their generated libraries. Release verification rejects audio files and recognized rekordbox/Serato library databases.
 
 ## Development and packaging
 

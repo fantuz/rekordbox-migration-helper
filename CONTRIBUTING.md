@@ -11,3 +11,7 @@ Translations belong in the shared [interface catalogue](static/locales.json). Fo
 For input-format changes, include a regression that exercises actual parsing/writing and confirms source preservation. Document unsupported cases rather than silently replacing characters or guessing a format. Read [Unicode/input checks](docs/UNICODE-INPUTS.md) and [compatibility](docs/COMPATIBILITY.md).
 
 Contributions are provided under the project's existing MIT license. Third-party terms remain separate.
+
+## Keep the feature inventory current
+
+The README **Feature inventory** is the reusable factual summary of the software. In the same PR as a user-visible addition, removal or behavior change, update its relevant bullets and detailed guide. State input requirements and draft compatibility limits. Do not describe a roadmap item as implemented. Update screenshots when the main workflow changes visibly, using synthetic data and the GitHub browser checks; never publish personal libraries or audio.

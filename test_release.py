@@ -239,6 +239,17 @@ class ReleaseTests(unittest.TestCase):
         extra=self.root/'Library-Workbench-9.9.9-surprise.zip';extra.write_bytes(b'not validated')
         with self.assertRaisesRegex(ValueError,'exactly the five'):release.verify_assets(self.root,self.version,self.commit)
 
+    def test_native_download_rejects_audio_and_library_databases_even_with_valid_checksums(self):
+        for unwanted in ('Music/Track.MP3','Music/Track.wav','Music/Track.FLAC','Data/master.db',
+                         'Data/datafile.edb','Data/ExtData.edb','_Serato_/database V2'):
+            with self.subTest(unwanted=unwanted):
+                self.packages()
+                file=self.root/release.archive_name(self.version,'windows-x64')
+                with zipfile.ZipFile(file,'a') as archive:archive.writestr('Library Workbench/'+unwanted,b'synthetic forbidden payload')
+                file.with_suffix('.sha256').write_text(sha256(file.read_bytes()).hexdigest()+'  '+file.name+'\n',encoding='utf-8')
+                with self.assertRaisesRegex(ValueError,'Music or library data'):
+                    release.verify_assets(self.root,self.version,self.commit)
+
     def test_corrupt_or_replaced_download_is_rejected(self):
         self.packages()
         next(self.root.glob('*.zip')).write_bytes(b'changed')

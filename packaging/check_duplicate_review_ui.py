@@ -77,6 +77,9 @@ def check_duplicate_review_ui(browser,base,output):
             decision=request.post_data_json;decisions.append(decision)
             pair['decision']=decision;session['staged']=1
             route.fulfill(json={'session':deepcopy(session)});return
+        if path=='/api/playback/availability':
+            assert request.method=='POST'
+            route.fulfill(json={'tracks':{tid:False for tid in request.post_data_json['track_ids']}});return
         # A regression must never send a synthetic decision to the real application.
         if request.method!='GET':unexpected_mutations.append(path);route.abort();return
         route.continue_()

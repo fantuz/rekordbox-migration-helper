@@ -1097,6 +1097,8 @@ from lab_routes import register as register_lab
 register_lab(sys.modules[__name__])
 from insights_routes import register as register_insights
 register_insights(sys.modules[__name__])
+from track_playback import register as register_playback
+register_playback(sys.modules[__name__])
 from intelligence_routes import register as register_intelligence
 register_intelligence(sys.modules[__name__])
 from journeys_routes import register as register_journeys

@@ -1,5 +1,5 @@
 /* Histories are immutable native snapshot data; never reconstructed from counts. */
-let historyOffset=0,historyEntryOffset=0,historySelected=null;
+let historyOffset=0,historyEntryOffset=0,historySelected=null,historyListRevision=0,historySessionRevision=0;
 async function loadHistory(){
   const info=await api('/api/lab');
   labSelect('#history-snapshot',info.snapshots,r=>r.label+' · '+date(r.created),I18n.t("Choose a saved snapshot"));
@@ -11,9 +11,10 @@ async function loadHistory(){
   historyOffset=0;historySelected=null;$('#history-session').hidden=true;await loadHistoryList();
 }
 async function loadHistoryList(){
-  const snapshot=$('#history-snapshot').value;
+  const revision=++historyListRevision,snapshot=$('#history-snapshot').value;
   if(!snapshot){$('#history-status').textContent=I18n.t("Load a native ZIP workspace or capture a source folder, then save a history snapshot. XML alone does not contain the native History tab.");$('#history-list').innerHTML='';$('#history-summary').innerHTML='';return;}
   const r=await api('/api/lab/history?'+new URLSearchParams({snapshot,year:$('#history-year').value,q:$('#history-search').value,offset:historyOffset}));
+  if(revision!==historyListRevision || snapshot!==$('#history-snapshot').value)return;
   const oldYear=$('#history-year').value;
   $('#history-year').innerHTML=("<option value=\"\">"+esc(I18n.t("All session years"))+"</option>")+r.years.map(y=>'<option value="'+esc(y.year)+'">'+esc(y.year)+' · '+num(y.sessions)+(" "+esc(I18n.t("sessions"))+"</option>")).join('')+(r.unknown_dates?("<option value=\"unknown\">"+esc(I18n.t("Date not captured ·"))+" ")+num(r.unknown_dates)+'</option>':'');$('#history-year').value=oldYear;
   $('#history-status').textContent=r.available?r.note:I18n.t("History was not decoded in this snapshot. XML-only and legacy .edb inputs do not supply native session history. For older native captures, capture the original ZIP workspace or source folder again.");
@@ -26,11 +27,14 @@ async function loadHistoryList(){
 }
 async function loadHistorySession(){
   if(!historySelected)return;
+  const revision=++historySessionRevision,identity=historySelected,snapshot=$('#history-snapshot').value;
   const params=new URLSearchParams({snapshot:$('#history-snapshot').value,offset:historyEntryOffset,q:$('#history-track-search').value});
-  const r=await api('/api/lab/history/'+encodeURIComponent(historySelected)+'?'+params);$('#history-session').hidden=false;
+  const r=await api('/api/lab/history/'+encodeURIComponent(historySelected)+'?'+params);
+  if(revision!==historySessionRevision || identity!==historySelected || snapshot!==$('#history-snapshot').value)return;
+  $('#history-session').hidden=false;
   $('#history-session-title').textContent=r.session.name;
   $('#history-session-note').textContent=(r.session.date || I18n.t("Date unavailable"))+' · '+num(r.recorded_entries)+" "+I18n.t("recorded entries ·")+" "+num(r.missing_track_metadata)+" "+I18n.t("outside the active collection.")+" "+r.note+(r.order_available?'':" "+I18n.t("Saved track order is unavailable."));
-  $('#history-tracks').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Saved order"))+"</th><th>"+esc(I18n.t("Title / artist"))+"</th><th>"+esc(I18n.t("Genre"))+"</th><th>BPM</th><th>"+esc(I18n.t("Duration"))+"</th><th>"+esc(I18n.t("Collection"))+"</th></tr></thead><tbody>")+r.rows.map(t=>'<tr><td>'+esc(t.position ?? I18n.t("Unknown"))+'</td><td><strong>'+esc(t.title)+'</strong><br>'+esc(t.artist || I18n.t("Artist unavailable"))+'</td><td>'+esc(t.genre || I18n.t("Unknown"))+'</td><td>'+esc(t.bpm ?? I18n.t("Unknown"))+'</td><td>'+esc(t.duration==null?I18n.t("Unknown"):Math.floor(t.duration/60)+':'+String(Math.round(t.duration)%60).padStart(2,'0'))+'</td><td>'+esc(t.missing_from_active_collection?I18n.t("Absent from active collection"):I18n.t("In captured collection"))+'</td></tr>').join('')+'</tbody></table>';
+  $('#history-tracks').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Saved order"))+"</th><th>"+esc(I18n.t("Title / artist"))+"</th><th>"+esc(I18n.t("Genre"))+"</th><th>BPM</th><th>"+esc(I18n.t("Duration"))+"</th><th>"+esc(I18n.t("Collection"))+"</th></tr></thead><tbody>")+r.rows.map(t=>'<tr><td>'+esc(t.position ?? I18n.t("Unknown"))+'</td><td><strong>'+esc(t.title)+'</strong>'+TrackPlayback.button($('#history-snapshot').value,t.track_id)+'<br>'+esc(t.artist || I18n.t("Artist unavailable"))+'</td><td>'+esc(t.genre || I18n.t("Unknown"))+'</td><td>'+esc(t.bpm ?? I18n.t("Unknown"))+'</td><td>'+esc(t.duration==null?I18n.t("Unknown"):Math.floor(t.duration/60)+':'+String(Math.round(t.duration)%60).padStart(2,'0'))+'</td><td>'+esc(t.missing_from_active_collection?I18n.t("Absent from active collection"):I18n.t("In captured collection"))+'</td></tr>').join('')+'</tbody></table>';
   $('#history-track-count').textContent=num(r.total)+(" "+I18n.t("entries")+" \u00b7 ")+(r.total?num(historyEntryOffset+1)+'–'+num(Math.min(historyEntryOffset+50,r.total)):'0');
   $('#history-tracks-prev').disabled=!historyEntryOffset;$('#history-tracks-next').disabled=historyEntryOffset+50>=r.total;
   $('#history-download').href='/api/lab/history/'+encodeURIComponent(historySelected)+'/download?'+new URLSearchParams({snapshot:$('#history-snapshot').value});

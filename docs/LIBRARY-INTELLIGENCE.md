@@ -12,3 +12,11 @@ Open **Library intelligence** under Analysis & insights. Choose a saved collecti
 Snapshots can represent different export scopes or dates. Check their capture context before interpreting growth or changes. Distribution counts include duplicate records. Evolution is a summary; use **Compare snapshots** for individual cue, rating and playlist findings.
 
 **Save evidence report** recomputes the selected view on the server and keeps it locally in Library lab. Session and overlap reports retain the current 50-row page plus overall counts and page position, explicitly labelled as a retained page. Reports and completed summaries remain after temporary input cleanup.
+
+## Playlist contents and lateral views
+
+Browse captured playlist members with preserved repeated entries, saved positions when available, missing-metadata flags and bounded search/pagination. Smart playlists show the members captured at that time; their rules are not re-evaluated.
+
+Collection lenses show all tracks, tracks outside captured playlists, tracks occurring in at least two saved history sessions, and tracks absent from captured history. Recurrence counts sessions, so repeated plays within one session do not qualify by themselves. Missing history coverage is disclosed; absence is never labeled as proof that a song was never played. Summary counts and page reports retain their evidence scope.
+
+The same page contains reviewed [chart-to-playlist export](CHART-PLAYLISTS.md) and the [Serato interoperability draft](SERATO-BRIDGE.md). [Local playback](TRACK-PLAYBACK.md) is available alongside captured track titles.

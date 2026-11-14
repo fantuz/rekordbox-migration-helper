@@ -27,3 +27,11 @@ Classic USB Device Library uses `export.pdb`. OneLibrary is the new name for Dev
 
 - [AlphaTheta: relationship between OneLibrary and Device Library Plus](https://support.alphatheta.com/en-US/articles/51301232380185)
 - [Official USB export guide](https://cdn.rekordbox.com/files/20251021171528/USB_export_guide_en_251007.pdf)
+
+## More explicit legacy inspection
+
+Discovery recognizes actual database filename casing and accepts a directly selected `master.db`, `datafile.edb` or `ExtData.edb`. If a case-sensitive folder has more than one differently cased master database, select the intended file explicitly. Automatic discovery avoids linked directories and bounds directory-name inspection. Legacy inspection reports companion-file presence and metadata; absence of the primary `datafile.edb` is explicit rather than a fabricated empty library.
+
+The v5 XML reader accepts the documented discrete rating encodings (0, 51, 102, 153, 204, 255) and documented playlist key types. Invalid ratings remain unknown and unsupported key types remain unresolved. Source changes during the two XML passes abort the capture.
+
+For native v5 conversion, use rekordbox's **File → Library → Import your library from ver.5 (or earlier)** workflow in a supported newer installation. After conversion the older and newer databases are independent; later edits do not synchronize between them. The helper does not manufacture that conversion. Real v5 and v6 fixtures are still needed; the shared v6/v7 format family is not an assertion of universal compatibility.

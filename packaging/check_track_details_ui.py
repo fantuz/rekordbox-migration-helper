@@ -62,6 +62,9 @@ def check_track_details_ui(browser,base,output):
             assert request.method=='POST'
             edits[field]={'value':payload['value'],'baseline':original[field],'origin':'user','updated':'synthetic'}
             route.fulfill(json={'value':payload['value'],'overrides':deepcopy(edits)});return
+        if path=='/api/playback/availability':
+            assert request.method=='POST'
+            route.fulfill(json={'tracks':{tid:False for tid in request.post_data_json['track_ids']}});return
         # Never submit synthetic edits, unlocks or other mutations to the real app.
         if request.method!='GET':unexpected.append(path);route.abort();return
         route.continue_()

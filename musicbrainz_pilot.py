@@ -1,5 +1,6 @@
 """Opt-in MusicBrainz proof of concept. GET only, bounded samples, paced requests."""
 from collections import Counter,defaultdict
+from math import isfinite
 from datetime import datetime,timezone
 from email.utils import parsedate_to_datetime
 from difflib import SequenceMatcher
@@ -17,7 +18,7 @@ from library_checks import normalized
 from workbench_store import encoded,now
 
 BASE='https://musicbrainz.org/ws/2/'
-USER_AGENT='LibraryWorkbench/0.5.0 (https://github.com/fantuz/rekordbox-migration-helper)'
+USER_AGENT='LibraryWorkbench/1.0 (https://github.com/fantuz/rekordbox-migration-helper)'
 LICENSE='CC BY-NC-SA 3.0; MusicBrainz supplementary data'
 LICENSE_URL='https://musicbrainz.org/doc/About/Data_License'
 SPEEDS={'gentle':3.0,'balanced':2.0,'fast':1.1}
@@ -26,14 +27,33 @@ SPEEDS={'gentle':3.0,'balanced':2.0,'fast':1.1}
 def unknown_genre(value):return normalized(value) in ('','unknown','unknown genre','unclassified','uncategorized')
 
 
-def sample_genres(snapshot,top=5,seed='preview'):
+def sample_genres(snapshot,top=5,seed='preview',sample_size=None):
     top=int(top)
-    if not 3<=top<=12:raise ValueError('Choose between 3 and 12 populated genres; the sample is capped at 300 tracks')
+    if not 3<=top<=12:raise ValueError('Choose between 3 and 12 populated genres')
+    if sample_size is not None:
+        if isinstance(sample_size,bool) or str(sample_size) not in ('150','300','1000'):
+            raise ValueError('Choose a pilot size of 150, 300 or 1000 tracks')
+        sample_size=int(sample_size)
     counts=Counter(t.get('genre') for t in snapshot['tracks'] if not unknown_genre(t.get('genre')))
     names=[name for name,_ in counts.most_common(top)];groups=defaultdict(list)
     for t in snapshot['tracks']:
         key='Unknown genre' if unknown_genre(t.get('genre')) else t.get('genre')
         if key in names or key=='Unknown genre':groups[key].append(t)
+    if sample_size is not None:
+        # Round-robin strata prevent a large genre from consuming the whole sample.
+        queues={name:iter(sorted(groups[name],key=lambda t:sha256((str(seed)+'\\0'+t['id']).encode()).hexdigest()))
+                for name in [*names,'Unknown genre']}
+        selected=[];seen=set();picked=Counter();active=list(queues)
+        while active and len(selected)<sample_size:
+            for name in active[:]:
+                for t in queues[name]:
+                    identity=(normalized(t.get('artist')),normalized(t.get('title')),round(t.get('duration') or 0))
+                    if identity in seen:continue
+                    seen.add(identity);selected.append(t);picked[name]+=1;break
+                else:active.remove(name)
+                if len(selected)>=sample_size:break
+        return selected,[{'genre':name,'library_tracks':len(groups[name]),'sampled':picked[name],'requested':None}
+                         for name in queues]
     selected=[];seen=set();summary=[]
     for name in [*names,'Unknown genre']:
         maximum=50 if name=='Unknown genre' else 20
@@ -91,14 +111,18 @@ def proposals(detail):
     rating=detail.get('rating') or {};votes=rating.get('votes-count') or 0;score=None
     try:
         if int(votes)>0 and rating.get('value') is not None and 0<=float(rating['value'])<=5:score=float(rating['value'])
-    except (TypeError,ValueError):votes=0
+    except (TypeError,ValueError,OverflowError):votes=0
+    votes=max(0,int(votes))
     dates=[detail.get('first-release-date') or '']+[r.get('date','') for r in detail.get('releases',[])]
     years=[int(d[:4]) for d in dates if re.match(r'^\d{4}',d)]
     genres=sorted([g for g in detail.get('genres',[]) if g.get('name') and (g.get('count') or 0)>0],key=lambda g:-(g.get('count') or 0))
+    tags=sorted([{'name':str(g['name'])[:200],'count':g.get('count',0)} for g in detail.get('tags',[])
+                 if isinstance(g,dict) and g.get('name') and isinstance(g.get('count'),(int,float))
+                 and isfinite(g['count']) and g['count']>0],key=lambda g:(-g['count'],g['name']))[:20]
     releases=[{'title':r.get('title'),'date':r.get('date'),'mbid':r.get('id')} for r in detail.get('releases',[])[:20]]
     return {'community_score':score,'votes':int(votes),'scale_max':5,'year':min(years) if years else None,
             'year_basis':'First known release year for this recording; may differ from this file release',
-            'genre':genres[0]['name'] if genres else None,'genre_votes':genres,'possible_albums':releases,
+            'genre':genres[0]['name'] if genres else None,'genre_votes':genres,'tags':tags,'possible_albums':releases,
             'license':LICENSE,'license_url':LICENSE_URL,'source_url':'https://musicbrainz.org/recording/'+str(detail.get('id','')),
             'retrieved_at':now(),'personal_rating_changed':False}
 
@@ -151,13 +175,13 @@ class MusicBrainzClient:
         raise RuntimeError('Provider request failed')
 
 
-def create_batch(store,snapshot,top=5,seed='preview',delay=2.0):
+def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None):
     delay=float(delay)
     if not 1.1<=delay<=60:raise ValueError('Lookup spacing must be between 1.1 and 60 seconds')
-    selected,groups=sample_genres(snapshot,top,seed)
+    selected,groups=sample_genres(snapshot,top,seed,sample_size)
     identity=uuid4().hex
     sample=[{k:t.get(k) for k in ('id','title','artist','album','genre','year','rating','duration','isrc','metadata_origin')} for t in selected]
-    summary={'groups':groups,'tracks':len(sample),'seconds_per_request':float(delay),'requests':0,'cache_hits':0,'done':0,
+    summary={'groups':groups,'requested_tracks':sample_size,'estimated_uncached_seconds':round(2*len(sample)*delay),'tracks':len(sample),'seconds_per_request':float(delay),'requests':0,'cache_hits':0,'done':0,
              'rating_available':0,'genre_available':0,'year_available':0,'experimental':True,'queries_include_audio':False,'queries_include_paths':False}
     with store.connection() as db:db.execute('INSERT INTO mb_batches VALUES (?,?,?,?,?,?)',(identity,snapshot['id'],now(),'preview',encoded(summary),encoded(sample)))
     return {'id':identity,'summary':summary,'sample':sample,'status':'preview'}
@@ -181,12 +205,13 @@ def run_batch(store,identity,client,progress):
         previous={r['track_id']:json.loads(r['payload']) for r in db.execute('SELECT track_id,payload FROM mb_results WHERE batch_id=?',(identity,))}
         db.execute('UPDATE mb_batches SET status=? WHERE id=?',('running',identity))
     prior_requests=summary.get('requests',0);prior_hits=summary.get('cache_hits',0)
-    consecutive_errors=0;status='complete';totals=Counter(rating_available=0,genre_available=0,year_available=0,service_errors=0,needs_local_tags=0,candidate_matches=0,no_match=0)
+    consecutive_errors=0;status='complete';totals=Counter(rating_available=0,genre_available=0,tags_available=0,year_available=0,service_errors=0,needs_local_tags=0,candidate_matches=0,no_match=0)
     summary.update(done=0,**totals);summary.pop('message',None)
     for n,t in enumerate(sample):
+        reused=False
         try:
             if getattr(client,'cancel',None) and client.cancel.is_set():raise InterruptedError('Pilot cancelled')
-            if t['id'] in previous and previous[t['id']]['status']!='service_error':result=previous[t['id']]
+            if t['id'] in previous and previous[t['id']]['status']!='service_error':result=previous[t['id']];reused=True
             else:
                 try:query=public_query(t)
                 except ValueError as error:query=None;result={'status':'needs_local_tags','error':str(error)}
@@ -194,8 +219,8 @@ def run_batch(store,identity,client,progress):
                     search=client.get('recording/',{'query':query['query'],'limit':5})
                     candidates=candidates_for(t,search.get('recordings',[]));proposal=None
                     if candidates:
-                        detail=client.get('recording/'+candidates[0]['mbid'],{'inc':'ratings+genres+releases+isrcs+artist-credits'})
-                        if not detail.get('id'):raise ValueError('Candidate details are unavailable; retry later')
+                        detail=client.get('recording/'+candidates[0]['mbid'],{'inc':'ratings+genres+tags+releases+isrcs+artist-credits'})
+                        if detail.get('id')!=candidates[0]['mbid']:raise ValueError('Candidate details do not match the requested recording; retry later')
                         proposal=proposals(detail)
                     result={'status':'candidate_needs_review' if candidates else 'no_match','query':query,'candidates':candidates,'proposal':proposal,'match_approved':False}
             consecutive_errors=0
@@ -205,9 +230,10 @@ def run_batch(store,identity,client,progress):
         totals[{'service_error':'service_errors','candidate_needs_review':'candidate_matches'}.get(result['status'],result['status'])]+=1
         proposal=result.get('proposal') or {}
         totals['rating_available']+=proposal.get('community_score') is not None
+        totals['tags_available']+=bool(proposal.get('tags'))
         totals['genre_available']+=bool(proposal.get('genre'));totals['year_available']+=proposal.get('year') is not None
         with store.connection() as db:
-            db.execute('INSERT OR REPLACE INTO mb_results VALUES (?,?,?,?)',(identity,t['id'],result['status'],encoded(result)))
+            if not reused:db.execute('INSERT OR REPLACE INTO mb_results VALUES (?,?,?,?)',(identity,t['id'],result['status'],encoded(result)))
             summary.update(done=n+1,requests=prior_requests+client.requests,cache_hits=prior_hits+client.cache_hits,**totals)
             db.execute('UPDATE mb_batches SET summary=? WHERE id=?',(encoded(summary),identity))
         progress(100*(n+1)/max(1,len(sample)),f"MusicBrainz {n+1}/{len(sample)} · {client.requests} requests · {client.cache_hits} cached")

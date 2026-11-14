@@ -14710,6 +14710,390 @@
       "pl": "niedopasowane przed",
       "cs": "nespárované před",
       "ru": "без соответствия до"
+    },
+    "View results": {
+      "de": "Ergebnisse ansehen",
+      "fr": "Voir les résultats",
+      "it": "Mostra risultati",
+      "es": "Ver resultados",
+      "el": "Προβολή αποτελεσμάτων",
+      "pl": "Pokaż wyniki",
+      "cs": "Zobrazit výsledky",
+      "ru": "Показать результаты"
+    },
+    "Dismiss": {
+      "de": "Ausblenden",
+      "fr": "Masquer",
+      "it": "Nascondi",
+      "es": "Ocultar",
+      "el": "Απόκρυψη",
+      "pl": "Ukryj",
+      "cs": "Skrýt",
+      "ru": "Скрыть"
+    },
+    "Collection lenses": {
+      "de": "Sammlungsansichten",
+      "fr": "Vues de collection",
+      "it": "Viste della raccolta",
+      "es": "Vistas de colección",
+      "el": "Προβολές συλλογής",
+      "pl": "Widoki kolekcji",
+      "cs": "Pohledy na kolekci",
+      "ru": "Представления коллекции"
+    },
+    "View": {
+      "de": "Ansicht",
+      "fr": "Vue",
+      "it": "Vista",
+      "es": "Vista",
+      "el": "Προβολή",
+      "pl": "Widok",
+      "cs": "Pohled",
+      "ru": "Вид"
+    },
+    "Outside playlists": {
+      "de": "Außerhalb von Playlists",
+      "fr": "Hors playlists",
+      "it": "Fuori dalle playlist",
+      "es": "Fuera de las listas",
+      "el": "Εκτός λιστών",
+      "pl": "Poza playlistami",
+      "cs": "Mimo playlisty",
+      "ru": "Вне плейлистов"
+    },
+    "Recurring in saved sessions": {
+      "de": "In mehreren gespeicherten Sessions",
+      "fr": "Présents dans plusieurs sessions",
+      "it": "Ricorrenti nelle sessioni salvate",
+      "es": "Recurrentes en sesiones guardadas",
+      "el": "Σε πολλές αποθηκευμένες συνεδρίες",
+      "pl": "Powtarzające się w sesjach",
+      "cs": "Opakované v uložených relacích",
+      "ru": "Повторяются в сохранённых сессиях"
+    },
+    "Not in captured history": {
+      "de": "Nicht im erfassten Verlauf",
+      "fr": "Absents de l’historique capturé",
+      "it": "Assenti dalla cronologia acquisita",
+      "es": "Ausentes del historial capturado",
+      "el": "Εκτός καταγεγραμμένου ιστορικού",
+      "pl": "Brak w zapisanej historii",
+      "cs": "Nejsou v zachycené historii",
+      "ru": "Отсутствуют в сохранённой истории"
+    },
+    "All tracks": {
+      "de": "Alle Titel",
+      "fr": "Tous les morceaux",
+      "it": "Tutte le tracce",
+      "es": "Todas las pistas",
+      "el": "Όλα τα κομμάτια",
+      "pl": "Wszystkie utwory",
+      "cs": "Všechny skladby",
+      "ru": "Все треки"
+    },
+    "Explore collection": {
+      "de": "Sammlung erkunden",
+      "fr": "Explorer la collection",
+      "it": "Esplora raccolta",
+      "es": "Explorar colección",
+      "el": "Εξερεύνηση συλλογής",
+      "pl": "Przeglądaj kolekcję",
+      "cs": "Prozkoumat kolekci",
+      "ru": "Обзор коллекции"
+    },
+    "Browse playlist": {
+      "de": "Playlist ansehen",
+      "fr": "Parcourir la playlist",
+      "it": "Sfoglia playlist",
+      "es": "Explorar lista",
+      "el": "Προβολή λίστας",
+      "pl": "Przeglądaj playlistę",
+      "cs": "Procházet playlist",
+      "ru": "Просмотреть плейлист"
+    },
+    "Chart to playlist": {
+      "de": "Charts als Playlist",
+      "fr": "Classement vers playlist",
+      "it": "Classifica in playlist",
+      "es": "Clasificación a lista",
+      "el": "Κατάταξη σε λίστα",
+      "pl": "Ranking na playlistę",
+      "cs": "Žebříček na playlist",
+      "ru": "Из чарта в плейлист"
+    },
+    "ListenBrainz community charts. Matches are reviewed locally; your library is not uploaded.": {
+      "de": "ListenBrainz-Community-Charts. Zuordnungen werden lokal geprüft; Ihre Bibliothek wird nicht hochgeladen.",
+      "fr": "Classements communautaires ListenBrainz. Correspondances vérifiées localement ; votre bibliothèque n’est pas envoyée.",
+      "it": "Classifiche della comunità ListenBrainz. Gli abbinamenti si verificano localmente; la libreria non viene caricata.",
+      "es": "Clasificaciones de la comunidad ListenBrainz. Las coincidencias se revisan localmente; no se sube la biblioteca.",
+      "el": "Κατατάξεις της κοινότητας ListenBrainz. Οι αντιστοιχίσεις ελέγχονται τοπικά· η βιβλιοθήκη δεν μεταφορτώνεται.",
+      "pl": "Rankingi społeczności ListenBrainz. Dopasowania sprawdzasz lokalnie; biblioteka nie jest wysyłana.",
+      "cs": "Žebříčky komunity ListenBrainz. Shody se kontrolují místně; knihovna se neodesílá.",
+      "ru": "Чарты сообщества ListenBrainz. Совпадения проверяются локально; библиотека не загружается."
+    },
+    "Period": {
+      "de": "Zeitraum",
+      "fr": "Période",
+      "it": "Periodo",
+      "es": "Período",
+      "el": "Περίοδος",
+      "pl": "Okres",
+      "cs": "Období",
+      "ru": "Период"
+    },
+    "Week": {
+      "de": "Woche",
+      "fr": "Semaine",
+      "it": "Settimana",
+      "es": "Semana",
+      "el": "Εβδομάδα",
+      "pl": "Tydzień",
+      "cs": "Týden",
+      "ru": "Неделя"
+    },
+    "Month": {
+      "de": "Monat",
+      "fr": "Mois",
+      "it": "Mese",
+      "es": "Mes",
+      "el": "Μήνας",
+      "pl": "Miesiąc",
+      "cs": "Měsíc",
+      "ru": "Месяц"
+    },
+    "Fetch the public chart from ListenBrainz": {
+      "de": "Öffentliche Charts von ListenBrainz abrufen",
+      "fr": "Récupérer le classement public ListenBrainz",
+      "it": "Recupera la classifica pubblica da ListenBrainz",
+      "es": "Obtener la clasificación pública de ListenBrainz",
+      "el": "Λήψη δημόσιας κατάταξης ListenBrainz",
+      "pl": "Pobierz publiczny ranking ListenBrainz",
+      "cs": "Načíst veřejný žebříček ListenBrainz",
+      "ru": "Получить публичный чарт ListenBrainz"
+    },
+    "Find chart matches": {
+      "de": "Chart-Titel zuordnen",
+      "fr": "Trouver les correspondances",
+      "it": "Trova corrispondenze nella classifica",
+      "es": "Buscar coincidencias",
+      "el": "Εύρεση αντιστοιχίσεων",
+      "pl": "Znajdź dopasowania",
+      "cs": "Najít shody",
+      "ru": "Найти совпадения"
+    },
+    "I reviewed these recording matches": {
+      "de": "Ich habe diese Aufnahmezuordnungen geprüft",
+      "fr": "J’ai vérifié ces correspondances d’enregistrements",
+      "it": "Ho verificato questi abbinamenti",
+      "es": "He revisado estas coincidencias de grabaciones",
+      "el": "Έλεγξα αυτές τις αντιστοιχίσεις ηχογραφήσεων",
+      "pl": "Sprawdziłem te dopasowania nagrań",
+      "cs": "Zkontroloval jsem tyto shody nahrávek",
+      "ru": "Я проверил эти совпадения записей"
+    },
+    "Export playlist M3U8": {
+      "de": "M3U8-Playlist exportieren",
+      "fr": "Exporter la playlist M3U8",
+      "it": "Esporta playlist M3U8",
+      "es": "Exportar lista M3U8",
+      "el": "Εξαγωγή λίστας M3U8",
+      "pl": "Eksportuj playlistę M3U8",
+      "cs": "Exportovat playlist M3U8",
+      "ru": "Экспорт плейлиста M3U8"
+    },
+    "Serato interoperability draft": {
+      "de": "Serato-Interoperabilitätsentwurf",
+      "fr": "Ébauche d’interopérabilité Serato",
+      "it": "Bozza di interoperabilità Serato",
+      "es": "Borrador de interoperabilidad Serato",
+      "el": "Προσχέδιο διαλειτουργικότητας Serato",
+      "pl": "Wersja próbna dla Serato",
+      "cs": "Návrh interoperability Serato",
+      "ru": "Пробный экспорт для Serato"
+    },
+    "Basic database and static crates only. Cues, grids, ratings and audio tags are not transferred. Test in a separate Serato library.": {
+      "de": "Nur Basisdatenbank und statische Crates. Cues, Grids, Bewertungen und Audio-Tags werden nicht übertragen. In einer separaten Serato-Bibliothek testen.",
+      "fr": "Base de données simple et crates statiques uniquement. Repères, grilles, notes et tags audio non transférés. Tester dans une bibliothèque Serato séparée.",
+      "it": "Solo database di base e crate statici. Cue, griglie, valutazioni e tag audio non vengono trasferiti. Prova in una libreria Serato separata.",
+      "es": "Solo base de datos básica y crates estáticos. No se transfieren cues, rejillas, valoraciones ni etiquetas de audio. Prueba en una biblioteca Serato separada.",
+      "el": "Μόνο βασική βάση δεδομένων και στατικά crates. Δεν μεταφέρονται cues, πλέγματα, αξιολογήσεις ή ετικέτες ήχου. Δοκιμάστε σε ξεχωριστή βιβλιοθήκη Serato.",
+      "pl": "Tylko podstawowa baza i statyczne crate’y. Cue, siatki, oceny i tagi audio nie są przenoszone. Testuj w osobnej bibliotece Serato.",
+      "cs": "Jen základní databáze a statické crates. Cue, mřížky, hodnocení ani audio tagy se nepřenášejí. Testujte v oddělené knihovně Serato.",
+      "ru": "Только базовая БД и статические crates. Метки cue, сетки, оценки и аудиотеги не переносятся. Тестируйте в отдельной библиотеке Serato."
+    },
+    "Music volume root": {
+      "de": "Wurzel des Musiklaufwerks",
+      "fr": "Racine du volume musical",
+      "it": "Radice del volume musicale",
+      "es": "Raíz del volumen de música",
+      "el": "Ρίζα τόμου μουσικής",
+      "pl": "Katalog główny nośnika muzyki",
+      "cs": "Kořen hudebního svazku",
+      "ru": "Корень тома с музыкой"
+    },
+    "I understand this draft needs validation in Serato": {
+      "de": "Ich verstehe, dass dieser Entwurf in Serato geprüft werden muss",
+      "fr": "Je comprends que cette ébauche doit être validée dans Serato",
+      "it": "Comprendo che questa bozza richiede una verifica in Serato",
+      "es": "Entiendo que este borrador debe validarse en Serato",
+      "el": "Κατανοώ ότι το προσχέδιο χρειάζεται έλεγχο στο Serato",
+      "pl": "Rozumiem, że tę wersję trzeba sprawdzić w Serato",
+      "cs": "Rozumím, že tento návrh vyžaduje ověření v Serato",
+      "ru": "Я понимаю, что этот экспорт нужно проверить в Serato"
+    },
+    "Download Serato draft ZIP": {
+      "de": "Serato-Entwurf als ZIP laden",
+      "fr": "Télécharger l’ébauche Serato ZIP",
+      "it": "Scarica ZIP della bozza Serato",
+      "es": "Descargar ZIP de prueba Serato",
+      "el": "Λήψη ZIP προσχεδίου Serato",
+      "pl": "Pobierz próbny ZIP Serato",
+      "cs": "Stáhnout návrh Serato ZIP",
+      "ru": "Скачать пробный ZIP Serato"
+    },
+    "Choose a larger sample; lookups run in the background while you explore. Keep the application running. {slot0}": {
+      "de": "Größere Stichprobe wählen; Abfragen laufen im Hintergrund. Anwendung geöffnet lassen. {slot0}",
+      "fr": "Choisissez un échantillon plus large ; les recherches continuent en arrière-plan. Laissez l’application ouverte. {slot0}",
+      "it": "Scegli un campione più ampio; le ricerche proseguono in background. Mantieni l’applicazione in esecuzione. {slot0}",
+      "es": "Elige una muestra mayor; las búsquedas continúan en segundo plano. Mantén la aplicación abierta. {slot0}",
+      "el": "Επιλέξτε μεγαλύτερο δείγμα· οι αναζητήσεις συνεχίζονται στο παρασκήνιο. Κρατήστε την εφαρμογή ανοιχτή. {slot0}",
+      "pl": "Wybierz większą próbkę; wyszukiwanie działa w tle. Pozostaw aplikację uruchomioną. {slot0}",
+      "cs": "Vyberte větší vzorek; hledání běží na pozadí. Nechte aplikaci spuštěnou. {slot0}",
+      "ru": "Выберите большую выборку; поиск работает в фоне. Оставьте приложение запущенным. {slot0}"
+    },
+    "Sample size": {
+      "de": "Stichprobengröße",
+      "fr": "Taille de l’échantillon",
+      "it": "Dimensione campione",
+      "es": "Tamaño de muestra",
+      "el": "Μέγεθος δείγματος",
+      "pl": "Wielkość próbki",
+      "cs": "Velikost vzorku",
+      "ru": "Размер выборки"
+    },
+    "Saved batches": {
+      "de": "Gespeicherte Durchläufe",
+      "fr": "Lots enregistrés",
+      "it": "Lotti salvati",
+      "es": "Lotes guardados",
+      "el": "Αποθηκευμένες παρτίδες",
+      "pl": "Zapisane partie",
+      "cs": "Uložené dávky",
+      "ru": "Сохранённые пакеты"
+    },
+    "Start or resume in background": {
+      "de": "Im Hintergrund starten oder fortsetzen",
+      "fr": "Démarrer ou reprendre en arrière-plan",
+      "it": "Avvia o riprendi in background",
+      "es": "Iniciar o reanudar en segundo plano",
+      "el": "Έναρξη ή συνέχιση στο παρασκήνιο",
+      "pl": "Uruchom lub wznów w tle",
+      "cs": "Spustit nebo pokračovat na pozadí",
+      "ru": "Запустить или продолжить в фоне"
+    },
+    "Library snapshot": {
+      "de": "Bibliotheksaufnahme",
+      "fr": "Capture de bibliothèque",
+      "it": "Istantanea della libreria",
+      "es": "Captura de biblioteca",
+      "el": "Στιγμιότυπο βιβλιοθήκης",
+      "pl": "Migawka biblioteki",
+      "cs": "Snímek knihovny",
+      "ru": "Снимок библиотеки"
+    },
+    "Chart recording": {
+      "de": "Chart-Aufnahme",
+      "fr": "Enregistrement classé",
+      "it": "Registrazione in classifica",
+      "es": "Grabación clasificada",
+      "el": "Ηχογράφηση κατάταξης",
+      "pl": "Nagranie z rankingu",
+      "cs": "Nahrávka v žebříčku",
+      "ru": "Запись из чарта"
+    },
+    "Local match": {
+      "de": "Lokale Zuordnung",
+      "fr": "Correspondance locale",
+      "it": "Corrispondenza locale",
+      "es": "Coincidencia local",
+      "el": "Τοπική αντιστοίχιση",
+      "pl": "Lokalne dopasowanie",
+      "cs": "Místní shoda",
+      "ru": "Локальное совпадение"
+    },
+    "exact_tags": {
+      "de": "Gleiche Tags · Identität prüfen",
+      "fr": "Tags identiques · vérifier l’identité",
+      "it": "Tag uguali · verifica identità",
+      "es": "Etiquetas iguales · verificar identidad",
+      "el": "Ίδιες ετικέτες · ελέγξτε ταυτότητα",
+      "pl": "Te same tagi · sprawdź tożsamość",
+      "cs": "Stejné tagy · ověřte totožnost",
+      "ru": "Одинаковые теги · проверьте запись",
+      "en": "Matching tags · review identity"
+    },
+    "ambiguous": {
+      "de": "Mehrdeutig",
+      "fr": "Ambigu",
+      "it": "Ambiguo",
+      "es": "Ambiguo",
+      "el": "Ασαφές",
+      "pl": "Niejednoznaczne",
+      "cs": "Nejednoznačné",
+      "ru": "Неоднозначно",
+      "en": "Ambiguous"
+    },
+    "review_version": {
+      "de": "Version prüfen",
+      "fr": "Vérifier la version",
+      "it": "Verifica versione",
+      "es": "Revisar versión",
+      "el": "Ελέγξτε έκδοση",
+      "pl": "Sprawdź wersję",
+      "cs": "Ověřit verzi",
+      "ru": "Проверьте версию",
+      "en": "Review version"
+    },
+    "unmatched": {
+      "de": "Nicht zugeordnet",
+      "fr": "Sans correspondance",
+      "it": "Nessuna corrispondenza",
+      "es": "Sin coincidencia",
+      "el": "Χωρίς αντιστοίχιση",
+      "pl": "Brak dopasowania",
+      "cs": "Bez shody",
+      "ru": "Нет совпадения",
+      "en": "Unmatched"
+    },
+    "Play in default media player": {
+      "de": "Im Standard-Mediaplayer abspielen",
+      "fr": "Lire dans le lecteur multimédia par défaut",
+      "it": "Riproduci nel lettore multimediale predefinito",
+      "es": "Reproducir en el reproductor predeterminado",
+      "el": "Αναπαραγωγή στο προεπιλεγμένο πρόγραμμα πολυμέσων",
+      "pl": "Odtwórz w domyślnym odtwarzaczu",
+      "cs": "Přehrát ve výchozím přehrávači",
+      "ru": "Открыть в проигрывателе по умолчанию"
+    },
+    "Audio file unavailable at the recorded library paths": {
+      "de": "Audiodatei unter den gespeicherten Bibliothekspfaden nicht verfügbar",
+      "fr": "Fichier audio indisponible aux chemins enregistrés",
+      "it": "File audio non disponibile nei percorsi registrati della libreria",
+      "es": "Archivo de audio no disponible en las rutas registradas",
+      "el": "Το αρχείο ήχου δεν είναι διαθέσιμο στις καταγεγραμμένες διαδρομές",
+      "pl": "Plik audio niedostępny w zapisanych ścieżkach biblioteki",
+      "cs": "Zvukový soubor není dostupný na uložených cestách knihovny",
+      "ru": "Аудиофайл недоступен по сохранённым путям библиотеки"
+    },
+    "Opened in your default media player": {
+      "de": "Im Standard-Mediaplayer geöffnet",
+      "fr": "Ouvert dans votre lecteur multimédia par défaut",
+      "it": "Aperto nel lettore multimediale predefinito",
+      "es": "Abierto en el reproductor predeterminado",
+      "el": "Άνοιξε στο προεπιλεγμένο πρόγραμμα πολυμέσων",
+      "pl": "Otwarto w domyślnym odtwarzaczu",
+      "cs": "Otevřeno ve výchozím přehrávači",
+      "ru": "Открыто в проигрывателе по умолчанию"
     }
   }
 }

@@ -67,7 +67,7 @@ def _case_path(base,*parts):
             if exact.exists():
                 if exact.is_symlink() or exact.is_junction():return None
                 path=exact;continue
-            matches=[p for p in path.iterdir() if p.name.casefold()==part.casefold() and not p.is_symlink() and not p.is_junction()]
+            matches=[p for p in islice(path.iterdir(),4096) if p.name.casefold()==part.casefold() and not p.is_symlink() and not p.is_junction()]
         except OSError:return None
         if len(matches)!=1:return None
         path=matches[0]
@@ -102,7 +102,7 @@ def _mounted_candidates(volume):
                 parts=Path(raw).parts[1:]
             else:continue
             path=_case_path(volume,*parts)
-            if path and path.name.casefold()=='master.db':path=path.parent
+            if path and path.name.casefold() in DATABASES:path=path.parent
             if path and path.is_dir():
                 kind='analysis' if hint['kind']=='analysis' else 'database'
                 candidates.append((path,'Saved '+kind+' path mapped within this mounted volume; verify the drive mapping and chosen library'))
@@ -154,6 +154,7 @@ def scan_roots(roots,progress,kind='both',depth=8,max_directories=12000,max_entr
     for raw in roots:
         path=Path(str(raw).strip().strip('"')).expanduser()
         if not path.is_absolute() or not path.is_dir():raise ValueError('Choose accessible absolute paths to folders already available on this computer')
+        if path.is_symlink() or path.is_junction():raise ValueError('Choose the real folder rather than a link or junction')
         path=path.resolve()
         if str(path) in seen_roots:continue
         if sys.platform!='win32' and path==Path(path.anchor):raise ValueError('Choose a mounted volume or specific folder rather than the whole Linux/macOS system root')

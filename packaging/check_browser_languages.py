@@ -80,7 +80,7 @@ def main():
                 page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"');page.wait_for_selector('#docs-content h1')
                 assert page.locator('#docs-content').inner_text()
                 assert page.locator('#page-title').inner_text()==messages['de']['Documentation']
-                assert not any(r['method']!='GET' and not (r['method']=='POST' and r['url']==base+'/api/journeys/context') for r in requests), 'Language changes submitted a library mutation'
+                assert not any(r['method']!='GET' and not (r['method']=='POST' and r['url'] in (base+'/api/journeys/context',base+'/api/playback/availability')) for r in requests), 'Language changes submitted a library mutation'
                 assert all(r['url'].startswith(base) or r['url'].startswith('blob:') for r in requests), 'Unexpected external request'
                 assert store.snapshot(sid)==before
                 assert not api_issues,api_issues
@@ -92,6 +92,8 @@ def main():
                 report['sharing_ui']=check_sharing_ui(page,base,sid,args.output)
                 from check_intelligence_ui import check_intelligence_ui
                 report['intelligence_ui']=check_intelligence_ui(page,base,sid,args.output,store)
+                from check_enrichment_ui import check_enrichment_ui
+                report['enrichment_ui']=check_enrichment_ui(page,base,sid,args.output,store,root)
                 from check_workspace_ui import check_workspace_ui
                 report['workspace_ui']=check_workspace_ui(browser,page,base,sid,args.output,offline)
                 page.goto(Path(offline['directory']).joinpath('library.html').as_uri(),wait_until='load')
@@ -113,7 +115,8 @@ def main():
                 browser.close()
             report.update(status='passed',errors=errors,language_changes_submit_no_mutations=True,unexpected_network_requests=0,unsaved_comment_preserved=True,locked_fields_preserved=True)
         except Exception as error:
-            report.update(status='failed',error=str(error),errors=errors,api_issues=api_issues);raise
+            report.update(status='failed',error=str(error),errors=errors,api_issues=api_issues)
+            print(json.dumps(report,ensure_ascii=False,indent=2));raise
         finally:
             process.terminate()
             try:process.wait(timeout=15)
