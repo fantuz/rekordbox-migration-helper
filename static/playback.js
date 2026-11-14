@@ -4,12 +4,12 @@ window.TrackPlayback=(()=>{
   const t=key=>I18n.t(key);
   function button(snapshot,identity,workspace=''){
     if(!identity || (!snapshot && !workspace))return '';
-    return '<button type="button" class="track-play" data-play-track="'+esc(identity)+'" data-play-snapshot="'+esc(snapshot || '')+'" data-play-workspace="'+esc(workspace)+'" title="'+esc(t('Play in default media player'))+'" aria-label="'+esc(t('Play in default media player'))+'"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path fill="currentColor" d="M3 1v10l8-5z"/></svg></button>';
+    return '<button type="button" class="track-play" disabled aria-busy="true" data-play-track="'+esc(identity)+'" data-play-snapshot="'+esc(snapshot || '')+'" data-play-workspace="'+esc(workspace)+'" title="'+esc(t('Play in default media player'))+'" aria-label="'+esc(t('Play in default media player'))+'"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path fill="currentColor" d="M3 1v10l8-5z"/></svg></button>';
   }
   function scope(b){return b.dataset.playWorkspace?{workspace:b.dataset.playWorkspace}:{snapshot:b.dataset.playSnapshot};}
   function key(b){return JSON.stringify([scope(b),b.dataset.playTrack]);}
   function status(b,available){
-    b.disabled=!available;b.dataset.available=String(available);
+    b.disabled=!available;b.dataset.available=String(available);b.setAttribute('aria-busy','false');
     b.title=t(available?'Play in default media player':'Audio file unavailable at the recorded library paths');
     b.setAttribute('aria-label',b.title);
   }

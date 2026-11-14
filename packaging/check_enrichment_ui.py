@@ -6,9 +6,12 @@ import wave
 from metadata_export import track
 from musicbrainz_pilot import create_batch
 from workbench_store import encoded
+from track_tags import xml_colour_support
 
 
 def check_enrichment_ui(page,base,original_id,output,store,root):
+    previous_viewport=page.viewport_size;previous_theme=page.locator('#theme').input_value()
+    page.set_viewport_size({'width':1600,'height':1100});page.select_option('#theme','light')
     audio=root/'Synthetic preview.wav'
     with wave.open(str(audio),'wb') as stream:
         stream.setnchannels(1);stream.setsampwidth(2);stream.setframerate(8000);stream.writeframes(b'\0\0'*800)
@@ -19,8 +22,8 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
             'bpm':116+i%16,'duration':240+i*3,'rating':i%6,'play_count':i*3,'manual_cues':i%5,'auto_cues':0,'analysed':True,
             'tonality':['8A','9A','10A','11A'][i%4],'comment':'Synthetic fixture. No personal music or library data.',
             'current_path':str(audio) if i==0 else '/Synthetic music/missing-'+str(i)+'.flac',
-            'color_status':'assigned','color_key':'blue','color_name':'Blue','color_hex':'#2478bc'}),'cues':[]})
-    source={'schema':1,'scope_key':'synthetic:readme','source_kind':'Synthetic demonstration','tracks':tracks,
+            'color_status':'assigned','color_key':'blue','color_name':'Blue','color_hex':'#0000FF'}),'cues':[]})
+    source={'schema':1,'scope_key':'synthetic:readme','source_kind':'Synthetic demonstration','tracks':tracks,'colour_edit_support':xml_colour_support(),
         'playlists':[{'id':'warmup','name':'Warm-up selection','tracks':['demo'+str(i) for i in range(8)]},
                      {'id':'late','name':'Late session','tracks':['demo'+str(i) for i in range(4,12)]}],
         'histories':[{'id':'set1','name':'Test session A','date':'2026-01-10','entries':[{'track_id':'demo'+str(i),'position':i+1} for i in range(8)]},
@@ -49,7 +52,9 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.wait_for_function('document.querySelector("#toast").textContent.includes("default media player")')
     assert launches==[{'snapshot':sid,'track_id':'demo0'}]
     assert not page.locator('#track-detail-dialog').is_visible()
-    page.evaluate('window.scrollTo(0,0)');page.screenshot(path=str(output/'readme-library-insights.png'))
+    page.locator('#toast').wait_for(state='hidden')
+    page.evaluate('document.querySelector("#dj-evidence").scrollIntoView({block:"start"})')
+    page.screenshot(path=str(output/'readme-library-insights.png'))
 
     page.locator('#dj-tracks [data-insight-open="demo0"]').click()
     page.wait_for_selector('#track-detail-dialog[open]')
@@ -64,6 +69,7 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.wait_for_function('document.querySelectorAll("#intelligence-results tbody tr").length===8')
     assert page.locator('#intelligence-results [data-play-track]').count()==8
     page.locator('#intelligence-results').scroll_into_view_if_needed()
+    page.wait_for_function('Array.from(document.querySelectorAll("#intelligence-results [data-play-track]")).every(b=>b.dataset.available!==undefined)')
     page.screenshot(path=str(output/'readme-playlist-explorer.png'))
     page.select_option('#intelligence-lens','recurring');page.locator('#intelligence-lenses').click()
     page.wait_for_function('document.querySelectorAll("#intelligence-results tbody tr").length===4')
@@ -98,6 +104,7 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     assert page.locator('#pilot-background').is_visible()
     page.unroute('**/api/lab/musicbrainz/'+batch['id']+'/start')
     assert store.snapshot(sid)==before
+    page.select_option('#theme',previous_theme);page.set_viewport_size(previous_viewport)
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',original_id)
     return {'playback_identity':True,'unavailable_audio':True,'playlist_contents':True,'recurring_sessions':True,
             'chart_review':True,'background_completion':True,'immutable_capture':True,'screenshots':'synthetic','fixture_inventory':inventory}
