@@ -84,6 +84,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Rank rotation and discovery candidates using disclosed play-count, history, cue and date evidence.
 - Draw reproducible, genre-balanced random selections with a selection seed.
 - Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
+- Bubble labels keep a consistent readable size, wrap to measured text width and highlight the matching category on hover or keyboard focus. Circle areas continue to represent the chosen metric.
 - Audit preparation coverage, saved analysis references and STEMS-related evidence.
 - Inspect comments, personal stars, colour assignments and other captured metadata in a single-track view.
 - Stage metadata edits in a private sidecar; quick comments and colours remain separate from the original files.
