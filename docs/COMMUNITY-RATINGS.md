@@ -47,3 +47,13 @@ The MusicBrainz pilot, introduced in 0.4.5, provides bounded, user-confirmed loo
 The maintainer reports candidate matches in a real private library sample. The reported 150-track batch contained 21 candidate matches, 21 available years, two available genres, no returned ratings and three service errors. These are candidate counts, not 21 independently verified identities or a general accuracy estimate. No private tags or API responses are published. Wider provider integration remains deferred.
 
 The current lookup already requests recording `ratings`. MusicBrainz supports aggregate ratings, but a recording can have no votes even when its release group has a rating. A missing recording rating remains unknown; album-level ratings and search relevance scores are never substituted for it. See the [MusicBrainz API include arguments](https://musicbrainz.org/doc/MusicBrainz_API#Misc_inc=_arguments).
+
+## Larger background pilots
+
+The current interface offers limits of 150, 300 (default) and 1,000 tracks. Selection rotates across the chosen top genres and unknown-genre bucket, deduplicates artist/title/duration identities and is reproducible for a seed. A small library or sparse strata can yield fewer tracks. Legacy API callers that omit the size retain the original per-genre sample behavior.
+
+Starting a confirmed pilot queues one background worker. You can navigate to other local views, or close the browser tab while leaving the application running. A persistent in-app status strip and saved-batch selector show progress and completion; no system notification permission is needed. Cancel stops further requests. A stopped or crashed application leaves a recoverable interrupted batch; resume skips completed records and preserves identity approvals. This is not a scheduled service that runs while the application is closed.
+
+Ratings require real votes and remain separate from personal stars. Positive recording tags are shown separately from genres. Suggestions do not bypass identity review or overwrite metadata automatically. A larger sample improves coverage measurement, not the underlying availability of community ratings.
+
+At balanced pacing, two uncached requests per track imply roughly 10 minutes for 150, 20 minutes for 300 or 67 minutes for 1,000, before service backoff; cache hits and unmatched searches change actual time. See [MusicBrainz API rate limits](https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting). Existing pilot observations above remain observations of that earlier sample, not a new live trial of this implementation.

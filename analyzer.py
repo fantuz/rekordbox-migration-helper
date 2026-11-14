@@ -12,6 +12,7 @@ import sqlite3
 from engine import is_auto
 from media import cloud_placeholder
 from metadata_export import capture_database
+from platform_paths import database_names
 
 
 COMPATIBILITY=[
@@ -38,27 +39,29 @@ def file_stamp(path):
         return None
 
 
-def source_stamps(root):
-    return {name:file_stamp(root/name) for name in ("master.db","master.db-wal","master.db-journal")}
+def source_stamps(root,database_name='master.db'):
+    return {'master.db'+suffix:file_stamp(root/(database_name+suffix)) for suffix in ('','-wal','-journal')}
 
 
-def snapshot_database(root,destination,progress):
-    before=source_stamps(root)
+def snapshot_database(root,destination,progress,database_name='master.db'):
+    before=source_stamps(root,database_name)
     if not before["master.db"]:raise ValueError("The source master.db is unavailable")
     destination.mkdir(parents=True,exist_ok=True)
     copied=[]
     for name,stamp in before.items():
         if not stamp:continue
-        if cloud_placeholder((root/name).stat()):
+        source=root/(database_name+name[len('master.db'):])
+        if source.is_symlink():raise ValueError('Select an ordinary database and journal, not linked files')
+        if cloud_placeholder(source.stat()):
             raise ValueError("A source database or journal file is online-only. Make it available locally before capturing a snapshot.")
         digest=sha256()
-        with (root/name).open("rb") as src,(destination/name).open("xb") as out:
+        with source.open("rb") as src,(destination/name).open("xb") as out:
             while chunk:=src.read(2*1024**2):
                 out.write(chunk)
                 digest.update(chunk)
         copied.append({"name":name,**stamp,"sha256":digest.hexdigest()})
         progress(15,"Copied "+name+" into the private analysis workspace")
-    if source_stamps(root)!=before:
+    if source_stamps(root,database_name)!=before:
         raise ValueError("The source database changed during capture. Close rekordbox, pause library sync and try again.")
     return copied,before
 
@@ -192,15 +195,23 @@ def inspect_database(path,asset_folders):
 
 def analyze_folder(source,output,progress,version_hint="",snapshot_root=None):
     root=Path(str(source).strip().strip('"')).expanduser()
+    selected_database=None
     if root.is_absolute() and root.is_file() and root.suffix.lower()=='.xml':
         from xml_analysis import analyze_xml
         return analyze_xml(root.resolve(),output,progress)
+    if root.is_absolute() and root.is_file() and root.name.casefold() in ('master.db','datafile.edb','extdata.edb'):
+        if root.is_symlink():raise ValueError('Select the real database file rather than a link')
+        selected_database=root.name;root=root.parent
     if not root.is_absolute() or not root.is_dir():raise ValueError("Choose the full path of a rekordbox data folder or collection XML export")
     root=root.resolve()
     output=Path(output).resolve()
     if output.is_relative_to(root):raise ValueError("Choose the rekordbox data folder, not a parent of this application's workspace")
     if version_hint and not re.fullmatch(r"\d{1,2}(?:\.\d+){0,3}",version_hint):raise ValueError("Enter a version such as 7.2.19, or leave it blank")
-    modern=(root/"master.db").is_file()
+    names=database_names(root);masters=[n for n in names if n.casefold()=='master.db']
+    if selected_database and selected_database.casefold()=='master.db':masters=[selected_database]
+    if len(masters)>1:raise ValueError('Several differently cased master.db files exist here. Select the intended database file explicitly.')
+    database_name=masters[0] if masters else 'master.db'
+    modern=bool(masters) and not (selected_database and selected_database.casefold().endswith('.edb'))
     legacy=[path for path in root.iterdir() if path.suffix.lower()==".edb" and path.is_file()]
     device=any((root/name).is_file() for name in ("export.pdb","exportLibrary.db","PIONEER/rekordbox/export.pdb","PIONEER/rekordbox/exportLibrary.db"))
     if not modern and not legacy and not device:raise ValueError("No master.db, legacy .edb or device export database was found. Select the folder containing the database.")
@@ -212,7 +223,7 @@ def analyze_folder(source,output,progress,version_hint="",snapshot_root=None):
             "source_files":[],"database":None,"messages":[],"directory":str(output)}
     stamps=None
     if modern:
-        result["source_files"],stamps=snapshot_database(root,private,progress)
+        result["source_files"],stamps=snapshot_database(root,private,progress,database_name)
         if stamps.get("master.db-wal") or stamps.get("master.db-journal"):
             result["messages"].append({"level":"info","text":"Database journal files were captured with the private copy. Close rekordbox and pause sync before capture for a stable snapshot."})
         if legacy:result["messages"].append({"level":"info","text":"Legacy .edb files are also present. This report inspects master.db; older files were not converted or merged."})
@@ -247,12 +258,20 @@ def analyze_folder(source,output,progress,version_hint="",snapshot_root=None):
             result["messages"].append({"level":"warning","text":"The supplied v5 version conflicts with the modern master.db format. Check which library folder is selected."})
         else:
             result["messages"].append({"level":"info","text":"master.db identifies the v6/v7 format family, not the exact application version. A fully recorded native restore checklist remains outstanding; see Compatibility for qualified user-reported results."})
-        if source_stamps(root)!=stamps:
+        if source_stamps(root,database_name)!=stamps:
             raise ValueError("The source database changed while the report was running. Close rekordbox, pause sync and capture again.")
         result["source_unchanged"]=True
     else:
         result["read_status"]="inventory_only"
         result["messages"].append({"level":"warning","text":"Legacy/device database records are not decoded in this version. This report provides format detection and file footprint only; no conversion was performed."})
+    if legacy:
+        result['legacy_inspection']={'files':[{'name':p.name,**(file_stamp(p) or {})} for p in sorted(legacy) if not p.is_symlink()],
+                                    'primary_present':any(p.name.casefold()=='datafile.edb' for p in legacy),
+                                    'records_decoded':False,'track_count':None}
+        if not modern:
+            if not result['legacy_inspection']['primary_present']:
+                result['messages'].append({'level':'warning','text':'No datafile.edb was found. ExtData.edb alone is not a complete legacy collection.'})
+            result['messages'].append({'level':'info','text':'For v5 track and playlist inspection, export the collection as XML in rekordbox and select that XML in Source analyzer. To convert a native v5 library, use File > Library > Import your library from ver.5 (or earlier) in rekordbox 6 or 7. Converted and v5 libraries do not stay synchronized.'})
     if inventory["unreadable_entries"]:result["messages"].append({"level":"warning","text":"Some source-folder entries could not be inspected. Footprint counts are partial."})
     (output/"report.json").write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8")
     progress(100,"Read-only report saved")

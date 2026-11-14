@@ -45,5 +45,8 @@ def history_session(snapshot,identity,query='',offset=0,all_rows=False):
     return {'session':{k:h.get(k) for k in ('id','name','date')},'rows':rows if all_rows else rows[offset:offset+50],
             'total':len(rows),'recorded_entries':len(h['entries']),'offset':offset,'order_available':snapshot['capabilities'].get('history_order',False),
             'track_duration_sum':sum((tracks.get(e['track_id']) or {}).get('duration') or 0 for e in h['entries']),
+            'distinct_recorded_tracks':len({e['track_id'] for e in h['entries']}),
+            'repeated_entries':len(h['entries'])-len({e['track_id'] for e in h['entries']}),
+            'duration_unknown_entries':sum((tracks.get(e['track_id']) or {}).get('duration') is None for e in h['entries']),
             'missing_track_metadata':sum(e['track_id'] not in tracks for e in h['entries']),
             'note':'Track duration sum is not gig duration. Session dates and saved track order are shown as recorded; track tags come from the captured collection.'}

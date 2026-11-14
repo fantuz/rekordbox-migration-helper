@@ -40,22 +40,38 @@ def default_data_directory(app_root,platform_name=None,environ=None,home=None,fr
 
 
 def database_names(path):
-    """Probe known names instead of enumerating a potentially large music folder."""
-    found=[];seen=set()
-    for name in DATABASE_NAMES:
-        candidate=Path(path)/name
-        try:
-            if candidate.is_file() and not candidate.is_symlink() and name.casefold() not in seen:
-                seen.add(name.casefold());found.append(name)
-        except OSError:pass
-    return found
+    """Bounded name-only probes, preserving case and ambiguous sibling files."""
+    path=Path(path);wanted={n.casefold() for n in DATABASE_NAMES};found=set()
+    try:
+        if path.is_symlink() or path.is_junction():return []
+        # Exact probes still work when a large folder exceeds the listing budget.
+        for name in DATABASE_NAMES:
+            candidate=path/name
+            if candidate.is_file() and not candidate.is_symlink():found.add(name)
+        actual=[]
+        with os.scandir(path) as entries:
+            for index,entry in enumerate(entries):
+                if index>=4096:break
+                if entry.name.casefold() in wanted and not entry.is_symlink() and entry.is_file(follow_symlinks=False):
+                    actual.append(entry.name)
+        # Case-insensitive hosts can satisfy several exact probes for one file.
+        for name in actual:
+            found={n for n in found if n.casefold()!=name.casefold()}
+        found.update(actual)
+    except OSError:pass
+    return sorted(found,key=lambda n:(n.casefold(),n))
+
+
+def linked_directory(path):
+    """Auto-discovery must not cross redirected profile/settings directories."""
+    return any(p.is_symlink() or p.is_junction() for p in (Path(path),*Path(path).parents))
 
 
 def location_hints(settings_folders,agent_folders):
     """Read only location fields; never return other Agent options or device secrets."""
     hints=[];warnings=[]
     def small(path):
-        if path.is_symlink() or path.is_junction() or not path.is_file() or path.stat().st_size>2*1024**2:return None
+        if linked_directory(path.parent) or path.is_symlink() or path.is_junction() or not path.is_file() or path.stat().st_size>2*1024**2:return None
         return path.read_bytes()
     for folder in agent_folders:
         path=Path(folder)/'storage/options.json'
@@ -108,7 +124,7 @@ def discover_sources(platform_name=None,environ=None,home=None):
         path=user/value[2:] if value.startswith('~/') else Path(value).expanduser()
         if not path.is_absolute():continue
         if hint['kind']=='analysis':analysis.append({'path':str(path),'origin':hint['origin']});continue
-        if path.name.casefold()=='master.db':path=path.parent
+        if path.name.casefold() in {n.casefold() for n in DATABASE_NAMES}:path=path.parent
         candidates.append((path,hint['origin']))
     candidates.extend((path,'Standard application-data location') for path in standard)
     expanded=[]
@@ -117,7 +133,7 @@ def discover_sources(platform_name=None,environ=None,home=None):
     found=[];seen=set()
     for path,origin in expanded:
         try:
-            if not path.is_dir():continue
+            if linked_directory(path) or not path.is_dir():continue
             path=path.resolve();key=os.path.normcase(str(path))
             if key in seen:continue
             names=database_names(path)

@@ -318,3 +318,35 @@ jobs:
             .release-assets/SHA256SUMS
           if-no-files-found: error
           retention-days: 14
+
+  readme-screenshot-blobs:
+    name: Prepare synthetic README image blobs
+    needs: browser-language
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'codex/library-discovery-enrichment-serato'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: language-validation-chromium
+          path: screenshots
+      - name: Store only generated PNG blobs for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import base64,json,os,urllib.request
+          from pathlib import Path
+          result={}
+          for name in ('readme-library-insights.png','readme-track-editor.png','readme-playlist-explorer.png'):
+              content=Path('screenshots',name).read_bytes()
+              if not content.startswith(b'\x89PNG\r\n\x1a\n') or len(content)>4*1024*1024:raise ValueError('Invalid screenshot')
+              data=json.dumps({'content':base64.b64encode(content).decode('ascii'),'encoding':'base64'}).encode()
+              request=urllib.request.Request('https://api.github.com/repos/'+os.environ['GH_REPOSITORY']+'/git/blobs',data=data,
+                  headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})
+              with urllib.request.urlopen(request,timeout=30) as response:result['docs/screenshots/'+name]=json.load(response)['sha']
+          print('README_SCREENSHOT_BLOBS '+json.dumps(result))
+          PY

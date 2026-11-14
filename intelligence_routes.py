@@ -1,12 +1,15 @@
 """Local read-only intelligence; deliberate report exports live in the sidecar."""
 from flask import jsonify, request
 from workbench_store import Store
-from library_intelligence import playlists,playlist_overlap,session_progression,evolution,duplicate_impact
+from library_intelligence import playlists,playlist_overlap,session_progression,evolution,duplicate_impact,playlist_contents,collection_lenses
 from metadata_export import capture_catalog
 from engine import decision_map
+from chart_playlists import ChartClient,match_chart,chart_m3u
+from serato_bridge import draft_package
 
 
 def register(owner):
+    charts=ChartClient()
     def store():return Store(owner.DATA/'workbench-sidecar.sqlite3')
     def identity(value):
         if not isinstance(value,str) or not value or len(value)>128:
@@ -22,12 +25,18 @@ def register(owner):
     @owner.app.get('/api/intelligence/options')
     def intelligence_options():
         s=snapshot()
-        return jsonify(playlists=[{k:p[k] for k in ('id','name','order_available')} for p in playlists(s)],
+        return jsonify(playlists=[{k:p[k] for k in ('id','name','order_available')}|{'entries':len(p['tracks']),'smart':p['smart']} for p in playlists(s)],
                        histories=[{'id':h['id'],'name':h.get('name',''),'date':h.get('date')} for h in s.get('histories',[]) if not h.get('folder')],
-                       history_order=s.get('capabilities',{}).get('history_order',False))
+                       history_order=s.get('capabilities',{}).get('history_order',False),history_details=s.get('capabilities',{}).get('history_details',False))
 
     @owner.app.get('/api/intelligence/playlists')
     def intelligence_overlap():return jsonify(playlist_overlap(snapshot(),request.args.get('playlist',''),request.args.get('minimum',.5),request.args.get('offset',0)))
+
+    @owner.app.get('/api/intelligence/contents')
+    def intelligence_contents():return jsonify(playlist_contents(snapshot(),request.args.get('playlist',''),request.args.get('q',''),request.args.get('offset',0)))
+
+    @owner.app.get('/api/intelligence/lenses')
+    def intelligence_lenses():return jsonify(collection_lenses(snapshot(),request.args.get('lens','unfiled'),request.args.get('q',''),request.args.get('offset',0)))
 
     @owner.app.get('/api/intelligence/session')
     def intelligence_progression():return jsonify(session_progression(snapshot(),request.args.get('history',''),request.args.get('offset',0)))
@@ -54,11 +63,46 @@ def register(owner):
         elif kind=='playlists':
             sources=[values.get('snapshot','')]
             result=playlist_overlap(captured(saved,sources[0]),values.get('playlist',''),values.get('minimum',.5),values.get('offset',0))
+        elif kind in ('contents','lenses'):
+            sources=[values.get('snapshot','')]
+            operation=playlist_contents if kind=='contents' else collection_lenses
+            selector=values.get('playlist','') if kind=='contents' else values.get('lens','unfiled')
+            result=operation(captured(saved,sources[0]),selector,values.get('q',''),values.get('offset',0))
         elif kind=='session':
             sources=[values.get('snapshot','')]
             result=session_progression(captured(saved,sources[0]),values.get('history',''),values.get('offset',0))
         else:raise ValueError('Choose an intelligence report')
-        result['retained_page_only']=kind in ('playlists','session')
+        result['retained_page_only']=kind in ('playlists','session','contents','lenses')
         record=saved.save_report('Library intelligence: '+kind,sources,{k:v for k,v in result.items() if k!='rows'},
                                  [{'section':kind,'detail':result['basis'],**r} for r in result.get('rows',[])])
         return jsonify(**record,download='/api/lab/reports/'+record['id']+'/download')
+
+    @owner.app.post('/api/intelligence/chart')
+    def intelligence_chart():
+        values=body()
+        if values.get('network_consent') is not True:raise ValueError('Confirm fetching the public ListenBrainz chart')
+        saved=store();s=captured(saved,values.get('snapshot',''))
+        result=match_chart(s,charts.fetch(values.get('period','week')))
+        report=saved.save_report('ListenBrainz chart draft',[s['id']],{k:v for k,v in result.items() if k!='rows'},
+                                 [{'section':'chart',**r} for r in result['rows']])
+        return jsonify(**result,report_id=report['id'])
+
+    @owner.app.post('/api/intelligence/chart/export')
+    def intelligence_chart_export():
+        values=body()
+        if values.get('reviewed') is not True:raise ValueError('Review the chart matches before exporting')
+        saved=store();report=saved.report(identity(values.get('report_id','')),all_rows=True)
+        if report['kind']!='ListenBrainz chart draft':raise ValueError('Choose a chart draft')
+        s=captured(saved,report['sources'][0])
+        text=chart_m3u(s,report,values.get('selected'))
+        return owner.app.response_class(text,mimetype='audio/x-mpegurl',
+            headers={'Content-Disposition':'attachment; filename="listenbrainz-chart.m3u8"'})
+
+    @owner.app.post('/api/intelligence/serato')
+    def intelligence_serato():
+        values=body()
+        if values.get('draft_acknowledged') is not True:raise ValueError('Confirm that this is an unverified Serato interoperability draft')
+        s=captured(store(),values.get('snapshot',''))
+        payload,_=draft_package(s,values.get('volume_root',''))
+        return owner.app.response_class(payload,mimetype='application/zip',
+            headers={'Content-Disposition':'attachment; filename="serato-draft.zip"'})

@@ -45,7 +45,20 @@ def register(owner):
     def snapshot(body):return store().snapshot(body.get('snapshot',''))
     def unlocked(s):
         if s['scope_key'] not in edit_unlocked:raise ValueError('Metadata is read-only. Unlock edits for this snapshot first.')
-    def body():return request.get_json(silent=True) or {}
+    def body():
+        value=request.get_json(silent=True)
+        if not isinstance(value,dict):raise ValueError('Provide a JSON object')
+        return value
+
+    def recover_batches(saved):
+        # The lock also protects the gap between queueing and starting the worker.
+        with saved.connection() as db:
+            rows=db.execute("SELECT id,summary FROM mb_batches WHERE status IN ('running','queued')").fetchall()
+            for row in rows:
+                if row['id'] in cancellations:continue
+                summary=json.loads(row['summary'])
+                summary['message']='Application stopped before completion. Review and resume the remaining lookups.'
+                db.execute('UPDATE mb_batches SET status=?,summary=? WHERE id=?',('interrupted',encoded(summary),row['id']))
     def download(payload,name):
         return app.response_class(json.dumps(payload,ensure_ascii=False,indent=2),mimetype='application/json',headers={'Content-Disposition':'attachment; filename="'+name+'"'})
 
@@ -198,27 +211,50 @@ def register(owner):
     def lab_pilot_preview():
         b=body();s=store().effective(snapshot(b));speed=b.get('speed','balanced')
         if speed not in SPEEDS:raise ValueError('Choose gentle, balanced or fast lookup pacing')
-        return jsonify(create_batch(store(),s,b.get('top_genres',5),b.get('seed','preview'),SPEEDS[speed]))
+        return jsonify(create_batch(store(),s,b.get('top_genres',5),b.get('seed','preview'),SPEEDS[speed],b.get('sample_size')))
+
+    @app.get('/api/lab/musicbrainz/batches')
+    def lab_pilot_batches():
+        with network_lock:
+            saved=store();recover_batches(saved)
+            with saved.connection() as db:
+                rows=db.execute("SELECT b.id,b.snapshot_id,b.created,b.status,b.summary,s.label FROM mb_batches b LEFT JOIN snapshots s ON s.id=b.snapshot_id ORDER BY CASE WHEN b.status IN ('running','queued') THEN 0 ELSE 1 END,b.created DESC LIMIT 100").fetchall()
+            return jsonify(batches=[{**dict(r),'summary':json.loads(r['summary'])} for r in rows])
 
     @app.get('/api/lab/musicbrainz/<identity>')
-    def lab_pilot_record(identity):return jsonify(batch_record(store(),identity,max(0,int(request.args.get('offset',0)))))
+    def lab_pilot_record(identity):
+        with network_lock:
+            saved=store();recover_batches(saved)
+            return jsonify(batch_record(saved,identity,max(0,int(request.args.get('offset',0)))))
 
     @app.post('/api/lab/musicbrainz/<identity>/start')
     def lab_pilot_start(identity):
         b=body()
         if not enabled():raise ValueError('Enable the experimental MusicBrainz feature first')
         if b.get('query_consent') is not True:raise ValueError('Review and confirm sending selected public tags/identifiers to MusicBrainz')
-        record=batch_record(store(),identity)
-        if record['status']=='complete':raise ValueError('This batch is complete. Preview a new sample to run another batch.')
         with network_lock:
-            if any(not e.is_set() for e in cancellations.values()):raise ValueError('A pilot is already running. Cancel it or wait until it finishes.')
+            saved=store();recover_batches(saved);record=batch_record(saved,identity)
+            if record['status']=='complete':raise ValueError('This batch is complete. Preview a new sample to run another batch.')
+            if not record['total']:raise ValueError('This sample has no tracks to look up')
+            if cancellations:raise ValueError('A pilot is already running or stopping. Wait until it finishes before starting another.')
             event=Event();cancellations[identity]=event
-        def work(progress):
-            try:
-                client=MusicBrainzClient(store(),gate,enabled,record['summary']['seconds_per_request'],event)
-                return run_batch(store(),identity,client,progress)
-            finally:event.set()
-        return jsonify(job=owner.launch(work,'Looking up selected public metadata with MusicBrainz',pool=network_pool))
+            with saved.connection() as db:db.execute('UPDATE mb_batches SET status=? WHERE id=?',('queued',identity))
+            def work(progress):
+                try:
+                    client=MusicBrainzClient(saved,gate,enabled,record['summary']['seconds_per_request'],event)
+                    return run_batch(saved,identity,client,progress)
+                except Exception:
+                    with saved.connection() as db:db.execute('UPDATE mb_batches SET status=? WHERE id=?',('interrupted',identity))
+                    raise
+                finally:
+                    event.set()
+                    with network_lock:cancellations.pop(identity,None)
+            try:job=owner.launch(work,'Looking up selected public metadata with MusicBrainz',pool=network_pool)
+            except Exception:
+                event.set();cancellations.pop(identity,None)
+                with saved.connection() as db:db.execute('UPDATE mb_batches SET status=? WHERE id=?',('interrupted',identity))
+                raise
+        return jsonify(job=job,batch_id=identity,background=True)
 
     @app.post('/api/lab/musicbrainz/<identity>/cancel')
     def lab_pilot_cancel(identity):

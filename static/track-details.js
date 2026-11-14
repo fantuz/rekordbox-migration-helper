@@ -68,7 +68,7 @@ async function openTrackDetails(snapshot,trackId){
   const record=await api('/api/lab/track?'+new URLSearchParams({snapshot,track_id:trackId}));
   if(revision!==trackDetailRevision)return;
   const s=trackDetailState={snapshot,trackId,record,saving:false};const t=record.original;
-  $('#track-detail-title').textContent=t.title || I18n.t("Untitled track");
+  $('#track-detail-title').innerHTML=esc(t.title || I18n.t("Untitled track"))+TrackPlayback.button(snapshot,trackId);
   $('#track-detail-scope').textContent=record.snapshot_label+' · '+record.scope+' · '+(record.scope.startsWith('session:')?I18n.t("Working edits attach to prepared XML/ZIP copies from this workspace."):I18n.t("Source-snapshot edits remain local to this scope; they do not attach to a different XML/ZIP workspace."));
   $('#track-detail-metadata').innerHTML=[[I18n.t("Artist"),t.artist || I18n.t("Unknown")],[I18n.t("Album"),t.album || I18n.t("Unknown")],[I18n.t("Saved genre"),t.genre || I18n.t("Unknown")],[I18n.t("Tonality"),t.tonality || I18n.t("Unknown")],['BPM',insightValue(t.bpm)],[I18n.t("Duration"),insightDuration(t.duration)],[I18n.t("Track colour"),t.color_name || (t.color_status==='unassigned'?I18n.t("No assigned colour"):I18n.t("Not captured"))],[I18n.t("Saved play count"),insightValue(t.play_count)]].map(([label,value])=>'<div><span>'+esc(label)+'</span><b>'+esc(value)+'</b></div>').join('');
   $('#track-comments-panel').open=true;$('#track-advanced-panel').open=false;
@@ -86,6 +86,7 @@ async function openTrackDetails(snapshot,trackId){
   if(!$('#track-detail-dialog').open)$('#track-detail-dialog').showModal();
 }
 function bindTrackDetails(selector,snapshot){
+  TrackPlayback.bind(selector,snapshot);
   $$(selector+' [data-insight-open]').forEach(button=>button.onclick=wrap(()=>openTrackDetails(snapshot,button.dataset.insightOpen)));
 }
 async function openWorkspaceTrack(trackId){
