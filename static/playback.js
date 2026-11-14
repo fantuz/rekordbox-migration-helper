@@ -44,7 +44,15 @@ window.TrackPlayback=(()=>{
     const buttons=root.matches('[data-play-track]')?[root]:[...root.querySelectorAll('[data-play-track]')];
     for(const b of buttons)if(!b.dataset.playObserved){b.dataset.playObserved='true';observer.observe(b);}
   }
-  new MutationObserver(records=>{for(const r of records)for(const n of r.addedNodes)scan(n);}).observe(document.body,{childList:true,subtree:true});
+  function forget(root){
+    if(!(root instanceof Element))return;
+    const buttons=root.matches('[data-play-track]')?[root]:[...root.querySelectorAll('[data-play-track]')];
+    for(const b of buttons){observer.unobserve(b);queue.delete(b);delete b.dataset.playObserved;}
+  }
+  new MutationObserver(records=>{
+    for(const r of records)for(const n of r.removedNodes)forget(n);
+    for(const r of records)for(const n of r.addedNodes)scan(n);
+  }).observe(document.body,{childList:true,subtree:true});
   document.addEventListener('click',event=>{
     const b=event.target.closest('[data-play-track]');if(!b)return;
     event.preventDefault();event.stopImmediatePropagation();if(b.disabled)return;

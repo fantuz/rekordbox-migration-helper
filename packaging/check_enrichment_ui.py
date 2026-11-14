@@ -36,10 +36,8 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.select_option('#dj-snapshot',sid);page.select_option('#dj-perspective','all')
     page.locator('#dj-filter-form button[type="submit"]').click()
     page.wait_for_selector('#dj-tracks [data-insight-open="demo0"]')
-    page.locator('#dj-tracks [data-play-track="demo0"]').scroll_into_view_if_needed()
-    page.wait_for_function('document.querySelector(\'#dj-tracks [data-play-track="demo0"]\')?.dataset.available==="true"')
-    page.locator('#dj-tracks [data-play-track="demo1"]').scroll_into_view_if_needed()
-    page.wait_for_function('document.querySelector(\'#dj-tracks [data-play-track="demo1"]\')?.dataset.available==="false"')
+    page.wait_for_function('()=>{const b=document.querySelector(\'#dj-tracks [data-play-track="demo0"]\');if(!b)return false;b.scrollIntoView({block:"center"});return b.dataset.available==="true";}')
+    page.wait_for_function('()=>{const b=document.querySelector(\'#dj-tracks [data-play-track="demo1"]\');if(!b)return false;b.scrollIntoView({block:"center"});return b.dataset.available==="false";}')
     launches=[]
     def launch(route):
         launches.append(route.request.post_data_json)
