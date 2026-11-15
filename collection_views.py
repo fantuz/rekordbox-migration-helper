@@ -44,7 +44,8 @@ def statistics(snapshot, minimum=0, maximum=math.inf, report=None):
         counters[name] = len({str(t.get(field) or '').strip().casefold() for t in tracks if str(t.get(field) or '').strip()})
     playlists = [p for p in snapshot.get('playlists', []) if not p.get('folder')]
     ids = {t['id'] for t in tracks}
-    known_playlists = snapshot.get('capabilities', {}).get('playlist_order', False)
+    capabilities=snapshot.get('capabilities', {})
+    known_playlists = capabilities.get('playlist_membership', capabilities.get('playlist_order', False)) is True
     counters.update(total_playlists=len(playlists) if known_playlists else None,
                     playlists=sum(bool(ids.intersection(p['tracks'])) for p in playlists) if known_playlists else None,
                     broken_xml_targets=None, broken_database_links=None, orphan_analysis_folders=None,

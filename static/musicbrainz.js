@@ -5,7 +5,7 @@ async function loadMusicBrainz(sync=false){
   const revision=++musicBrainzRevision;
   const info=await api('/api/lab');if(revision!==musicBrainzRevision)return;
   musicBrainzInfo=info;
-  labSelect('#musicbrainz-snapshot',info.snapshots,s=>s.label+' · '+date(s.created));
+  labSelect('#musicbrainz-snapshot',info.snapshots,s=>s.label+' · '+snapshotMoment(s.created));
   const shared=window.Journeys?.context?.();
   if(sync || !musicBrainzSnapshot()){
     $('#musicbrainz-snapshot').value=info.snapshots.some(s=>s.id===shared?.snapshot)?shared.snapshot:'';

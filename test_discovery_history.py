@@ -1,5 +1,6 @@
 """Synthetic fixtures only; formal execution belongs to GitHub CI."""
 from hashlib import sha256
+from datetime import datetime
 from pathlib import Path
 import json
 import sqlite3
@@ -64,6 +65,9 @@ class HistoryTests(unittest.TestCase):
         with native_fixture(path) as db:s=capture_private_database(db,'synthetic')
         db.close();store=Store(self.root/'working.sqlite3');record=store.save_snapshot(s,'Synthetic history')
         path.unlink();saved=store.snapshot(record['id'])
+        self.assertEqual(saved['saved_at'],record['created'])
+        self.assertIsNotNone(datetime.fromisoformat(saved['saved_at']).tzinfo)
+        self.assertEqual(store.snapshots()[0]['created'],saved['saved_at'])
         self.assertEqual(history_session(saved,'h')['recorded_entries'],5)
         unknown={'tracks':[],'capabilities':{}}
         self.assertFalse(list_history(unknown)['available'])
@@ -73,6 +77,30 @@ class HistoryTests(unittest.TestCase):
         # Shareable offline metadata never includes session names/dates/membership.
         exported=json.dumps(payload(saved,'Synthetic library'))
         self.assertNotIn('Synthetic gig',exported);self.assertNotIn('histories',exported)
+
+    def test_native_playlist_schema_distinguishes_unavailable_from_empty(self):
+        from library_intelligence import collection_lenses
+        from collection_views import statistics
+        missing_db=native_fixture(self.root/'without-playlists.db')
+        unknown=capture_private_database(missing_db,'without-playlists')
+        missing_db.close()
+        self.assertFalse(unknown['capabilities']['playlist_membership'])
+        self.assertFalse(unknown['capabilities']['playlist_order'])
+        self.assertIsNone(statistics(unknown)['counters']['total_playlists'])
+        self.assertIsNone(collection_lenses(unknown,'all')['summary']['outside_playlists'])
+        with self.assertRaises(ValueError):collection_lenses(unknown,'unfiled')
+
+        known_db=native_fixture(self.root/'with-empty-playlists.db')
+        known_db.executescript("""
+            CREATE TABLE djmdPlaylist(ID TEXT,Name TEXT,Attribute INTEGER);
+            CREATE TABLE djmdSongPlaylist(PlaylistID TEXT,ContentID TEXT);
+        """)
+        known=capture_private_database(known_db,'with-empty-playlists')
+        known_db.close()
+        self.assertTrue(known['capabilities']['playlist_membership'])
+        self.assertFalse(known['capabilities']['playlist_order'])  # no TrackNo
+        self.assertEqual(statistics(known)['counters']['total_playlists'],0)
+        self.assertEqual(collection_lenses(known,'unfiled')['total'],2)
 
     def test_dates_are_addition_years_and_unknowns_do_not_disappear(self):
         result=added_years([{'date_added':v} for v in ('2024-02-01','20240102','2022/01/01',None,'garbage','0000-00-00')])

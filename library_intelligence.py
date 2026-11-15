@@ -127,10 +127,27 @@ def playlist_contents(snapshot, identity, query='', offset=0):
             'basis':'Captured playlist membership; repeated entries and unavailable track metadata are retained. Smart playlists show captured membership, not a fresh evaluation of their rules. Order is shown only when captured.'}
 
 
+def playlist_membership_available(snapshot):
+    """Unknown is not equivalent to an empty playlist collection.
+
+    New native captures declare playlist_membership independently of order.
+    Older captures with no evidence are treated conservatively; legacy
+    snapshots with actual captured lists, or a fully loaded XML/ZIP
+    workspace's per-track membership, remain usable.
+    """
+    capabilities=snapshot.get('capabilities') or {}
+    if 'playlist_membership' in capabilities:
+        return capabilities['playlist_membership'] is True
+    if capabilities.get('playlist_order') is True or bool(snapshot.get('playlists')):
+        return True
+    return (snapshot.get('source_kind')=='Loaded XML + ZIP' and
+            all('playlists' in t for t in snapshot.get('tracks',[])))
+
+
 def collection_lenses(snapshot, lens='unfiled', query='', offset=0):
     if lens not in ('all','unfiled','recurring','history_absent'):raise ValueError('Choose a collection view')
     tracks=snapshot['tracks'];lists=playlists(snapshot);offset=page_offset(offset)
-    membership_available='playlists' in snapshot or bool(tracks) and all('playlists' in t for t in tracks)
+    membership_available=playlist_membership_available(snapshot)
     history_available=bool(snapshot.get('capabilities',{}).get('history_details'))
     if lens=='unfiled' and not membership_available:raise ValueError('This capture has no playlist membership information')
     if lens in ('recurring','history_absent') and not history_available:raise ValueError('Capture native saved history before using this view')
@@ -154,7 +171,7 @@ def collection_lenses(snapshot, lens='unfiled', query='', offset=0):
                             str(r['artist'] or '').casefold(),str(r['title'] or '').casefold(),r['track_id']))
     active_ids={t['id'] for t in tracks}
     return {'lens':lens,'rows':rows[offset:offset+50],'total':len(rows),'offset':offset,
-            'summary':{'collection_tracks':len(tracks),'playlists':len(lists),'captured_sessions':len(histories),
+            'summary':{'collection_tracks':len(tracks),'playlists':len(lists) if membership_available else None,'captured_sessions':len(histories),
                        'outside_playlists':sum(not membership[t['id']] for t in tracks) if membership_available else None,
                        'history_metadata_missing':sum(n for i,n in appearances.items() if i not in active_ids)},
             'basis':'Playlist counts use distinct captured memberships. Recurring means present in at least two saved sessions; repeated entries within one session do not qualify. Absence from captured history does not mean a track has never been played. Personal stars are unchanged.'}

@@ -7,6 +7,8 @@ source report selects that capture too.
 
 The following pages use retained metadata from the selected capture or snapshot:
 
+Playlist membership is a separate capability from playlist ordering. If a native source lacks the required playlist tables, **outside-playlist counts stay unknown** and the Unfiled lens is unavailable; an actual collection with valid playlist tables but zero playlists correctly reports every track as unfiled. Older captures with insufficient schema evidence remain conservatively unknown and can be recaptured.
+
 - **Collection statistics:** length filters, cue categories, ratings, saved play
   counts, playlists and library addition dates. Unknown fields remain unverified.
   Relationship counts cover the whole captured source, regardless of length filters.
