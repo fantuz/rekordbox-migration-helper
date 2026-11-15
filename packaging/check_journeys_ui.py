@@ -5,9 +5,14 @@ def check_journeys_ui(page, base, sid, output):
     page.select_option('#language', 'en')
     page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
     page.locator('.nav[data-view="files"]').click()
+    # Navigation refreshes the saved plans. Wait for that render before
+    # clicking a goal which could otherwise be replaced between mouse events.
+    page.evaluate('()=>Journeys.load()')
     page.wait_for_selector('#journey-panel .journey-goal')
     assert page.locator('#journey-panel .journey-goal').count() == 4
-    page.select_option('#journey-context-source', 'snapshot:' + sid)
+    with page.expect_response(lambda r:r.request.method=='POST' and r.url==base+'/api/journeys/context') as selected:
+        page.select_option('#journey-context-source', 'snapshot:' + sid)
+    selected.value.finished()
     page.wait_for_function('(sid)=>window.Journeys.context()?.snapshot===sid', arg=sid)
     page.locator('[data-journey="integrity"]').click()
     page.wait_for_selector('#journey-health-form')

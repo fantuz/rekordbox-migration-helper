@@ -151,6 +151,9 @@ def check_recovery_queue_ui(browser,base,sid,output):
         page.locator('#pilot-background-open').click()
         page.wait_for_function('labBatch==="synthetic-batch-1"')
         page.wait_for_function('document.querySelector("#lab-pilot-progress").getBoundingClientRect().bottom<innerHeight')
+        # WebKit finishes smooth scrolling on a later frame than the result
+        # selection. Assert the final sticky position after scrolling settles.
+        page.wait_for_function('()=>{const y=document.querySelector("#pilot-background").getBoundingClientRect().top;return y>=0 && y<=10;}')
         banner=page.locator('#pilot-background').bounding_box()
         assert 0<=banner['y']<=10,banner
         page.locator('#pilot-background-dismiss').click();page.evaluate('()=>BackgroundPilot.refresh()')
