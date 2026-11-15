@@ -83,7 +83,7 @@ def context(snapshot, *, source='', overrides=0):
             'source_kind': snapshot.get('source_kind'), 'tracks': len(tracks),
             'basis': 'captured', 'working_override_fields': overrides,
             'capabilities': {key: bool(capabilities.get(key)) for key in
-                             ('cue_positions', 'playlist_order', 'analysis_references', 'history_details', 'history_order')},
+                             ('cue_positions', 'playlist_order', 'playlist_membership', 'analysis_references', 'history_details', 'history_order')},
             'cleanup_plan_applied': False}
 
 
