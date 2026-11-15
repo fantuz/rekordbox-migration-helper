@@ -118,10 +118,10 @@ $('#lab-pilot-preview').onclick=wrap(async()=>{
   const r=await labPost('musicbrainz/preview',{snapshot:labSnapshot(),top_genres:$('#lab-pilot-top').value,seed:$('#lab-pilot-seed').value,speed:$('#lab-pilot-speed').value,sample_size:$('#lab-pilot-size').value});labBatch=r.id;labPilotOffset=0;
   preferences.set('workbench-lab-batch',labBatch);$('#lab-pilot-consent').checked=false;await labLoadPilot();labPilotButtons();
 });
-async function labLoadPilot() {
+async function labLoadPilot(feedback=true) {
   if(!labBatch)return;
   const revision=++labPilotRevision,batch=labBatch;
-  const r=await api('/api/lab/musicbrainz/'+encodeURIComponent(labBatch)+'?offset='+labPilotOffset);
+  const r=await api('/api/lab/musicbrainz/'+encodeURIComponent(labBatch)+'?offset='+labPilotOffset,{feedback});
   if(revision!==labPilotRevision || batch!==labBatch)return;
   labPilotStatus=r.status;labPilotButtons();$('#lab-pilot-cancel').disabled=!['queued','running'].includes(r.status);
   $('#lab-pilot-progress').textContent=r.status+' · '+num(r.summary.done)+' / '+num(r.total)+' tracks · '+num(r.summary.requests)+' requests · '+num(r.summary.cache_hits)+' cached'+(r.summary.message?' · '+r.summary.message:'');

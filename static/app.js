@@ -47,13 +47,15 @@ function renderEvidence(facets) {
 }
 function $$(s) {return [...document.querySelectorAll(s)];}
 async function api(url, options = {}) {
+  const {feedback=true,...requestOptions}=options;
+  const finish=feedback?Activity.begin():()=>{};
   const mutation=options.method && options.method!=='GET';if(mutation)mutatingRequests++;
   try{
-    const res = await fetch(url, { ...options, headers: {"Content-Type":"application/json","X-Workbench-Token":token,...(options.headers || {})}});
+    const res = await fetch(url, { ...requestOptions, headers: {"Content-Type":"application/json","X-Workbench-Token":token,...(options.headers || {})}});
     const body = await res.json();
     if (!res.ok) throw new Error(body.error ? I18n.error(body.error) : I18n.t("The action could not be completed"));
     return body;
-  }finally{if(mutation)mutatingRequests--;}
+  }finally{if(mutation)mutatingRequests--;finish();}
 }
 function notify(text, error=false) {
   const toast = $("#toast");
@@ -63,7 +65,7 @@ function notify(text, error=false) {
   clearTimeout(toast.timeout);
   toast.timeout = setTimeout(() => toast.hidden = true, error ? 9000 : 4500);
 }
-function wrap(fn) { return async e => {try {await fn(e);} catch(error) {notify(error.message,error.name!=='OperationCancelled');}}; }
+function wrap(fn) { return async e => {const finish=Activity.begin();try {await fn(e);} catch(error) {notify(error.message,error.name!=='OperationCancelled');}finally{finish();}}; }
 let progressCancel=null;
 function progress(n, text, cancel) {
   const dialog=$("#progress"),value=Number.isFinite(n)?Math.max(0,Math.min(100,n)):null;
@@ -73,10 +75,12 @@ function progress(n, text, cancel) {
   $("#progress-label").textContent=text;
   $("#progress-percent").textContent=value===null?'—':I18n.number(Math.round(value))+'%';
   if(value===null)$("#progress-bar").removeAttribute('value');else $("#progress-bar").value=value;
+  Activity.progress(value,text);
 }
 function finishProgress(){
   const dialog=$("#progress");if(dialog.open)dialog.close();dialog.hidden=true;
   document.documentElement.dataset.operationBusy='false';progressCancel=null;$("#progress-cancel").hidden=true;
+  Activity.finishProgress();
 }
 $("#progress").addEventListener('cancel',event=>event.preventDefault());
 $("#progress-stop").onclick=()=>openCleanupDialog();
@@ -88,7 +92,7 @@ async function poll(job) {
   });
   try {
     while (true) {
-      const state=await api("/api/tasks/"+job);
+      const state=await api("/api/tasks/"+job,{feedback:false});
       progress(state.progress,state.message);
       if (state.status==="error") throw new Error(state.message);
       if (state.status==="cancelled") {const error=new Error(I18n.t('Operation cancelled. Completed reports and decisions are kept.'));error.name='OperationCancelled';throw error;}
@@ -406,7 +410,7 @@ $("#confirm-batch").onclick=wrap(async()=>{
   try {
     const result=await api("/api/bulk",{method:"POST",body:JSON.stringify({...scopeValues(),mode:batchMode})});
     session=result.session;renderSession();await loadPairs();notify(num(result.count)+" "+I18n.t("merges staged ·")+" "+num(result.covered)+" "+I18n.t("comparisons already covered ·")+" "+num(result.blocked)+" "+I18n.t("group choices held"));
-  } finally {$("#progress").hidden=true;}
+  } finally {finishProgress();}
 });
 $("#reference-form").onsubmit=wrap(async e=>{
   e.preventDefault();
@@ -703,4 +707,4 @@ $("#storage-form").onsubmit=wrap(async event=>{
   const started=await api("/api/storage/scan",{method:"POST",body:JSON.stringify({roots,policy:$("#storage-policy").value,source_report:$("#storage-source-report").value})});
   const result=await poll(started.job);storageOffset=0;await loadStorageAudit(result.id);await loadStorageInfo();$("#storage-result").scrollIntoView({behavior:"smooth",block:"start"});notify(I18n.t("Folder comparison saved · no media content read"));
 });
-refresh().catch(error=>notify(error.message,true));
+wrap(refresh)();

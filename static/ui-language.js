@@ -12,7 +12,7 @@ function languageFieldSelector(node){
 function languageField(node){return {value:node.value,checked:node.checked};}
 let languageWorkingFields=null;
 document.addEventListener('input',event=>{if(languageWorkingFields && event.target.matches('input:not([type=file]),textarea,select')){const key=languageFieldSelector(event.target);if(key)languageWorkingFields.set(key,languageField(event.target));}});
-window.addEventListener('workbench-language',async()=>{
+window.addEventListener('workbench-language',wrap(async()=>{
   document.documentElement.dataset.languageBusy='true';
   const revision=++languageRevision;
   while(busy || activeUploads.size || mutatingRequests){await new Promise(resolve=>setTimeout(resolve,200));if(revision!==languageRevision)return;}
@@ -42,4 +42,4 @@ window.addEventListener('workbench-language',async()=>{
       I18n.apply();if(sameView)window.scrollTo(...scroll);languageWorkingFields=null;document.documentElement.dataset.languageBusy='false';
     }
   }
-});
+}));
