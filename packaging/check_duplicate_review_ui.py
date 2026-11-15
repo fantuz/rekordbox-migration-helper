@@ -88,31 +88,33 @@ def check_duplicate_review_ui(browser,base,output):
     context.route('**/api/**',synthetic_api)
     page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
     try:
-        page.goto(base,wait_until='networkidle')
-        page.wait_for_selector('#detail-panel [data-keeper="synthetic-a"]',state='attached')
-        page.locator('.nav[data-view="review"]').click()
-        page.wait_for_selector('#detail-panel .sibling.chosen')
-        page.locator('[data-pair="synthetic-pair"]').click()
-        page.wait_for_selector('#detail-panel .review-action-dock #stage-pair')
-        assert page.locator('#stage-pair').evaluate('(e)=>{const r=e.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight}'), 'Merge action is outside the review viewport'
-        assert page.locator('#toast').is_hidden() or not page.locator('#toast').inner_text(),page.locator('#toast').inner_text()
-        assert page.locator('#detail-panel img').count()==0
-        assert page.evaluate('window.duplicateMetadataExecuted') is None
-        assert page.locator('[data-keeper="synthetic-b"] .title').inner_text()==pair['tracks'][1]['title']
-        # Native checkbox dimensions and complete labels, rather than drawn stand-ins.
-        controls=page.locator('#view-review input[type="checkbox"]')
-        assert controls.count()>=4
-        measurements=controls.evaluate_all('''els=>els.map(el=>{
-            const r=el.getBoundingClientRect(),label=el.closest('label'),s=getComputedStyle(label);
-            return {id:el.id,evidence:el.dataset.evidence,width:r.width,height:r.height,
-                fontSize:parseFloat(s.fontSize),labelHeight:label.getBoundingClientRect().height,
-                opacity:getComputedStyle(el).opacity,hiddenAncestor:el.closest('[hidden]')?.id,
-                detailsOpen:el.closest('details')?.open,label:label.textContent};
-        })''')
-        (output/'duplicate-control-measurements.json').write_text(json.dumps(measurements,ensure_ascii=False,indent=2),encoding='utf-8')
-        invalid=[m for m in measurements if not (m['width']>=18 and m['height']>=18 and m['fontSize']>=12 and m['labelHeight']>=40 and m['opacity']=='1')]
-        if invalid:page.screenshot(path=str(output/'duplicate-control-failure.png'),full_page=True)
-        assert not invalid,invalid
+        # Repeat the initial navigation to expose an intermittent render race.
+        for attempt in range(12):
+            page.goto(base,wait_until='networkidle')
+            page.wait_for_selector('#detail-panel [data-keeper="synthetic-a"]',state='attached')
+            page.locator('.nav[data-view="review"]').click()
+            page.wait_for_selector('#detail-panel .sibling.chosen')
+            page.locator('[data-pair="synthetic-pair"]').click()
+            page.wait_for_selector('#detail-panel .review-action-dock #stage-pair')
+            assert page.locator('#stage-pair').evaluate('(e)=>{const r=e.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight}'), 'Merge action is outside the review viewport'
+            assert page.locator('#toast').is_hidden() or not page.locator('#toast').inner_text(),page.locator('#toast').inner_text()
+            assert page.locator('#detail-panel img').count()==0
+            assert page.evaluate('window.duplicateMetadataExecuted') is None
+            assert page.locator('[data-keeper="synthetic-b"] .title').inner_text()==pair['tracks'][1]['title']
+            # Native checkbox dimensions and complete labels, rather than drawn stand-ins.
+            controls=page.locator('#view-review input[type="checkbox"]')
+            assert controls.count()>=4
+            measurements=controls.evaluate_all('''els=>els.map(el=>{
+                const r=el.getBoundingClientRect(),label=el.closest('label'),s=getComputedStyle(label);
+                return {id:el.id,evidence:el.dataset.evidence,width:r.width,height:r.height,
+                    fontSize:parseFloat(s.fontSize),labelHeight:label.getBoundingClientRect().height,
+                    opacity:getComputedStyle(el).opacity,hiddenAncestor:el.closest('[hidden]')?.id,
+                    detailsOpen:el.closest('details')?.open,label:label.textContent};
+            })''')
+            (output/f'duplicate-control-measurements-{attempt}.json').write_text(json.dumps(measurements,ensure_ascii=False,indent=2),encoding='utf-8')
+            invalid=[m for m in measurements if not (m['width']>=18 and m['height']>=18 and m['fontSize']>=12 and m['labelHeight']>=40 and m['opacity']=='1')]
+            if invalid:page.screenshot(path=str(output/'duplicate-control-failure.png'),full_page=True)
+            assert not invalid,invalid
         evidence=page.locator('#evidence-filters label').filter(has=page.locator('[data-evidence="files_found_both"]'))
         with page.expect_response(lambda response:urlsplit(response.url).path=='/api/pairs'):
             evidence.locator('span').click()
