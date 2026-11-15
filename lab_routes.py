@@ -15,7 +15,7 @@ from analysis_audit import audit_assets
 from history_browser import list_history,history_session
 from metadata_overrides import FIELDS,FREE_FIELDS,comparable,baseline,validate
 from track_tags import editable_colour,snapshot_colour_support
-from musicbrainz_pilot import MusicBrainzClient,RateGate,SPEEDS,create_batch,batch_record,run_batch
+from musicbrainz_pilot import MusicBrainzClient,RateGate,SPEEDS,create_batch,batch_record,run_batch,target_options
 
 
 def workspace_overrides(data,session):
@@ -214,11 +214,19 @@ def register(owner):
             cancel_all()
         return jsonify(musicbrainz_enabled=enabled())
 
+    @app.get('/api/lab/musicbrainz/targets')
+    def lab_pilot_targets():
+        snapshot_id=request.args.get('snapshot','')
+        # Target lists stay local and contain only bounded, saved tag values.
+        return jsonify(target_options(store().snapshot(snapshot_id)))
+
     @app.post('/api/lab/musicbrainz/preview')
     def lab_pilot_preview():
         b=body();s=store().effective(snapshot(b));speed=b.get('speed','balanced')
         if speed not in SPEEDS:raise ValueError('Choose gentle, balanced or fast lookup pacing')
-        return jsonify(create_batch(store(),s,b.get('top_genres',5),b.get('seed','preview'),SPEEDS[speed],b.get('sample_size')))
+        return jsonify(create_batch(store(),s,b.get('top_genres',5),b.get('seed','preview'),
+                                    SPEEDS[speed],b.get('sample_size'),
+                                    b.get('target','balanced'),b.get('target_value','')))
 
     @app.get('/api/lab/musicbrainz/batches')
     def lab_pilot_batches():

@@ -1,6 +1,6 @@
 /* All library-derived strings are escaped; mutations use the local action token. */
 let labInfo=null,labReport=null,labReportOffset=0,labTrackOffset=0,labTrackRows=[],labEdited=null,labUnlocked=false,labTracksRevision=0;
-let labBatch=null,labPilotOffset=0,labPilotTimer=null,labPilotStatus=null,labPilotRevision=0,labPilotSnapshot=null;
+let labBatch=null,labPilotOffset=0,labPilotTimer=null,labPilotStatus=null,labPilotRevision=0,labPilotSnapshot=null,labPilotPreviewDirty=false;
 const labPost=(url,data)=>api('/api/lab/'+url,{method:'POST',body:JSON.stringify(data)});
 const labSnapshot=()=>$('#lab-snapshot').value;
 const labSummary=data=>'<div class="lab-summary">'+Object.entries(data || {}).filter(([,v])=>v===null || typeof v!=='object').map(([k,v])=>'<div><span>'+esc(k.replaceAll('_',' '))+'</span><b>'+esc(v===null?I18n.t("Unknown"):v===true?I18n.t("Yes"):v===false?I18n.t("No"):v)+'</b></div>').join('')+'</div>';
@@ -110,14 +110,24 @@ $('#lab-html').onclick=wrap(async()=>{
 });
 
 function labPilotButtons() {
-  $('#lab-pilot-preview').disabled=!musicBrainzSnapshot();
-  $('#lab-pilot-start').disabled=!labBatch || labPilotSnapshot!==musicBrainzSnapshot() || ['running','queued','complete'].includes(labPilotStatus) || !$('#lab-pilot-enabled').checked || !$('#lab-pilot-consent').checked;
+  $('#lab-pilot-preview').disabled=!musicBrainzSnapshot() || !musicBrainzHasTarget();
+  $('#lab-pilot-start').disabled=!labBatch || labPilotPreviewDirty || labPilotSnapshot!==musicBrainzSnapshot() || ['running','queued','complete'].includes(labPilotStatus) || !$('#lab-pilot-enabled').checked || !$('#lab-pilot-consent').checked;
 }
 $('#lab-pilot-consent').onchange=labPilotButtons;
 $('#lab-pilot-enabled').onchange=wrap(async()=>{try{const r=await labPost('features',{musicbrainz_enabled:$('#lab-pilot-enabled').checked});$('#lab-pilot-enabled').checked=r.musicbrainz_enabled;}finally{labPilotButtons();}});
+const labPilotSelection=()=>({snapshot:musicBrainzSnapshot(),
+  top_genres:$('#lab-pilot-top').value,seed:$('#lab-pilot-seed').value,
+  speed:$('#lab-pilot-speed').value,sample_size:$('#lab-pilot-size').value,
+  target:$('#lab-pilot-target').value,target_value:$('#lab-pilot-target-value').value});
 $('#lab-pilot-preview').onclick=wrap(async()=>{
-  const r=await labPost('musicbrainz/preview',{snapshot:musicBrainzSnapshot(),top_genres:$('#lab-pilot-top').value,seed:$('#lab-pilot-seed').value,speed:$('#lab-pilot-speed').value,sample_size:$('#lab-pilot-size').value});labBatch=r.id;labPilotOffset=0;
-  preferences.set('workbench-lab-batch',labBatch);$('#lab-pilot-consent').checked=false;await labLoadPilot();labPilotButtons();
+  const requested=labPilotSelection(),signature=JSON.stringify(requested);
+  const r=await labPost('musicbrainz/preview',requested);
+  labBatch=r.id;labPilotOffset=0;
+  // The user may switch targets while preview generation is in flight.
+  // Never enable Start for a preview of a different selection.
+  labPilotPreviewDirty=JSON.stringify(labPilotSelection())!==signature;
+  preferences.set('workbench-lab-batch',labBatch);$('#lab-pilot-consent').checked=false;
+  await labLoadPilot();labPilotButtons();
 });
 async function labLoadPilot(feedback=true) {
   if(!labBatch)return;
@@ -126,7 +136,7 @@ async function labLoadPilot(feedback=true) {
   if(revision!==labPilotRevision || batch!==labBatch)return;
   labPilotSnapshot=r.snapshot_id;labPilotStatus=r.status;labPilotButtons();
   const batchSource=musicBrainzInfo?.snapshots.find(s=>s.id===r.snapshot_id);
-  $('#musicbrainz-batch-source').textContent=I18n.t('Source snapshot')+' · '+(batchSource?.label || r.snapshot_id);$('#lab-pilot-cancel').disabled=!['queued','running'].includes(r.status);
+  $('#musicbrainz-batch-source').textContent=I18n.t('Source snapshot')+' · '+(batchSource?.label || r.snapshot_id)+(r.summary.target && r.summary.target!=='balanced'?' · '+I18n.t('Quick enrichment target')+': '+r.summary.target+(r.summary.target_value?' · '+r.summary.target_value:''):'');$('#lab-pilot-cancel').disabled=!['queued','running'].includes(r.status);
   $('#lab-pilot-progress').textContent=r.status+' · '+num(r.summary.done)+' / '+num(r.total)+' tracks · '+num(r.summary.requests)+' requests · '+num(r.summary.cache_hits)+' cached'+(r.summary.message?' · '+r.summary.message:'');
   $('#lab-pilot-summary').innerHTML=labSummary(Object.fromEntries(['tracks','done','candidate_matches','rating_available','genre_available','tags_available','year_available','service_errors'].filter(k=>r.summary[k]!=null).map(k=>[k,r.summary[k]])))+'<p class="subtle">'+r.summary.groups.map(g=>esc(g.genre)+': '+num(g.sampled)+(g.requested==null?'':' / '+num(g.requested))).join(' · ')+'</p>';
   $('#lab-pilot-results').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Local tags"))+"</th><th>"+esc(I18n.t("Best candidate · review required"))+"</th><th>"+esc(I18n.t("Community evidence"))+"</th></tr></thead><tbody>")+r.rows.map(t=>{

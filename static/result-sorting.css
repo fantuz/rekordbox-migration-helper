@@ -1,0 +1,34 @@
+/* Low-noise column sorting shared by bounded result pages. */
+.result-sortable{position:relative}
+.result-sort-button{display:inline-flex;align-items:center;gap:5px;width:100%;min-width:0;padding:2px 0;text-align:inherit;border:0;background:transparent;color:inherit;font:inherit;font-weight:inherit;cursor:pointer}
+.result-sort-button::after{content:'↕';font-size:11px;opacity:.48;line-height:1}
+th[aria-sort="ascending"] .result-sort-button::after{content:'↑';opacity:1;color:var(--accent)}
+th[aria-sort="descending"] .result-sort-button::after{content:'↓';opacity:1;color:var(--accent)}
+.result-sort-button:hover{color:var(--accent)}
+.result-sort-button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+.file-health-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.file-health-controls label{min-width:120px;flex:1}
+.file-health-controls label span{display:block;margin-bottom:4px}
+.file-health-controls select,.file-health-controls input{width:100%;max-width:100%;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:7px;color:var(--text)}
+.file-health-controls .button{margin-top:0}
+.file-health-counts{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0;font-size:12px}
+.file-health-counts button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer}
+.file-health-counts button[aria-pressed="true"]{border-color:var(--accent);outline:1px solid var(--accent)}
+.file-health-counts button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.file-health-note{font-size:12px;line-height:1.5;color:var(--muted)}
+.file-health-state{font-size:12px;min-height:20px}
+#file-health-results .track-play{vertical-align:middle}
+.musicbrainz-quick-targets{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 12px}
+.musicbrainz-quick-targets>label{flex:1;min-width:170px}
+.musicbrainz-quick-targets select{width:100%;padding:7px;border-radius:7px;background:var(--panel);border:1px solid var(--line);color:var(--text)}
+.musicbrainz-parameters{margin:8px 0 14px}
+.musicbrainz-parameters>summary{cursor:pointer;font-size:12px;font-weight:600}
+.musicbrainz-parameters p{font-size:12px;margin:7px 0;line-height:1.45}
+.musicbrainz-compact>p{margin:8px 0}
+@media(max-width:680px){.file-health-controls label{min-width:100%}.file-health-controls .button{width:100%}}
+
+/* Keep the dense duplicate-review candidate list at its established
+ * 12+-row viewport target even after adding accessible header sort controls.
+ * Only reduce the padding in the compact candidate table, not touch targets. */
+.native-review-workspace .review-candidates .native-table td{padding-block:4px}
+.native-review-workspace .review-candidates .result-sort-button{padding-block:0;line-height:1.25}

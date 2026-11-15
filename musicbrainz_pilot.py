@@ -27,13 +27,80 @@ SPEEDS={'gentle':3.0,'balanced':2.0,'fast':1.1}
 def unknown_genre(value):return normalized(value) in ('','unknown','unknown genre','unclassified','uncategorized')
 
 
-def sample_genres(snapshot,top=5,seed='preview',sample_size=None):
+TARGETS=('balanced','random','genre','album','year','playlist','missing_genre','missing_year','missing_album')
+
+
+def target_options(snapshot):
+    """Bounded, local-only choices; never transmit these tags until consent."""
+    tracks=snapshot['tracks']
+    def listed(field,limit=45):
+        counts=Counter(str(t.get(field) or '').strip() for t in tracks if str(t.get(field) or '').strip())
+        return [{'value':name,'label':name,'tracks':count} for name,count in
+                sorted(counts.items(),key=lambda x:(-x[1],x[0].casefold()))[:limit]]
+    genres=[row for row in listed('genre') if not unknown_genre(row['value'])]
+    albums=listed('album')
+    years=Counter(str(t.get('year')) for t in tracks
+                  if re.fullmatch(r'\d{4}',str(t.get('year') or '')))
+    year_choices=[{'value':name,'label':name,'tracks':count} for name,count in
+                  sorted(years.items(),key=lambda x:-int(x[0]))[:80]]
+    playlists=[]
+    structured=snapshot.get('playlists') or []
+    if structured:
+        for entry in structured:
+            if entry.get('folder'):continue
+            playlists.append({'value':str(entry['id']),'label':str(entry.get('name') or entry['id']),
+                              'tracks':len(entry.get('tracks') or [])})
+    else:
+        counts=Counter(name for t in tracks for name in set(t.get('playlists') or []))
+        playlists=[{'value':'name:'+str(name),'label':str(name),'tracks':count}
+                   for name,count in counts.items()]
+    playlists.sort(key=lambda row:(-row['tracks'],row['label'].casefold(),row['value']))
+    return {'genres':genres,'albums':albums,'years':year_choices,'playlists':playlists[:100],
+            'total_tracks':len(tracks)}
+
+
+def target_selection(snapshot,target,value):
+    if target not in TARGETS:raise ValueError('Choose a supported enrichment target')
+    if not isinstance(value,str) or len(value)>200:raise ValueError('Choose a supported target value')
+    tracks=snapshot['tracks']
+    if target in ('balanced','random'):return tracks
+    if target=='missing_genre':return [t for t in tracks if unknown_genre(t.get('genre'))]
+    if target=='missing_album':return [t for t in tracks if not str(t.get('album') or '').strip()]
+    if target=='missing_year':return [t for t in tracks if not re.fullmatch(r'\d{4}',str(t.get('year') or ''))]
+    options=target_options(snapshot)
+    category={'genre':'genres','album':'albums','year':'years','playlist':'playlists'}[target]
+    if not value or value not in {row['value'] for row in options[category]}:
+        raise ValueError('Choose an available '+target+' target from this snapshot')
+    if target in ('genre','album'):
+        return [t for t in tracks if str(t.get(target) or '').strip()==value]
+    if target=='year':
+        return [t for t in tracks if str(t.get('year') or '')==value]
+    structured=snapshot.get('playlists') or []
+    if structured:
+        ids=set(next((p.get('tracks') or [] for p in structured if str(p['id'])==value),[]))
+        return [t for t in tracks if t['id'] in ids]
+    label=value.removeprefix('name:')
+    return [t for t in tracks if label in (t.get('playlists') or [])]
+
+
+def sample_genres(snapshot,top=5,seed='preview',sample_size=None,target='balanced',target_value=''):
     top=int(top)
     if not 3<=top<=12:raise ValueError('Choose between 3 and 12 populated genres')
     if sample_size is not None:
         if isinstance(sample_size,bool) or str(sample_size) not in ('150','300','1000'):
             raise ValueError('Choose a pilot size of 150, 300 or 1000 tracks')
         sample_size=int(sample_size)
+    if target!='balanced':
+        candidates=target_selection(snapshot,target,target_value)
+        candidates=sorted(candidates,key=lambda t:sha256((str(seed)+'\\0'+str(t['id'])).encode()).hexdigest())
+        selected=[];seen=set()
+        for t in candidates:
+            identity=(normalized(t.get('artist')),normalized(t.get('title')),round(t.get('duration') or 0))
+            if identity in seen:continue
+            seen.add(identity);selected.append(t)
+            if len(selected)>= (sample_size or 300):break
+        return selected,[{'genre':target+((' · '+target_value) if target_value else ''),
+                          'library_tracks':len(candidates),'sampled':len(selected),'requested':sample_size}]
     counts=Counter(t.get('genre') for t in snapshot['tracks'] if not unknown_genre(t.get('genre')))
     names=[name for name,_ in counts.most_common(top)];groups=defaultdict(list)
     for t in snapshot['tracks']:
@@ -175,13 +242,13 @@ class MusicBrainzClient:
         raise RuntimeError('Provider request failed')
 
 
-def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None):
+def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None,target='balanced',target_value=''):
     delay=float(delay)
     if not 1.1<=delay<=60:raise ValueError('Lookup spacing must be between 1.1 and 60 seconds')
-    selected,groups=sample_genres(snapshot,top,seed,sample_size)
+    selected,groups=sample_genres(snapshot,top,seed,sample_size,target,target_value)
     identity=uuid4().hex
     sample=[{k:t.get(k) for k in ('id','title','artist','album','genre','year','rating','duration','isrc','metadata_origin')} for t in selected]
-    summary={'groups':groups,'requested_tracks':sample_size,'estimated_uncached_seconds':round(2*len(sample)*delay),'tracks':len(sample),'seconds_per_request':float(delay),'requests':0,'cache_hits':0,'done':0,
+    summary={'groups':groups,'target':target,'target_value':target_value,'requested_tracks':sample_size,'estimated_uncached_seconds':round(2*len(sample)*delay),'tracks':len(sample),'seconds_per_request':float(delay),'requests':0,'cache_hits':0,'done':0,
              'rating_available':0,'genre_available':0,'year_available':0,'experimental':True,'queries_include_audio':False,'queries_include_paths':False}
     with store.connection() as db:db.execute('INSERT INTO mb_batches VALUES (?,?,?,?,?,?)',(identity,snapshot['id'],now(),'preview',encoded(summary),encoded(sample)))
     return {'id':identity,'summary':summary,'sample':sample,'status':'preview'}

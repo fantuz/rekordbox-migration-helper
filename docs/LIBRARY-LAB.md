@@ -30,6 +30,9 @@ Any snapshot can generate offline HTML with or without its staged metadata. This
 
 ## MusicBrainz proof of concept
 
+The Enrich page now provides **Quick enrichment target** choices before preview: balanced top genres (the previous behavior), reproducible random samples, a chosen genre/album/year/playlist, or tracks missing genre, album or year. The album target chooses *local tracks* by saved album tag; the provider still matches individual recordings, not albums. The selected target and seed are saved in each immutable pilot batch. **Selection seed** controls reproducibility, not randomness or MusicBrainz confidence. **Populated genres** controls only the balanced default. **Lookup speed** controls the delay between provider requests, not filesystem speed. These explanations are available in a compact expandable section; consent and explicit identity approval remain mandatory.
+
+
 Open **Enrich → MusicBrainz** in the sidebar. The dedicated page has its own snapshot selector, preview controls, saved batches and results. Home-page shortcuts, the enrichment journey and the background status strip open this page. Library lab retains snapshot capture, comparison and the metadata editor. Select the same source snapshot as the saved batch before starting retrieval or staging a suggestion.
 
 Retrieval is **disabled by default**, controlled separately from editing. `LIBRARY_WORKBENCH_MUSICBRAINZ=0` forces it off. It can be disabled during a batch; cancellation retains partial results.

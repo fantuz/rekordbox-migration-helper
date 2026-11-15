@@ -31,6 +31,10 @@ class Store:
               CREATE TABLE IF NOT EXISTS mb_cache(key TEXT PRIMARY KEY,created REAL,expires REAL,payload TEXT);
               CREATE TABLE IF NOT EXISTS file_status_cache(key TEXT PRIMARY KEY,status TEXT NOT NULL,checked_at REAL NOT NULL);
               CREATE INDEX IF NOT EXISTS file_status_age ON file_status_cache(checked_at);
+              CREATE TABLE IF NOT EXISTS file_health_scans(source TEXT PRIMARY KEY,total INTEGER,done INTEGER,checked_at REAL,state TEXT);
+              CREATE TABLE IF NOT EXISTS file_health_records(source TEXT,track_id TEXT,title TEXT,artist TEXT,genre TEXT,status TEXT,checked_at REAL,search_text TEXT,PRIMARY KEY(source,track_id));
+              CREATE INDEX IF NOT EXISTS file_health_source_status ON file_health_records(source,status);
+              CREATE INDEX IF NOT EXISTS file_health_source_artist ON file_health_records(source,artist,track_id);
             ''')
 
     @contextmanager
