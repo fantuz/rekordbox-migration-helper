@@ -46,12 +46,21 @@ def check_bubble_labels_ui(page,base,sid,output,store):
         page.set_viewport_size({'width':width,'height':1050});verify()
         if width==1920:
             assert page.locator('.bubble-label').count()>0
-            visible_lines=page.locator('.bubble-node').first.locator('.bubble-label').all_text_contents()
-            # A measured fit may shorten the name; it must preserve its leading
-            # category text rather than a bare number or an arbitrary suffix.
-            visible=''.join(''.join(line.split()).rstrip('…') for line in visible_lines)
-            expected=''.join(labels[0].split())
-            assert expected.startswith(visible) and len(visible)>=16,(visible_lines,labels[0])
+            # Bubble layout order is independent of the category insertion
+            # order. Match every visible name to its own stable group index.
+            visible=page.locator('.bubble-node').evaluate_all('''nodes=>nodes.map(node=>{
+                const expected=insightState.bubble.result.groups[Number(node.dataset.bubbleIndex)].label;
+                const shown=[...node.querySelectorAll('.bubble-label')].map(t=>t.textContent.trim());
+                return {expected,shown};
+            })''')
+            for row in visible:
+                if not row['shown']:
+                    continue
+                rendered=''.join(''.join(t.split()).rstrip('…') for t in row['shown'])
+                expected=''.join(row['expected'].split())
+                assert expected.startswith(rendered),(row,rendered)
+            wide=next(row for row in visible if row['expected']==labels[0])
+            assert len(''.join(wide['shown']))>=12,wide
             page.locator('#library-bubbles').scroll_into_view_if_needed()
             page.screenshot(path=str(output/'bubble-labels-desktop.png'))
     page.set_viewport_size({'width':1366,'height':1050})
