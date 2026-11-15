@@ -11,7 +11,16 @@ def check_workspace_maintenance_ui(browser,base,output):
         page.goto(base,wait_until='networkidle')
         page.locator('.nav[data-view=investigations]').click()
         page.wait_for_selector('#workspace-maintenance')
-        page.locator('#maintenance-cache').click()
+        previous=page.locator('#workspace-maintenance').element_handle();pending=[]
+        page.route('**/api/investigations/cache/clear',lambda route:pending.append(route))
+        with page.expect_request('**/api/investigations/cache/clear'):
+            page.locator('#maintenance-cache').click()
+        assert page.locator('#maintenance-fresh').is_disabled()
+        assert page.locator('#maintenance-purge').is_disabled()
+        assert len(pending)==1
+        pending.pop().continue_()
+        page.wait_for_function('(element)=>!element.isConnected',arg=previous)
+        page.unroute('**/api/investigations/cache/clear')
         page.wait_for_selector('#maintenance-fresh')
         page.locator('#maintenance-fresh').click()
         page.wait_for_selector('#maintenance-ack')
@@ -34,6 +43,6 @@ def check_workspace_maintenance_ui(browser,base,output):
                 page.screenshot(path=str(output/f'cleanup-path-{theme}-{width}.png'))
                 page.locator('#cleanup-cancel').click()
         assert not errors,errors
-        return {'cache_clear':True,'fresh_preview_acknowledgment':True,'path_wrap':True,'copy_text_unchanged':True,'themes':['light','dark'],'widths':[1366,768,390],'synthetic':True}
+        return {'cache_clear':True,'cache_clear_blocks_competing_actions':True,'fresh_preview_acknowledgment':True,'path_wrap':True,'copy_text_unchanged':True,'themes':['light','dark'],'widths':[1366,768,390],'synthetic':True}
     finally:
         context.close()

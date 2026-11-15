@@ -223,7 +223,7 @@ async function loadPairs() {
     const cues=groupMode?r.track_count+" "+I18n.t("siblings"):r.cue_equal?I18n.t("Same cue set"):r.cue_a.total+" ↔ "+r.cue_b.total+" "+I18n.t("cues");
     return '<button class="pair-row '+((groupMode?currentGroup?.id:selected?.id)===r.id?"selected":"")+'" data-pair="'+esc(r.id)+'"><div style="min-width:0"><div class="pair-title">'+esc(r.title || I18n.t("Untitled"))+'</div><div class="pair-artist">'+esc(r.artist || I18n.t("Artist unknown"))+'</div></div><span class="cue-evidence">'+esc(cues)+'</span><span class="badge '+state+'">'+label+'</span></button>';
   }).join("") || ("<div class=\"empty-state\"><h3>"+esc(I18n.t("A clear view."))+"</h3><p>"+esc(I18n.t("No candidate pairs match these filters."))+"</p></div>");
-  $$("#pair-list [data-pair]").forEach(b=>b.onclick=wrap(()=>groupMode?selectGroup(result.rows.find(r=>r.id===b.dataset.pair)):selectPair(b.dataset.pair)));
+  $$("#pair-list [data-pair]").forEach(b=>b.onclick=wrap(async()=>{await (groupMode?selectGroup(result.rows.find(r=>r.id===b.dataset.pair)):selectPair(b.dataset.pair));ReviewWorkspace.present($("#view-review .review-layout"),b);}));
   const previous=groupMode?currentGroup?.id:selected?.id;
   if (groupMode && result.rows.length) {
     await selectGroup(result.rows.find(r=>r.id===previous) || result.rows[0]);
@@ -232,6 +232,7 @@ async function loadPairs() {
   } else if (!result.rows.length) {
     selected=null;currentGroup=null;
     $("#detail-panel").innerHTML=("<div class=\"detail-empty\"><h3>"+esc(I18n.t("No pair in this scope"))+"</h3><p>"+esc(I18n.t("Adjust the filters to choose another recording."))+"</p></div>");
+    ReviewWorkspace.refresh($("#view-review .review-layout"),$("#detail-panel"),[],false);
   }
 }
 async function selectPair(id,preferredKeeper=null) {
@@ -269,11 +270,12 @@ function renderDetail() {
   $("#stage-pair").onclick=wrap(()=>saveDecision("merge"));
   $("#skip-pair").onclick=wrap(()=>saveDecision("skip"));
   if ($("#undo-pair")) $("#undo-pair").onclick=wrap(()=>saveDecision("undo"));
-  const verify=document.createElement("button");verify.className="text-button";verify.textContent=I18n.t("Verify local file bytes");
+  const verify=document.createElement("button");verify.className="text-button verify-local-file";verify.textContent=I18n.t("Verify local file bytes");
   verify.onclick=wrap(async()=>{const job=await api("/api/inventory/verify",{method:"POST",body:JSON.stringify({pair:r.id})});const result=await poll(job.job);notify(result.same_file_bytes?I18n.t("The local file bytes are identical"):I18n.t("The local file bytes differ"));await selectPair(r.id);});
   $("#detail-panel").append(verify);
   if (r.media_verification) {const note=document.createElement("p");note.className="hash-evidence";note.textContent=r.media_verification.same_file_bytes?I18n.t("Verified identical local file bytes"):I18n.t("Local file hashes differ");$("#detail-panel").append(note);}
   if (groupMode && currentGroup) renderGroupControls();
+  ReviewWorkspace.refresh($("#view-review .review-layout"),$("#detail-panel"),[".detail-actions .action-row","#stage-group",".verify-local-file"]);
 }
 async function saveDecision(action) {
   const result=await api("/api/decision",{method:"POST",body:JSON.stringify({pair:selected.id,action,keeper:chosen,prefer_auto:$("#accept-auto")?.checked || false,prefer_rating:$("#accept-rating")?.checked || false})});
@@ -281,6 +283,7 @@ async function saveDecision(action) {
   notify(action==="undo"?I18n.t("Decision undone"):I18n.t("Decision saved to this workspace"));
 }
 function showView(view) {
+  if(view!=="review")ReviewWorkspace.closeAll();
   if(view!=="bubbles" && $("#bubble-expanded").open)$("#bubble-expanded").close();
   $$(".view").forEach(v=>v.hidden=v.id!=="view-"+view);
   $$(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===view));
@@ -547,7 +550,7 @@ function groupRequest(group) {
 }
 async function refreshGroupPlan(group,box) {
   const revision=group.previewRevision=(group.previewRevision || 0)+1;
-  const button=box.querySelector('#stage-group');button.disabled=true;
+  const button=$('#stage-group');button.disabled=true;
   box.querySelector('#group-plan-summary').textContent=I18n.t("Checking the combined cue and rating choices…");
   const result=await api("/api/group/preview",{method:"POST",body:JSON.stringify(groupRequest(group))});
   if(currentGroup!==group || !box.isConnected || revision!==group.previewRevision)return;

@@ -8,7 +8,12 @@ window.WorkspaceMaintenance=(()=>{
     const section=document.createElement('section');section.id='workspace-maintenance';section.className='wide-card';
     section.innerHTML='<h3>'+text('Workspace maintenance')+'</h3><p>'+text('Reuse saved reports without scanning again. Clear caches to recompute views; original libraries and exports are kept.')+'</p><p>'+num(cache.results)+' · '+text('Cached results')+' · '+esc(bytes(cache.bytes))+' · '+num(cache.provider_entries)+' · MusicBrainz</p><div class="action-row"><button class="button secondary" id="maintenance-cache">'+text('Clear result and provider caches')+'</button><button class="button secondary" id="maintenance-fresh">'+text('Start fresh with an archive')+'</button><button class="button secondary" id="maintenance-purge" '+(!inventory.archives.length?'disabled':'')+'>'+text('Delete archived investigations')+'</button></div><div id="maintenance-preview"></div>';
     $('#investigations-content').prepend(section);
-    $('#maintenance-cache').onclick=wrap(async()=>{await post('cache/clear');await Investigations.load();});
+    $('#maintenance-cache').onclick=wrap(async()=>{
+      const controls=[...section.querySelectorAll('button')].map(button=>[button,button.disabled]);
+      controls.forEach(([button])=>button.disabled=true);section.setAttribute('aria-busy','true');
+      try{await post('cache/clear');await Investigations.load();}
+      finally{if(section.isConnected){controls.forEach(([button,disabled])=>button.disabled=disabled);section.removeAttribute('aria-busy');}}
+    });
     $('#maintenance-fresh').onclick=wrap(async()=>{
       const result=await post('preview',{fresh:true});if(revision!==version)return;
       $('#maintenance-preview').innerHTML='<h4>'+text('Start fresh with an archive')+'</h4><p>'+text('All current investigations and staged metadata edits move into a recoverable archive. Loaded workspaces are detached. Original libraries, audio, inputs and completed exports stay unchanged.')+'</p><ul>'+result.items.map(row=>'<li>'+esc(row.kind)+' · '+esc(row.label)+'</li>').join('')+'</ul>'+result.blockers.map(row=>'<p class="callout">'+esc(row.reason)+'</p>').join('')+'<label><input type="checkbox" id="maintenance-ack">'+text('I reviewed the listed changes')+'</label><button disabled class="button" id="maintenance-confirm">'+text('Start fresh with an archive')+'</button>';
