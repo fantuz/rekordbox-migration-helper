@@ -127,7 +127,7 @@ window.NativeCollection=(()=>{
   }
   function update(view){
     if(active() && ['statistics','review','reference'].includes(view)){$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;}
-    if(['review','reference'].includes(view))load(view).catch(e=>notify(e.message,true));
+    if(['review','reference'].includes(view))return load(view).catch(e=>notify(e.message,true));
   }
   window.addEventListener('workbench-context',()=>{
     for(const v of ['review','reference']){state[v].offset=0;revisions[v]++;}

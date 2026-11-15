@@ -674,7 +674,7 @@ function journalCaptureSelected(report){
   journalReport=report?.format==='Modern desktop master.db'?report:null;
   journalStamp=null;journalStable=0;
   if($('#analyzer-journal-state'))
-    $('#analyzer-journal-state').textContent=journalReport?'Source captured · monitoring is available':'Journal monitoring requires a modern source database capture';
+    $('#analyzer-journal-state').textContent=journalReport?I18n.t('Source captured · monitoring is available'):I18n.t('Journal monitoring requires a modern source database capture');
 }
 async function pollAnalyzerJournal(){
   if(!$('#analyzer-journal-watch')?.checked || !journalReport || $('#view-analyzer').hidden || document.hidden || busy || journalActive || journalPolling)return;
@@ -687,12 +687,12 @@ async function pollAnalyzerJournal(){
     if(!state.supported){$('#analyzer-journal-state').textContent=state.message;return;}
     if(!state.changed){
       journalStamp=null;journalStable=0;
-      $('#analyzer-journal-state').textContent='Source files match this capture · no changes detected';
+      $('#analyzer-journal-state').textContent=I18n.t('Source files match this capture · no changes detected');
       return;
     }
     if(state.signature===journalStamp)journalStable++;
     else{journalStamp=state.signature;journalStable=1;}
-    $('#analyzer-journal-state').textContent='Database/journal activity detected · '+(journalStable<2?'waiting for stable files':'stable changes detected')+(state.wal_present?' · WAL present':'');
+    $('#analyzer-journal-state').textContent=I18n.t('Database/journal activity detected · ')+(journalStable<2?I18n.t('waiting for stable files'):I18n.t('stable changes detected'))+(state.wal_present?I18n.t(' · WAL present'):'');
     if(journalStable<2 || Date.now()-journalLastRefresh<30000 || busy)return;
     journalActive=true;journalLastRefresh=Date.now();
     try{
@@ -703,17 +703,17 @@ async function pollAnalyzerJournal(){
       const stillSelected=()=>appliedRevision===journalRevision && $('#analyzer-journal-watch').checked && !$('#view-analyzer').hidden && !document.hidden;
       if(!stillSelected())return;
       if(result.metadata_available && window.Journeys){await Journeys.load();if(!stillSelected())return;await Journeys.selectContext('capture:'+result.id,true);}
-      $('#analyzer-journal-state').textContent='New read-only snapshot captured · '+snapshotMoment(result.created);
+      $('#analyzer-journal-state').textContent=I18n.t('New read-only snapshot captured · ')+snapshotMoment(result.created);
     }catch(error){
-      if(current())$('#analyzer-journal-state').textContent='Capture not applied: '+error.message+' · retry after files are stable';
+      if(current())$('#analyzer-journal-state').textContent=I18n.t('Capture not applied: ')+error.message+I18n.t(' · retry after files are stable');
     }finally{journalActive=false;}
-  }catch(error){if(current())$('#analyzer-journal-state').textContent='Journal monitor unavailable: '+error.message;}
+  }catch(error){if(current())$('#analyzer-journal-state').textContent=I18n.t('Journal monitor unavailable: ')+error.message;}
   finally{journalPolling=false;}
 }
 $('#analyzer-journal-watch').onchange=()=>{
   journalRevision++;
   journalStamp=null;journalStable=0;
-  if(!$('#analyzer-journal-watch').checked)$('#analyzer-journal-state').textContent='Journal monitoring disabled';
+  if(!$('#analyzer-journal-watch').checked)$('#analyzer-journal-state').textContent=I18n.t('Journal monitoring disabled');
   else void pollAnalyzerJournal();
 };
 setInterval(()=>{void pollAnalyzerJournal();},4000);
