@@ -114,6 +114,8 @@ def main():
                 report['intelligence_ui']=check_intelligence_ui(page,base,sid,args.output,store)
                 from check_enrichment_ui import check_enrichment_ui
                 report['enrichment_ui']=check_enrichment_ui(page,base,sid,args.output,store,root)
+                from check_results_sort_file_health_ui import check_results_sort_file_health_ui
+                report['result_sort_and_file_health']=check_results_sort_file_health_ui(browser,base,sid,args.output)
                 from check_header_information_ui import check_header_information_ui
                 report['header_information_ui']=check_header_information_ui(page,args.output)
                 from check_workspace_ui import check_workspace_ui
