@@ -17,7 +17,7 @@ window.FileHealth=(()=>{
   }
   function renderRows(data){
     const columns=[['artist','Artist'],['title','Track'],['playability','Playable?'],['status','File status'],['checked','Last checked']];
-    const heads=columns.map(([id,name])=>'<th data-file-health-sort="'+id+'" aria-sort="'+(sort===id?(direction==='asc'?'ascending':'descending'):'none')+'"><button type="button" class="result-sort-button" data-file-health-sort="'+id+'" title="'+esc(label('Sort all scanned results'))+'">'+esc(label(name))+(sort===id?(direction==='asc'?' ↑':' ↓'):' ↕')+'</button></th>').join('');
+    const heads=columns.map(([id,name])=>'<th data-file-health-sort="'+id+'" aria-sort="'+(sort===id?(direction==='asc'?'ascending':'descending'):'none')+'"><button type="button" class="result-sort-button" data-file-health-sort="'+id+'" title="'+esc(label('Sort all scanned results'))+'" aria-label="'+esc(label('Sort all scanned results'))+' · '+esc(label(name))+'">'+esc(label(name))+'</button></th>').join('');
     const rows=data.rows.map(t=>{
       const playback=TrackPlayback.button(source.startsWith('snapshot:')?source.slice(9):source,t.track_id);
       const when=t.checked_at?snapshotMoment(new Date(t.checked_at*1000).toISOString()):label('Unknown');

@@ -10,11 +10,15 @@ Source analyzer can instead inspect a database folder or collection XML. Close r
 
 File health includes a **Playable?** column and full-index filters. **Yes** indicates a successful local file inspection; **No** groups Missing and Inaccessible. **Unknown** represents Unverified; records never inspected remain Unchecked and must not be treated as No. The filter and column sort run against the complete indexed scan, before the 50-record page is selected. Playback still independently verifies whether a file can actually be decoded.
 
+In saved native snapshot **Duplicate review** and **File references**, click a sortable column heading to order the entire filtered collection, not only the visible 50 rows. Click again to reverse direction; changing the column resets to page one, and Previous/Next retain the chosen sort. The arrows indicate direction, while the Review action column is not sortable. Large requests use the shared Loading / Waiting feedback without locking the page. File health independently sorts its full scanned SQLite index before paging.
+
 ## Review and evidence
 
 Duplicate decisions, reference changes and metadata overrides are staged locally. Cues inferred as manual or mixed take keeper priority; cue origin is inferred from editable labels. Review unresolved conflicts before export. Snapshot statistics describe captured library entries and can include duplicates. A zero play count does not prove a track was never played.
 
 Routine pages use short technical labels. Expand information boxes or select **Details** for procedures and evidence limits. Small icons supplement visible labels; colour alone does not identify an action. See [Library lab](LIBRARY-LAB.md) and [DJ insights](DJ-INSIGHTS.md).
+
+Single-track **File view** provides 0–5 instant personal-star buttons alongside the existing instant colour palette. Both stage a local working edit on click, without a confirmation or advanced-field unlock. Reset restores the captured value. Supported native colour choices are constrained to verified palette mappings; nothing is written to original source libraries or audio files. Comments retain their separate Save action, and export still requires normal review.
 
 ## Export and cleanup
 

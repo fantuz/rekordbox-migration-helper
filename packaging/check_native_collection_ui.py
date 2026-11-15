@@ -123,6 +123,42 @@ def check_native_collection_ui(browser, base, data, output, root):
         from check_review_workspace_ui import check_review_workspace_ui
         review_workspace=check_review_workspace_ui(browser,base,'capture:'+identity,output)
         assert original.read_bytes() == before
+
+        # A second disposable collection checks that native column headers
+        # reorder ALL groups, rather than only the first 50 visible rows.
+        many = []
+        for i in range(60):
+            for sibling in range(2):
+                many.append({'id': f'sort-{i:03}-{sibling}', 'title': f'Sort {59-i:03}',
+                             'artist': 'Synthetic', 'current_path': f'/Synthetic/{i:03}.mp3',
+                             'duration': 120 + sibling})
+        sorted_snapshot = Store(data/'workbench-sidecar.sqlite3').save_snapshot(
+            {'schema':1, 'scope_key':'synthetic:native-global-sort', 'tracks': many,
+             'playlists': [], 'source_kind': 'test', 'capabilities': {}}, 'Browser sort fixture')
+        # Refresh the collection selector without reloading the whole page:
+        # the saved fixture is created while the SPA is already open.
+        page.evaluate('() => Journeys.load()')
+        page.wait_for_selector('#journey-context-source option[value="snapshot:' + sorted_snapshot['id'] + '"]',state='attached')
+        page.select_option('#journey-context-source', 'snapshot:' + sorted_snapshot['id'])
+        page.wait_for_function('(id)=>window.Journeys.context()?.source==="snapshot:"+id',arg=sorted_snapshot['id'])
+        page.locator('.nav[data-view=review]').click()
+        page.wait_for_function('document.querySelectorAll("#view-review .native-collection .native-table tbody tr").length===50')
+        page.locator('#view-review .native-collection [data-native-sort="title"]').click()
+        page.wait_for_function('document.querySelector("#view-review .native-collection th[aria-sort=ascending] [data-native-sort=title]")!==null')
+        assert page.locator('#view-review .native-collection .native-table tbody tr td:first-child strong').first.inner_text() == 'Sort 000'
+        assert page.locator('#view-review .native-collection [data-native-sort]').count() == 4
+        assert page.locator('#view-review .native-collection [data-sort-column]').count() == 0
+        assert '1–50' in page.locator('#view-review .native-collection .native-page-range').inner_text()
+        page.locator('#view-review .native-collection [data-native-next="review"]').click()
+        page.wait_for_function('document.querySelector("#view-review .native-collection .native-page-range")?.textContent.includes("51")')
+        assert page.locator('#view-review .native-collection .native-table tbody tr td:first-child strong').first.inner_text() == 'Sort 050'
+        page.locator('#view-review .native-collection [data-native-sort="title"]').click()
+        page.wait_for_function('document.querySelector("#view-review .native-collection th[aria-sort=descending] [data-native-sort=title]")!==null')
+        assert page.locator('#view-review .native-collection .native-table tbody tr td:first-child strong').first.inner_text() == 'Sort 059'
+        page.locator('.nav[data-view=reference]').click()
+        page.wait_for_selector('#view-reference .native-collection [data-native-sort=current_path]')
+        page.locator('#view-reference .native-collection [data-native-sort=current_path]').click()
+        page.wait_for_function('document.querySelector("#view-reference .native-collection th[aria-sort=ascending] [data-native-sort=current_path]")!==null')
         assert not errors, errors
         assert not failures, failures
         return {'direct_intelligence':True,'native_statistics':True, 'candidate_review':True, 'recorded_references':True,
