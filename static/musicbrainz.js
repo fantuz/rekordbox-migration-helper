@@ -18,15 +18,15 @@ async function musicBrainzTargetOptions(){
   label.hidden=!musicBrainzRequiresValue();
   $('#lab-pilot-top').closest('label').hidden=target!=='balanced';
   const hints={
-    balanced:'Balance a sample across popular saved genres and tracks without a genre.',
-    random:'Pick a repeatable random-looking sample across the saved collection.',
-    genre:'Choose one saved genre to inspect.',
-    album:'Choose one saved album; this does not perform album-level MusicBrainz matching.',
-    year:'Choose a saved release year to inspect.',
-    playlist:'Choose a saved playlist; tracks keep their original recording identities.',
-    missing_genre:'Prioritize tracks with no recognized saved genre.',
-    missing_album:'Prioritize tracks without a saved album.',
-    missing_year:'Prioritize tracks without a saved release year.'
+    balanced:'Balance tracks across saved genres.',
+    random:'The same seed repeats the random selection.',
+    genre:'Only tracks matching the selected saved value are included.',
+    album:'Only tracks matching the selected saved value are included.',
+    year:'Only tracks matching the selected saved value are included.',
+    playlist:'Only tracks matching the selected saved value are included.',
+    missing_genre:'Only tracks with missing tags are included.',
+    missing_album:'Only tracks with missing tags are included.',
+    missing_year:'Only tracks with missing tags are included.'
   };
   $('#musicbrainz-target-hint').textContent=I18n.t(hints[target]||hints.balanced);
   if(!musicBrainzRequiresValue() || !snapshot){
