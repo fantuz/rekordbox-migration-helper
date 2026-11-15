@@ -58,6 +58,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertFalse(c['capabilities']['cue_positions'])
         self.assertTrue(c['capabilities']['playlist_order'])
         self.assertEqual(c['captured'], '2026-01-01')
+        self.assertIsNone(c['saved_at'])  # older snapshots did not include an explicit save time
 
     def test_confirmations_never_turn_into_machine_verification(self):
         p = new_plan('migration')
@@ -114,6 +115,8 @@ class JourneyRoutesTests(unittest.TestCase):
         self.assertEqual(state['selected'], source)
         self.assertEqual(state['sources'][0]['id'], source)
         self.assertEqual(state['context']['tracks'], 1)
+        self.assertEqual(state['context']['saved_at'], self.saved['created'])
+        self.assertEqual(state['sources'][0]['created'], self.saved['created'])
         self.assertEqual(state['plans'][0]['notes'], 'continue later')
         self.assertEqual(Store(self.store.path).setting('journey_plans')[p['id']]['notes'], 'continue later')
 
