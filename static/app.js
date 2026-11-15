@@ -284,6 +284,7 @@ function showView(view) {
   if(view!=="bubbles" && $("#bubble-expanded").open)$("#bubble-expanded").close();
   $$(".view").forEach(v=>v.hidden=v.id!=="view-"+view);
   $$(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===view));
+  if(view==='journeys')GuidedJourneys.load().catch(error=>notify(error.message,true));
   if (view==="statistics") renderStatistics().catch(error=>notify(error.message,true));
   if (view==="inventory") loadInventory().catch(error=>notify(error.message,true));
   if (view==="analyzer") loadAnalyzer().catch(error=>notify(error.message,true));
@@ -308,6 +309,7 @@ function showView(view) {
   if (view==='bubbles') $('#page-title').textContent=I18n.t("Library bubbles");
   if (view==='tonality') $('#page-title').textContent=I18n.t("Tonality and tempo");
   if (view==='intelligence'){$('#page-title').textContent=I18n.t('Library intelligence');$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;}
+  if(view==='journeys'){$('#page-title').textContent=I18n.t('Library journeys');$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;}
   if (view==='quick') $('#page-title').textContent=I18n.t('Share & offline summary');
   if (view==='docs'){$('#page-title').textContent=I18n.t('Documentation');$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;}
   if(view==='investigations'){$('#page-title').textContent=I18n.t('Saved investigations');$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;Investigations.load().catch(e=>notify(e.message,true));}

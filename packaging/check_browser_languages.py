@@ -88,6 +88,8 @@ def main():
                 page.select_option('#language','en');page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
                 from check_journeys_ui import check_journeys_ui
                 report['journeys_ui']=check_journeys_ui(page,base,sid,args.output)
+                from check_guided_journeys_ui import check_guided_journeys_ui
+                report['guided_journeys_ui']=check_guided_journeys_ui(page,base,sid,args.output)
                 from check_sharing_ui import check_sharing_ui
                 report['sharing_ui']=check_sharing_ui(page,base,sid,args.output)
                 from check_intelligence_ui import check_intelligence_ui
