@@ -3,7 +3,9 @@
  * Paginated searches still require a server-side query to sort all results.
  */
 window.ResultSorting=(()=>{
-  const sorter=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
+  let sorter=new Intl.Collator(I18n.language,{numeric:true,sensitivity:'base'});
+  const statusRank={playable:0,missing:1,inaccessible:2,unverified:3,unchecked:4};
+  const statusLabels={playable:'Playable',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified',unchecked:'Unchecked'};
   const original=new WeakMap(),state=new WeakMap();
   function textOf(cell){return (cell.dataset.sortValue ?? cell.innerText ?? cell.textContent ?? '').trim();}
   function numberOf(value){
@@ -25,6 +27,7 @@ window.ResultSorting=(()=>{
     const av=textOf(a),bv=textOf(b);
     if(!av && !bv)return 0;
     if(!av)return 1;if(!bv)return -1;
+    if(kind==='status')return (statusRank[av]??99)-(statusRank[bv]??99);
     const an=numberOf(av),bn=numberOf(bv);
     if(kind==='number' || (an!==null && bn!==null))return (an??Infinity)-(bn??Infinity);
     return sorter.compare(av,bv);
@@ -53,7 +56,17 @@ window.ResultSorting=(()=>{
     if(table.matches('[data-sort-scope="server"],[data-result-sort="off"]'))return;
     const headings=table.tHead?.rows[0]?.cells||[],body=table.tBodies[0];
     if(!headings.length || !body || body.rows.length<2 || [...body.rows].some(r=>r.cells.length!==headings.length))return;
-    for(let index=0;index<headings.length;index++){
+    if(!table.dataset.statusColumn && [...body.rows].some(row=>row.querySelector('[data-play-track]'))){
+      const th=document.createElement('th');th.textContent=I18n.t('File status');
+      th.dataset.sortType='status';th.dataset.resultFileStatus='true';table.tHead.rows[0].append(th);
+      for(const row of body.rows){
+        const b=row.querySelector('[data-play-track]'),status=b?.dataset.fileStatus || 'unchecked';
+        const td=document.createElement('td');td.className='result-file-status-cell';td.dataset.sortValue=status;
+        td.textContent=I18n.t(statusLabels[status]||'Unchecked');row.append(td);
+      }
+      table.dataset.statusColumn='true';
+    }
+    for(let index=0;index<table.tHead.rows[0].cells.length;index++){
       const th=headings[index];if(th.querySelector('[data-sort-column]'))continue;
       if(th.querySelector('button,a,input,select,textarea') || !th.textContent.trim())continue;
       const button=document.createElement('button');button.type='button';button.className='result-sort-button';
@@ -79,6 +92,12 @@ window.ResultSorting=(()=>{
     for(const root of roots)visit(root);
   });
   observer.observe(document.body,{childList:true,subtree:true});
+  document.addEventListener('workbench-file-status',event=>{
+    const row=event.target.closest('tr'),cell=row?.querySelector('.result-file-status-cell');
+    if(!cell)return;
+    const status=event.detail?.status || 'unverified';cell.dataset.sortValue=status;
+    cell.textContent=I18n.t(statusLabels[status]||'Unverified');
+  });
   document.addEventListener('click',event=>{
     const button=event.target.closest('[data-sort-column]');if(!button)return;
     const table=button.closest('table'),th=button.closest('th');if(!table||!th)return;
@@ -86,7 +105,15 @@ window.ResultSorting=(()=>{
     const direction=prior?.index===index&&prior.direction==='ascending'?'descending':'ascending';
     sort(table,index,direction);
   });
-  window.addEventListener('workbench-language',()=>visit(document.body));
+  window.addEventListener('workbench-language',()=>{
+    sorter=new Intl.Collator(I18n.language,{numeric:true,sensitivity:'base'});
+    for(const table of document.querySelectorAll('table[data-status-column]')){
+      const heading=table.querySelector('th[data-result-file-status] .result-sort-button');
+      if(heading)heading.textContent=I18n.t('File status');
+      for(const cell of table.querySelectorAll('.result-file-status-cell'))cell.textContent=I18n.t(statusLabels[cell.dataset.sortValue]||'Unchecked');
+    }
+    visit(document.body);
+  });
   visit(document.body);
   return {sort,prepare};
 })();
