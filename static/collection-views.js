@@ -31,14 +31,14 @@ window.NativeCollection=(()=>{
     panel.querySelector('[data-native-prev]').onclick=wrap(async()=>{values.offset=Math.max(0,values.offset-50);await load(view);});
     panel.querySelector('[data-native-next]').onclick=wrap(async()=>{values.offset+=50;await load(view);});
     if(view==='review')ReviewWorkspace.refresh(panel.querySelector('.review-workspace'),panel.querySelector('.native-detail'),[],false);
-    panel.querySelectorAll('[data-native-group]').forEach(b=>{b.setAttribute('aria-controls','native-review-detail');b.setAttribute('aria-expanded','false');b.onclick=wrap(()=>detail(b.dataset.nativeGroup,0,b));});
+    panel.querySelectorAll('[data-native-group]').forEach(b=>{b.setAttribute('aria-controls','native-review-detail');b.setAttribute('aria-current','false');b.onclick=wrap(()=>detail(b.dataset.nativeGroup,0,b));});
   }
   async function detail(id,offset=0,trigger=null){
     const scope=source(),revision=++revisions.review,basis=state.review.basis;
     const root=$('#view-review .native-review-workspace'),host=root.querySelector('.native-detail');
     host.innerHTML='<p>'+text('Loading')+'</p>';
     ReviewWorkspace.refresh(root,host);ReviewWorkspace.present(root,trigger);
-    root.querySelectorAll('[data-native-group]').forEach(button=>button.setAttribute('aria-expanded',String(button.dataset.nativeGroup===id)));
+    root.querySelectorAll('[data-native-group]').forEach(button=>button.setAttribute('aria-current',String(button.dataset.nativeGroup===id)));
     const r=await api('/api/collection/duplicates/'+encodeURIComponent(id)+'?'+new URLSearchParams({source:scope,basis,offset}));
     if(scope!==source() || revision!==revisions.review)return;
     const hadFocus=host.contains(document.activeElement);
