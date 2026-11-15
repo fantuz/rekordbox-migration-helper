@@ -74,12 +74,14 @@ window.NativeCollection=(()=>{
     host.querySelector('[data-native-prev]').onclick=wrap(()=>detail(id,Math.max(0,offset-50)));
     host.querySelector('[data-native-next]').onclick=wrap(()=>detail(id,offset+50));
     host.querySelector('.native-save').onclick=wrap(async()=>{
-      const listScroll=root.querySelector('.review-candidates>.native-table').scrollTop;
-      await api('/api/collection/duplicates/'+encodeURIComponent(id)+'/review',{method:'POST',body:JSON.stringify({source:scope,basis,status:host.querySelector('select').value})});
+      const status=host.querySelector('select').value;
+      await api('/api/collection/duplicates/'+encodeURIComponent(id)+'/review',{method:'POST',body:JSON.stringify({source:scope,basis,status})});
       if(scope!==source() || revision!==revisions.review || !root.isConnected || root.closest('[hidden]'))return;
-      await load('review');
-      if(scope!==source() || revisions.review!==revision+1 || $('#view-review').hidden)return;
-      $('#view-review .review-candidates>.native-table').scrollTop=listScroll;
+      // Update only the affected row: replacing the whole list loses the
+      // user's scroll position and can race with scroll anchoring in browsers.
+      const trigger=[...root.querySelectorAll('[data-native-group]')].find(button=>button.dataset.nativeGroup===id);
+      const cell=trigger?.closest('tr')?.querySelector('.native-review-state');
+      if(cell)cell.textContent=I18n.t(labels[status] || 'Unreviewed');
       await detail(id,offset);notify(I18n.t('Review saved locally'));
     });
     ReviewWorkspace.refresh(root,host,['.native-review-actions']);

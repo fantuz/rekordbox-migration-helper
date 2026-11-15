@@ -134,7 +134,10 @@ def check_native_collection_ui(browser, base, data, output, root):
                              'duration': 120 + sibling})
         sorted_snapshot = Store(data/'workbench-sidecar.sqlite3').save_snapshot(
             {'tracks': many, 'playlists': [], 'source_kind': 'test'}, 'Browser sort fixture')
-        page.reload(wait_until='networkidle')
+        # Refresh the collection selector without reloading the whole page:
+        # the saved fixture is created while the SPA is already open.
+        page.evaluate('() => Journeys.load()')
+        page.wait_for_selector('#journey-context-source option[value="snapshot:' + sorted_snapshot['id'] + '"]',state='attached')
         page.select_option('#journey-context-source', 'snapshot:' + sorted_snapshot['id'])
         page.locator('.nav[data-view=review]').click()
         page.wait_for_function('document.querySelectorAll("#view-review .native-collection .native-table tbody tr").length===50')
