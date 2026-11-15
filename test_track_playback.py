@@ -3,9 +3,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch,MagicMock
+from types import SimpleNamespace
+import os
 import subprocess
 
-from track_playback import available_audio,recorded_path,open_audio
+from track_playback import available_audio,recorded_path,open_audio,inspect_audio
+from file_status_cache import inspect as cached_inspect
 from workbench_store import Store
 
 
@@ -24,6 +27,46 @@ class PlaybackTests(TestCase):
             try:link.symlink_to(executable)
             except OSError:return
             self.assertIsNone(available_audio({'current_path':str(link)}))
+
+    def test_four_file_states_and_recorded_fallbacks(self):
+        with TemporaryDirectory() as temp:
+            root=Path(temp)
+            audio=root/'present.mp3'
+            audio.write_bytes(b'synthetic')
+            missing=root/'absent.mp3'
+            self.assertEqual(inspect_audio({'current_path':str(audio)})[0],'playable')
+            self.assertEqual(inspect_audio({'current_path':str(missing)})[0],'missing')
+            self.assertEqual(inspect_audio({'current_path':str(root/'not-mounted'/'song.mp3')})[0],'unverified')
+            self.assertEqual(inspect_audio({'current_path':'C:\\\\elsewhere\\\\song.mp3'})[0],'unverified' if os.name!='nt' else 'unverified')
+            self.assertEqual(inspect_audio({})[0],'unverified')
+            self.assertEqual(inspect_audio({'current_path':str(missing),'original_path':str(audio)})[0],'playable')
+            # A permissions error takes precedence over a missing alternative.
+            original_access=os.access
+            with patch('track_playback.os.access',side_effect=lambda p,mode: False if str(p)==str(audio.resolve()) else original_access(p,mode)):
+                self.assertEqual(inspect_audio({'current_path':str(audio)})[0],'inaccessible')
+
+    def test_persistent_cache_freshness_refresh_and_path_privacy(self):
+        with TemporaryDirectory() as temp:
+            root=Path(temp)
+            audio=root/'private - artist.mp3';audio.write_bytes(b'synthetic')
+            owner=SimpleNamespace(DATA=root)
+            tracks={'one':{'current_path':str(audio)},'two':{'current_path':str(audio)}}
+            states,hits=cached_inspect(owner,tracks)
+            self.assertEqual(states,{'one':'playable','two':'playable'})
+            self.assertEqual(hits,{'one':False,'two':False})
+            states,hits=cached_inspect(owner,tracks)
+            self.assertTrue(all(hits.values()))
+            with Store(root/'workbench-sidecar.sqlite3').connection() as db:
+                rows=db.execute('SELECT key,status,checked_at FROM file_status_cache').fetchall()
+                self.assertEqual(len(rows),1)
+                self.assertNotIn(str(audio),str(tuple(rows[0])))
+            audio.unlink()
+            self.assertEqual(cached_inspect(owner,tracks)[0]['one'],'playable')  # cached, advisory only
+            self.assertEqual(cached_inspect(owner,tracks,refresh=True)[0]['one'],'missing')
+            with Store(root/'workbench-sidecar.sqlite3').connection() as db:
+                db.execute('UPDATE file_status_cache SET checked_at=0')
+            self.assertEqual(cached_inspect(owner,tracks)[0]['one'],'missing')
+            self.assertEqual(cached_inspect(owner,{'none':{}})[0]['none'],'unverified')
 
     def test_os_dispatch_uses_argument_array_and_reaps_children(self):
         path=Path('/music/$(not a command); remix.mp3')
@@ -53,7 +96,9 @@ class PlaybackTests(TestCase):
                 launch.assert_not_called()
                 result=client.post('/api/playback/open',json=data,headers=headers)
                 self.assertEqual(result.status_code,200,result.json);launch.assert_called_once_with(audio.resolve())
-            self.assertEqual(client.post('/api/playback/availability',json={'snapshot':sid,'track_ids':['a','missing']},headers=headers).json['tracks'],{'a':True,'missing':False})
+            evidence=client.post('/api/playback/availability',json={'snapshot':sid,'track_ids':['a','missing']},headers=headers).json
+            self.assertEqual(evidence['tracks'],{'a':True,'missing':False})
+            self.assertEqual(evidence['statuses'],{'a':'playable','missing':'unverified'})
             audio.unlink()
             with patch('track_playback.open_audio') as launch:
                 self.assertEqual(client.post('/api/playback/open',json=data,headers=headers).status_code,400);launch.assert_not_called()
