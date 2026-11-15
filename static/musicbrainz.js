@@ -7,6 +7,7 @@ const musicBrainzHasTarget=()=>!musicBrainzRequiresValue() || Boolean($('#lab-pi
 function musicBrainzSelectionChanged(){
   // A prior preview does not authorize a different target/sample.
   labPilotSnapshot=null;
+  labPilotPreviewDirty=true;
   $('#lab-pilot-consent').checked=false;
   labPilotButtons();
 }
