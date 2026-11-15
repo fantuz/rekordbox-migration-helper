@@ -10,6 +10,14 @@ Therefore this exporter must be treated as an **unverified legacy-format researc
 
 References: [Official Serato folder layout, including legacy markers](https://support.serato.com/hc/en-us/articles/204022904-What-is-in-the-Serato-folder), [legacy DatabaseV2 description](https://support.serato.com/hc/en-us/articles/204194250-What-is-the-DatabaseV2-file), [Smart Crates](https://support.serato.com/hc/en-us/articles/360001447715-Library-Smart-Crates).
 
+### Newer library layout evidence (Serato 4.x)
+
+Serato's [official library-transfer guide](https://support.serato.com/hc/en-us/articles/202305054-Backing-up-and-moving-your-library-to-a-new-computer) says a complete move must preserve both the user's Music/`_Serato_` folder **and** the separate **Serato/Library** directory, plus the audio files themselves. This Library directory is under `~/Library/Application Support/Serato/` on macOS and `%LOCALAPPDATA%/Serato/` on Windows. The official [auto-backup guide](https://support.serato.com/hc/en-us/articles/227561667-Library-Auto-Backup) describes newer `Serato/Library/Backups` snapshots and their overwrite/recovery semantics.
+
+Third-party research describes `master.sqlite` and `root.sqlite` inside the 4.x Library folder, including WAL sidecars and crate/asset records. The available research **disagrees about which file is the authoritative writable store**: [MixGoat's September 2026 guide](https://www.mixgoat.com/guides/serato-library-files-explained) describes `master.sqlite` as live; [serato-crates-sync internals](https://github.com/LegendT/serato-crates-sync/blob/main/docs/internals.md) describes `root.sqlite` as an authoritative revision-tracked space with aggregation into `master.sqlite`. Neither is an official schema contract. Consequently, the helper must not write either file until a version-pinned sample, WAL-aware transaction semantics, schema and round-trip behavior have been validated.
+
+A future **read-only 4.x discovery phase** should identify which stores exist, capture file and journal metadata, inventory tables and relationships from a stable private copy, and compare results against application counts. It must not merge, checkpoint or replace an active Serato database. Cue, loop and grid migration additionally needs explicit source/audio-tag handling and independent test fixtures.
+
 ### Suggested compatibility milestones
 
 1. **Real-application acceptance:** import the existing synthetic three-track fixture into isolated installations of Serato 3.x and 4.x, recording application version, OS, library layout, errors and what Serato actually displays.
