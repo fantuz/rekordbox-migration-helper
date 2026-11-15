@@ -100,6 +100,11 @@ class PlaybackTests(TestCase):
             self.assertEqual(evidence['tracks'],{'a':True,'missing':False})
             self.assertEqual(evidence['statuses'],{'a':'playable','missing':'unverified'})
             audio.unlink()
+            # A cached positive must never authorize a launch, and callers may
+            # request new evidence after storage or path changes.
+            refreshed=client.post('/api/playback/availability',json={'snapshot':sid,'track_ids':['a'],'refresh':True},headers=headers).json
+            self.assertEqual(refreshed['statuses']['a'],'missing')
+            self.assertFalse(refreshed['cached']['a'])
             with patch('track_playback.open_audio') as launch:
                 self.assertEqual(client.post('/api/playback/open',json=data,headers=headers).status_code,400);launch.assert_not_called()
             self.assertEqual(saved.snapshot(sid),before)
