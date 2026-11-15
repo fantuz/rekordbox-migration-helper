@@ -40,9 +40,10 @@ window.Journeys=(()=>{
   }
   function render(){
     const host=$('#journey-panel');if(!host || !info)return;
+    const legacy=info.plans.filter(p=>['migration','integrity'].includes(p.kind));
     const p=activePlan();
     host.innerHTML='<div class="journey-goals"><button class="journey-goal goal-health" data-journey="integrity"><strong>'+esc(I18n.t('Check library health'))+'</strong><span>'+esc(I18n.t('Integrity, references and preparation evidence'))+'</span></button><button class="journey-goal goal-migration" data-journey="migration"><strong>'+esc(I18n.t('Migrate a library'))+'</strong><span>'+esc(I18n.t('A saved checklist from backup to destination comparison'))+'</span></button><button class="journey-goal goal-duplicates" data-journey-view="review"><strong>'+esc(I18n.t('Review duplicates'))+'</strong><span>'+esc(I18n.t('Compare evidence and stage copy changes'))+'</span></button><button class="journey-goal goal-share" data-journey-view="quick"><strong>'+esc(I18n.t('Share & offline summary'))+'</strong><span>'+esc(I18n.t('A browser-ready summary without audio'))+'</span></button></div>'+
-      (info.plans.length?'<div class="journey-resume"><label><span>'+esc(I18n.t('Resume a journey'))+'</span><select id="journey-resume"><option value="">'+esc(I18n.t('Choose a journey'))+'</option>'+info.plans.map(plan=>'<option value="'+esc(plan.id)+'" '+(plan.id===selectedPlan?'selected':'')+'>'+esc(plan.kind==='migration'?I18n.t('Migrate a library'):I18n.t('Check library health'))+' · '+esc(I18n.date(plan.updated))+'</option>').join('')+'</select></label></div>':'')+
+      (legacy.length?'<div class="journey-resume"><label><span>'+esc(I18n.t('Resume a journey'))+'</span><select id="journey-resume"><option value="">'+esc(I18n.t('Choose a journey'))+'</option>'+legacy.map(plan=>'<option value="'+esc(plan.id)+'" '+(plan.id===selectedPlan?'selected':'')+'>'+esc(plan.kind==='migration'?I18n.t('Migrate a library'):I18n.t('Check library health'))+' · '+esc(I18n.date(plan.updated))+'</option>').join('')+'</select></label></div>':'')+
       (p?(p.kind==='migration'?migration(p):health(p)):'');
     host.querySelectorAll('[data-journey-view]').forEach(b=>b.onclick=()=>showView(b.dataset.journeyView));
     host.querySelectorAll('[data-journey-open-report]').forEach(b=>b.onclick=wrap(async()=>{showView('lab');await loadLab();$('#lab-report-select').value=b.dataset.journeyOpenReport;labReportOffset=0;$('#lab-report-section').value='';await labLoadReport();$('.lab-report').scrollIntoView({block:'start',behavior:'smooth'});}));
@@ -84,7 +85,7 @@ window.Journeys=(()=>{
   async function load(){
     const revision=++loadRevision,selection=contextRevision,received=await api('/api/journeys');if(revision!==loadRevision)return;
     if(selection!==contextRevision && info){received.selected=info.selected;received.context=info.context;}
-    info=received;if(!selectedPlan && info.plans.length)selectedPlan=info.plans[0].id;renderContext();render();syncContext(true);await renderReport();
+    info=received;if(!info.plans.some(p=>p.id===selectedPlan && ['migration','integrity'].includes(p.kind)))selectedPlan=info.plans.find(p=>['migration','integrity'].includes(p.kind))?.id || '';renderContext();render();syncContext(true);await renderReport();
   }
   function init(){
     document.addEventListener('change',event=>{

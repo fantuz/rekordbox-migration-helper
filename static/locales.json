@@ -14001,6 +14001,176 @@
       "cs": "Přenést knihovnu",
       "ru": "Перенести библиотеку"
     },
+    "Library journeys": {
+      "de": "Bibliotheksabläufe",
+      "fr": "Parcours de bibliothèque",
+      "it": "Percorsi della libreria",
+      "es": "Recorridos de biblioteca",
+      "el": "Διαδρομές βιβλιοθήκης",
+      "pl": "Ścieżki pracy z biblioteką",
+      "cs": "Postupy pro knihovnu",
+      "ru": "Сценарии работы с библиотекой"
+    },
+    "Choose a guided journey": {
+      "de": "Geführten Ablauf wählen",
+      "fr": "Choisir un parcours guidé",
+      "it": "Scegli un percorso guidato",
+      "es": "Elegir un recorrido guiado",
+      "el": "Επιλογή καθοδηγούμενης διαδρομής",
+      "pl": "Wybierz ścieżkę z przewodnikiem",
+      "cs": "Vybrat postup s průvodcem",
+      "ru": "Выбрать сценарий с подсказками"
+    },
+    "Start journey": {
+      "de": "Ablauf starten",
+      "fr": "Démarrer le parcours",
+      "it": "Avvia percorso",
+      "es": "Iniciar recorrido",
+      "el": "Έναρξη διαδρομής",
+      "pl": "Rozpocznij ścieżkę",
+      "cs": "Zahájit postup",
+      "ru": "Начать сценарий"
+    },
+    "Guided steps are optional. Every tool remains available in the sidebar.": {
+      "de": "Geführte Schritte sind optional. Alle Werkzeuge bleiben in der Seitenleiste verfügbar.",
+      "fr": "Les étapes guidées sont facultatives. Tous les outils restent accessibles dans la barre latérale.",
+      "it": "I passaggi guidati sono facoltativi. Tutti gli strumenti restano disponibili nella barra laterale.",
+      "es": "Los pasos guiados son opcionales. Todas las herramientas siguen disponibles en la barra lateral.",
+      "el": "Τα καθοδηγούμενα βήματα είναι προαιρετικά. Όλα τα εργαλεία παραμένουν διαθέσιμα στην πλαϊνή στήλη.",
+      "pl": "Kroki z przewodnikiem są opcjonalne. Wszystkie narzędzia pozostają dostępne na pasku bocznym.",
+      "cs": "Kroky průvodce jsou volitelné. Všechny nástroje zůstávají dostupné v postranním panelu.",
+      "ru": "Шаги сценария необязательны. Все инструменты остаются доступны на боковой панели."
+    },
+    "These confirmations record your progress; they do not certify a migration or backup.": {
+      "de": "Diese Bestätigungen halten Ihren Fortschritt fest; sie zertifizieren keine Migration oder Sicherung.",
+      "fr": "Ces confirmations enregistrent votre progression ; elles ne certifient ni migration ni sauvegarde.",
+      "it": "Queste conferme registrano i tuoi progressi; non certificano una migrazione o un backup.",
+      "es": "Estas confirmaciones registran su progreso; no certifican una migración ni una copia de seguridad.",
+      "el": "Οι επιβεβαιώσεις καταγράφουν την πρόοδό σας· δεν πιστοποιούν μεταφορά ή αντίγραφο ασφαλείας.",
+      "pl": "Potwierdzenia zapisują postęp; nie poświadczają migracji ani kopii zapasowej.",
+      "cs": "Potvrzení zaznamenávají postup; neověřují migraci ani zálohu.",
+      "ru": "Подтверждения фиксируют прогресс, но не удостоверяют миграцию или резервную копию."
+    },
+    "Backup and recovery": {
+      "de": "Sicherung und Wiederherstellung",
+      "fr": "Sauvegarde et restauration",
+      "it": "Backup e ripristino",
+      "es": "Copia de seguridad y recuperación",
+      "el": "Αντίγραφα ασφαλείας και ανάκτηση",
+      "pl": "Kopia zapasowa i odzyskiwanie",
+      "cs": "Záloha a obnova",
+      "ru": "Резервное копирование и восстановление"
+    },
+    "Check the destination application": {
+      "de": "Zielanwendung prüfen",
+      "fr": "Vérifier dans l’application cible",
+      "it": "Verifica nell’applicazione di destinazione",
+      "es": "Comprobar en la aplicación de destino",
+      "el": "Έλεγχος στην εφαρμογή προορισμού",
+      "pl": "Sprawdź aplikację docelową",
+      "cs": "Zkontrolovat cílovou aplikaci",
+      "ru": "Проверить в целевом приложении"
+    },
+    "Create and restore backups in rekordbox. Workbench checks captured evidence.": {
+      "de": "Sicherungen in rekordbox erstellen und wiederherstellen. Workbench prüft erfasste Nachweise.",
+      "fr": "Créez et restaurez les sauvegardes dans rekordbox. Workbench vérifie les données capturées.",
+      "it": "Crea e ripristina i backup in rekordbox. Workbench verifica i dati acquisiti.",
+      "es": "Cree y restaure las copias en rekordbox. Workbench comprueba los datos capturados.",
+      "el": "Δημιουργήστε και επαναφέρετε αντίγραφα στο rekordbox. Το Workbench ελέγχει τα καταγεγραμμένα στοιχεία.",
+      "pl": "Twórz i przywracaj kopie w rekordbox. Workbench sprawdza zapisane dane.",
+      "cs": "Zálohy vytvářejte a obnovujte v rekordbox. Workbench kontroluje zachycená data.",
+      "ru": "Создавайте и восстанавливайте копии в rekordbox. Workbench проверяет сохранённые данные."
+    },
+    "Migration outside Workbench": {
+      "de": "Migration außerhalb von Workbench",
+      "fr": "Migration en dehors de Workbench",
+      "it": "Migrazione fuori da Workbench",
+      "es": "Migración fuera de Workbench",
+      "el": "Μεταφορά εκτός Workbench",
+      "pl": "Migracja poza Workbench",
+      "cs": "Migrace mimo Workbench",
+      "ru": "Миграция вне Workbench"
+    },
+    "Playlist explorer": {
+      "de": "Playlist-Explorer",
+      "fr": "Explorateur de playlists",
+      "it": "Esplora playlist",
+      "es": "Explorador de listas",
+      "el": "Εξερεύνηση λιστών αναπαραγωγής",
+      "pl": "Przeglądarka playlist",
+      "cs": "Průzkumník seznamů skladeb",
+      "ru": "Обозреватель плейлистов"
+    },
+    "Review migration limits": {
+      "de": "Migrationsgrenzen prüfen",
+      "fr": "Consulter les limites de migration",
+      "it": "Esamina i limiti della migrazione",
+      "es": "Revisar límites de migración",
+      "el": "Έλεγχος περιορισμών μεταφοράς",
+      "pl": "Sprawdź ograniczenia migracji",
+      "cs": "Prohlédnout omezení migrace",
+      "ru": "Изучить ограничения миграции"
+    },
+    "Review sharing privacy": {
+      "de": "Datenschutz beim Teilen prüfen",
+      "fr": "Vérifier la confidentialité du partage",
+      "it": "Controlla la privacy della condivisione",
+      "es": "Revisar privacidad al compartir",
+      "el": "Έλεγχος απορρήτου κοινοποίησης",
+      "pl": "Sprawdź prywatność udostępniania",
+      "cs": "Zkontrolovat soukromí sdílení",
+      "ru": "Проверить конфиденциальность общего доступа"
+    },
+    "Serato export is a draft. Verify it in a separate Serato library.": {
+      "de": "Der Serato-Export ist ein Entwurf. Prüfen Sie ihn in einer separaten Serato-Bibliothek.",
+      "fr": "L’export Serato est un brouillon. Vérifiez-le dans une bibliothèque Serato séparée.",
+      "it": "L’esportazione Serato è una bozza. Verificala in una libreria Serato separata.",
+      "es": "La exportación Serato es un borrador. Verifíquela en una biblioteca Serato separada.",
+      "el": "Η εξαγωγή Serato είναι προσχέδιο. Ελέγξτε την σε ξεχωριστή βιβλιοθήκη Serato.",
+      "pl": "Eksport Serato jest wersją roboczą. Sprawdź go w oddzielnej bibliotece Serato.",
+      "cs": "Export Serato je návrh. Ověřte jej v samostatné knihovně Serato.",
+      "ru": "Экспорт Serato — черновой. Проверьте его в отдельной библиотеке Serato."
+    },
+    "Serato import is not implemented. This checklist records preparation and checks around a migration performed outside Workbench.": {
+      "de": "Serato-Import ist nicht implementiert. Diese Checkliste dokumentiert Vorbereitung und Prüfungen einer außerhalb von Workbench durchgeführten Migration.",
+      "fr": "L’import Serato n’est pas implémenté. Cette liste consigne la préparation et les vérifications d’une migration effectuée hors de Workbench.",
+      "it": "L’importazione Serato non è implementata. Questa lista registra preparazione e verifiche di una migrazione eseguita fuori da Workbench.",
+      "es": "La importación Serato no está implementada. Esta lista registra la preparación y las comprobaciones de una migración realizada fuera de Workbench.",
+      "el": "Η εισαγωγή Serato δεν έχει υλοποιηθεί. Αυτή η λίστα καταγράφει την προετοιμασία και τους ελέγχους μιας μεταφοράς εκτός Workbench.",
+      "pl": "Import Serato nie jest zaimplementowany. Lista zapisuje przygotowania i kontrole migracji wykonanej poza Workbench.",
+      "cs": "Import Serato není implementován. Tento seznam zaznamenává přípravu a kontroly migrace provedené mimo Workbench.",
+      "ru": "Импорт Serato не реализован. Этот список фиксирует подготовку и проверки миграции, выполненной вне Workbench."
+    },
+    "Sharing exports metadata only; audio files are not included.": {
+      "de": "Beim Teilen werden nur Metadaten exportiert; Audiodateien sind nicht enthalten.",
+      "fr": "Le partage exporte uniquement les métadonnées ; les fichiers audio ne sont pas inclus.",
+      "it": "La condivisione esporta solo metadati; i file audio non sono inclusi.",
+      "es": "Al compartir se exportan solo metadatos; no se incluyen archivos de audio.",
+      "el": "Η κοινοποίηση εξάγει μόνο μεταδεδομένα· δεν περιλαμβάνονται αρχεία ήχου.",
+      "pl": "Udostępnianie eksportuje tylko metadane; pliki audio nie są dołączane.",
+      "cs": "Sdílení exportuje pouze metadata; zvukové soubory nejsou součástí.",
+      "ru": "При обмене экспортируются только метаданные; аудиофайлы не включаются."
+    },
+    "Rekordbox → Serato": {
+      "de": "Rekordbox → Serato",
+      "fr": "Rekordbox → Serato",
+      "it": "Rekordbox → Serato",
+      "es": "Rekordbox → Serato",
+      "el": "Rekordbox → Serato",
+      "pl": "Rekordbox → Serato",
+      "cs": "Rekordbox → Serato",
+      "ru": "Rekordbox → Serato"
+    },
+    "Serato → Rekordbox": {
+      "de": "Serato → Rekordbox",
+      "fr": "Serato → Rekordbox",
+      "it": "Serato → Rekordbox",
+      "es": "Serato → Rekordbox",
+      "el": "Serato → Rekordbox",
+      "pl": "Serato → Rekordbox",
+      "cs": "Serato → Rekordbox",
+      "ru": "Serato → Rekordbox"
+    },
     "Migration assistant": {
       "de": "Migrationsassistent",
       "fr": "Assistant de migration",
@@ -15244,6 +15414,116 @@
       "pl": "Otwarto w domyślnym odtwarzaczu",
       "cs": "Otevřeno ve výchozím přehrávači",
       "ru": "Открыто в проигрывателе по умолчанию"
+    },
+    "Workspace maintenance": {
+      "de": "Arbeitsbereich verwalten",
+      "fr": "Gestion de l’espace de travail",
+      "it": "Gestione dell’area di lavoro",
+      "es": "Mantenimiento del espacio de trabajo",
+      "el": "Συντήρηση χώρου εργασίας",
+      "pl": "Konserwacja obszaru roboczego",
+      "cs": "Údržba pracovního prostoru",
+      "ru": "Обслуживание рабочего пространства"
+    },
+    "Reuse saved reports without scanning again. Clear caches to recompute views; original libraries and exports are kept.": {
+      "de": "Gespeicherte Berichte ohne erneuten Scan nutzen. Caches leeren, um Ansichten neu zu berechnen; Originalbibliotheken und Exporte bleiben erhalten.",
+      "fr": "Réutilisez les rapports sans nouvelle analyse. Videz les caches pour recalculer les vues ; bibliothèques originales et exports sont conservés.",
+      "it": "Riutilizza i report senza ripetere la scansione. Svuota le cache per ricalcolare le viste; librerie originali ed esportazioni vengono conservate.",
+      "es": "Reutilice informes sin volver a escanear. Vacíe las cachés para recalcular las vistas; se conservan bibliotecas originales y exportaciones.",
+      "el": "Χρησιμοποιήστε αποθηκευμένες αναφορές χωρίς νέα σάρωση. Εκκαθαρίστε τις κρυφές μνήμες για νέο υπολογισμό· διατηρούνται οι αρχικές βιβλιοθήκες και εξαγωγές.",
+      "pl": "Używaj zapisanych raportów bez ponownego skanowania. Wyczyść pamięć podręczną, aby przeliczyć widoki; oryginalne biblioteki i eksporty pozostają.",
+      "cs": "Použijte uložené zprávy bez nového skenování. Vymažte mezipaměť pro přepočet pohledů; původní knihovny a exporty zůstanou.",
+      "ru": "Используйте сохранённые отчёты без повторного сканирования. Очистите кэш для пересчёта представлений; исходные библиотеки и экспорты сохраняются."
+    },
+    "Cached results": {
+      "de": "Zwischengespeicherte Ergebnisse",
+      "fr": "Résultats en cache",
+      "it": "Risultati in cache",
+      "es": "Resultados en caché",
+      "el": "Αποτελέσματα στην κρυφή μνήμη",
+      "pl": "Wyniki w pamięci podręcznej",
+      "cs": "Výsledky v mezipaměti",
+      "ru": "Кэшированные результаты"
+    },
+    "Clear result and provider caches": {
+      "de": "Ergebnis- und Anbieter-Caches leeren",
+      "fr": "Vider les caches de résultats et fournisseurs",
+      "it": "Svuota cache dei risultati e dei servizi",
+      "es": "Vaciar cachés de resultados y proveedores",
+      "el": "Εκκαθάριση κρυφών μνημών αποτελεσμάτων και παρόχων",
+      "pl": "Wyczyść pamięć wyników i dostawców",
+      "cs": "Vymazat mezipaměť výsledků a poskytovatelů",
+      "ru": "Очистить кэш результатов и сервисов"
+    },
+    "Start fresh with an archive": {
+      "de": "Mit Archiv neu beginnen",
+      "fr": "Repartir à zéro avec une archive",
+      "it": "Ricomincia archiviando il lavoro",
+      "es": "Empezar de nuevo con un archivo",
+      "el": "Νέα αρχή με αρχειοθέτηση",
+      "pl": "Zacznij od nowa z archiwum",
+      "cs": "Začít znovu s archivem",
+      "ru": "Начать заново с архивом"
+    },
+    "Delete archived investigations": {
+      "de": "Archivierte Untersuchungen löschen",
+      "fr": "Supprimer les analyses archivées",
+      "it": "Elimina analisi archiviate",
+      "es": "Eliminar investigaciones archivadas",
+      "el": "Διαγραφή αρχειοθετημένων αναλύσεων",
+      "pl": "Usuń zarchiwizowane analizy",
+      "cs": "Smazat archivované analýzy",
+      "ru": "Удалить архивированные исследования"
+    },
+    "All current investigations and staged metadata edits move into a recoverable archive. Loaded workspaces are detached. Original libraries, audio, inputs and completed exports stay unchanged.": {
+      "de": "Alle aktuellen Untersuchungen und vorgemerkten Metadatenänderungen werden wiederherstellbar archiviert. Geladene Arbeitsbereiche werden getrennt. Originalbibliotheken, Audio, Eingaben und fertige Exporte bleiben unverändert.",
+      "fr": "Toutes les analyses actuelles et modifications préparées sont archivées et récupérables. Les espaces chargés sont détachés. Bibliothèques originales, audio, fichiers d’entrée et exports terminés restent inchangés.",
+      "it": "Tutte le analisi correnti e le modifiche ai metadati vengono archiviate e sono recuperabili. Le aree caricate vengono scollegate. Librerie originali, audio, file di ingresso ed esportazioni completate restano invariati.",
+      "es": "Todas las investigaciones y ediciones preparadas pasan a un archivo recuperable. Se desconectan los espacios cargados. Bibliotecas originales, audio, entradas y exportaciones terminadas no cambian.",
+      "el": "Όλες οι τρέχουσες αναλύσεις και προετοιμασμένες αλλαγές μεταδεδομένων αρχειοθετούνται με δυνατότητα ανάκτησης. Οι φορτωμένοι χώροι αποσυνδέονται. Αρχικές βιβλιοθήκες, ήχος, είσοδοι και ολοκληρωμένες εξαγωγές παραμένουν αμετάβλητα.",
+      "pl": "Wszystkie bieżące analizy i przygotowane zmiany metadanych trafiają do odzyskiwalnego archiwum. Załadowane obszary zostają odłączone. Oryginalne biblioteki, audio, dane wejściowe i ukończone eksporty pozostają bez zmian.",
+      "cs": "Všechny aktuální analýzy a připravené změny metadat se přesunou do obnovitelného archivu. Načtené prostory se odpojí. Původní knihovny, zvuk, vstupy a dokončené exporty zůstanou beze změn.",
+      "ru": "Все текущие исследования и подготовленные правки метаданных перемещаются в восстанавливаемый архив. Загруженные пространства отключаются. Исходные библиотеки, аудио, входные файлы и готовые экспорты не меняются."
+    },
+    "I reviewed the listed changes": {
+      "de": "Ich habe die aufgeführten Änderungen geprüft",
+      "fr": "J’ai vérifié les changements indiqués",
+      "it": "Ho esaminato le modifiche elencate",
+      "es": "He revisado los cambios indicados",
+      "el": "Έλεγξα τις αναφερόμενες αλλαγές",
+      "pl": "Sprawdzono wymienione zmiany",
+      "cs": "Zkontroloval(a) jsem uvedené změny",
+      "ru": "Я проверил перечисленные изменения"
+    },
+    "Permanent deletion removes these archives and their saved analysis copies. Recovery will no longer be available. Original libraries, audio, inputs and completed exports are kept.": {
+      "de": "Dauerhaftes Löschen entfernt diese Archive und ihre gespeicherten Analysekopien. Eine Wiederherstellung ist danach nicht mehr möglich. Originalbibliotheken, Audio, Eingaben und fertige Exporte bleiben erhalten.",
+      "fr": "La suppression définitive efface ces archives et leurs copies d’analyse. La récupération ne sera plus possible. Bibliothèques originales, audio, fichiers d’entrée et exports terminés sont conservés.",
+      "it": "L’eliminazione permanente rimuove questi archivi e le copie di analisi salvate. Il recupero non sarà più possibile. Librerie originali, audio, ingressi ed esportazioni completate vengono conservati.",
+      "es": "La eliminación permanente borra estos archivos y sus copias de análisis. Ya no se podrán recuperar. Se conservan bibliotecas originales, audio, entradas y exportaciones terminadas.",
+      "el": "Η οριστική διαγραφή αφαιρεί αυτά τα αρχεία και τα αποθηκευμένα αντίγραφα ανάλυσης. Δεν θα είναι πλέον δυνατή η ανάκτηση. Διατηρούνται αρχικές βιβλιοθήκες, ήχος, είσοδοι και ολοκληρωμένες εξαγωγές.",
+      "pl": "Trwałe usunięcie kasuje te archiwa i zapisane kopie analiz. Odzyskanie nie będzie możliwe. Oryginalne biblioteki, audio, dane wejściowe i ukończone eksporty pozostają.",
+      "cs": "Trvalé smazání odstraní tyto archivy a uložené kopie analýz. Obnova již nebude možná. Původní knihovny, zvuk, vstupy a dokončené exporty zůstanou zachovány.",
+      "ru": "Безвозвратное удаление уберёт эти архивы и сохранённые копии анализов. Восстановление станет невозможным. Исходные библиотеки, аудио, входные файлы и готовые экспорты сохраняются."
+    },
+    "I understand this deletion cannot be undone": {
+      "de": "Ich verstehe, dass dieses Löschen nicht rückgängig gemacht werden kann",
+      "fr": "Je comprends que cette suppression est irréversible",
+      "it": "Comprendo che questa eliminazione è irreversibile",
+      "es": "Entiendo que esta eliminación es irreversible",
+      "el": "Κατανοώ ότι αυτή η διαγραφή δεν αναιρείται",
+      "pl": "Rozumiem, że tego usunięcia nie można cofnąć",
+      "cs": "Rozumím, že toto smazání nelze vrátit",
+      "ru": "Я понимаю, что это удаление нельзя отменить"
+    },
+    "Permanently delete these archives": {
+      "de": "Diese Archive dauerhaft löschen",
+      "fr": "Supprimer définitivement ces archives",
+      "it": "Elimina definitivamente questi archivi",
+      "es": "Eliminar permanentemente estos archivos",
+      "el": "Οριστική διαγραφή αυτών των αρχείων",
+      "pl": "Trwale usuń te archiwa",
+      "cs": "Trvale smazat tyto archivy",
+      "ru": "Безвозвратно удалить эти архивы"
     },
     "Saved investigations": {
       "de": "Gespeicherte Untersuchungen",

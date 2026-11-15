@@ -4,7 +4,7 @@ window.TrackPlayback=(()=>{
   const t=key=>I18n.t(key);
   function button(snapshot,identity,workspace=''){
     if(!identity || (!snapshot && !workspace))return '';
-    return '<button type="button" class="track-play" disabled aria-busy="true" data-play-track="'+esc(identity)+'" data-play-snapshot="'+esc(snapshot || '')+'" data-play-workspace="'+esc(workspace)+'" title="'+esc(t('Play in default media player'))+'" aria-label="'+esc(t('Play in default media player'))+'"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path fill="currentColor" d="M3 1v10l8-5z"/></svg></button>';
+    return '<button type="button" class="track-play" disabled aria-busy="true" data-play-track="'+esc(identity)+'" data-play-snapshot="'+esc(snapshot || '')+'" data-play-workspace="'+esc(workspace)+'" title="'+esc(t('Play in default media player'))+'" aria-label="'+esc(t('Play in default media player'))+'"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12"><path fill="currentColor" d="M3 1v10l8-5z"/></svg></button>';
   }
   function scope(b){return b.dataset.playWorkspace?{workspace:b.dataset.playWorkspace}:{snapshot:b.dataset.playSnapshot};}
   function key(b){return JSON.stringify([scope(b),b.dataset.playTrack]);}
@@ -70,7 +70,7 @@ window.TrackPlayback=(()=>{
   function recheck(){cache.clear();for(const b of document.querySelectorAll('[data-play-track]')){observer.unobserve(b);observer.observe(b);}}
   function bind(selector,snapshot){
     for(const title of document.querySelectorAll(selector+' [data-insight-open]')){
-      if(!title.nextElementSibling?.matches('[data-play-track]'))title.insertAdjacentHTML('afterend',button(snapshot,title.dataset.insightOpen));
+      if(!title.previousElementSibling?.matches('[data-play-track]'))title.insertAdjacentHTML('beforebegin',button(snapshot,title.dataset.insightOpen));
     }
   }
   scan(document.body);

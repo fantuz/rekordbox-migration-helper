@@ -35,7 +35,9 @@ See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XM
 - Selecting a captured `master.db` supplies Collection statistics, Duplicate review, File references and Play history without an XML/ZIP workspace.
 - Native duplicate review compares recorded paths or artist/title groups, durations, ratings, play counts and cues. Review classifications are saved locally; candidates are not proof of identical audio.
 - File references show recorded current, original and analysis paths with search and pagination. Availability still depends on files accessible on the computer running the app.
-- Saved investigations offers item/category selection, a dependency preview and reversible archiving of captures, snapshots, reports, MusicBrainz batches, journeys and inactive workspaces.
+- Saved investigations offers item/category selection, a dependency preview and reversible archiving of captures, snapshots, reports, MusicBrainz batches, journeys, discovery/storage reports and inactive workspaces. Incomplete source analyses can also be removed.
+- Start fresh by archiving current investigations and staged edits, then optionally delete archived analyses permanently after a separate preview. Original libraries, audio, inputs and completed exports are kept.
+- Reuse bounded, persistent cached results for saved-collection statistics, duplicate review and file references; changing the source evidence or review decisions invalidates the relevant result. Clear result/provider caches independently of saved reports.
 - Restore a cleanup from the same page. Archiving clears menus but retains disk space; original libraries, audio, uploaded inputs and exports are preserved.
 - The shared collection header provides a direct **Save a snapshot for insight tools** action. Snapshot creation is an explicit choice.
 
@@ -83,6 +85,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Inspect session progression using saved BPM, key and colour tags; no actual transition timing is inferred.
 - Rank rotation and discovery candidates using disclosed play-count, history, cue and date evidence.
 - Draw reproducible, genre-balanced random selections with a selection seed.
+- Follow eight optional saved journeys for both Serato migration directions, consistency checks, duplicate review, enrichment, metadata refinement, sharing, and backup preparation. Serato → rekordbox is a preparation/checklist workflow; no Serato importer is implemented. Every tool remains accessible independently.
 - Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
 - Bubble labels keep a consistent readable size, wrap to measured text width and highlight the matching category on hover or keyboard focus. Circle areas continue to represent the chosen metric.
 - Audit preparation coverage, saved analysis references and STEMS-related evidence.
@@ -164,7 +167,11 @@ Linux x86-64 users can extract the complete portable TAR.GZ, open the extracted 
 
 For the Linux source version, use Python 3.13 or newer and run `./start.sh`. The first launch installs requirements into a local virtual environment. The application opens your browser and binds only to loopback. Use **Stop and clean up** in its footer when finished.
 
-Windows users extract the complete portable ZIP and double-click **Library Workbench.exe**. Python and dependencies are included. Mac users choose the Apple Silicon (`arm64`) or Intel (`x86_64`) archive, extract it and open **Library Workbench.app**. Mac applications are ad-hoc signed, not Developer ID signed or notarized; macOS may restrict opening them. Source checkout remains available for developers.
+Windows users extract the complete portable ZIP and double-click **Library Workbench.exe**. Python and dependencies are included.
+
+**Windows first launch:** the executable is currently unsigned. If Microsoft Defender SmartScreen shows **Windows protected your PC**, and you downloaded this copy from this project’s [GitHub Releases](https://github.com/fantuz/rekordbox-migration-helper/releases), click **More info**, check that the app is **Library Workbench.exe**, then click **Run anyway**. **Unknown publisher** is expected for the unsigned build. If your organization prevents this option, follow its software approval process. You do not need to disable SmartScreen.
+
+Mac users choose the Apple Silicon (`arm64`) or Intel (`x86_64`) archive, extract it and open **Library Workbench.app**. Mac applications are ad-hoc signed, not Developer ID signed or notarized; macOS may restrict opening them. Source checkout remains available for developers.
 
 ## Prepare your ZIP and XML
 

@@ -15,6 +15,7 @@ from engine import is_auto
 from media import cloud_placeholder
 from metadata_export import capture_database
 from platform_paths import database_names
+from report_files import save_json
 
 
 COMPATIBILITY=[
@@ -307,6 +308,6 @@ def analyze_folder(source,output,progress,version_hint="",snapshot_root=None,rec
                 result['messages'].append({'level':'warning','text':'No datafile.edb was found. ExtData.edb alone is not a complete legacy collection.'})
             result['messages'].append({'level':'info','text':'For v5 track and playlist inspection, export the collection as XML in rekordbox and select that XML in Source analyzer. To convert a native v5 library, use File > Library > Import your library from ver.5 (or earlier) in rekordbox 6 or 7. Converted and v5 libraries do not stay synchronized.'})
     if inventory["unreadable_entries"]:result["messages"].append({"level":"warning","text":"Some source-folder entries could not be inspected. Footprint counts are partial."})
-    (output/"report.json").write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8")
+    save_json(output/"report.json",result)
     progress(100,"Read-only report saved")
     return result

@@ -8,6 +8,7 @@ from flask import jsonify, request
 
 from analysis_audit import audit_assets
 from journeys import STEPS, context, integrity, new_plan, update_plan
+from journey_templates import TEMPLATES
 from library_checks import compare_snapshots
 from research_capture import capture_workspace
 from workbench_store import Store, now
@@ -98,7 +99,7 @@ def register(owner):
             selected = sources[0]['id'] if sources else ''
         return jsonify(sources=sources, selected=selected, context=describe(selected) if selected else None,
                        plans=sorted(plans().values(), key=lambda row: row['updated'], reverse=True),
-                       steps=[{'id': key, 'title': title, 'view': view} for key, title, view in STEPS])
+                       templates=TEMPLATES,steps=[{'id': key, 'title': title, 'view': view} for key, title, view in STEPS])
 
     @app.post('/api/journeys/context')
     def select_context():

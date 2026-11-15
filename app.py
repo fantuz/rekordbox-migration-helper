@@ -13,6 +13,7 @@ import secrets
 import sqlite3
 import sys
 
+from report_files import save_json
 from flask import Flask, jsonify, request, send_file, send_from_directory
 from engine import Catalog, analyze, enrich_usage, decision_map, export_xml
 from native_export import export_native
@@ -231,7 +232,7 @@ def discovery_search():
         report_id=uuid4().hex;result['id']=report_id;result['created']=datetime.now(timezone.utc).isoformat()
         result['download']='/api/discovery/'+report_id+'/report'
         output=DATA/'discovery';output.mkdir(exist_ok=True)
-        (output/(report_id+'.json')).write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
+        save_json(output/(report_id+'.json'),result)
         return result
     return jsonify(job=launch(work,'Searching selected folders for library databases and analysis trees'))
 
@@ -373,7 +374,8 @@ def save_storage(audit):
     temp.write_text(json.dumps(audit,ensure_ascii=False),encoding="utf-8")
     os.replace(temp,path)
     summary={key:audit[key] for key in ("id","created","policy_hint","file_locations","totals")}
-    (folder/"summary.json").write_text(json.dumps(summary),encoding="utf-8")
+    summary["source_report"]=audit.get("source_report")
+    save_json(folder/"summary.json",summary)
 
 
 def load_storage(audit_id):

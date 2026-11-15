@@ -14,6 +14,9 @@ from workbench_store import Store
 
 def register(owner):
     app=owner.app;cache=OrderedDict();guard=RLock()
+    def clear_cache():
+        with guard:cache.clear()
+    owner.clear_insight_cache=clear_cache
     def store():return Store(owner.DATA/'workbench-sidecar.sqlite3')
     def index_for(identity):
         working=store()
