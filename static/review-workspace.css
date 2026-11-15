@@ -49,3 +49,40 @@ html[dir=rtl] .review-drawer{border-radius:0 14px 14px 0}
 .result-actions label{margin:0;flex:1;min-width:180px}
 .result-actions .button{white-space:normal}
 @media print{.review-workspace,.review-workspace>.review-candidates,.review-inspector-body{height:auto!important;overflow:visible}.review-action-dock,.review-open-selected,.result-actions{display:none}}
+/* Captured records need a compact inspector, leaving more room for candidates. */
+#view-review .native-review-workspace[data-review-compact=false]{grid-template-columns:minmax(0,1.25fr) minmax(360px,1fr)}
+.native-review-workspace>.review-candidates{padding:0;container-type:inline-size}
+.native-review-workspace .review-list-heading{padding:10px 12px}
+.native-review-workspace .review-list-heading h2{font-size:17px;line-height:1.4;margin:0}
+.native-review-workspace[data-review-compact=false] .review-open-selected{display:none}
+.native-review-note{margin:6px 12px 0;font-size:12px;line-height:1.5;color:var(--muted)}
+.native-review-note summary{cursor:pointer;width:max-content;max-width:100%}
+.native-review-note p{margin:6px 0;padding:8px 10px;background:var(--soft-blue);border-radius:8px}
+#view-review .native-review-workspace .native-filter{margin:8px 12px;gap:8px;align-items:end}
+#view-review .native-review-workspace .native-filter label{min-width:120px;font-size:12px;margin:0}
+#view-review .native-review-workspace .native-filter select,#view-review .native-review-workspace .native-filter input{padding:7px 9px;min-height:34px;margin-top:3px}
+.native-review-workspace .native-result-count{margin:2px 12px 8px;font-size:12px}
+.native-review-workspace .review-candidates .native-table td,.native-review-workspace .review-candidates .native-table th{padding:6px 9px;line-height:1.45;vertical-align:middle}
+.native-review-workspace .review-candidates .native-table th.native-count{width:56px}
+.native-review-workspace .review-candidates .native-table th.native-spread{width:88px}
+.native-review-workspace .review-candidates .native-table th.native-review-state{width:100px}
+.native-review-workspace .review-candidates .native-table th:last-child{width:90px}
+.native-review-workspace .native-candidate-artist{color:var(--muted);font-size:12px}
+.native-review-workspace [data-native-group]{padding:5px 8px;min-height:32px;line-height:1.4;white-space:nowrap}
+.native-review-workspace .review-candidates>.action-row{margin:0;padding:8px 12px;border-top:1px solid var(--line);gap:8px;flex-shrink:0}
+.native-review-workspace .review-candidates>.action-row .button{flex:0 0 auto;min-width:80px;padding:7px 12px}
+.native-review-workspace .review-candidates>.action-row span{flex:1;text-align:center;font-size:12px}
+.native-review-workspace .review-action-dock{border-top:0;border-bottom:1px solid var(--line);padding:10px 12px;box-shadow:0 3px 10px #0001;max-height:40%}
+.native-review-workspace .native-review-actions label{margin:0;font-size:12px}
+.native-review-workspace .native-review-scope{font-size:12px;line-height:1.5;margin:0 0 10px}
+.native-compare-records{display:grid;gap:12px}
+.native-compare-record{min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.native-compare-record header{font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.native-compare-record header>span{font-size:12px;color:var(--muted)}
+.native-compare-record dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(76px,1fr));gap:8px;margin:12px 0;padding-block:8px;border-block:1px solid var(--line)}
+.native-compare-record dt{font-size:11px;color:var(--muted);line-height:1.4}
+.native-compare-record dd{font-size:14px;font-weight:600;margin:3px 0 0;font-variant-numeric:tabular-nums}
+.native-record-path{font-size:11px;line-height:1.6;min-width:0}
+.native-record-path>span{color:var(--muted);display:block}
+.native-record-path code{display:block;overflow-wrap:anywhere;white-space:normal;word-break:normal;font-size:11px}
+@container(max-width:580px){.native-review-workspace .native-spread{display:none}.native-review-workspace .review-candidates .native-table th.native-count{width:48px}.native-review-workspace .review-candidates .native-table th.native-review-state{width:82px}.native-review-workspace .review-candidates .native-table th:last-child{width:65px}.native-review-workspace .review-candidates .native-table td,.native-review-workspace .review-candidates .native-table th{padding:6px}}

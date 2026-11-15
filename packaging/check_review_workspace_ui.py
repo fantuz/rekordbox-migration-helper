@@ -31,10 +31,28 @@ def check_review_workspace_ui(browser,base,source,output):
         page.select_option('#journey-context-source',source)
         page.wait_for_function('(source)=>Journeys.context()?.source===source',arg=source)
         page.locator('.nav[data-view=review]').click();page.wait_for_selector('[data-native-group="g49"]')
+        page.locator('.native-review-workspace').scroll_into_view_if_needed()
+        density=page.locator('.review-candidates>.native-table').evaluate('''e=>{
+            const bounds=e.getBoundingClientRect(),head=e.querySelector('thead').getBoundingClientRect();
+            return {visible:[...e.querySelectorAll('tbody tr')].filter(row=>{const r=row.getBoundingClientRect();return r.top>=head.bottom && r.bottom<=bounds.bottom;}).length,
+                height:e.clientHeight,scrollWidth:e.scrollWidth,width:e.clientWidth,
+                rows:[...e.querySelectorAll('tbody tr')].slice(0,2).map(row=>({height:row.getBoundingClientRect().height,cells:[...row.cells].map(cell=>({text:cell.textContent,width:cell.clientWidth,padding:getComputedStyle(cell).padding,font:getComputedStyle(cell).fontSize}))}))};
+        }''')
+        page.screenshot(path=str(output/'native-duplicate-candidate-density.png'))
+        assert density['visible']>=12,density
+        assert density['scrollWidth']<=density['width']+1,density
+        assert page.locator('.native-review-note').get_attribute('open') is None
+        page.locator('[data-native-group="g0"]').click();page.wait_for_selector('.native-compare-record')
+        assert page.locator('.native-compare-record').count()==50
+        assert page.locator('.native-compare-record').first.locator('dd').all_text_contents()==['240','4','1','2','1']
+        assert '/Synthetic/Music/' in page.locator('.native-record-path code').first.inner_text()
+        assert page.locator('.native-save').bounding_box()['y']<page.locator('.native-compare-record').first.bounding_box()['y']
+        page.screenshot(path=str(output/'native-duplicate-review-dense.png'))
         page.locator('[data-native-group="g49"]').click();page.wait_for_selector('.native-save')
         left=page.locator('.native-review-workspace>.review-candidates').bounding_box()
         right=page.locator('.native-detail').bounding_box()
         assert right['x']>=left['x']+left['width'] and abs(right['y']-left['y'])<2,(left,right)
+        assert left['width']>right['width'],(left,right)
         assert page.locator('.native-detail .review-close').is_hidden()
         table=page.locator('.native-review-workspace>.review-candidates>.native-table')
         assert table.evaluate('(e)=>e.scrollTop')>0
@@ -91,7 +109,7 @@ def check_review_workspace_ui(browser,base,source,output):
             assert page.locator(action).evaluate('(e)=>{const r=e.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight}'),action
             page.screenshot(path=str(output/('visible-actions-'+results[1:]+'.png')))
         assert not errors,errors
-        return {'long_list':50,'long_comparison':50,'split_panes':True,'persistent_save_action':True,
+        return {'long_list':50,'long_comparison':50,'visible_candidate_rows':density['visible'],'wider_candidates':True,'compact_record_cards':True,'save_above_records':True,'split_panes':True,'persistent_save_action':True,
                 'list_scroll_preserved_after_save':True,'drawer_widths':[768,390],
                 'keyboard_focus_trap_and_return':True,'resize_preserves_review':True,'late_save_respects_navigation':True,
                 'chart_and_intelligence_actions_visible_during_scroll':True,'synthetic':True}

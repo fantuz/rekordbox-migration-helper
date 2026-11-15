@@ -69,8 +69,8 @@ def check_native_collection_ui(browser, base, data, output, root):
         page.locator('.nav[data-view=review]').click()
         page.wait_for_selector('[data-native-group]')
         page.locator('[data-native-group]').first.click()
-        page.wait_for_selector('.native-detail tbody tr')
-        assert page.locator('.native-detail tbody tr').count() == 2
+        page.wait_for_selector('.native-detail .native-compare-record')
+        assert page.locator('.native-detail .native-compare-record').count() == 2
         page.select_option('.native-status', 'keep_separate')
         page.locator('.native-save').click()
         page.wait_for_function("document.querySelector('.native-status')?.value==='keep_separate'")

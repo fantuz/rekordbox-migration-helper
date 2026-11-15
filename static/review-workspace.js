@@ -31,7 +31,8 @@ window.ReviewWorkspace=(()=>{
     const openButton=label('button','Review','button secondary review-open-selected');openButton.type='button';
     openButton.disabled=true;
     const bar=document.createElement('div');bar.className='review-list-heading';
-    bar.append(label('strong','Review'),openButton);root.querySelector('.review-candidates').prepend(bar);
+    const candidates=root.querySelector('.review-candidates');
+    bar.append(candidates.querySelector(':scope>h2') || label('strong','Review'),openButton);candidates.prepend(bar);
     const entry={root,panel,home,drawer,openButton,compact:false,opener:null,ready:false};entries.set(root,entry);
     panel.classList.add('review-inspector');panel.tabIndex=-1;
     openButton.onclick=()=>present(root,openButton);
@@ -67,9 +68,12 @@ window.ReviewWorkspace=(()=>{
     const dock=document.createElement('div');dock.className='review-action-dock';
     for(const selector of actions){const node=body.querySelector(selector);if(node)dock.append(node);}
     const toolbar=document.createElement('div');toolbar.className='review-panel-heading';
-    const heading=label('h3','Review');heading.tabIndex=-1;
+    const native=root.classList.contains('native-review-workspace');
+    const heading=label('h3',native?'Compare captured records':'Review');heading.tabIndex=-1;
     const close=label('button','Close','button secondary review-close');close.type='button';close.onclick=()=>entry.drawer.close();
-    toolbar.append(heading,close);panel.append(toolbar,body);if(dock.childElementCount)panel.append(dock);
+    toolbar.append(heading,close);panel.append(toolbar);
+    if(native && dock.childElementCount)panel.append(dock);
+    panel.append(body);if(!native && dock.childElementCount)panel.append(dock);
     layout(entry);
   }
   function present(root,opener){
