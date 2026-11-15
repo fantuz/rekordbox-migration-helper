@@ -3,6 +3,29 @@ from copy import deepcopy
 import json
 from urllib.parse import parse_qs, urlsplit
 import urllib.request
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+
+def assert_readable_review_controls(page,output,attempt):
+    """Wait for rendered geometry, keeping every size/readability requirement."""
+    measure='''()=>[...document.querySelectorAll('#view-review input[type="checkbox"]')].map(el=>{
+        const r=el.getBoundingClientRect(),label=el.closest('label'),s=getComputedStyle(label);
+        return {id:el.id,evidence:el.dataset.evidence,width:r.width,height:r.height,
+            fontSize:parseFloat(s.fontSize),labelHeight:label.getBoundingClientRect().height,
+            opacity:getComputedStyle(el).opacity,hiddenAncestor:el.closest('[hidden]')?.id,
+            detailsOpen:el.closest('details')?.open,label:label.textContent};
+    })'''
+    ready='''rows=>rows.length>=4 && rows.every(r=>r.width>=18 && r.height>=18 &&
+        r.fontSize>=12 && r.labelHeight>=40 && r.opacity==='1')'''
+    try:
+        page.wait_for_function('()=>('+ready+')(('+measure+')())',timeout=5000)
+    except PlaywrightTimeoutError:
+        measurements=page.evaluate(measure)
+        (output/'duplicate-control-failure.json').write_text(json.dumps(measurements,ensure_ascii=False,indent=2),encoding='utf-8')
+        page.screenshot(path=str(output/'duplicate-control-failure.png'),full_page=True)
+        raise AssertionError('Review controls did not become readable: '+json.dumps(measurements,ensure_ascii=False)) from None
+    measurements=page.evaluate(measure)
+    (output/f'duplicate-control-measurements-{attempt}.json').write_text(json.dumps(measurements,ensure_ascii=False,indent=2),encoding='utf-8')
 
 
 def review_fixture():
@@ -37,6 +60,7 @@ def check_duplicate_review_ui(browser,base,output):
     alternate={**deepcopy(pair),'id':'synthetic-alternate','title':'Synthetic alternate comparison',
                'tracks':[deepcopy(pair['tracks'][1]),third],'keeper':'synthetic-c'}
     group_scope={'id':'synthetic-group','include_alternate':True,'representative':pair['id']}
+    hold_pair=False;pending_pairs=[]
     context=browser.new_context(locale='en-US',viewport={'width':1440,'height':1000})
     context.add_init_script("localStorage.setItem('library-workbench.language.v1','en');localStorage.setItem('library-workbench.sidebar-size.v1','standard')")
     def synthetic_api(route):
@@ -57,7 +81,9 @@ def check_duplicate_review_ui(browser,base,output):
             row.update(category='review',cue_a={'total':2},cue_b={'total':2},decision=pair.get('decision'))
             route.fulfill(json={'rows':[row],'total':1,'groups':1,'tracks':2,'pair_count':1,'review_groups':1,'potential_reduction':1,
                                 'facets':{'files_found_both':1,'manual_present':1,'rating_conflict':1}});return
-        if path=='/api/pair/synthetic-pair':route.fulfill(json=deepcopy(pair));return
+        if path=='/api/pair/synthetic-pair':
+            if hold_pair:pending_pairs.append(route);return
+            route.fulfill(json=deepcopy(pair));return
         if path=='/api/pair/synthetic-alternate':route.fulfill(json=deepcopy(alternate));return
         if path=='/api/group/details':
             ids=parse_qs(url.query)['ids'][0].split(',')
@@ -88,33 +114,30 @@ def check_duplicate_review_ui(browser,base,output):
     context.route('**/api/**',synthetic_api)
     page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
     try:
-        # Repeat the initial navigation to expose an intermittent render race.
-        for attempt in range(12):
+        # Cover delayed and immediate responses. The existing comparison is
+        # already visible before the click; its presence is not a readiness signal.
+        for attempt in range(3):
             page.goto(base,wait_until='networkidle')
             page.wait_for_selector('#detail-panel [data-keeper="synthetic-a"]',state='attached')
             page.locator('.nav[data-view="review"]').click()
             page.wait_for_selector('#detail-panel .sibling.chosen')
-            page.locator('[data-pair="synthetic-pair"]').click()
+            previous_detail=page.locator('#detail-panel .detail-head').element_handle()
+            hold_pair=attempt==0
+            with page.expect_request(lambda request:urlsplit(request.url).path=='/api/pair/synthetic-pair'):
+                page.locator('[data-pair="synthetic-pair"]').click()
+            if hold_pair:
+                assert previous_detail.evaluate('(element)=>element.isConnected')
+                assert page.locator('#detail-panel .review-action-dock #stage-pair').is_visible()
+                assert len(pending_pairs)==1
+                pending_pairs.pop().fulfill(json=deepcopy(pair));hold_pair=False
+            page.wait_for_function('(element)=>!element.isConnected',arg=previous_detail)
             page.wait_for_selector('#detail-panel .review-action-dock #stage-pair')
             assert page.locator('#stage-pair').evaluate('(e)=>{const r=e.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight}'), 'Merge action is outside the review viewport'
             assert page.locator('#toast').is_hidden() or not page.locator('#toast').inner_text(),page.locator('#toast').inner_text()
             assert page.locator('#detail-panel img').count()==0
             assert page.evaluate('window.duplicateMetadataExecuted') is None
             assert page.locator('[data-keeper="synthetic-b"] .title').inner_text()==pair['tracks'][1]['title']
-            # Native checkbox dimensions and complete labels, rather than drawn stand-ins.
-            controls=page.locator('#view-review input[type="checkbox"]')
-            assert controls.count()>=4
-            measurements=controls.evaluate_all('''els=>els.map(el=>{
-                const r=el.getBoundingClientRect(),label=el.closest('label'),s=getComputedStyle(label);
-                return {id:el.id,evidence:el.dataset.evidence,width:r.width,height:r.height,
-                    fontSize:parseFloat(s.fontSize),labelHeight:label.getBoundingClientRect().height,
-                    opacity:getComputedStyle(el).opacity,hiddenAncestor:el.closest('[hidden]')?.id,
-                    detailsOpen:el.closest('details')?.open,label:label.textContent};
-            })''')
-            (output/f'duplicate-control-measurements-{attempt}.json').write_text(json.dumps(measurements,ensure_ascii=False,indent=2),encoding='utf-8')
-            invalid=[m for m in measurements if not (m['width']>=18 and m['height']>=18 and m['fontSize']>=12 and m['labelHeight']>=40 and m['opacity']=='1')]
-            if invalid:page.screenshot(path=str(output/'duplicate-control-failure.png'),full_page=True)
-            assert not invalid,invalid
+            assert_readable_review_controls(page,output,attempt)
         evidence=page.locator('#evidence-filters label').filter(has=page.locator('[data-evidence="files_found_both"]'))
         with page.expect_response(lambda response:urlsplit(response.url).path=='/api/pairs'):
             evidence.locator('span').click()
@@ -226,7 +249,7 @@ def check_duplicate_review_ui(browser,base,output):
         assert not errors,errors
         assert not unexpected_mutations,unexpected_mutations
         assert page.locator('#toast').is_hidden() or '2' in page.locator('#toast').inner_text(),page.locator('#toast').inner_text()
-        return {'readable_native_controls':True,'comparison_width_prioritized':True,'mouse_and_keyboard_keeper':True,
+        return {'readable_native_controls':True,'fresh_comparison_waited':True,'delayed_comparison_response':True,'repeated_initial_navigation':3,'comparison_width_prioritized':True,'mouse_and_keyboard_keeper':True,
                 'decision_payload_preserved':True,'escaped_unicode_metadata':True,'responsive_german_layout':True,'persistent_merge_actions':True,'mobile_review_drawer_and_focus_return':True,
                 'group_comparison_refresh_preserved':True,'all_group_members_visible':True,'donor_exclusion_and_policy_preserved':True,'multi_donor_stage_payload':True,'removed_comparison_fallback':True,'different_group_uses_representative':True,
                 'transport':'synthetic browser responses; no source files or real decisions'}
