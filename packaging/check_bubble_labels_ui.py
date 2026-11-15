@@ -40,7 +40,7 @@ def check_bubble_labels_ui(page,base,sid,output,store):
         }''')
         assert result['valid'],result
         assert page.locator('.bubble-number').count()==0
-        assert page.locator('.bubble-node').evaluate_all('(nodes)=>nodes.every(n=>n.getAttribute("aria-label") && n.querySelector("title"))')
+        assert page.locator('.bubble-node').evaluate_all('(nodes)=>nodes.every(n=>n.getAttribute("aria-label").startsWith(insightState.bubble.result.groups[Number(n.dataset.bubbleIndex)].label+", "))')
         assert page.locator('.bubble-node circle').evaluate_all('(els)=>els.map(el=>[el.getAttribute("r"),el.parentNode.getAttribute("transform")])')==circles
     for width in (1920,1366,820,430):
         page.set_viewport_size({'width':width,'height':1050});verify()
