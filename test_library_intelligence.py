@@ -1,6 +1,6 @@
 import unittest
 from copy import deepcopy
-from library_intelligence import duplicate_impact,playlist_overlap,session_progression,evolution
+from library_intelligence import duplicate_impact,playlist_overlap,session_progression,evolution,collection_lenses,playlist_membership_available
 
 
 class IntelligenceTests(unittest.TestCase):
@@ -20,6 +20,29 @@ class IntelligenceTests(unittest.TestCase):
         self.assertAlmostEqual(result['rows'][1]['jaccard'],.3333)
         self.assertEqual(playlist_overlap(self.snapshot,'d',0)['total'],0)
         with self.assertRaises(ValueError):playlist_overlap(self.snapshot,'a',float('nan'))
+
+    def test_unknown_playlist_membership_is_not_an_empty_collection(self):
+        missing={'tracks':[{'id':'1','title':'A'},{'id':'2','title':'B'}],
+                 'playlists':[],
+                 'capabilities':{'playlist_membership':False,'playlist_order':False}}
+        self.assertFalse(playlist_membership_available(missing))
+        with self.assertRaisesRegex(ValueError,'playlist membership'):
+            collection_lenses(missing,'unfiled')
+        self.assertIsNone(collection_lenses(missing,'all')['summary']['outside_playlists'])
+        known=deepcopy(missing)
+        known['capabilities']['playlist_membership']=True
+        self.assertTrue(playlist_membership_available(known))
+        self.assertEqual(collection_lenses(known,'unfiled')['total'],2)
+        self.assertEqual(collection_lenses(known,'all')['summary']['outside_playlists'],2)
+        old=deepcopy(missing)
+        old['capabilities']={'playlist_order':True}
+        self.assertTrue(playlist_membership_available(old))
+        old['capabilities']={'playlist_order':False}
+        self.assertFalse(playlist_membership_available(old))
+        # A captured XML/ZIP workspace's per-track membership is explicit.
+        old['source_kind']='Loaded XML + ZIP'
+        for track in old['tracks']:track['playlists']=[]
+        self.assertTrue(playlist_membership_available(old))
 
     def test_progression_does_not_bridge_missing_values(self):
         result=session_progression(self.snapshot,'h')
