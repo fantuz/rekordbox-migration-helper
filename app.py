@@ -282,6 +282,7 @@ def analyzer_journal_status(report_id):
         if (root/(name+suffix)).is_symlink():
             return jsonify(supported=False,changed=False,message="Linked database or journal files cannot be monitored")
     current=source_stamps(root,name)
+    if current['master.db'] is None:return jsonify(supported=False,changed=False,message='Source master.db is no longer available')
     baseline={row["name"]:{key:row.get(key) for key in ("bytes","mtime_ns","inode")} for row in report.get("source_files",[])}
     changed=any(current[key]!=baseline.get(key) for key in current)
     signature=sha256(json.dumps(current,sort_keys=True).encode()).hexdigest()
