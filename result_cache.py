@@ -79,6 +79,7 @@ def cached_collection(owner):
 def clear(owner,providers=False):
     with connection(owner) as db:
         db.execute('DELETE FROM result_cache')
+        db.execute('DELETE FROM file_status_cache')
         if providers:db.execute('DELETE FROM mb_cache')
     for name in ('clear_insight_cache','clear_chart_cache'):
         callback=getattr(owner,name,None)

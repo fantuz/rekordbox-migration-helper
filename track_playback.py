@@ -44,6 +44,60 @@ def available_audio(track):
     return None
 
 
+
+def inspect_audio(track):
+    """Classify recorded locations without attempting to decode or play audio.
+
+    'playable' means a readable, regular audio-suffixed file was found, not
+    that the OS association or decoder is guaranteed to work. Missing means
+    the parent directory is reachable and that particular file is absent.
+    """
+    if not isinstance(track, dict):
+        return 'unverified', None
+    seen=set()
+    evidence=[]
+    for field in ('current_path','xml_location','original_path'):
+        value=track.get(field)
+        if not value:
+            continue
+        path=recorded_path(value)
+        if path is None:
+            evidence.append('unverified')
+            continue
+        normalized=str(path)
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        try:
+            target=path.resolve(strict=True)
+            if target.suffix.lower() not in AUDIO_EXTENSIONS or not target.is_file():
+                evidence.append('unverified')
+            elif os.access(target,os.R_OK):
+                return 'playable', target
+            else:
+                evidence.append('inaccessible')
+        except FileNotFoundError:
+            try:
+                # An unmounted drive or unavailable folder is not proof that
+                # an audio recording has been deleted.
+                parent=path.parent
+                if parent.is_dir() and os.access(parent,os.X_OK):
+                    evidence.append('missing')
+                else:
+                    evidence.append('unverified')
+            except (OSError,ValueError,RuntimeError):
+                evidence.append('unverified')
+        except PermissionError:
+            evidence.append('inaccessible')
+        except (OSError,ValueError,RuntimeError):
+            evidence.append('unverified')
+    if 'inaccessible' in evidence:
+        return 'inaccessible', None
+    if 'unverified' in evidence or not evidence:
+        return 'unverified', None
+    return 'missing', None
+
+
 def open_audio(path):
     # Only server-resolved, existing audio paths reach this boundary. Never use a shell.
     try:
@@ -87,7 +141,11 @@ def register(owner):
         if not isinstance(ids,list) or not 1<=len(ids)<=100 or any(not isinstance(i,str) or len(i)>200 for i in ids):
             raise ValueError('Choose up to 100 captured tracks')
         source=tracks(value)
-        return jsonify(tracks={i:available_audio(source.get(i,{})) is not None for i in ids})
+        from file_status_cache import inspect
+        statuses,hits=inspect(owner,{i:source.get(i,{}) for i in ids},
+                              refresh=value.get('refresh') is True)
+        return jsonify(tracks={i:statuses[i]=='playable' for i in ids},
+                       statuses=statuses,cached=hits)
     @app.post('/api/playback/open')
     def launch():
         value=body();identity=value.get('track_id')

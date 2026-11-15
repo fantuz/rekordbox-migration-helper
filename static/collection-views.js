@@ -3,6 +3,9 @@ window.NativeCollection=(()=>{
   const revisions={review:0,reference:0};
   const state={review:{offset:0,basis:'path',q:''},reference:{offset:0,mode:'all',q:''}};
   const labels={unreviewed:'Unreviewed',keep_separate:'Keep separate',candidate:'Candidate for later cleanup'};
+  const fileStates=['playable','missing','inaccessible','unverified'];
+  const fileStateLabels={playable:'Playable',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'};
+  const fileBadge=status=>'<span class="file-status file-status-'+esc(status)+'">'+text(fileStateLabels[status] || 'Unverified')+'</span>';
   const source=()=>window.Journeys?.context()?.source || '';
   const active=()=>source().startsWith('capture:') || source().startsWith('snapshot:');
   const text=s=>esc(I18n.t(s));
@@ -43,7 +46,7 @@ window.NativeCollection=(()=>{
     if(scope!==source() || revision!==revisions.review)return;
     const hadFocus=host.contains(document.activeElement);
     const fields=[['duration','Duration'],['rating','Rating'],['play_count','Play count'],['manual_cues','Manual cues'],['auto_cues','Automatic cues']];
-    host.innerHTML='<article class="wide-card"><p class="native-review-scope">'+text('Review notes are saved locally. Merging and path edits require the XML + ZIP export workspace.')+'</p><div class="native-compare-records">'+r.rows.map(t=>'<article class="native-compare-record"><header>'+track(t)+'</header><dl>'+fields.map(([field,label])=>'<div><dt>'+text(label)+'</dt><dd>'+esc(t[field] ?? I18n.t('Unknown'))+'</dd></div>').join('')+'</dl><div class="native-record-path"><span>'+text('Current path')+'</span><code>'+esc(t.current_path || '')+'</code></div></article>').join('')+'</div>'+pager('detail',r)+'<div class="native-review-actions"><label>'+text('Review status')+'<select class="native-status">'+Object.entries(labels).map(([v,l])=>'<option value="'+v+'" '+(v===r.review?'selected':'')+'>'+text(l)+'</option>').join('')+'</select></label><button class="button native-save">'+text('Save review')+'</button></div></article>';
+    host.innerHTML='<article class="wide-card"><p class="native-review-scope">'+text('Review notes are saved locally. Merging and path edits require the XML + ZIP export workspace.')+'</p><div class="native-compare-records">'+r.rows.map(t=>'<article class="native-compare-record" data-file-track="'+esc(t.id)+'"><header>'+track(t)+'<span class="native-file-status">'+fileBadge('unverified')+'</span></header><dl>'+fields.map(([field,label])=>'<div><dt>'+text(label)+'</dt><dd>'+esc(t[field] ?? I18n.t('Unknown'))+'</dd></div>').join('')+'</dl><div class="native-record-path"><span>'+text('Current path')+'</span><code>'+esc(t.current_path || '')+'</code></div></article>').join('')+'</div>'+pager('detail',r)+'<div class="native-review-actions"><label>'+text('Review status')+'<select class="native-status">'+Object.entries(labels).map(([v,l])=>'<option value="'+v+'" '+(v===r.review?'selected':'')+'>'+text(l)+'</option>').join('')+'</select></label><button class="button native-save">'+text('Save review')+'</button></div></article>';
     host.querySelector('[data-native-prev]').onclick=wrap(()=>detail(id,Math.max(0,offset-50)));
     host.querySelector('[data-native-next]').onclick=wrap(()=>detail(id,offset+50));
     host.querySelector('.native-save').onclick=wrap(async()=>{
@@ -56,6 +59,44 @@ window.NativeCollection=(()=>{
       await detail(id,offset);notify(I18n.t('Review saved locally'));
     });
     ReviewWorkspace.refresh(root,host,['.native-review-actions']);
+    // Availability is advisory: a record is never deleted or excluded
+    // automatically because a disk is disconnected or access is denied.
+    const evidence=document.createElement('div');
+    evidence.className='native-file-evidence';
+    evidence.innerHTML='<p>'+text('Local file evidence is advisory; unavailable files are not duplicates to delete.')+'</p><div class="native-file-summary" role="status"></div><label>'+text('File evidence')+'<select class="native-file-filter"><option value="all">'+text('All records')+'</option>'+fileStates.map(k=>'<option value="'+k+'">'+text(fileStateLabels[k])+'</option>').join('')+'</select></label><button type="button" class="button secondary native-file-refresh">'+text('Refresh file evidence')+'</button>';
+    const cards=host.querySelector('.native-compare-records');
+    cards.before(evidence);
+    const selector=evidence.querySelector('.native-file-filter');
+    const refresh=evidence.querySelector('.native-file-refresh');
+    let current=null;
+    selector.onchange=()=>{
+      for(const card of cards.querySelectorAll('[data-file-track]'))
+        card.hidden=Boolean(current && selector.value!=='all' && current[card.dataset.fileTrack]!==selector.value);
+    };
+    async function loadEvidence(refreshNow=false){
+      const ids=r.rows.map(t=>String(t.id));
+      if(!ids.length)return;
+      refresh.disabled=true;
+      try{
+        const evidenceResult=await api('/api/playback/availability',{feedback:false,method:'POST',
+          body:JSON.stringify({source:scope,track_ids:ids,refresh:refreshNow})});
+        if(scope!==source() || revision!==revisions.review || !host.isConnected)return;
+        current=evidenceResult.statuses;
+        const counts=Object.fromEntries(fileStates.map(k=>[k,0]));
+        for(const card of cards.querySelectorAll('[data-file-track]')){
+          const status=current[card.dataset.fileTrack] || 'unverified';
+          counts[status]++;
+          card.querySelector('.native-file-status').innerHTML=fileBadge(status);
+        }
+        evidence.querySelector('.native-file-summary').innerHTML=fileStates.map(k=>fileBadge(k)+' '+num(counts[k])).join(' · ');
+        selector.onchange();
+      }catch{
+        // Local-only access may be unavailable in a remote browser.
+        evidence.querySelector('.native-file-summary').textContent=I18n.t('File evidence unavailable');
+      }finally{refresh.disabled=false;}
+    }
+    refresh.onclick=wrap(()=>loadEvidence(true));
+    void loadEvidence();
     if(hadFocus)host.querySelector('.review-panel-heading h3').focus({preventScroll:true});
   }
   function update(view){

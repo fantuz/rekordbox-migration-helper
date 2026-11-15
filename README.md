@@ -95,8 +95,11 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Play available recorded audio files in the computer's default media player from live track views.
 - Save bounded evidence reports for later inspection.
 
-**Duplicates, references and storage**
+**Library health, redundancy and storage**
 
+The objective is long-term library maintainability: distinguish redundant records, unavailable tracks, metadata inconsistencies, excess physical copies, and migration readiness. Duplicate detection is only one diagnostic; unavailable audio is not a deletion recommendation.
+
+- Cache local file-access evidence in the private SQLite sidecar and display **Playable**, **Missing**, **Inaccessible**, or **Unverified** in native duplicate comparisons, with manual refresh and advisory status filtering. Playback still verifies its path live; no media is automatically deleted.
 - Review connected duplicate groups with keeper selection, donor exclusions and cue/rating conflict evidence.
 - Keep duplicate candidates and comparisons in separate scrolling panes, with visible review actions and a keyboard-accessible drawer on narrower screens, for captured databases and XML/ZIP workspaces.
 - Review captured-library duplicates in a wider, denser candidate list with compact comparison cards and Save review above the records; retain full paths, ratings and cue counts.

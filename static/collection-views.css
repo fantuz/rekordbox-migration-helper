@@ -14,3 +14,18 @@
 #view-investigations input[type=checkbox]{width:auto;flex:none}
 
 #workspace-maintenance{margin-bottom:18px}#maintenance-preview:empty{display:none}#maintenance-preview{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}#maintenance-preview>label{display:block;margin:14px 0}.workbench-path{min-width:0;max-width:100%;font-size:11.5px;line-height:1.65;white-space:normal;word-break:normal;overflow-wrap:anywhere;user-select:text}#cleanup-path.workbench-path,.report-source.workbench-path{display:block;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);margin:12px 0}#cleanup-path.workbench-path{font-size:11px}
+
+/* Advisory library-health evidence in saved duplicate comparisons. */
+.native-file-evidence{display:flex;align-items:end;flex-wrap:wrap;gap:8px 14px;padding:8px 10px;margin-bottom:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);font-size:12px}
+.native-file-evidence>p{width:100%;margin:0;line-height:1.5}
+.native-file-evidence>label{min-width:145px;flex:1}
+.native-file-filter{display:block;width:100%;padding:6px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:inherit;margin-top:4px}
+.native-file-summary{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex-basis:100%;font-variant-numeric:tabular-nums}
+.native-file-status{display:inline-block;padding:2px 7px;margin-inline:4px;border-radius:6px;border:1px solid var(--line);font-size:11px;font-weight:600;white-space:nowrap;background:var(--panel2);color:var(--text)}
+.file-status-playable{border-color:#4c946d;color:#287247}
+.file-status-missing{border-color:#bb8e56;color:#946026}
+.file-status-inaccessible{border-color:#c46f73;color:#ad414c}
+.file-status-unverified{border-color:var(--line);color:var(--muted)}
+.native-compare-record[hidden]{display:none!important}
+.native-compare-record .native-file-status{margin-inline-start:8px}
+@media(max-width:700px){.native-file-evidence{align-items:stretch}.native-file-evidence>label,.native-file-evidence>button{width:100%}}

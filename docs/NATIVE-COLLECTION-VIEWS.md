@@ -51,3 +51,10 @@ Real library files can be tested locally without uploading them to GitHub or
 configuring Actions secrets. Keep both fixtures and generated captures outside the
 checkout. Repository tests and browser fixtures use invented records only. Do not
 commit private databases, extracted metadata, download links or personal screenshots.
+
+
+### File health in duplicate review
+
+The comparison pane includes cached local file evidence: **Playable**, **Missing**, **Inaccessible** and **Unverified**, with a summary and optional filter. Use **Refresh file evidence** when a removable drive has been connected or a path has been repaired. A status is about reachability on this computer, not about whether recordings are equivalent. Inaccessible and unverified records should be investigated rather than discarded; even a file reported missing may still exist elsewhere or on another computer. This feature neither deletes files nor changes the saved keep-separate/candidate review decision.
+
+This is an initial library-health diagnostic rather than an automatic duplicate-removal policy. Future maintenance workflows can combine file evidence with metadata, history, rating, cue, format and storage evidence, with explicit user review before any exported change.

@@ -9,3 +9,11 @@ Visible buttons are checked in small batches. Missing files appear unavailable; 
 Playback does not change ratings, colours, comments or playlists automatically. It lets you listen while using the existing review/edit controls. The media player is external, so the helper does not provide pause/seek controls or claim to know whether playback started after the operating system accepted the open request.
 
 Playback is a feature of the running local app. Shared HTML/offline exports do not have access to this launcher.
+
+## Cached local file evidence
+
+The application saves bounded, path-digest-keyed observations in its **private** `workbench-sidecar.sqlite3`, never in Rekordbox's database. These observations are shared by play-button availability and captured duplicate review. No audio bytes are read or cached, and original paths are not stored in the evidence table. Multiple records referring to the same recorded paths reuse one observation. The status expires after 60 minutes for a readable file, 90 seconds for missing/inaccessible files, and five minutes for unverified evidence; the oldest observations are evicted after 20,000 entries.
+
+Four advisory states distinguish **Playable** (readable file with a supported audio extension; this does *not* verify successful decoding), **Missing** (file absent in an accessible parent directory), **Inaccessible** (present but denied or permission error), and **Unverified** (no usable local path, unmounted folder, foreign-platform path, unsupported type or inconclusive evidence). A readable recorded alternative takes precedence over an unavailable current path. A potentially disconnected drive is never classified as a confirmed missing recording.
+
+The duplicate inspector shows per-record status, summary counts, a status filter and **Refresh file evidence** for reconnecting storage devices. Filtering only changes the view: it does not change review classifications or mark a track for removal. Playback launch **always revalidates** the path rather than trusting a cached observation. The availability API retains its existing boolean `tracks` map and adds `statuses` and `cached` maps. Remote browsers cannot invoke these local filesystem checks.
