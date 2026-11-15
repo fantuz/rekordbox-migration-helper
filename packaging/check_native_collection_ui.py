@@ -80,6 +80,18 @@ def check_native_collection_ui(browser, base, data, output, root):
         page.locator('.native-file-refresh').click()
         page.wait_for_function('!document.querySelector(".native-file-refresh").disabled')
         assert page.locator('.native-file-summary .file-status-unverified').count() == 1
+        # Focus refreshes must explicitly bypass the persistent SQLite
+        # evidence cache, not just the short-lived browser cache.
+        # Wait beyond the 5-second focus throttle for deterministic CI.
+        page.wait_for_timeout(5200)
+        with page.expect_request(
+            lambda request: request.url.endswith('/api/playback/availability')
+            and request.method == 'POST'
+            and isinstance(request.post_data_json, dict)
+            and request.post_data_json.get('refresh') is True,
+            timeout=10000
+        ):
+            page.evaluate("window.dispatchEvent(new Event('focus'))")
         page.select_option('.native-status', 'keep_separate')
         page.locator('.native-save').click()
         page.wait_for_function("document.querySelector('.native-status')?.value==='keep_separate'")
