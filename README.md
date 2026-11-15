@@ -130,6 +130,8 @@ A factual overview of the current source tree. Release downloads may lag behind 
 
 This inventory describes implemented behavior, not a compatibility certification. See [compatibility](docs/COMPATIBILITY.md), [MusicBrainz](docs/COMMUNITY-RATINGS.md), [chart playlists](docs/CHART-PLAYLISTS.md) and [Serato draft limits](docs/SERATO-BRIDGE.md). Feature changes must update this inventory and their detailed guide in the same PR.
 
+Library intelligence accepts a saved `master.db` capture directly, including playlist explorers, saved-history progression, collection views and retained reports. A separate Library lab snapshot remains useful for preserving a named comparison point. Duplicate impact requires the loaded workspace and staged merges.
+
 ## Start with a goal
 
 Choose **Check library health**, **Migrate a library**, **Review duplicates** or **Share & offline summary** on the home page. Migration progress is saved locally. A shared collection context keeps the selected snapshot and evidence scope visible.

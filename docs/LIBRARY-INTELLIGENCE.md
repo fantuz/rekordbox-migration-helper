@@ -1,5 +1,9 @@
 # Collection and session intelligence
 
+Choose a saved source capture (including `master.db`) or a named Library lab snapshot in **Collection context**. Playlist explorers, collection views, captured session progression and report saving work directly from the capture; they do not reopen the original database. The page follows the shared collection selector. **Save a snapshot for insight tools** remains available when you want a named immutable comparison point or to use the DJ insight maps.
+
+Session progression needs captured history details and ordering. Missing capabilities disable the relevant controls. **Duplicate impact** requires a loaded XML/ZIP workspace with staged merges; duplicate candidate review for native captures is available on the separate Review page.
+
 Open **Library intelligence** under Analysis & insights. Choose a saved collection snapshot, or select the same snapshot in the shared Collection context. Source captures remain immutable; these views do not apply working metadata overrides.
 
 | View | What it measures | Interpretation |

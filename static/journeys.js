@@ -24,7 +24,7 @@ window.Journeys=(()=>{
     try{
       for(const id of ['lab-snapshot','dj-snapshot','bubble-snapshot','tonal-snapshot','history-snapshot','intelligence-source','quick-source']){
         const select=$('#'+id);if(!select)continue;
-        const wanted=id==='history-snapshot' && source.startsWith('capture:')?source:id==='quick-source'?(identity?'lab:'+identity:source==='workspace'?'session':source.startsWith('capture:')?source.slice(8):''):identity;
+        const wanted=['history-snapshot','intelligence-source'].includes(id) && source.startsWith('capture:')?source:id==='quick-source'?(identity?'lab:'+identity:source==='workspace'?'session':source.startsWith('capture:')?source.slice(8):''):identity;
         const supported=[...select.options].some(o=>o.value===wanted),next=supported?wanted:'';
         const changed=select.value!==next;select.value=next;
         if(changed && activate && select.closest('.view')?.hidden===false)select.dispatchEvent(new Event('change',{bubbles:true}));
@@ -90,7 +90,7 @@ window.Journeys=(()=>{
   function init(){
     document.addEventListener('change',event=>{
       if(syncing || !info || !['lab-snapshot','dj-snapshot','bubble-snapshot','tonal-snapshot','history-snapshot','intelligence-source','quick-source'].includes(event.target.id) || !event.target.value)return;
-      const source=event.target.id==='quick-source'?(event.target.value.startsWith('lab:')?'snapshot:'+event.target.value.slice(4):event.target.value==='session'?'workspace':/^[a-f0-9]{32}$/.test(event.target.value)?'capture:'+event.target.value:''):event.target.id==='history-snapshot' && event.target.value.startsWith('capture:')?event.target.value:'snapshot:'+event.target.value;if(!source)return;
+      const source=event.target.id==='quick-source'?(event.target.value.startsWith('lab:')?'snapshot:'+event.target.value.slice(4):event.target.value==='session'?'workspace':/^[a-f0-9]{32}$/.test(event.target.value)?'capture:'+event.target.value:''):['history-snapshot','intelligence-source'].includes(event.target.id) && event.target.value.startsWith('capture:')?event.target.value:'snapshot:'+event.target.value;if(!source)return;
       selectContext(source).catch(error=>notify(error.message,true));
     });
     window.addEventListener('workbench-language',()=>{
