@@ -4,6 +4,7 @@ import csv
 from copy import deepcopy
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -50,6 +51,12 @@ def main():
                         api_issues.append({'url':response.url,'status':response.status,'content_type':response.headers.get('content-type')})
                 page.on('response',check_api_response)
                 page.goto(base,wait_until='networkidle');page.wait_for_function('typeof loadDJInsights === "function"')
+                page.locator('.nav[data-view="insights"]').click()
+                page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]')
+                # New captures show a local time of day; older date-only values
+                # must not invent a midnight time component.
+                assert re.search(r'\\d{1,2}:\\d{2}',page.locator('#dj-snapshot option[value="'+sid+'"]').inner_text())
+                assert page.evaluate('''() => !/\\d{1,2}:\\d{2}/.test(snapshotMoment('2024-02-10'))''')
                 for code in LANGUAGES:
                     page.select_option('#language',code)
                     page.wait_for_function('(code)=>document.documentElement.lang===code && document.documentElement.dataset.languageBusy!=="true"',arg=code)
