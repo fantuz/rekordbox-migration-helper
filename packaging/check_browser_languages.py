@@ -106,6 +106,8 @@ def main():
                 report['intelligence_ui']=check_intelligence_ui(page,base,sid,args.output,store)
                 from check_enrichment_ui import check_enrichment_ui
                 report['enrichment_ui']=check_enrichment_ui(page,base,sid,args.output,store,root)
+                from check_header_information_ui import check_header_information_ui
+                report['header_information_ui']=check_header_information_ui(page,args.output)
                 from check_workspace_ui import check_workspace_ui
                 report['workspace_ui']=check_workspace_ui(browser,page,base,sid,args.output,offline)
                 from check_bubble_labels_ui import check_bubble_labels_ui

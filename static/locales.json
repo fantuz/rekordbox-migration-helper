@@ -22310,6 +22310,48 @@
       "ar": "MusicBrainz",
       "pt-PT": "MusicBrainz",
       "pt-BR": "MusicBrainz"
+    },
+    "Use local library": {
+      "de": "Lokale Bibliothek verwenden",
+      "fr": "Utiliser la bibliothèque locale",
+      "it": "Usa la libreria locale",
+      "es": "Usar biblioteca local",
+      "el": "Χρήση τοπικής βιβλιοθήκης",
+      "pl": "Użyj lokalnej biblioteki",
+      "cs": "Použít místní knihovnu",
+      "ru": "Использовать локальную медиатеку",
+      "ja": "ローカルライブラリを使う",
+      "ar": "استخدام المكتبة المحلية",
+      "pt-PT": "Usar biblioteca local",
+      "pt-BR": "Usar biblioteca local"
+    },
+    "Your rekordbox library, on this computer": {
+      "de": "Deine rekordbox-Bibliothek auf diesem Computer",
+      "fr": "Votre bibliothèque rekordbox sur cet ordinateur",
+      "it": "La tua libreria rekordbox su questo computer",
+      "es": "Tu biblioteca de rekordbox en este equipo",
+      "el": "Η βιβλιοθήκη rekordbox σε αυτόν τον υπολογιστή",
+      "pl": "Twoja biblioteka rekordbox na tym komputerze",
+      "cs": "Vaše knihovna rekordbox v tomto počítači",
+      "ru": "Ваша медиатека rekordbox на этом компьютере",
+      "ja": "このコンピューターのrekordboxライブラリ",
+      "ar": "مكتبة rekordbox على هذا الكمبيوتر",
+      "pt-PT": "A sua biblioteca rekordbox neste computador",
+      "pt-BR": "Sua biblioteca rekordbox neste computador"
+    },
+    "Explore your tracks, playlists and library health. Start from your library folder; XML and ZIP exports are optional.": {
+      "de": "Entdecke Titel, Playlists und den Zustand deiner Bibliothek. Wähle den Bibliotheksordner; XML- und ZIP-Exporte sind optional.",
+      "fr": "Explorez vos morceaux, playlists et l’état de votre bibliothèque. Choisissez son dossier ; les exports XML et ZIP sont facultatifs.",
+      "it": "Esplora brani, playlist e stato della libreria. Parti dalla cartella della libreria; le esportazioni XML e ZIP sono facoltative.",
+      "es": "Explora canciones, listas y el estado de tu biblioteca. Empieza por su carpeta; las exportaciones XML y ZIP son opcionales.",
+      "el": "Εξερευνήστε κομμάτια, λίστες και την κατάσταση της βιβλιοθήκης. Ξεκινήστε από τον φάκελό της· οι εξαγωγές XML και ZIP είναι προαιρετικές.",
+      "pl": "Przeglądaj utwory, playlisty i stan biblioteki. Zacznij od jej folderu; eksporty XML i ZIP są opcjonalne.",
+      "cs": "Procházejte skladby, playlisty a stav knihovny. Začněte její složkou; exporty XML a ZIP jsou volitelné.",
+      "ru": "Просматривайте треки, плейлисты и состояние медиатеки. Начните с её папки; экспорт XML и ZIP необязателен.",
+      "ja": "曲、プレイリスト、ライブラリの状態を確認できます。ライブラリのフォルダーから開始でき、XMLやZIPの書き出しは任意です。",
+      "ar": "استكشف المقاطع وقوائم التشغيل وحالة مكتبتك. ابدأ من مجلد المكتبة؛ تصدير XML وZIP اختياري.",
+      "pt-PT": "Explore faixas, listas de reprodução e o estado da biblioteca. Comece pela pasta da biblioteca; as exportações XML e ZIP são opcionais.",
+      "pt-BR": "Explore faixas, playlists e o estado da biblioteca. Comece pela pasta da biblioteca; as exportações XML e ZIP são opcionais."
     }
   }
 }
