@@ -87,7 +87,8 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Draw reproducible, genre-balanced random selections with a selection seed.
 - Follow eight optional saved journeys for both Serato migration directions, consistency checks, duplicate review, enrichment, metadata refinement, sharing, and backup preparation. Serato → rekordbox is a preparation/checklist workflow; no Serato importer is implemented. Every tool remains accessible independently.
 - Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
-- Bubble labels keep a consistent readable size, wrap to measured text width and highlight the matching category on hover or keyboard focus. Circle areas continue to represent the chosen metric.
+- Bubble labels prioritize category names at a consistent 12-pixel size, wrapping up to four lines. Counts remain in the category table and accessible labels; circle areas still represent the chosen metric.
+- A prominent “Use local library” entry opens source selection directly, without requiring XML/ZIP exports.
 - Audit preparation coverage, saved analysis references and STEMS-related evidence.
 - Inspect comments, personal stars, colour assignments and other captured metadata in a single-track view.
 - Stage metadata edits in a private sidecar; quick comments and colours remain separate from the original files.

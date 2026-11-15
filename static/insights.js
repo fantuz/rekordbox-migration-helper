@@ -250,7 +250,7 @@ function layoutBubbleLabels(){
   const svg=$('#library-bubbles'),matrix=svg.getScreenCTM(),result=insightState.bubble.result;
   if(!result || !matrix || !svg.getBoundingClientRect().width || svg.dataset.state!=='ready')return;
   const scale=Math.hypot(matrix.a,matrix.b);if(!(scale>0))return;
-  const font=14/scale,numberFont=16/scale,padding=6/scale;
+  const font=12/scale,padding=5/scale;
   for(const g of svg.querySelectorAll('.bubble-node')){
     g.querySelector('text')?.remove();
     const group=result.groups[Number(g.dataset.bubbleIndex)],radius=Number(g.querySelector('circle').getAttribute('r'))-padding;
@@ -258,38 +258,31 @@ function layoutBubbleLabels(){
     const text=svgNode('text',{'text-anchor':'middle','font-family':getComputedStyle(svg).fontFamily,'font-size':font,fill:bubbleTextColor(group)});g.append(text);
     const probe=svgNode('tspan',{x:0,y:0});text.append(probe);
     const measure=value=>{probe.textContent=value;return probe.getComputedTextLength();};
-    const widthAt=(baseline,size)=>{const y=Math.max(Math.abs(baseline-size),Math.abs(baseline+size*.3));return y>=radius?0:2*Math.sqrt(radius*radius-y*y);};
+    const widthAt=baseline=>{const y=Math.max(Math.abs(baseline-font),Math.abs(baseline+font*.3));return y>=radius?0:2*Math.sqrt(radius*radius-y*y);};
     const label=String(group.label).replace(/\s+/gu,' ').trim();
-    let lines=[],baselines=[],numberY=numberFont*.35;
-    // Try a full single line first, then two lines, then a shortened single line.
-    for(const count of [1,2,1]){
-      const ys=count===2?[-font*.95,font*.2]:[-font*.35],ny=count===2?font*1.65:font*1.2;
-      probe.setAttribute('font-size',numberFont);probe.setAttribute('font-weight','700');
-      if(measure(bubbleWeight(group.value,result.metric))>widthAt(ny,numberFont))continue;
-      probe.setAttribute('font-size',font);probe.setAttribute('font-weight','400');
-      const widths=ys.map(y=>widthAt(y,font));if(widths.some(w=>w<font*2))continue;
-      if(count===1){
-        if(!lines.length && measure(label)<=widths[0]){lines=[label];baselines=ys;numberY=ny;break;}
-        // Keep this candidate if a useful two-line layout cannot fit.
-        lines=[fitBubbleText(label,widths[0],measure)];baselines=ys;numberY=ny;
-      }else{
-        let first=fitBubbleText(label,widths[0],measure,false);
-        const boundary=first.lastIndexOf(' ');
-        if(boundary>first.length/3)first=first.slice(0,boundary);
-        const rest=label.slice(first.length).trimStart();
-        lines=[first,fitBubbleText(rest,widths[1],measure)];baselines=ys;numberY=ny;break;
+    let best=null;
+    // Spend the circle on the category name. Counts remain in the table and accessible label.
+    for(let count=1;count<=4;count++){
+      const ys=Array.from({length:count},(_,i)=>(i-(count-1)/2)*font*1.15+font*.35);
+      const widths=ys.map(widthAt);if(widths.some(w=>w<font*2))continue;
+      let rest=label,lines=[];
+      for(let i=0;i<count && rest;i++){
+        let line=fitBubbleText(rest,widths[i],measure,i===count-1);
+        if(i<count-1 && line.length<rest.length){const boundary=line.lastIndexOf(' ');if(boundary>line.length/3)line=line.slice(0,boundary);}
+        if(!line || line==='…')break;
+        lines.push(line);rest=rest.slice(line.replace(/…$/u,'').length).trimStart();
       }
+      if(!lines.length)continue;
+      const score=lines.reduce((n,line)=>n+bubbleCharacters(line.replace(/…$/u,'')).length,0);
+      if(!best || score>best.score)best={lines,ys,score};
+      if(!rest)break;
     }
     probe.remove();
-    function draw(){
-      text.replaceChildren();
-      lines.forEach((line,i)=>{const span=svgNode('tspan',{x:0,y:baselines[i],'font-size':font,'font-weight':'400',class:'bubble-label'});span.textContent=line;text.append(span);});
-      const count=svgNode('tspan',{x:0,y:numberY,'font-size':numberFont,'font-weight':'700',class:'bubble-number'});count.textContent=bubbleWeight(group.value,result.metric);text.append(count);
-    }
-    const fits=()=>Array.from(text.children).every(span=>{const b=span.getBBox();return Math.hypot(Math.max(Math.abs(b.x),Math.abs(b.x+b.width)),Math.max(Math.abs(b.y),Math.abs(b.y+b.height)))<=radius;});
-    draw();
-    if(!fits()){lines=[];numberY=numberFont*.35;draw();}
-    if(!fits())text.remove();
+    if(!best){text.remove();continue;}
+    best.lines.forEach((line,i)=>{const span=svgNode('tspan',{x:0,y:best.ys[i],'font-size':font,'font-weight':'400',class:'bubble-label'});span.textContent=line;text.append(span);});
+    // Browser font metrics are the final authority, including CJK and combining glyphs.
+    const fits=Array.from(text.children).every(span=>{const b=span.getBBox();return Math.hypot(Math.max(Math.abs(b.x),Math.abs(b.x+b.width)),Math.max(Math.abs(b.y),Math.abs(b.y+b.height)))<=radius;});
+    if(!fits)text.remove();
   }
 }
 let bubbleLabelFrame=0;
