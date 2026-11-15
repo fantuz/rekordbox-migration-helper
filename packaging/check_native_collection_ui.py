@@ -133,7 +133,8 @@ def check_native_collection_ui(browser, base, data, output, root):
                              'artist': 'Synthetic', 'current_path': f'/Synthetic/{i:03}.mp3',
                              'duration': 120 + sibling})
         sorted_snapshot = Store(data/'workbench-sidecar.sqlite3').save_snapshot(
-            {'tracks': many, 'playlists': [], 'source_kind': 'test'}, 'Browser sort fixture')
+            {'schema':1, 'scope_key':'synthetic:native-global-sort', 'tracks': many,
+             'playlists': [], 'source_kind': 'test', 'capabilities': {}}, 'Browser sort fixture')
         # Refresh the collection selector without reloading the whole page:
         # the saved fixture is created while the SPA is already open.
         page.evaluate('() => Journeys.load()')
