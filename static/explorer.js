@@ -29,7 +29,8 @@
   let state={}, view="index", page=0, pageSize=50, sortField="", ascending=true, shown=[], tableColumns=[];
   const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
   const single=document.body.dataset.mode==="single";
-  function href(next, filters=state){const params=new URLSearchParams(filters);if(single)params.set("view",next);return (single?"":next+".html")+(params.size?"#"+params.toString():"");}
+  const pagePaths={index:"index.html",tracks:"tracks.html",genres:"genres.html",years:"years.html",added:"added.html",artists:"artists.html",albums:"albums.html",bpm:"bpm.html",ratings:"ratings.html",duration:"duration.html",formats:"formats.html",playlists:"playlists.html",tonality:"tonality.html",colours:"colours.html"};
+  function href(next, filters=state){const target=Object.hasOwn(pagePaths,next)?pagePaths[next]:pagePaths.index;const params=new URLSearchParams(filters);if(single)params.set("view",next);return (single?"":target)+(params.size?"#"+params.toString():"");}
   function go(next,filters){location.href=href(next,filters);}
   function applyFilters(){
     const next={...state};
