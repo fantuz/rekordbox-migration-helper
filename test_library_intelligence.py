@@ -29,11 +29,13 @@ class IntelligenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'playlist membership'):
             collection_lenses(missing,'unfiled')
         self.assertIsNone(collection_lenses(missing,'all')['summary']['outside_playlists'])
+        self.assertIsNone(collection_lenses(missing,'all')['summary']['playlists'])
         known=deepcopy(missing)
         known['capabilities']['playlist_membership']=True
         self.assertTrue(playlist_membership_available(known))
         self.assertEqual(collection_lenses(known,'unfiled')['total'],2)
         self.assertEqual(collection_lenses(known,'all')['summary']['outside_playlists'],2)
+        self.assertEqual(collection_lenses(known,'all')['summary']['playlists'],0)
         old=deepcopy(missing)
         old['capabilities']={'playlist_order':True}
         self.assertTrue(playlist_membership_available(old))
