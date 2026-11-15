@@ -250,8 +250,10 @@ def start_analyzer():
     body=request.get_json() or {}
     source=str(body.get("path","")).strip()
     version=str(body.get("version","")).strip()
+    recursive=body.get('recursive_inventory',False)
+    if not isinstance(recursive,bool):raise ValueError('Recursive inventory must be true or false')
     report_id=uuid4().hex
-    return jsonify(job=launch(lambda progress:analyze_folder(source,DATA/"analyzers"/report_id,progress,version,snapshot_root=TEMPORARY.folder('analyzers',report_id)),
+    return jsonify(job=launch(lambda progress:analyze_folder(source,DATA/"analyzers"/report_id,progress,version,snapshot_root=TEMPORARY.folder('analyzers',report_id),recursive_inventory=recursive),
                              "Capturing a read-only source-folder snapshot"),report_id=report_id)
 
 

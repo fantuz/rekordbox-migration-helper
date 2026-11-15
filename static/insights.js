@@ -223,7 +223,8 @@ function bubbleTextColor(group){
 }
 function bubbleWeight(value,metric){return metric==='duration'?(value<3600?num(Math.round(value/60))+' min':num(Math.round(value/360)/10)+' h'):num(value);}
 function bubbleSelected(group){
-  const r=insightState.bubble.result;
+  const r=insightState.bubble.result,index=r.groups.indexOf(group);
+  for(const item of $$('#library-bubbles [data-bubble-index], #bubble-groups [data-bubble-index]'))item.classList.toggle('is-selected',Number(item.dataset.bubbleIndex)===index);
   $('#bubble-selected').innerHTML='<h4>'+esc(group.label)+'</h4><p><b>'+esc(bubbleWeight(group.value,r.metric))+'</b> · '+esc(I18n.t(r.metric_label))+'</p><p>'+num(group.entries)+(" "+I18n.t("entries")+" \u00b7 ")+num(group.unknown_usage)+" "+I18n.t("unknown usage counts ·")+" "+num(group.weight_unknown_entries)+(" "+esc(I18n.t("unknown size inputs"))+"</p><p>"+esc(I18n.t("Mean BPM:"))+" ")+esc(group.bpm_mean===null?I18n.t("Unknown"):group.bpm_mean.toFixed(1))+("</p><small>"+esc(I18n.t("Saved tags behind this category")))+(group.saved_tags_total>8?" "+I18n.t("· first 8 of")+" "+num(group.saved_tags_total):'')+'</small><ul>'+group.saved_tags.map(t=>'<li>'+esc(t.tag)+' · '+num(t.tracks)+'</li>').join('')+'</ul>';
 }
 const svgNode=(name,attrs={})=>{const element=document.createElementNS('http://www.w3.org/2000/svg',name);for(const [key,value] of Object.entries(attrs))element.setAttribute(key,value);return element;};
@@ -234,6 +235,70 @@ function bubbleLabelLines(label,characters){
   const visible=lines.length>2?[lines[0],lines.slice(1).join(' ')]:lines;
   return visible.slice(0,2).map(text=>text.length>characters?text.slice(0,characters-1)+'…':text);
 }
+// Text uses a fixed screen size; circle areas and positions remain data-driven.
+const bubbleGraphemes=typeof Intl.Segmenter==='function'?new Intl.Segmenter(undefined,{granularity:'grapheme'}):null;
+function bubbleCharacters(text){return bubbleGraphemes?Array.from(bubbleGraphemes.segment(text),part=>part.segment):Array.from(text);}
+function fitBubbleText(text,width,measure,ellipsis=true){
+  if(measure(text)<=width)return text;
+  const chars=bubbleCharacters(text),suffix=ellipsis?'…':'';
+  if(measure(suffix)>width)return '';
+  let low=0,high=chars.length;
+  while(low<high){const middle=Math.ceil((low+high)/2);if(measure(chars.slice(0,middle).join('')+suffix)<=width)low=middle;else high=middle-1;}
+  return chars.slice(0,low).join('').trimEnd()+suffix;
+}
+function layoutBubbleLabels(){
+  const svg=$('#library-bubbles'),matrix=svg.getScreenCTM(),result=insightState.bubble.result;
+  if(!result || !matrix || !svg.getBoundingClientRect().width || svg.dataset.state!=='ready')return;
+  const scale=Math.hypot(matrix.a,matrix.b);if(!(scale>0))return;
+  const font=14/scale,numberFont=16/scale,padding=6/scale;
+  for(const g of svg.querySelectorAll('.bubble-node')){
+    g.querySelector('text')?.remove();
+    const group=result.groups[Number(g.dataset.bubbleIndex)],radius=Number(g.querySelector('circle').getAttribute('r'))-padding;
+    if(!group || radius<=0)continue;
+    const text=svgNode('text',{'text-anchor':'middle','font-family':getComputedStyle(svg).fontFamily,'font-size':font,fill:bubbleTextColor(group)});g.append(text);
+    const probe=svgNode('tspan',{x:0,y:0});text.append(probe);
+    const measure=value=>{probe.textContent=value;return probe.getComputedTextLength();};
+    const widthAt=(baseline,size)=>{const y=Math.max(Math.abs(baseline-size),Math.abs(baseline+size*.3));return y>=radius?0:2*Math.sqrt(radius*radius-y*y);};
+    const label=String(group.label).replace(/\s+/gu,' ').trim();
+    let lines=[],baselines=[],numberY=numberFont*.35;
+    // Try a full single line first, then two lines, then a shortened single line.
+    for(const count of [1,2,1]){
+      const ys=count===2?[-font*.95,font*.2]:[-font*.35],ny=count===2?font*1.65:font*1.2;
+      probe.setAttribute('font-size',numberFont);probe.setAttribute('font-weight','700');
+      if(measure(bubbleWeight(group.value,result.metric))>widthAt(ny,numberFont))continue;
+      probe.setAttribute('font-size',font);probe.setAttribute('font-weight','400');
+      const widths=ys.map(y=>widthAt(y,font));if(widths.some(w=>w<font*2))continue;
+      if(count===1){
+        if(!lines.length && measure(label)<=widths[0]){lines=[label];baselines=ys;numberY=ny;break;}
+        // Keep this candidate if a useful two-line layout cannot fit.
+        lines=[fitBubbleText(label,widths[0],measure)];baselines=ys;numberY=ny;
+      }else{
+        let first=fitBubbleText(label,widths[0],measure,false);
+        const boundary=first.lastIndexOf(' ');
+        if(boundary>first.length/3)first=first.slice(0,boundary);
+        const rest=label.slice(first.length).trimStart();
+        lines=[first,fitBubbleText(rest,widths[1],measure)];baselines=ys;numberY=ny;break;
+      }
+    }
+    probe.remove();
+    function draw(){
+      text.replaceChildren();
+      lines.forEach((line,i)=>{const span=svgNode('tspan',{x:0,y:baselines[i],'font-size':font,'font-weight':'400',class:'bubble-label'});span.textContent=line;text.append(span);});
+      const count=svgNode('tspan',{x:0,y:numberY,'font-size':numberFont,'font-weight':'700',class:'bubble-number'});count.textContent=bubbleWeight(group.value,result.metric);text.append(count);
+    }
+    const fits=()=>Array.from(text.children).every(span=>{const b=span.getBBox();return Math.hypot(Math.max(Math.abs(b.x),Math.abs(b.x+b.width)),Math.max(Math.abs(b.y),Math.abs(b.y+b.height)))<=radius;});
+    draw();
+    if(!fits()){lines=[];numberY=numberFont*.35;draw();}
+    if(!fits())text.remove();
+  }
+}
+let bubbleLabelFrame=0;
+const bubbleLabelObserver=new ResizeObserver(()=>{
+  cancelAnimationFrame(bubbleLabelFrame);bubbleLabelFrame=requestAnimationFrame(layoutBubbleLabels);
+});
+bubbleLabelObserver.observe($('#library-bubbles'));
+document.fonts?.ready.then(layoutBubbleLabels);
+
 function bubbleLayoutHash(value){
   let hash=2166136261;for(const character of String(value))hash=Math.imul(hash^character.codePointAt(0),16777619);return hash>>>0;
 }
@@ -270,13 +335,7 @@ function renderBubbleMap(){
     for(const node of nodes){
       const group=node.data,g=svgNode('g',{class:'bubble-node',transform:'translate('+node.x+','+node.y+')',role:'button',tabindex:'0','aria-label':group.label+', '+bubbleWeight(group.value,r.metric)+', '+num(group.entries)+' '+I18n.t('entries')+'. '+(r.dimension==='tracks'?I18n.t("Inspect track"):I18n.t("Drill down"))});
       const circle=svgNode('circle',{r:node.r,fill:bubbleColor(group),stroke:'#ffffff','stroke-width':2});g.append(circle);
-      if(node.r>=18){
-        const font=Math.max(16,Math.min(26,node.r/4)),chars=Math.max(6,Math.floor(node.r*1.55/(font*.56)));
-        const lines=node.r>=42?bubbleLabelLines(group.label,chars):[];
-        const text=svgNode('text',{'text-anchor':'middle','font-family':'system-ui,sans-serif','font-size':font,fill:bubbleTextColor(group)});
-        lines.forEach((line,i)=>{const span=svgNode('tspan',{x:0,y:(i-(lines.length-1)/2)*font*1.15-font*.45});span.textContent=line;text.append(span);});
-        const count=svgNode('tspan',{x:0,y:lines.length?font*(lines.length>1?1.7:1.1):font*.35,'font-size':font*1.12,'font-weight':'700',class:'bubble-number'});count.textContent=bubbleWeight(group.value,r.metric);text.append(count);g.append(text);
-      }
+      g.dataset.bubbleIndex=String(r.groups.indexOf(group));
       g.addEventListener('mouseenter',()=>bubbleSelected(group));g.addEventListener('focus',()=>bubbleSelected(group));
       g.addEventListener('click',wrap(()=>drillBubble(group)));
       g.addEventListener('keydown',wrap(async event=>{if(event.key==='Enter' || event.key===' '){event.preventDefault();await drillBubble(group);$('#bubble-breadcrumbs button:last-child')?.focus();}}));svg.append(g);
@@ -290,6 +349,7 @@ function renderBubbleMap(){
   $('#bubble-map-note').textContent=I18n.t("Area:")+" "+I18n.t(r.metric_label)+'. '+I18n.t('Showing')+' '+num(r.groups.length)+" "+I18n.t("of")+" "+num(r.groups_total)+(" "+I18n.t("Categories")+"")+(r.groups_total>60?" "+I18n.t("on this page; use Next groups to see the rest"):'')+'. '+num(r.zero_weight_groups)+" "+I18n.t("categories have zero/unknown weight and remain in the list. Compare circle areas within this page; full track length is not time played.");
   $('#bubble-color-note').textContent={get group(){return I18n.t("Color identifies categories. Exact counts remain in the list.");},preparation:I18n.t("Manual-cue coverage (known entries): blue <25%, cyan 25–74%, green ≥75%. Gray: unknown. Analysis is separate."),rating:I18n.t("Mean saved stars, excluding unrated entries: purple <2; blue 2–3.99; green ≥4. Gray: no ratings."),saved:I18n.t("Saved track colour; gray means no single known colour. Inferred RGB is identified. Cue colours are separate.")}[$('#bubble-color').value];
   if(r.groups.length)bubbleSelected(r.groups[0]);
+  layoutBubbleLabels();
 }
 async function drillBubble(group){
   const state=insightState.bubble;
