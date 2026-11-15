@@ -102,7 +102,17 @@ def check_duplicate_review_ui(browser,base,output):
         # Native checkbox dimensions and complete labels, rather than drawn stand-ins.
         controls=page.locator('#view-review input[type="checkbox"]')
         assert controls.count()>=4
-        assert controls.evaluate_all('''els=>els.every(el=>{const r=el.getBoundingClientRect(),label=el.closest('label'),s=getComputedStyle(label);return r.width>=18 && r.height>=18 && parseFloat(s.fontSize)>=12 && label.getBoundingClientRect().height>=40 && getComputedStyle(el).opacity==='1'})''')
+        measurements=controls.evaluate_all('''els=>els.map(el=>{
+            const r=el.getBoundingClientRect(),label=el.closest('label'),s=getComputedStyle(label);
+            return {id:el.id,evidence:el.dataset.evidence,width:r.width,height:r.height,
+                fontSize:parseFloat(s.fontSize),labelHeight:label.getBoundingClientRect().height,
+                opacity:getComputedStyle(el).opacity,hiddenAncestor:el.closest('[hidden]')?.id,
+                detailsOpen:el.closest('details')?.open,label:label.textContent};
+        })''')
+        (output/'duplicate-control-measurements.json').write_text(json.dumps(measurements,ensure_ascii=False,indent=2),encoding='utf-8')
+        invalid=[m for m in measurements if not (m['width']>=18 and m['height']>=18 and m['fontSize']>=12 and m['labelHeight']>=40 and m['opacity']=='1')]
+        if invalid:page.screenshot(path=str(output/'duplicate-control-failure.png'),full_page=True)
+        assert not invalid,invalid
         evidence=page.locator('#evidence-filters label').filter(has=page.locator('[data-evidence="files_found_both"]'))
         with page.expect_response(lambda response:urlsplit(response.url).path=='/api/pairs'):
             evidence.locator('span').click()
