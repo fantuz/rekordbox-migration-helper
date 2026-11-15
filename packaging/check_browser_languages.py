@@ -55,8 +55,8 @@ def main():
                 page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]')
                 # New captures show a local time of day; older date-only values
                 # must not invent a midnight time component.
-                assert re.search(r'\\d{1,2}:\\d{2}',page.locator('#dj-snapshot option[value="'+sid+'"]').inner_text())
-                assert page.evaluate('''() => !/\\d{1,2}:\\d{2}/.test(snapshotMoment('2024-02-10'))''')
+                assert re.search(r'\d{1,2}:\d{2}',page.locator('#dj-snapshot option[value="'+sid+'"]').inner_text())
+                assert page.evaluate('''() => !/\d{1,2}:\d{2}/.test(snapshotMoment('2024-02-10'))''')
                 for code in LANGUAGES:
                     page.select_option('#language',code)
                     page.wait_for_function('(code)=>document.documentElement.lang===code && document.documentElement.dataset.languageBusy!=="true"',arg=code)
