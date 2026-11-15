@@ -88,6 +88,29 @@ def duplicate_groups(snapshot, basis='path'):
     return sorted(result, key=lambda g: (-g['count'], g['id']))
 
 
+def sort_collection_rows(rows, view, field, direction):
+    """Sort the complete filtered result before taking a 50-row page."""
+    allowed = {'duplicates': {'title', 'count', 'duration_spread', 'review'},
+               'references': {'title', 'current_path', 'original_path', 'analysis_path'}}
+    if field not in allowed[view] or direction not in ('asc', 'desc'):
+        raise ValueError('Choose a supported collection sort column and direction')
+    # Stable tie-breaker makes consecutive pages repeatable across requests.
+    ordered = sorted(rows, key=lambda row: str(row.get('id') or ''))
+    present, unknown = [], []
+    for row in ordered:
+        value = row.get(field)
+        (unknown if value is None or isinstance(value, str) and not value.strip() else present).append(row)
+    if field in ('count', 'duration_spread'):
+        key = lambda row: row[field]
+    elif field == 'review':
+        rank = {'unreviewed': 0, 'candidate': 1, 'keep_separate': 2}
+        key = lambda row: rank.get(row[field], 99)
+    else:
+        key = lambda row: normalized(row[field])
+    present.sort(key=key, reverse=direction == 'desc')
+    return present + unknown
+
+
 def register(owner):
     app = owner.app
     def source():
@@ -122,7 +145,11 @@ def register(owner):
         rows = [{'id': g['id'], 'basis': g['basis'], 'count': g['count'], 'duration_spread': g['duration_spread'],
                  'title': g['tracks'][0].get('title'), 'artist': g['tracks'][0].get('artist'),
                  'review': saved.get(g['id'], 'unreviewed')} for g in groups if any(matches(t) for t in g['tracks'])]
-        return jsonify(source=key, **page(rows), groups=len(groups), tracks=sum(g['count'] for g in groups),
+        sorting = request.args.get('sort', 'count')
+        direction = request.args.get('direction', 'desc')
+        rows = sort_collection_rows(rows, 'duplicates', sorting, direction)
+        return jsonify(source=key, **page(rows), sort=sorting, direction=direction,
+                       groups=len(groups), tracks=sum(g['count'] for g in groups),
                        note='Candidates only. Paths and matching tags do not prove identical audio; versions, durations and cues need review. No merge or source write is performed.')
 
     @app.get('/api/collection/duplicates/<identity>')
@@ -164,6 +191,10 @@ def register(owner):
         tracks = snapshot['tracks']
         rows = [{f: t.get(f) for f in ('id', 'title', 'artist', 'current_path', 'original_path', 'analysis_path', 'size')}
                 for t in tracks if matches(t) and (mode == 'all' or mode == 'changed' and changed(t) or mode == 'missing_path' and not t.get('current_path'))]
-        return jsonify(source=key, **page(rows), tracks=len(tracks), changed=sum(changed(t) for t in tracks),
+        sorting = request.args.get('sort', 'title')
+        direction = request.args.get('direction', 'asc')
+        rows = sort_collection_rows(rows, 'references', sorting, direction)
+        return jsonify(source=key, **page(rows), sort=sorting, direction=direction,
+                       tracks=len(tracks), changed=sum(changed(t) for t in tracks),
                        missing_path=sum(not t.get('current_path') for t in tracks),
                        note='Recorded current, original and analysis paths. An empty path is not proof of a missing audio file. Playback checks availability on this computer only.')

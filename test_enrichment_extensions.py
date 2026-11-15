@@ -64,6 +64,38 @@ class LargerPilotTests(unittest.TestCase):
             self.assertEqual(client.get('/api/lab/musicbrainz/'+batch['id']).json['status'],'interrupted')
 
 
+
+    def test_multiple_batches_are_bounded_in_one_serial_provider_queue(self):
+        import app
+        with tempfile.TemporaryDirectory() as temp,patch.object(app,'DATA',Path(temp)):
+            saved=Store(Path(temp)/'workbench-sidecar.sqlite3')
+            sid=saved.save_snapshot(snapshot(),'Queue fixture')['id']
+            saved.set_setting('musicbrainz_enabled',True)
+            client=app.app.test_client();headers={'X-Workbench-Token':app.TOKEN}
+            work=[]
+            def launch(function,*args,**kwargs):
+                work.append((function,kwargs))
+                return 'synthetic-'+str(len(work))
+            batches=[create_batch(saved,saved.snapshot(sid),sample_size=150) for _ in range(9)]
+            with patch.object(app,'launch',side_effect=launch):
+                for batch in batches[:8]:
+                    response=client.post('/api/lab/musicbrainz/'+batch['id']+'/start',
+                                         json={'query_consent':True},headers=headers)
+                    self.assertEqual(response.status_code,200,response.json)
+                    self.assertEqual(response.json['queue_depth'],len(work))
+                    self.assertEqual(work[-1][1]['pool']._max_workers,1)
+                duplicate=client.post('/api/lab/musicbrainz/'+batches[0]['id']+'/start',
+                                      json={'query_consent':True},headers=headers)
+                self.assertEqual(duplicate.status_code,400)
+                overflow=client.post('/api/lab/musicbrainz/'+batches[8]['id']+'/start',
+                                     json={'query_consent':True},headers=headers)
+                self.assertEqual(overflow.status_code,400)
+                self.assertEqual(sum(row['status']=='queued' for row in client.get('/api/lab/musicbrainz/batches').json['batches']),8)
+                for batch in batches[:8]:
+                    client.post('/api/lab/musicbrainz/'+batch['id']+'/cancel',json={},headers=headers)
+                for function,_ in work:function(lambda *_:None)
+                self.assertEqual(sum(row['status']=='cancelled' for row in client.get('/api/lab/musicbrainz/batches').json['batches']),8)
+
     def test_cancellation_keeps_worker_slot_until_it_has_stopped(self):
         import app
         with tempfile.TemporaryDirectory() as temp,patch.object(app,'DATA',Path(temp)):

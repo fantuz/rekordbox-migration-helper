@@ -101,6 +101,25 @@ class FreeCommentAPITests(unittest.TestCase):
         self.assertEqual(self.store.snapshot(self.identity)['tracks'][0]['comment'],'Captured private note')
         self.assertEqual(self.client.post(url,json=body).status_code,403)
 
+    def test_instant_stars_stage_without_advanced_unlock_or_source_writes(self):
+        original=self.store.snapshot(self.identity)
+        url='/api/lab/overrides'
+        rating={'snapshot':self.identity,'track_id':'t','field':'rating','value':5}
+        posted=self.client.post(url,json=rating,headers=self.headers)
+        self.assertEqual(posted.status_code,200,posted.json)
+        self.assertEqual(posted.json['value'],5)
+        detail=self.client.get('/api/lab/track',query_string={'snapshot':self.identity,'track_id':'t'}).json
+        self.assertFalse(detail['unlocked'])
+        self.assertNotIn('rating',detail['editable_fields'])
+        self.assertEqual(detail['overrides']['rating']['value'],5)
+        for invalid in (-1,6,1.5,'not-a-rating'):
+            self.assertEqual(self.client.post(url,json={**rating,'value':invalid},headers=self.headers).status_code,400)
+        self.assertEqual(self.store.snapshot(self.identity),original)
+        reset=self.client.delete(url,json={'snapshot':self.identity,'track_id':'t','field':'rating'},headers=self.headers)
+        self.assertEqual(reset.status_code,200,reset.json)
+        self.assertNotIn('rating',reset.json['overrides'])
+        self.assertEqual(self.store.overrides('comments-test'),{})
+
     def test_insights_csv_and_shareable_payloads_do_not_contain_private_comments(self):
         r=self.client.get('/api/insights/tracks',query_string={'snapshot':self.identity,'perspective':'all'})
         self.assertNotIn('Captured private note',r.get_data(as_text=True))

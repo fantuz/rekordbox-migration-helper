@@ -17,10 +17,20 @@ window.BackgroundPilot=(()=>{
         known.set(row.id,row.status);
       }
       latest=rows.find(r=>['running','queued'].includes(r.status)) || rows.find(r=>r.id===labBatch&&r.status!=='preview') || rows.find(r=>r.status!=='preview');
+      const active=rows.filter(r=>['running','queued'].includes(r.status));
+      const running=active.filter(r=>r.status==='running').length,queued=active.length-running;
+      const totals=active.reduce((sum,r)=>{
+        for(const key of ['done','tracks','requests','cache_hits'])sum[key]+=Number(r.summary[key]||0);
+        return sum;
+      },{done:0,tracks:0,requests:0,cache_hits:0});
       const banner=node('pilot-background');
-      banner.hidden=!latest || preferences.get('workbench-pilot-dismissed')===latest.id+':'+latest.status;
+      banner.hidden=!latest || (!active.length && preferences.get('workbench-pilot-dismissed')===latest.id+':'+latest.status);
       if(latest){
-        const message=t('MusicBrainz pilot')+' · '+latest.status+' · '+num(latest.summary.done)+' / '+num(latest.summary.tracks);
+        const message=active.length
+          ?t('MusicBrainz pilot')+' · '+num(running)+' '+t('running')+' · '+num(queued)+' '+t('queued')+' · '+
+           num(totals.done)+' / '+num(totals.tracks)+' '+t('tracks')+' · '+
+           num(totals.requests)+' '+t('requests')+' · '+num(totals.cache_hits)+' '+t('cached')
+          :t('MusicBrainz pilot')+' · '+latest.status+' · '+num(latest.summary.done)+' / '+num(latest.summary.tracks);
         if(node('pilot-background-text').textContent!==message)node('pilot-background-text').textContent=message;
         banner.dataset.state=['running','queued'].includes(latest.status)?'running':'ready';
       }
