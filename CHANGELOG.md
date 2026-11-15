@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Consolidate temporary-copy and page-specific information banners into the shared, responsive header between titles and selectors. The Play history, Collection statistics and Library lab explanations retain translated content and working help links behind Details.
+
 - Highlight the local-library entry on the home page and shared header; use category-only, smaller multiline bubble labels.
 
 - Add shared loading feedback after 200 ms, elapsed time and a one-second waiting notice, with a clearer message after 30 seconds without a response or progress change. Keep background status checks quiet and clear feedback after completion, cancellation or failure.
