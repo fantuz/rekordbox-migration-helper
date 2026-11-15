@@ -115,9 +115,19 @@ function labPilotButtons() {
 }
 $('#lab-pilot-consent').onchange=labPilotButtons;
 $('#lab-pilot-enabled').onchange=wrap(async()=>{try{const r=await labPost('features',{musicbrainz_enabled:$('#lab-pilot-enabled').checked});$('#lab-pilot-enabled').checked=r.musicbrainz_enabled;}finally{labPilotButtons();}});
+const labPilotSelection=()=>({snapshot:musicBrainzSnapshot(),
+  top_genres:$('#lab-pilot-top').value,seed:$('#lab-pilot-seed').value,
+  speed:$('#lab-pilot-speed').value,sample_size:$('#lab-pilot-size').value,
+  target:$('#lab-pilot-target').value,target_value:$('#lab-pilot-target-value').value});
 $('#lab-pilot-preview').onclick=wrap(async()=>{
-  const r=await labPost('musicbrainz/preview',{snapshot:musicBrainzSnapshot(),top_genres:$('#lab-pilot-top').value,seed:$('#lab-pilot-seed').value,speed:$('#lab-pilot-speed').value,sample_size:$('#lab-pilot-size').value,target:$('#lab-pilot-target').value,target_value:$('#lab-pilot-target-value').value});labBatch=r.id;labPilotOffset=0;labPilotPreviewDirty=false;
-  preferences.set('workbench-lab-batch',labBatch);$('#lab-pilot-consent').checked=false;await labLoadPilot();labPilotButtons();
+  const requested=labPilotSelection(),signature=JSON.stringify(requested);
+  const r=await labPost('musicbrainz/preview',requested);
+  labBatch=r.id;labPilotOffset=0;
+  // The user may switch targets while preview generation is in flight.
+  // Never enable Start for a preview of a different selection.
+  labPilotPreviewDirty=JSON.stringify(labPilotSelection())!==signature;
+  preferences.set('workbench-lab-batch',labBatch);$('#lab-pilot-consent').checked=false;
+  await labLoadPilot();labPilotButtons();
 });
 async function labLoadPilot(feedback=true) {
   if(!labBatch)return;
