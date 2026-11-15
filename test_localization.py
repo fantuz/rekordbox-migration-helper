@@ -131,6 +131,36 @@ class LocalizationTests(unittest.TestCase):
             keys=set(literal_message_keys(path.read_text(encoding='utf-8')))
             self.assertFalse(keys-available,(path.name,sorted(keys-available)))
 
+    def test_new_pages_have_translations_in_every_supported_language(self):
+        messages=json.loads((ASSETS/'locales.json').read_text(encoding='utf-8'))['messages']
+        required=('queued','preview','complete_with_errors','interrupted','cancelled','service_paused',
+                  'candidate_needs_review','needs_local_tags','no_match','service_error','not_requested',
+                  'requests','cached','votes','done','candidate matches','rating available',
+                  'genre available','year available','tags available','service errors',
+                  'Results pages','Sort all results','Sort all results by','Details',
+                  'Not playable','Playable?','Group by','Other','Bubble sizes reflect included metadata only.',
+                  'Monitor source journal changes','Choose a saved source capture to monitor.',
+                  'Source scan: maximum 1,000,000 entries or 120 seconds.')
+        for key in required:
+            self.assertIn(key,messages)
+            self.assertEqual(set(messages[key]),set(LANGUAGES)-{'en'},key)
+            self.assertTrue(all(messages[key][lang].strip() for lang in LANGUAGES if lang!='en'),key)
+        for key,lang in [('queued','de'),('Not playable','fr'),('Group by','it')]:
+            self.assertNotEqual(messages[key][lang],key)
+
+    def test_dynamic_localization_paths_and_metadata_are_kept_separate(self):
+        source=(ASSETS/'lab.js').read_text(encoding='utf-8')
+        self.assertIn('I18n.t(r.status)',source)
+        self.assertIn('I18n.t(t.status)',source)
+        self.assertIn("I18n.t('requests')",source)
+        self.assertIn("I18n.t('cached')",source)
+        self.assertIn('I18n.t(k.replaceAll',source)
+        offline=(ASSETS/'explorer.js').read_text(encoding='utf-8')
+        self.assertIn('initializeOfflineBubbles();snapshotNotes();render();',offline)
+        self.assertIn("I18n.t('Other')",offline)
+        journal=(ASSETS/'app.js').read_text(encoding='utf-8')
+        self.assertIn('function setJournalStatus(',journal)
+
     def test_offline_template_replacement_tokens_occur_once(self):
         text=(ASSETS/'explorer.html').read_text(encoding='utf-8')
         for token in ('@@TITLE@@','@@VIEW@@','@@MODE@@','@@STYLES@@','@@DATA@@','@@APP@@'):self.assertEqual(text.count(token),1,token)

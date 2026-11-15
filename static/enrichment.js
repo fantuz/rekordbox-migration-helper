@@ -2,6 +2,8 @@
 window.BackgroundPilot=(()=>{
   const node=id=>document.getElementById(id),t=key=>I18n.t(key);
   let pending=null,latest=null,known=new Map(),choiceSignature='',noticeKey='';
+  const targetLabels={balanced:'Balanced genres',random:'Random selection',genre:'Genre',album:'Album',year:'Year',playlist:'Playlist',missing_genre:'Missing genre',missing_album:'Missing album',missing_year:'Missing year'};
+  const targetLabel=value=>t(targetLabels[value]||value);
   async function refresh(){
     if(pending)return pending;
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
@@ -43,7 +45,7 @@ window.BackgroundPilot=(()=>{
       // completed work must not look as if it disappeared from the counters.
       const visible=[...active,...rows.filter(r=>!['preview','running','queued'].includes(r.status)).slice(0,10)];
       const focused=node('lab-pilot-queue').contains(document.activeElement)?document.activeElement.dataset.pilotBatch:null;
-      node('lab-pilot-queue').innerHTML=visible.map(r=>'<div class="pilot-queue-row"><button class="text-button" data-pilot-batch="'+esc(r.id)+'" aria-pressed="'+(r.id===labBatch)+'">'+esc((r.queue_position?'#'+r.queue_position+' · ':'')+(r.label||t('Library snapshot')))+'<small>'+esc(t(r.summary.target==='balanced'?'Balanced genres':r.summary.target))+(r.summary.target_value?' · '+esc(r.summary.target_value):'')+'</small></button><span>'+esc(t(r.status))+'</span><span>'+num(r.summary.done||0)+' / '+num(r.summary.tracks||0)+' '+esc(t('tracks'))+'</span></div>').join('');
+      node('lab-pilot-queue').innerHTML=visible.map(r=>'<div class="pilot-queue-row"><button class="text-button" data-pilot-batch="'+esc(r.id)+'" aria-pressed="'+(r.id===labBatch)+'">'+esc((r.queue_position?'#'+r.queue_position+' · ':'')+(r.label||t('Library snapshot')))+'<small>'+esc(targetLabel(r.summary.target||'balanced'))+(r.summary.target_value?' · '+esc(r.summary.target_value):'')+'</small></button><span>'+esc(t(r.status))+'</span><span>'+num(r.summary.done||0)+' / '+num(r.summary.tracks||0)+' '+esc(t('tracks'))+'</span></div>').join('');
       for(const button of node('lab-pilot-queue').querySelectorAll('[data-pilot-batch]')){
         button.onclick=wrap(()=>selectBatch(button.dataset.pilotBatch));
         if(button.dataset.pilotBatch===focused)button.focus({preventScroll:true});

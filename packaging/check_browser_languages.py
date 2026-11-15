@@ -76,6 +76,17 @@ def main():
                     page.wait_for_function('(label)=>document.querySelector("#dj-result-title").textContent===label',arg=messages[code]['All matching tracks'])
                     assert page.locator('#search').get_attribute('placeholder')==messages[code]['Find a track or artist']
                     assert page.locator('#search').get_attribute('aria-label')==messages[code]['Search candidate pairs']
+                    if code in ('de','fr','it','ar'):
+                        page.locator('.nav[data-view="musicbrainz"]').click()
+                        page.wait_for_selector('#lab-pilot-target option[value="random"]')
+                        assert page.locator('#lab-pilot-target option[value="random"]').inner_text()==messages[code]['Random selection']
+                        assert page.locator('#lab-pilot-target option[value="missing_genre"]').inner_text()==messages[code]['Missing genre']
+                        page.locator('.nav[data-view="file-health"]').click()
+                        assert page.locator('#file-health-status option[value="not_playable"]').inner_text()==messages[code]['Not playable']
+                        page.locator('.nav[data-view="analyzer"]').click()
+                        assert page.locator('#analyzer-journal-monitor label span').inner_text()==messages[code]['Monitor source journal changes']
+                        page.locator('.nav[data-view="insights"]').click()
+                        page.wait_for_selector('[data-insight-open="t0"]')
                     report['languages'].append({'code':code,'app':'passed','metadata_unchanged':True})
                     assert page.locator('html').get_attribute('dir')==('rtl' if code=='ar' else 'ltr')
                     assert page.locator('#dj-snapshot').evaluate('(node)=>getComputedStyle(node).direction')=='ltr'
@@ -131,8 +142,13 @@ def main():
                 from check_activity_ui import check_activity_ui
                 report['activity_ui']=check_activity_ui(browser,base,args.output)
                 page.goto(Path(offline['directory']).joinpath('library.html').as_uri(),wait_until='load')
+                page.select_option('#offline-bubble-dimension','artists')
                 for code in LANGUAGES:
                     page.select_option('#language',code);page.wait_for_function('(code)=>document.documentElement.lang===code',arg=code)
+                    assert page.locator('#offline-bubble-title').inner_text()==messages[code]['Library bubbles']
+                    assert page.locator('#offline-bubble-panel label span').inner_text()==messages[code]['Group by']
+                    assert page.locator('#offline-bubble-dimension').input_value()=='artists'
+                    assert page.locator('#offline-bubble-dimension option:checked').inner_text()==messages[code]['Artists']
                     page.locator('#navigation a[data-view="tracks"]').click();page.wait_for_selector('#metadata-table tbody tr')
                     assert page.locator('#metadata-table').inner_text().find(titles[9])>=0
                     assert page.locator('img[src="x"]').count()==0
