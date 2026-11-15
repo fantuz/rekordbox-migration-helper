@@ -2,21 +2,24 @@
 
 <!-- project-badges:start -->
 <p align="center">
-  <a href="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml"><img src="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml/badge.svg?branch=main" alt="Build and native runtime checks" height="20"></a>
+  <!-- Build confidence and release availability -->
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml"><img src="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/check-and-package.yml/badge.svg?branch=main" alt="Cross-platform build and runtime checks" height="20"></a>
   <a href="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/security.yml"><img src="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/security.yml/badge.svg?branch=main" alt="Security checks" height="20"></a>
-  <a href="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/release.yml"><img src="https://github.com/fantuz/rekordbox-migration-helper/actions/workflows/release.yml/badge.svg" alt="Release packages" height="20"></a>
   <a href="https://github.com/fantuz/rekordbox-migration-helper/releases/latest"><img src="https://img.shields.io/github/v/release/fantuz/rekordbox-migration-helper?label=release" alt="Latest stable release" height="20"></a>
-  <a href="https://github.com/fantuz/rekordbox-migration-helper/releases"><img src="https://img.shields.io/github/downloads/fantuz/rekordbox-migration-helper/total?label=downloads" alt="Downloads" height="20"></a>
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/releases"><img src="https://img.shields.io/github/downloads/fantuz/rekordbox-migration-helper/total?label=downloads" alt="GitHub release downloads" height="20"></a>
   <br>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/fantuz/rekordbox-migration-helper" alt="MIT license" height="20"></a>
-  <a href="https://github.com/fantuz/rekordbox-migration-helper/stargazers"><img src="https://img.shields.io/github/stars/fantuz/rekordbox-migration-helper?style=flat" alt="GitHub stars" height="20"></a>
-  <a href="https://github.com/fantuz/rekordbox-migration-helper/issues"><img src="https://img.shields.io/github/issues/fantuz/rekordbox-migration-helper" alt="Open issues" height="20"></a>
-  <a href="https://github.com/fantuz/rekordbox-migration-helper/commits/main"><img src="https://img.shields.io/github/last-commit/fantuz/rekordbox-migration-helper/main" alt="Last commit on main" height="20"></a>
-  <br>
-  <a href="#start"><img src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-507269" alt="Supported platforms" height="20"></a>
-  <a href="#start"><img src="https://img.shields.io/badge/Python-3.13%2B-3776ab" alt="Linux source runtime: Python 3.13 or newer" height="20"></a>
+  <!-- Why a DJ might use the project -->
+  <a href="#feature-inventory"><img src="https://img.shields.io/badge/DJ_library-health-72509a" alt="DJ library health and maintenance" height="20"></a>
+  <a href="SECURITY.md"><img src="https://img.shields.io/badge/privacy-local--first-176d5e" alt="Local-first: files and libraries stay on this computer" height="20"></a>
+  <a href="#start"><img src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-507269" alt="Linux, Windows and macOS" height="20"></a>
   <a href="docs/LOCALIZATION.md"><img src="https://img.shields.io/badge/interface-13%20languages-2e7d32" alt="Thirteen interface languages" height="20"></a>
-  <a href="SECURITY.md"><img src="https://img.shields.io/badge/security-private%20reporting-507269" alt="Security policy and private reporting" height="20"></a>
+  <br>
+  <!-- Openness, contribution and source details -->
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/fantuz/rekordbox-migration-helper" alt="MIT license" height="20"></a>
+  <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-2e7d32" alt="Contributions welcome" height="20"></a>
+  <a href="https://github.com/fantuz/rekordbox-migration-helper/stargazers"><img src="https://img.shields.io/github/stars/fantuz/rekordbox-migration-helper?style=flat" alt="GitHub stars" height="20"></a>
+  <a href="#start"><img src="https://img.shields.io/badge/Python-3.13%2B-3776ab" alt="Linux source runtime: Python 3.13 or newer" height="20"></a>
+  <a href="SECURITY.md"><img src="https://img.shields.io/badge/security-private%20reporting-507269" alt="Private vulnerability reporting" height="20"></a>
 </p>
 <!-- project-badges:end -->
 
