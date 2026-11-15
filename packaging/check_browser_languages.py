@@ -78,7 +78,7 @@ def main():
                     assert page.locator('#search').get_attribute('aria-label')==messages[code]['Search candidate pairs']
                     if code in ('de','fr','it','ar'):
                         page.locator('.nav[data-view="musicbrainz"]').click()
-                        page.wait_for_selector('#lab-pilot-target option[value="random"]')
+                        page.wait_for_selector('#lab-pilot-target option[value="random"]',state='attached')
                         assert page.locator('#lab-pilot-target option[value="random"]').inner_text()==messages[code]['Random selection']
                         assert page.locator('#lab-pilot-target option[value="missing_genre"]').inner_text()==messages[code]['Missing genre']
                         page.locator('.nav[data-view="file-health"]').click()

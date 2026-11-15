@@ -8,8 +8,8 @@ assert(controller.includes('pollAnalyzerJournal'));
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 async function run(){
   let request=deferred(),capture=deferred(),posts=0,gets=0,renders=0;
-  const nodes={'#analyzer-journal-watch':{checked:true},'#view-analyzer':{hidden:false},'#analyzer-journal-state':{textContent:''}};
-  const context=vm.createContext({$:id=>nodes[id],document:{hidden:false},busy:false,window:{},Date,setInterval:()=>{},
+  const nodes={'#analyzer-journal-watch':{checked:true},'#view-analyzer':{hidden:false},'#analyzer-journal-state':{textContent:'',dataset:{},removeAttribute:()=>{}}};
+  const context=vm.createContext({$:id=>nodes[id],document:{hidden:false},busy:false,window:{addEventListener:()=>{}},I18n:{t:key=>key},Date,setInterval:()=>{},
     api:async(_url,options)=>{if(options.method){posts++;return {job:'synthetic'};}gets++;return request.promise;},
     poll:()=>capture.promise,renderAnalysis:()=>{renders++;},loadAnalyzer:async()=>{},snapshotMoment:()=>''});
   vm.runInContext(controller,context);
