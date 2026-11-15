@@ -42,8 +42,7 @@ window.FileHealth=(()=>{
       if(request!==revision || selected!==chosen())return;
       renderCounts(r);renderRows(r);
       const time=r.scan_time?snapshotMoment(new Date(r.scan_time*1000).toISOString()):label('Not checked');
-      node('state').textContent=label('Scan')+': '+label(r.scan_state)+' · '+label('Last checked')+': '+time+
-        ' · '+label('The four states are advisory evidence, not deletion recommendations.');
+      node('state').textContent=label('Scan local files')+': '+label(r.scan_state)+' · '+label('Last checked')+': '+time;
     }catch(e){if(request===revision)node('state').textContent=e.message;}
   }
   async function load(){
@@ -71,9 +70,8 @@ window.FileHealth=(()=>{
       const job=await api('/api/file-health/scan',{method:'POST',body:JSON.stringify({source:selected,force:true})});
       await poll(job.job);
     }finally{
-      if(!node('source').value)return;
-      await loadResults();
-      node('scan').disabled=false;
+      if(node('source').value)await loadResults();
+      node('scan').disabled=!node('source').value;
     }
   });
   window.addEventListener('workbench-language',()=>{if(!node('source').closest('.view').hidden)void loadResults();});
