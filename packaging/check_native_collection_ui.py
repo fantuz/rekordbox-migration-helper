@@ -71,6 +71,15 @@ def check_native_collection_ui(browser, base, data, output, root):
         page.locator('[data-native-group]').first.click()
         page.wait_for_selector('.native-detail .native-compare-record')
         assert page.locator('.native-detail .native-compare-record').count() == 2
+        page.wait_for_selector('.native-file-summary .file-status-unverified')
+        assert page.locator('.native-detail .native-file-status .file-status-unverified').count() == 2
+        page.select_option('.native-file-filter','playable')
+        assert page.locator('.native-detail .native-compare-record:visible').count() == 0
+        page.select_option('.native-file-filter','all')
+        assert page.locator('.native-detail .native-compare-record:visible').count() == 2
+        page.locator('.native-file-refresh').click()
+        page.wait_for_function('!document.querySelector(".native-file-refresh").disabled')
+        assert page.locator('.native-file-summary .file-status-unverified').count() == 1
         page.select_option('.native-status', 'keep_separate')
         page.locator('.native-save').click()
         page.wait_for_function("document.querySelector('.native-status')?.value==='keep_separate'")
