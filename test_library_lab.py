@@ -228,6 +228,43 @@ class MusicBrainzTests(unittest.TestCase):
         self.assertIsNone(proposals({'score':100,'rating':{'value':5,'votes-count':0}})['community_score'])
         self.assertEqual(proposals({'rating':{'value':'4.2','votes-count':6}})['community_score'],4.2)
 
+
+    def test_fallback_search_is_bounded_and_keeps_version_review(self):
+        from musicbrainz_pilot import search_strategies,candidates_for
+        track=song('fallback',title='Dancing (Extended Mix)',artist='Example DJ')
+        options=search_strategies(track,public_query(track))
+        self.assertEqual([kind for kind,_ in options],['exact','base_title','title_only'])
+        self.assertNotIn('Extended Mix',options[1][1])
+        isrc={'isrc':'USABC1234567','query':'isrc:USABC1234567'}
+        self.assertEqual(len(search_strategies(track,isrc)),1)
+        recording={'id':'01234567-89ab-cdef-0123-456789abcdef',
+                   'title':'Dancing','artist-credit':[{'name':'Example DJ'}], 'length':240000}
+        candidate=candidates_for(track,[recording])[0]
+        self.assertTrue(candidate['version_needs_review'])
+        self.assertFalse(candidate['match_approved'])
+
+    def test_empty_strict_search_uses_tag_fallback_without_approval(self):
+        track=song('fallback',title='Dancing (Extended Mix)',artist='Example DJ')
+        batch=create_batch(self.store,snapshot([track]))
+        calls=[]
+        recording={'id':'01234567-89ab-cdef-0123-456789abcdef',
+                   'title':'Dancing','artist-credit':[{'name':'Example DJ'}], 'length':240000}
+        def lookup(endpoint,params):
+            calls.append((endpoint,params))
+            if endpoint=='recording/':
+                return {'recordings':[recording] if 'Extended Mix' not in params['query'] else []}
+            return {'id':recording['id'],'rating':{'votes-count':0},'releases':[]}
+        client=SimpleNamespace(requests=0,cache_hits=0,get=lookup)
+        output=run_batch(self.store,batch['id'],client,lambda *_:None)
+        self.assertEqual(output['status'],'complete')
+        with self.store.connection() as db:
+            found=json.loads(db.execute('SELECT payload FROM mb_results WHERE batch_id=?',(batch['id'],)).fetchone()[0])
+        self.assertEqual(found['search_strategy'],'base_title')
+        self.assertEqual(found['search_attempts'],2)
+        self.assertTrue(found['candidates'][0]['version_needs_review'])
+        self.assertFalse(found['match_approved'])
+        self.assertEqual([value['limit'] for endpoint,value in calls if endpoint=='recording/'],[20,20])
+
     def test_feature_disabled_blocks_even_cached_retrieval_and_delay_has_floor(self):
         with self.assertRaises(ValueError):MusicBrainzClient(self.store,RateGate(),lambda:True,delay=.5)
         client=MusicBrainzClient(self.store,RateGate(),lambda:False)
