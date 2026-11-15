@@ -136,6 +136,20 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.evaluate('(id)=>{labBatch=id;return labLoadPilot();}',batch['id'])
     page.locator('#lab-pilot-enabled').check();page.locator('#lab-pilot-consent').check();page.locator('#lab-pilot-start').click()
     page.wait_for_function('document.querySelector("#pilot-background-text").textContent.includes("complete")')
+    # A finished, persisted batch must relabel its status and counters when
+    # the user changes language, without starting another provider request.
+    from pathlib import Path
+    from localization import catalogues
+    translations=catalogues(Path(__file__).resolve().parents[1]/'static')
+    for language in ('de','fr','it'):
+        page.select_option('#language',language)
+        page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
+        expected=translations[language]['complete']
+        page.wait_for_function('(label)=>document.querySelector("#lab-pilot-progress")?.textContent.startsWith(label)',arg=expected)
+        assert page.locator('#lab-pilot-progress').inner_text().find(translations[language]['requests'])>=0
+        assert page.locator('#lab-pilot-progress').inner_text().find(translations[language]['cached'])>=0
+    page.select_option('#language','en')
+    page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
     assert page.evaluate('busy') is False
     assert page.locator('#lab-pilot-start').is_disabled()
     page.locator('.nav[data-view="intelligence"]').click()
