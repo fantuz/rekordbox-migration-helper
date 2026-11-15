@@ -16,7 +16,7 @@ class NativeIntelligenceTests(unittest.TestCase):
     def setUp(self):
         stack=ExitStack();self.addCleanup(stack.close)
         self.root=Path(stack.enter_context(tempfile.TemporaryDirectory()))
-        self.data=self.root/'work';self.original=self.root/'master.db'
+        self.data=self.root/'work';self.original=self.root/'source'/'master.db';self.original.parent.mkdir()
         with closing(native_fixture(self.original)) as db:
             db.executescript("""CREATE TABLE djmdPlaylist(ID TEXT,Name TEXT,Attribute INTEGER);
                 CREATE TABLE djmdSongPlaylist(ID TEXT,PlaylistID TEXT,ContentID TEXT,TrackNo INTEGER);
