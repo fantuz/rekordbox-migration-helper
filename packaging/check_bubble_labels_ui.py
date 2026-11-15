@@ -46,7 +46,12 @@ def check_bubble_labels_ui(page,base,sid,output,store):
         page.set_viewport_size({'width':width,'height':1050});verify()
         if width==1920:
             assert page.locator('.bubble-label').count()>0
-            assert page.locator('.bubble-node').first.locator('.bubble-label').all_text_contents()==['Wide WWW collection with a deliberately long category name'] or len(' '.join(page.locator('.bubble-node').first.locator('.bubble-label').all_text_contents()))>=45
+            visible_lines=page.locator('.bubble-node').first.locator('.bubble-label').all_text_contents()
+            # A measured fit may shorten the name; it must preserve its leading
+            # category text rather than a bare number or an arbitrary suffix.
+            visible=''.join(''.join(line.split()).rstrip('…') for line in visible_lines)
+            expected=''.join(labels[0].split())
+            assert expected.startswith(visible) and len(visible)>=16,(visible_lines,labels[0])
             page.locator('#library-bubbles').scroll_into_view_if_needed()
             page.screenshot(path=str(output/'bubble-labels-desktop.png'))
     page.set_viewport_size({'width':1366,'height':1050})
