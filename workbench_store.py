@@ -29,6 +29,8 @@ class Store:
               CREATE TABLE IF NOT EXISTS mb_batches(id TEXT PRIMARY KEY,snapshot_id TEXT,created TEXT,status TEXT,summary TEXT,sample TEXT);
               CREATE TABLE IF NOT EXISTS mb_results(batch_id TEXT,track_id TEXT,status TEXT,payload TEXT,PRIMARY KEY(batch_id,track_id));
               CREATE TABLE IF NOT EXISTS mb_cache(key TEXT PRIMARY KEY,created REAL,expires REAL,payload TEXT);
+              CREATE TABLE IF NOT EXISTS file_status_cache(key TEXT PRIMARY KEY,status TEXT NOT NULL,checked_at REAL NOT NULL);
+              CREATE INDEX IF NOT EXISTS file_status_age ON file_status_cache(checked_at);
             ''')
 
     @contextmanager
