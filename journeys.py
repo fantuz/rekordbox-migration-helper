@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from library_checks import metadata_consistency
 from workbench_store import now
+from journey_templates import TEMPLATES
 
 
 STEPS = (
@@ -20,7 +21,7 @@ STEPS = (
 
 
 def new_plan(kind, source=''):
-    if kind not in ('migration', 'integrity'):
+    if kind not in ('migration', 'integrity') and kind not in TEMPLATES:
         raise ValueError('Choose a migration or integrity journey')
     if not isinstance(source, str) or len(source) > 128:
         raise ValueError('Choose a loaded workspace or saved collection snapshot')
@@ -61,9 +62,12 @@ def update_plan(plan, changes, snapshot_exists):
     if 'step' in changes:
         step = changes['step']
         status = changes.get('status', 'pending')
-        if not isinstance(step, str) or step not in {row[0] for row in STEPS} or status not in ('pending', 'confirmed', 'skipped'):
+        template=TEMPLATES.get(plan['kind'])
+        available={row['id'] for row in template['steps']} if template else {row[0] for row in STEPS}
+        optional={row['id'] for row in template['steps'] if row['optional']} if template else {'cleanup'}
+        if not isinstance(step, str) or step not in available or status not in ('pending', 'confirmed', 'skipped'):
             raise ValueError('Choose a journey step and confirmation status')
-        if status == 'skipped' and step != 'cleanup':
+        if status == 'skipped' and step not in optional:
             raise ValueError('Only optional cleanup can be skipped')
         result['steps'][step] = {'status': status, 'updated': now(), 'basis': 'user statement'}
     result['updated'] = now()

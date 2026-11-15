@@ -85,6 +85,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Inspect session progression using saved BPM, key and colour tags; no actual transition timing is inferred.
 - Rank rotation and discovery candidates using disclosed play-count, history, cue and date evidence.
 - Draw reproducible, genre-balanced random selections with a selection seed.
+- Follow eight optional saved journeys for both Serato migration directions, consistency checks, duplicate review, enrichment, metadata refinement, sharing, and backup preparation. Serato → rekordbox is a preparation/checklist workflow; no Serato importer is implemented. Every tool remains accessible independently.
 - Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
 - Bubble labels keep a consistent readable size, wrap to measured text width and highlight the matching category on hover or keyboard focus. Circle areas continue to represent the chosen metric.
 - Audit preparation coverage, saved analysis references and STEMS-related evidence.
@@ -164,7 +165,11 @@ Linux x86-64 users can extract the complete portable TAR.GZ, open the extracted 
 
 For the Linux source version, use Python 3.13 or newer and run `./start.sh`. The first launch installs requirements into a local virtual environment. The application opens your browser and binds only to loopback. Use **Stop and clean up** in its footer when finished.
 
-Windows users extract the complete portable ZIP and double-click **Library Workbench.exe**. Python and dependencies are included. Mac users choose the Apple Silicon (`arm64`) or Intel (`x86_64`) archive, extract it and open **Library Workbench.app**. Mac applications are ad-hoc signed, not Developer ID signed or notarized; macOS may restrict opening them. Source checkout remains available for developers.
+Windows users extract the complete portable ZIP and double-click **Library Workbench.exe**. Python and dependencies are included.
+
+**Windows first launch:** the executable is currently unsigned. If Microsoft Defender SmartScreen shows **Windows protected your PC**, and you downloaded this copy from this project’s [GitHub Releases](https://github.com/fantuz/rekordbox-migration-helper/releases), click **More info**, check that the app is **Library Workbench.exe**, then click **Run anyway**. **Unknown publisher** is expected for the unsigned build. If your organization prevents this option, follow its software approval process. You do not need to disable SmartScreen.
+
+Mac users choose the Apple Silicon (`arm64`) or Intel (`x86_64`) archive, extract it and open **Library Workbench.app**. Mac applications are ad-hoc signed, not Developer ID signed or notarized; macOS may restrict opening them. Source checkout remains available for developers.
 
 ## Prepare your ZIP and XML
 
