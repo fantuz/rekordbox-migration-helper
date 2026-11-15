@@ -1,6 +1,6 @@
 # Interface and workflow
 
-Use the language selector for interface labels, short guidance and confirmations. Library metadata, file paths, cue labels, technical identifiers and raw diagnostics retain their source values. The full project documentation currently uses English. The Documentation page renders the bundled Markdown; it does not download documentation or images from the internet.
+Use the language selector for interface labels, short guidance and confirmations. MusicBrainz batch states, provider counters, result sorting, file-health statuses, journal-monitor guidance and offline bubble selectors use the shared translated catalogue. Dynamic labels refresh with language changes while preserving selected bubble dimensions; user-provided tags, paths, identifiers, provider text and technical diagnostics remain unchanged. Library metadata, file paths, cue labels, technical identifiers and raw diagnostics retain their source values. The full project documentation currently uses English. The Documentation page renders the bundled Markdown; it does not download documentation or images from the internet.
 
 ## Import and source analysis
 

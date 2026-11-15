@@ -669,12 +669,26 @@ async function loadAnalyzer() {
   $$("[data-open-analysis]").forEach(button=>button.onclick=wrap(async()=>{const report=await api('/api/analyzer/'+button.dataset.openAnalysis);renderAnalysis(report);if(report.metadata_available && window.Journeys){await Journeys.load();await Journeys.selectContext('capture:'+report.id,true);}$("#analyzer-result").scrollIntoView({behavior:"smooth",block:"start"});}));
 }
 let journalReport=null,journalStamp=null,journalStable=0,journalLastRefresh=0,journalActive=false,journalPolling=false,journalRevision=0;
+function setJournalStatus(keys,suffix='',tail=[]){
+  const element=$('#analyzer-journal-state');if(!element)return;
+  element.removeAttribute('data-i18n');
+  element.dataset.messageKeys=JSON.stringify(keys);
+  element.dataset.messageSuffix=suffix;
+  element.dataset.messageTail=JSON.stringify(tail);
+  element.textContent=keys.map(key=>I18n.t(key)).join('')+suffix+tail.map(key=>I18n.t(key)).join('');
+}
+window.addEventListener('workbench-language',()=>{
+  const element=$('#analyzer-journal-state');
+  if(!element?.dataset.messageKeys)return;
+  const keys=JSON.parse(element.dataset.messageKeys),tail=JSON.parse(element.dataset.messageTail||'[]');
+  element.textContent=keys.map(key=>I18n.t(key)).join('')+(element.dataset.messageSuffix||'')+tail.map(key=>I18n.t(key)).join('');
+});
 function journalCaptureSelected(report){
   journalRevision++;
   journalReport=report?.format==='Modern desktop master.db'?report:null;
   journalStamp=null;journalStable=0;
   if($('#analyzer-journal-state'))
-    $('#analyzer-journal-state').textContent=journalReport?'Source captured · monitoring is available':'Journal monitoring requires a modern source database capture';
+    setJournalStatus([journalReport?'Source captured · monitoring is available':'Journal monitoring requires a modern source database capture']);
 }
 async function pollAnalyzerJournal(){
   if(!$('#analyzer-journal-watch')?.checked || !journalReport || $('#view-analyzer').hidden || document.hidden || busy || journalActive || journalPolling)return;
@@ -684,15 +698,15 @@ async function pollAnalyzerJournal(){
   try{
     const state=await api('/api/analyzer/'+encodeURIComponent(old.id)+'/journal-status',{feedback:false});
     if(!current())return;
-    if(!state.supported){$('#analyzer-journal-state').textContent=state.message;return;}
+    if(!state.supported){setJournalStatus(['Journal monitor unavailable: '],state.message);return;}
     if(!state.changed){
       journalStamp=null;journalStable=0;
-      $('#analyzer-journal-state').textContent='Source files match this capture · no changes detected';
+      setJournalStatus(['Source files match this capture · no changes detected']);
       return;
     }
     if(state.signature===journalStamp)journalStable++;
     else{journalStamp=state.signature;journalStable=1;}
-    $('#analyzer-journal-state').textContent='Database/journal activity detected · '+(journalStable<2?'waiting for stable files':'stable changes detected')+(state.wal_present?' · WAL present':'');
+    setJournalStatus(['Database/journal activity detected · ',journalStable<2?'waiting for stable files':'stable changes detected',...(state.wal_present?[' · WAL present']:[])]);
     if(journalStable<2 || Date.now()-journalLastRefresh<30000 || busy)return;
     journalActive=true;journalLastRefresh=Date.now();
     try{
@@ -703,17 +717,17 @@ async function pollAnalyzerJournal(){
       const stillSelected=()=>appliedRevision===journalRevision && $('#analyzer-journal-watch').checked && !$('#view-analyzer').hidden && !document.hidden;
       if(!stillSelected())return;
       if(result.metadata_available && window.Journeys){await Journeys.load();if(!stillSelected())return;await Journeys.selectContext('capture:'+result.id,true);}
-      $('#analyzer-journal-state').textContent='New read-only snapshot captured · '+snapshotMoment(result.created);
+      setJournalStatus(['New read-only snapshot captured · '],snapshotMoment(result.created));
     }catch(error){
-      if(current())$('#analyzer-journal-state').textContent='Capture not applied: '+error.message+' · retry after files are stable';
+      if(current())setJournalStatus(['Capture not applied: '],error.message,[' · retry after files are stable']);
     }finally{journalActive=false;}
-  }catch(error){if(current())$('#analyzer-journal-state').textContent='Journal monitor unavailable: '+error.message;}
+  }catch(error){if(current())setJournalStatus(['Journal monitor unavailable: '],error.message);}
   finally{journalPolling=false;}
 }
 $('#analyzer-journal-watch').onchange=()=>{
   journalRevision++;
   journalStamp=null;journalStable=0;
-  if(!$('#analyzer-journal-watch').checked)$('#analyzer-journal-state').textContent='Journal monitoring disabled';
+  if(!$('#analyzer-journal-watch').checked)setJournalStatus(['Journal monitoring disabled']);
   else void pollAnalyzerJournal();
 };
 setInterval(()=>{void pollAnalyzerJournal();},4000);

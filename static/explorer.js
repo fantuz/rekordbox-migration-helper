@@ -132,7 +132,7 @@
       const hue=(i*137.508+175)%360;
       group.classList.add('offline-bubble-node');
       group.setAttribute('tabindex','0');group.setAttribute('role','button');
-      group.setAttribute('aria-label',g.label+' · '+number.format(g.count)+' '+I18n.t('tracks'));
+      group.setAttribute('aria-label',(g.label==='Other'?I18n.t('Other'):g.label)+' · '+number.format(g.count)+' '+I18n.t('tracks'));
       const open=()=>{
         if(aggregateOnly || g.label==='Other')go(key,{});
         else go('tracks',{...state,[bubbleMetricField[key]]:g.key});
@@ -142,7 +142,7 @@
         if(event.key==='Enter' || event.key===' '){event.preventDefault();open();}
       });
       group.append(bubbleElement('circle',{cx:g.x,cy:g.y,r:g.r,fill:'hsl('+hue+' 48% 59%)',stroke:'hsl('+hue+' 45% 35%)','stroke-width':2}));
-      const title=bubbleElement('title');title.textContent=g.label+' · '+number.format(g.count);group.append(title);
+      const title=bubbleElement('title');title.textContent=(g.label==='Other'?I18n.t('Other'):g.label)+' · '+number.format(g.count);group.append(title);
       if(g.r>20){
         const caption=bubbleElement('text',{x:g.x,y:g.y,'text-anchor':'middle','dominant-baseline':'middle',fill:'#152732','font-size':g.r>44?12:10,'font-weight':600});
         const trimmed=g.label.length>Math.floor(g.r/3)?g.label.slice(0,Math.floor(g.r/3))+'…':g.label;
@@ -150,16 +150,17 @@
       }
       svg.append(group);
     }
-    $('#offline-bubble-note').textContent=I18n.t('Tracks')+': '+number.format(count)+' · '+I18n.t('Categories')+': '+number.format(all.length)+(extra?' · '+'Other'+': '+number.format(extra):'');
+    $('#offline-bubble-note').textContent=I18n.t('Tracks')+': '+number.format(count)+' · '+I18n.t('Categories')+': '+number.format(all.length)+(extra?' · '+I18n.t('Other')+': '+number.format(extra):'');
     const legend=$('#offline-bubble-legend');legend.replaceChildren();
-    for(const g of all.slice(0,15)){const span=node('span',g.label+' · '+number.format(g.count));legend.append(span);}
+    for(const g of all.slice(0,15)){const span=node('span',(g.label==='Other'?I18n.t('Other'):g.label)+' · '+number.format(g.count));legend.append(span);}
   }
   function initializeOfflineBubbles(){
     const options=offlineBubbleDims.filter(([key])=>aggregateOnly?Object.hasOwn(data.aggregates.categories,key):included.has({bpm:'bpm',duration:'duration',years:'year',colours:'color_status'}[key]||bubbleMetricField[key]));
-    const panel=$('#offline-bubble-panel'),select=$('#offline-bubble-dimension');
+    const panel=$('#offline-bubble-panel'),select=$('#offline-bubble-dimension'),previous=select.value;
     panel.hidden=!options.length;
     if(!options.length)return;
     select.replaceChildren(...options.map(([key,label])=>{const option=node('option',I18n.t(label));option.value=key;return option;}));
+    if(options.some(([key])=>key===previous))select.value=previous;
     select.onchange=renderOfflineBubbles;
   }
   function render(){
@@ -234,5 +235,5 @@
   $("#reset").onclick=()=>go(view,{});$("#page-size").onchange=()=>{pageSize=Number($("#page-size").value);page=0;render();};$("#previous").onclick=()=>{page--;render();};$("#next").onclick=()=>{page++;render();};$("#close-detail").onclick=()=>$("#track-detail").close();
   $("#download-csv").onclick=()=>{const safe=v=>{let s=empty(v)?"":String(v);if(/^[=+\-@\t\r\n]/.test(s) || /^[\p{White_Space}\p{Cf}\p{Cc}]*[=+\-@]/u.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};const csv="\ufeff"+[tableColumns.map(c=>safe(c[0]==="duration"?I18n.t("Duration (seconds)"):c[1])).join(","),...shown.map(r=>tableColumns.map(([key])=>safe(r[key])).join(","))].join("\r\n");const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));const a=node("a");a.href=url;a.download="library-"+view+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};
   window.addEventListener("hashchange",route);route();
-  window.addEventListener('workbench-language',()=>{number=new Intl.NumberFormat(I18n.language);collator=new Intl.Collator(I18n.language,{numeric:true,sensitivity:'base'});for(const link of document.querySelectorAll('#navigation a'))link.textContent=pages[link.dataset.view];snapshotNotes();render();});
+  window.addEventListener('workbench-language',()=>{number=new Intl.NumberFormat(I18n.language);collator=new Intl.Collator(I18n.language,{numeric:true,sensitivity:'base'});for(const link of document.querySelectorAll('#navigation a'))link.textContent=pages[link.dataset.view];initializeOfflineBubbles();snapshotNotes();render();});
 })();

@@ -2,6 +2,8 @@
 window.BackgroundPilot=(()=>{
   const node=id=>document.getElementById(id),t=key=>I18n.t(key);
   let pending=null,latest=null,known=new Map(),choiceSignature='',noticeKey='';
+  const targetLabels={balanced:'Balanced genres',random:'Random selection',genre:'Genre',album:'Album',year:'Year',playlist:'Playlist',missing_genre:'Missing genre',missing_album:'Missing album',missing_year:'Missing year'};
+  const targetLabel=value=>t(targetLabels[value]||value);
   async function refresh(){
     if(pending)return pending;
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
@@ -9,13 +11,13 @@ window.BackgroundPilot=(()=>{
       const info=await api('/api/lab/musicbrainz/batches',{feedback:false,signal:controller.signal}),rows=info.batches;
       const signature=rows.map(r=>r.id+':'+r.status).join('|');
       if(signature!==choiceSignature){
-        labSelect('#lab-pilot-batches',rows,r=>(r.label || t('Library snapshot'))+' · '+r.status+' · '+date(r.created),t('Saved batches'));
+        labSelect('#lab-pilot-batches',rows,r=>(r.label || t('Library snapshot'))+' · '+t(r.status)+' · '+date(r.created),t('Saved batches'));
         choiceSignature=signature;
       }
       node('lab-pilot-batches').value=labBatch || '';
       for(const row of rows){
         if(['running','queued'].includes(known.get(row.id))&&!['running','queued'].includes(row.status))
-          notify(t('MusicBrainz pilot')+' · '+row.status);
+          notify(t('MusicBrainz pilot')+' · '+t(row.status));
         known.set(row.id,row.status);
       }
       latest=rows.find(r=>r.status==='running') || rows.find(r=>r.status==='queued') || rows.find(r=>r.id===labBatch&&r.status!=='preview') || rows.find(r=>r.status!=='preview');
@@ -33,7 +35,7 @@ window.BackgroundPilot=(()=>{
           ?t('MusicBrainz pilot')+' · '+num(running)+' '+t('running')+' · '+num(queued)+' '+t('queued')+' · '+
            num(totals.done)+' / '+num(totals.tracks)+' '+t('tracks')+' · '+
            num(totals.requests)+' '+t('requests')+' · '+num(totals.cache_hits)+' '+t('cached')
-          :t('MusicBrainz pilot')+' · '+latest.status+' · '+num(latest.summary.done)+' / '+num(latest.summary.tracks);
+          :t('MusicBrainz pilot')+' · '+t(latest.status)+' · '+num(latest.summary.done)+' / '+num(latest.summary.tracks);
         if(node('pilot-background-text').textContent!==message)node('pilot-background-text').textContent=message;
         banner.dataset.state=['running','queued'].includes(latest.status)?'running':'ready';
       }
@@ -43,7 +45,7 @@ window.BackgroundPilot=(()=>{
       // completed work must not look as if it disappeared from the counters.
       const visible=[...active,...rows.filter(r=>!['preview','running','queued'].includes(r.status)).slice(0,10)];
       const focused=node('lab-pilot-queue').contains(document.activeElement)?document.activeElement.dataset.pilotBatch:null;
-      node('lab-pilot-queue').innerHTML=visible.map(r=>'<div class="pilot-queue-row"><button class="text-button" data-pilot-batch="'+esc(r.id)+'" aria-pressed="'+(r.id===labBatch)+'">'+esc((r.queue_position?'#'+r.queue_position+' · ':'')+(r.label||t('Library snapshot')))+'<small>'+esc(r.summary.target||'balanced')+(r.summary.target_value?' · '+esc(r.summary.target_value):'')+'</small></button><span>'+esc(t(r.status))+'</span><span>'+num(r.summary.done||0)+' / '+num(r.summary.tracks||0)+' '+esc(t('tracks'))+'</span></div>').join('');
+      node('lab-pilot-queue').innerHTML=visible.map(r=>'<div class="pilot-queue-row"><button class="text-button" data-pilot-batch="'+esc(r.id)+'" aria-pressed="'+(r.id===labBatch)+'">'+esc((r.queue_position?'#'+r.queue_position+' · ':'')+(r.label||t('Library snapshot')))+'<small>'+esc(targetLabel(r.summary.target||'balanced'))+(r.summary.target_value?' · '+esc(r.summary.target_value):'')+'</small></button><span>'+esc(t(r.status))+'</span><span>'+num(r.summary.done||0)+' / '+num(r.summary.tracks||0)+' '+esc(t('tracks'))+'</span></div>').join('');
       for(const button of node('lab-pilot-queue').querySelectorAll('[data-pilot-batch]')){
         button.onclick=wrap(()=>selectBatch(button.dataset.pilotBatch));
         if(button.dataset.pilotBatch===focused)button.focus({preventScroll:true});
@@ -72,6 +74,7 @@ window.BackgroundPilot=(()=>{
   async function tick(){try{await refresh();}catch{/* Retry quietly if the local application is stopping or temporarily busy. */}
     setTimeout(tick,document.hidden?15000:4000);}
   tick();
+  window.addEventListener('workbench-language',()=>{choiceSignature='';void refresh().catch(()=>{});});
   return {refresh};
 })();
 
