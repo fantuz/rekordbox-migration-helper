@@ -70,6 +70,11 @@ def main():
                     assert page.locator('#search').get_attribute('aria-label')==messages[code]['Search candidate pairs']
                     report['languages'].append({'code':code,'app':'passed','metadata_unchanged':True})
                     assert page.locator('html').get_attribute('dir')==('rtl' if code=='ar' else 'ltr')
+                    assert page.evaluate('''() => {
+                        const select=document.querySelector('#journey-context-source').getBoundingClientRect();
+                        const detail=document.querySelector('.journey-context-detail').getBoundingClientRect();
+                        return select.right<=detail.left || detail.right<=select.left || select.bottom<=detail.top || detail.bottom<=select.top;
+                    }'''), 'Collection selector overlaps summary: '+code
                     if code in ('en','de','el','ru','ar','ja','pt-PT','pt-BR'):page.screenshot(path=str(args.output/(code+'-insights.png')),full_page=False)
                 page.locator('[data-insight-open="t0"]').click();page.wait_for_selector('#track-detail-dialog[open]')
                 assert page.locator('#track-comment-text').is_visible();note='Unsaved comment Σ Ł Č Русский 🎧 {slot0}'
@@ -122,6 +127,15 @@ def main():
                     if code=='ar':
                         sidebar=page.locator('.sidebar').bounding_box();main=page.locator('main').bounding_box()
                         assert sidebar['x']>=main['x']+main['width']-1,(sidebar,main)
+                        assert page.locator('td.numeric').first.evaluate('(node)=>getComputedStyle(node).direction')=='ltr'
+                        assert page.evaluate('''() => {
+                            const cell=[...document.querySelectorAll('td.numeric')].find(node=>node.textContent==='4 / 5');
+                            if(!cell)return false;
+                            const left=document.createRange(),right=document.createRange();
+                            left.setStart(cell.firstChild,0);left.setEnd(cell.firstChild,1);
+                            right.setStart(cell.firstChild,4);right.setEnd(cell.firstChild,5);
+                            return left.getBoundingClientRect().x<right.getBoundingClientRect().x;
+                        }'''), 'RTL reversed the rating numerator and denominator'
                         page.screenshot(path=str(args.output/'ar-offline.png'),full_page=False)
                 with page.expect_download() as download:
                     page.locator('#download-csv').click()
