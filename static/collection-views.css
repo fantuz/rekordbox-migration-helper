@@ -5,6 +5,17 @@
 .native-table{overflow:auto;max-width:100%;margin:16px 0}
 .native-table table{width:100%;border-collapse:collapse;text-align:left}
 .native-table td,.native-table th{padding:10px;vertical-align:top;border-bottom:1px solid var(--line,#bdcddd)}
+.native-collection .native-table thead th{background:var(--panel2);color:var(--text);font-size:12px;font-weight:650;line-height:1.35;vertical-align:middle;border-bottom:2px solid var(--line)}
+.native-collection .native-table thead th[aria-sort="ascending"],.native-collection .native-table thead th[aria-sort="descending"]{color:var(--accent)}
+.native-collection .native-table .native-global-sort{display:flex;width:100%;justify-content:space-between;align-items:center;gap:6px;padding:5px 3px;border-radius:6px;line-height:1.35;white-space:normal}
+.native-collection .native-table .native-global-sort::after{flex:none;margin-left:auto;font-size:12px}
+.native-collection .native-table .native-global-sort:hover{background:var(--panel)}
+.native-collection[aria-busy="true"] .native-table{opacity:.58;pointer-events:none}
+.native-pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px}
+.native-pagination .button{flex:0 0 auto;margin:0;min-height:34px;padding:6px 12px}
+.native-page-range{flex:1;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+@media(max-width:540px){.native-pagination .button{min-width:75px;padding:6px 8px}.native-page-range{order:-1;flex:0 0 100%;text-align:left}}
+
 .native-table code{overflow-wrap:anywhere;display:block;min-width:150px;max-width:360px}
 .native-detail{margin-top:16px}
 .native-status{max-width:420px;margin:12px 0}
