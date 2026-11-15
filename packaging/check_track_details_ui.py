@@ -22,7 +22,7 @@ def check_track_details_ui(browser,base,output):
     palette.append({'name':'No assigned colour','value':'','hex':None,'supported':True,'reason':''})
     def record():
         return {'original':deepcopy(original),'overrides':deepcopy(edits),'unlocked':False,
-                'editable_fields':['title','artist','album','genre','year','rating'],'scope':'capture:synthetic-quick-edits',
+                'editable_fields':['title','artist','album','genre','year'],'scope':'capture:synthetic-quick-edits',
                 'snapshot_label':'Synthetic quick edits','comment_captured':True,'colour_palette':palette,
                 'colour_editable':True,'colour_edit_reason':'','export_scope':'snapshot sidecar only'}
     context=browser.new_context(locale='en-US',viewport={'width':1440,'height':1000})
@@ -54,7 +54,7 @@ def check_track_details_ui(browser,base,output):
         if path=='/api/lab/overrides':
             payload=request.post_data_json;writes.append((request.method,deepcopy(payload)))
             assert payload['snapshot']==sid and payload['track_id']==tid
-            field=payload['field'];assert field in ('comment','colour')
+            field=payload['field'];assert field in ('comment','colour','rating')
             if field=='colour' and fail_colour:
                 fail_colour=False;route.fulfill(status=400,json={'error':'Synthetic rejected colour edit'});return
             if request.method=='DELETE':
@@ -147,6 +147,18 @@ def check_track_details_ui(browser,base,output):
         page.locator('#track-comment-reset').click()
         page.wait_for_function('(comment)=>document.querySelector("#track-working-count").textContent==="1" && document.querySelector("#track-comment-text").value===comment',arg=original['comment'])
         assert page.locator('#track-comment-text').input_value()==original['comment']
+        assert not page.locator('#track-detail-unlock').is_checked()
+        assert page.locator('[data-track-rating]').count()==6
+        assert page.locator('[data-track-rating="3"]').get_attribute('aria-pressed')=='true'
+        assert page.locator('[data-track-edit-field="rating"]').count()==0
+        page.locator('[data-track-rating="5"]').click()
+        page.wait_for_function('document.querySelector("[data-track-rating=\\"5\\"]")?.getAttribute("aria-pressed")==="true" && !document.querySelector("[data-track-rating=\\"5\\"]")?.disabled')
+        assert edits['rating']['value']==5
+        assert ('POST',{'snapshot':sid,'track_id':tid,'field':'rating','value':5}) in writes
+        assert page.locator('#track-comment-text').input_value()==original['comment']
+        page.locator('#track-rating-reset').click()
+        page.wait_for_function('document.querySelector("[data-track-rating=\\"3\\"]")?.getAttribute("aria-pressed")==="true" && document.querySelector("#track-rating-reset").disabled')
+        assert 'rating' not in edits
         assert not errors,errors
         assert not unexpected,unexpected
         return {'comments_visible_without_click':True,'colour_palette_without_unlock':True,'keyboard_colour_selection':True,

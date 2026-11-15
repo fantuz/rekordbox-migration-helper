@@ -121,7 +121,7 @@ class ColourSidecarAPITests(unittest.TestCase):
         self.assertEqual(comment.status_code,200);self.assertEqual(set(comment.json['overrides']),{'comment','colour'})
         detail=self.client.get('/api/lab/track',query_string={'snapshot':self.identity,'track_id':'t'}).json
         self.assertFalse(detail['unlocked']);self.assertTrue(detail['colour_editable']);self.assertEqual(len(detail['colour_palette']),9)
-        self.assertEqual(detail['original']['colour'],'#FF0000');self.assertNotIn('colour',detail['editable_fields'])
+        self.assertEqual(detail['original']['colour'],'#FF0000');self.assertNotIn('colour',detail['editable_fields']);self.assertNotIn('rating',detail['editable_fields'])
         self.assertEqual(self.store.effective(self.store.snapshot(self.identity))['tracks'][0]['color_hex'],'#00FF00')
         self.assertEqual(self.store.snapshot(self.identity)['tracks'][0]['color_key'],'native:old-red')
         reset=self.client.delete('/api/lab/overrides',json=body,headers=self.headers)

@@ -2,6 +2,23 @@
 
 Library intelligence can generate a detached ZIP containing `_Serato_/database V2`, `_Serato_/Subcrates/*.crate`, a manifest and test instructions. It is a format experiment awaiting validation in a real Serato installation. It is not a verified full library migration.
 
+## Serato 4.x compatibility warning
+
+**Serato's current support documentation labels `database V2` as [LEGACY], associated with versions before 4.0.0.** The current Serato folder primarily uses `Subcrates` for static crates and `Smartcrates` for rule-based crates, but a valid legacy `database V2` file does not establish that Serato 4.x will ingest its track records. The separate older Serato DatabaseV2 article is historical background rather than a verified specification for recent releases.
+
+Therefore this exporter must be treated as an **unverified legacy-format research draft**, not a 4.x library importer. Do not copy its output into any existing working Serato library, or assume binary readback implies that tracks will become visible. Record a real Serato version and test on a disposable library or volume before broadening format coverage.
+
+References: [Official Serato folder layout, including legacy markers](https://support.serato.com/hc/en-us/articles/204022904-What-is-in-the-Serato-folder), [legacy DatabaseV2 description](https://support.serato.com/hc/en-us/articles/204194250-What-is-the-DatabaseV2-file), [Smart Crates](https://support.serato.com/hc/en-us/articles/360001447715-Library-Smart-Crates).
+
+### Suggested compatibility milestones
+
+1. **Real-application acceptance:** import the existing synthetic three-track fixture into isolated installations of Serato 3.x and 4.x, recording application version, OS, library layout, errors and what Serato actually displays.
+2. **Modern format research:** document any 4.x library changes and supported interchange routes before attempting to write or replace its native library.
+3. **Safe portability first:** investigate standard M3U playlist export and path relocation reports; keep crate metadata and application-specific analysis separately identified.
+4. **Advanced metadata last:** investigate cues, loops, grids, ratings and smart-crate rules only after round-trip, version-specific and data-loss validation. Never automatically promote incomplete conversions to full migration.
+
+
+
 ## Included and omitted
 
 - Basic recorded paths, title, artist, album, genre, BPM, key, year, label, composer, comment and duration when captured.

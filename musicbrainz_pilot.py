@@ -150,16 +150,28 @@ def public_query(track):
     return {'title':title[:350],'artist':artist[:350],'duration':track.get('duration'),'query':query}
 
 
+
+def search_strategies(track, prepared):
+    """Bounded tag-only alternatives; a candidate still requires human approval."""
+    queries=[('exact',prepared['query'])]
+    if prepared.get('isrc'):return queries
+    title=prepared['title'];artist=prepared.get('artist') or ''
+    base=re.sub(r'\s*[\[(][^\])]{0,100}\b(?:remix|mix|edit|version|extended|radio|live|feat|ft)\b[^\])]{0,100}[\])]\s*$', '', title, flags=re.I).strip()
+    if len(base)>=2 and base!=title:
+        queries.append(('base_title','recording:'+quote_query(base)+(' AND artist:'+quote_query(artist) if artist else '')))
+    if artist:queries.append(('title_only','recording:'+quote_query(title)))
+    return queries[:3]
+
 def artist_credit(record):return ''.join(c.get('name') or c.get('artist',{}).get('name','') for c in record.get('artist-credit',[]) if isinstance(c,dict))
 
 
 def candidates_for(track,records):
     result=[]
-    for record in records[:10]:
+    for record in records[:20]:
         try:identity=str(UUID(record['id']))
         except (KeyError,ValueError,TypeError):continue
         title=record.get('title') or '';artist=artist_credit(record)
-        title_score=SequenceMatcher(None,normalized(track.get('title')),normalized(title+' '+(record.get('disambiguation') or ''))).ratio()
+        title_score=max(SequenceMatcher(None,normalized(track.get('title')),normalized(v)).ratio() for v in (title,title+' '+(record.get('disambiguation') or '')))
         artist_score=SequenceMatcher(None,normalized(track.get('artist')),normalized(artist)).ratio() if track.get('artist') else 0
         duration_delta=abs(track['duration']-record['length']/1000) if track.get('duration') is not None and record.get('length') else None
         isrc_exact=bool(track.get('isrc') and track['isrc'].upper() in record.get('isrcs',[]))
@@ -283,13 +295,21 @@ def run_batch(store,identity,client,progress):
                 try:query=public_query(t)
                 except ValueError as error:query=None;result={'status':'needs_local_tags','error':str(error)}
                 if query is not None:
-                    search=client.get('recording/',{'query':query['query'],'limit':5})
-                    candidates=candidates_for(t,search.get('recordings',[]));proposal=None
+                    candidates=[];strategy='exact';attempts=0
+                    for name,expression in search_strategies(t,query):
+                        search=client.get('recording/',{'query':expression,'limit':20})
+                        attempts+=1
+                        candidates=candidates_for(t,search.get('recordings',[]))
+                        if candidates:
+                            strategy=name
+                            break
+                    proposal=None
                     if candidates:
                         detail=client.get('recording/'+candidates[0]['mbid'],{'inc':'ratings+genres+tags+releases+isrcs+artist-credits'})
                         if detail.get('id')!=candidates[0]['mbid']:raise ValueError('Candidate details do not match the requested recording; retry later')
                         proposal=proposals(detail)
-                    result={'status':'candidate_needs_review' if candidates else 'no_match','query':query,'candidates':candidates,'proposal':proposal,'match_approved':False}
+                    result={'status':'candidate_needs_review' if candidates else 'no_match','query':query,'candidates':candidates,'proposal':proposal,
+                            'search_strategy':strategy if candidates else 'exhausted','search_attempts':attempts,'match_approved':False}
             consecutive_errors=0
         except InterruptedError as error:status='cancelled';summary['message']=str(error);break
         except Exception as error:
