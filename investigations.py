@@ -3,6 +3,8 @@ from contextlib import ExitStack
 from hashlib import sha256
 import json
 import re
+import shutil
+from result_cache import clear as clear_results,connection as cache_connection
 from threading import RLock
 from uuid import uuid4
 
@@ -27,7 +29,7 @@ def register(owner):
             raise ValueError('Wait for background work to finish before managing investigations')
         if getattr(owner, 'lab_jobs_active', lambda: False)():
             raise ValueError('Wait for MusicBrainz lookups to finish or stop them first')
-    def inventory():
+    def inventory(allow_active=False):
         result = []
         saved = store()
         with saved.connection() as db:
@@ -52,10 +54,12 @@ def register(owner):
                            'refs': [p.get('source', '')] + ['snapshot:' + p[f] for f in ('before_snapshot', 'after_snapshot') if p.get(f)] +
                                    ['reports:' + p[f]['id'] for f in ('report', 'comparison') if p.get(f)], 'blocked': ''})
         for kind, paths in [('captures', (owner.DATA / 'analyzers').glob('*/report.json')),
-                            ('workspaces', owner.DATA.glob('*/state.json'))]:
+                            ('workspaces', owner.DATA.glob('*/state.json')),
+                            ('discovery', (owner.DATA / 'discovery').glob('*.json')),
+                            ('storage', (owner.DATA / 'storage').glob('*/summary.json'))]:
             for path in paths:
-                identity = path.parent.name
-                if not ID.fullmatch(identity) or path.is_symlink() or path.parent.is_symlink():
+                identity = path.stem if kind == 'discovery' else path.parent.name
+                if not ID.fullmatch(identity) or path.is_symlink() or path.parent.is_symlink() or path.parent.is_junction() or not path.resolve().is_relative_to(owner.DATA.resolve()):
                     continue
                 try:
                     raw = path.read_bytes()
@@ -63,16 +67,22 @@ def register(owner):
                     result.append({'key': kind + ':' + identity, 'kind': kind, 'id': identity,
                                    'label': row.get('name') or row.get('format') or kind,
                                    'created': row.get('created'), 'bytes': len(raw),
-                                   'stamp': sha256(raw).hexdigest(), 'refs': [],
-                                   'blocked': 'Unload or switch this workspace first' if kind == 'workspaces' and identity == owner.active else ''})
+                                   'stamp': sha256(raw).hexdigest(), 'refs': ['capture:'+row['source_report']] if kind=='storage' and row.get('source_report') else [],
+                                   'blocked': 'Unload or switch this workspace first' if kind == 'workspaces' and identity == owner.active and not allow_active else ''})
                 except (OSError, ValueError):
                     continue
+        for folder in (owner.DATA/'analyzers').glob('*'):
+            if not ID.fullmatch(folder.name) or not folder.is_dir() or folder.is_symlink() or folder.is_junction() or not folder.resolve().is_relative_to(owner.DATA.resolve()) or (folder/'report.json').exists():continue
+            stamps=[(p.name,p.stat().st_size,p.stat().st_mtime_ns) for p in folder.iterdir() if p.is_file() and not p.is_symlink()]
+            result.append({'key':'captures:'+folder.name,'kind':'captures','id':folder.name,'label':'Incomplete source analysis',
+                           'created':None,'bytes':sum(r[1] for r in stamps),'stamp':sha256(encoded(sorted(stamps)).encode()).hexdigest(),'refs':[],'blocked':''})
         return sorted(result, key=lambda r: (str(r.get('created') or ''), r['key']), reverse=True)
-    def plan(keys):
-        if not isinstance(keys, list) or not keys or len(keys) > 10000 or any(not isinstance(k, str) for k in keys):
+    def plan(keys,fresh=False):
+        if not isinstance(keys, list) or (not keys and not fresh) or len(keys) > 10000 or any(not isinstance(k, str) for k in keys):
             raise ValueError('Select saved investigations to archive')
         selected = set(keys)
-        items = inventory()
+        items = inventory(allow_active=fresh)
+        if fresh:selected={r['key'] for r in items}
         if selected - {r['key'] for r in items}:
             raise ValueError('Selection changed; refresh the saved investigations')
         chosen = [r for r in items if r['key'] in selected]
@@ -89,16 +99,27 @@ def register(owner):
         blockers += [{'key': r['key'], 'reason': 'This retained item references a selected investigation; select it too or keep its source'}
                      for r in items if r['key'] not in selected and references.intersection(r['refs'])]
         # Native snapshots are self-contained and do not depend on their analyzer folder.
-        fingerprint = sha256(encoded({'items': chosen, 'blockers': blockers}).encode()).hexdigest()
+        with store().connection() as db:
+            edits=[dict(r) for table in ('overrides','override_history') for r in db.execute('SELECT * FROM '+table)] if fresh else []
+        fingerprint = sha256(encoded({'items': chosen, 'blockers': blockers,'fresh':fresh,'edits':edits,'active':owner.active if fresh else None}).encode()).hexdigest()
         return chosen, blockers, fingerprint
     def body():
         b = request.get_json(silent=True)
         if not isinstance(b, dict):
             raise ValueError('Supply a JSON object')
         return b
+    def ordinary_path(path):
+        root=owner.DATA.resolve()
+        if not path.resolve().is_relative_to(root):raise ValueError('Investigation path is outside the data folder')
+        for candidate in (path,*path.parents):
+            if candidate==owner.DATA:break
+            if candidate.is_symlink() or candidate.is_junction():raise ValueError('Investigation folders must not be linked')
+
     def file_location(kind, identity):
-        if not ID.fullmatch(identity) or kind not in ('captures', 'workspaces'):
+        if not ID.fullmatch(identity) or kind not in ('captures', 'workspaces','discovery','storage'):
             raise ValueError('Invalid archived investigation')
+        if kind=='discovery':return owner.DATA/'discovery'/(identity+'.json')
+        if kind=='storage':return owner.DATA/'storage'/identity
         return owner.DATA / 'analyzers' / identity if kind == 'captures' else owner.DATA / identity / 'state.json'
 
     @app.get('/api/investigations')
@@ -114,33 +135,41 @@ def register(owner):
     def preview():
         with gate:
             idle()
-            chosen, blockers, token = plan(body().get('keys'))
+            b=body();fresh=b.get('fresh') is True
+            chosen, blockers, token = plan(b.get('keys',[]),fresh)
             return jsonify(items=[{k: r[k] for k in ('key', 'label', 'kind')} for r in chosen], blockers=blockers, token=token,
-                           note='Move selected saved work out of active menus. Restore is available here. Original libraries, music, uploaded inputs and export files are preserved. Archiving does not reclaim disk space.')
+                           fresh=fresh,note=('Start fresh: archive all current investigations, clear staged metadata edits and detach loaded workspaces. Appearance settings are kept. ' if fresh else '')+'Move selected saved work out of active menus. Restore is available here. Original libraries, music, uploaded inputs and export files are preserved. Archiving does not reclaim disk space.')
 
     @app.post('/api/investigations/archive')
     def archive():
         with gate, owner.lock:
             idle()
             b = body()
-            chosen, blockers, token = plan(b.get('keys'))
+            fresh=b.get('fresh') is True
+            chosen, blockers, token = plan(b.get('keys',[]),fresh)
             if blockers or b.get('token') != token:
                 raise ValueError('Preview changed or has dependent items; review the selection again')
             identity = uuid4().hex
             folder = owner.DATA / 'archived-investigations' / identity
+            ordinary_path(folder)
             folder.mkdir(parents=True)
             payload = {'items': chosen, 'tables': {}, 'plans': {}, 'files': [], 'settings': {}}
             saved = store()
             with ExitStack() as rollback:
                 for r in chosen:
-                    if r['kind'] in ('captures', 'workspaces'):
+                    if r['kind'] in ('captures', 'workspaces','discovery','storage'):
                         src = file_location(r['kind'], r['id'])
+                        ordinary_path(src)
                         dst = folder / r['kind'] / r['id']
                         dst.parent.mkdir(parents=True, exist_ok=True)
                         src.rename(dst)
                         rollback.callback(dst.rename, src)
                         payload['files'].append([r['kind'], r['id']])
                 with saved.connection() as db:
+                    if fresh:
+                        for table in ('overrides','override_history'):
+                            payload['tables'][table]=[dict(row) for row in db.execute('SELECT * FROM '+table)]
+                            db.execute('DELETE FROM '+table)
                     plans = saved.setting('journey_plans', {})
                     for r in chosen:
                         kind, item = r['kind'], r['id']
@@ -166,7 +195,10 @@ def register(owner):
             for r in chosen:
                 if r['kind'] == 'workspaces':
                     owner.sessions.pop(r['id'], None)
-            return jsonify(archived=len(chosen), id=identity, source_writes=False)
+            if fresh:
+                owner.active=None;owner.sessions.clear();saved.set_setting('collection_context','')
+            clear_results(owner,providers=fresh)
+            return jsonify(archived=len(chosen), id=identity, fresh=fresh,source_writes=False)
 
     @app.post('/api/investigations/<identity>/restore')
     def restore(identity):
@@ -186,13 +218,14 @@ def register(owner):
                 for kind, item in payload['files']:
                     dst = file_location(kind, item)
                     src = owner.DATA / 'archived-investigations' / identity / kind / item
-                    if dst.exists() or src.is_symlink() or dst.parent.is_symlink():
+                    ordinary_path(src);ordinary_path(dst)
+                    if dst.exists():
                         raise ValueError('An investigation already exists at the restore destination')
                     dst.parent.mkdir(parents=True, exist_ok=True)
                     src.rename(dst)
                     rollback.callback(dst.rename, src)
                 for table, rows in payload['tables'].items():
-                    allowed = {t for t, _ in TABLES.values()} | {t for entries in RELATED.values() for t, _ in entries}
+                    allowed = {'overrides','override_history'} | {t for t, _ in TABLES.values()} | {t for entries in RELATED.values() for t, _ in entries}
                     if table not in allowed:
                         raise ValueError('Invalid archived table')
                     for r in rows:
@@ -211,4 +244,56 @@ def register(owner):
                 # Commit before removing rollback callbacks, including file moves.
                 db.commit()
                 rollback.pop_all()
+            clear_results(owner)
             return jsonify(restored=len(payload['items']), source_writes=False)
+
+
+    def purge_plan(identities):
+        if not isinstance(identities,list) or not identities or len(identities)>10000 or any(not isinstance(v,str) or not ID.fullmatch(v) for v in identities):
+            raise ValueError('Choose archived investigations to delete')
+        records=[]
+        with store().connection() as db:
+            for identity in sorted(set(identities)):
+                row=db.execute('SELECT * FROM investigation_archives WHERE id=?',(identity,)).fetchone()
+                if row is None:raise ValueError('Archive selection changed; refresh the preview')
+                payload=json.loads(row['payload'])
+                records.append({'id':identity,'created':row['created'],'items':len(payload['items']),'digest':sha256(row['payload'].encode()).hexdigest()})
+        return records,sha256(encoded(records).encode()).hexdigest()
+
+    @app.post('/api/investigations/purge-preview')
+    def purge_preview():
+        with gate:
+            idle();records,token=purge_plan(body().get('ids'))
+            return jsonify(archives=[{k:v for k,v in row.items() if k!='digest'} for row in records],token=token)
+
+    @app.post('/api/investigations/purge')
+    def purge():
+        with gate,owner.lock:
+            idle();b=body();records,token=purge_plan(b.get('ids'))
+            if b.get('token')!=token or b.get('confirmed') is not True:raise ValueError('Review and confirm permanent archive deletion')
+            base=owner.DATA/'archived-investigations'
+            ordinary_path(base)
+            if base.is_symlink() or base.is_junction():raise ValueError('The archive folder must not be linked')
+            for row in records:
+                folder=base/row['id']
+                if folder.is_symlink() or folder.is_junction():raise ValueError('An archive folder must not be linked')
+            for row in records:
+                folder=base/row['id']
+                # Only this app-owned archive is removed; no source paths from its payload are followed.
+                if folder.exists():shutil.rmtree(folder)
+                with store().connection() as db:db.execute('DELETE FROM investigation_archives WHERE id=?',(row['id'],))
+            clear_results(owner)
+            return jsonify(deleted=len(records),source_writes=False)
+
+    @app.get('/api/investigations/cache')
+    def cache_info():
+        with cache_connection(owner) as db:
+            results=db.execute('SELECT count(*),coalesce(sum(length(CAST(payload AS BLOB))),0) FROM result_cache').fetchone()
+            provider=db.execute('SELECT count(*) FROM mb_cache').fetchone()[0]
+        return jsonify(results=results[0],bytes=results[1],provider_entries=provider)
+
+    @app.post('/api/investigations/cache/clear')
+    def cache_clear():
+        with gate,owner.lock:
+            idle();clear_results(owner,providers=True)
+            return jsonify(cleared=True,source_writes=False)

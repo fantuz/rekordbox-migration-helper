@@ -35,7 +35,9 @@ See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XM
 - Selecting a captured `master.db` supplies Collection statistics, Duplicate review, File references and Play history without an XML/ZIP workspace.
 - Native duplicate review compares recorded paths or artist/title groups, durations, ratings, play counts and cues. Review classifications are saved locally; candidates are not proof of identical audio.
 - File references show recorded current, original and analysis paths with search and pagination. Availability still depends on files accessible on the computer running the app.
-- Saved investigations offers item/category selection, a dependency preview and reversible archiving of captures, snapshots, reports, MusicBrainz batches, journeys and inactive workspaces.
+- Saved investigations offers item/category selection, a dependency preview and reversible archiving of captures, snapshots, reports, MusicBrainz batches, journeys, discovery/storage reports and inactive workspaces. Incomplete source analyses can also be removed.
+- Start fresh by archiving current investigations and staged edits, then optionally delete archived analyses permanently after a separate preview. Original libraries, audio, inputs and completed exports are kept.
+- Reuse bounded, persistent cached results for saved-collection statistics, duplicate review and file references; changing the source evidence or review decisions invalidates the relevant result. Clear result/provider caches independently of saved reports.
 - Restore a cleanup from the same page. Archiving clears menus but retains disk space; original libraries, audio, uploaded inputs and exports are preserved.
 - The shared collection header provides a direct **Save a snapshot for insight tools** action. Snapshot creation is an explicit choice.
 

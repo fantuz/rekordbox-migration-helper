@@ -15095,6 +15095,116 @@
       "cs": "Otevřeno ve výchozím přehrávači",
       "ru": "Открыто в проигрывателе по умолчанию"
     },
+    "Workspace maintenance": {
+      "de": "Arbeitsbereich verwalten",
+      "fr": "Gestion de l’espace de travail",
+      "it": "Gestione dell’area di lavoro",
+      "es": "Mantenimiento del espacio de trabajo",
+      "el": "Συντήρηση χώρου εργασίας",
+      "pl": "Konserwacja obszaru roboczego",
+      "cs": "Údržba pracovního prostoru",
+      "ru": "Обслуживание рабочего пространства"
+    },
+    "Reuse saved reports without scanning again. Clear caches to recompute views; original libraries and exports are kept.": {
+      "de": "Gespeicherte Berichte ohne erneuten Scan nutzen. Caches leeren, um Ansichten neu zu berechnen; Originalbibliotheken und Exporte bleiben erhalten.",
+      "fr": "Réutilisez les rapports sans nouvelle analyse. Videz les caches pour recalculer les vues ; bibliothèques originales et exports sont conservés.",
+      "it": "Riutilizza i report senza ripetere la scansione. Svuota le cache per ricalcolare le viste; librerie originali ed esportazioni vengono conservate.",
+      "es": "Reutilice informes sin volver a escanear. Vacíe las cachés para recalcular las vistas; se conservan bibliotecas originales y exportaciones.",
+      "el": "Χρησιμοποιήστε αποθηκευμένες αναφορές χωρίς νέα σάρωση. Εκκαθαρίστε τις κρυφές μνήμες για νέο υπολογισμό· διατηρούνται οι αρχικές βιβλιοθήκες και εξαγωγές.",
+      "pl": "Używaj zapisanych raportów bez ponownego skanowania. Wyczyść pamięć podręczną, aby przeliczyć widoki; oryginalne biblioteki i eksporty pozostają.",
+      "cs": "Použijte uložené zprávy bez nového skenování. Vymažte mezipaměť pro přepočet pohledů; původní knihovny a exporty zůstanou.",
+      "ru": "Используйте сохранённые отчёты без повторного сканирования. Очистите кэш для пересчёта представлений; исходные библиотеки и экспорты сохраняются."
+    },
+    "Cached results": {
+      "de": "Zwischengespeicherte Ergebnisse",
+      "fr": "Résultats en cache",
+      "it": "Risultati in cache",
+      "es": "Resultados en caché",
+      "el": "Αποτελέσματα στην κρυφή μνήμη",
+      "pl": "Wyniki w pamięci podręcznej",
+      "cs": "Výsledky v mezipaměti",
+      "ru": "Кэшированные результаты"
+    },
+    "Clear result and provider caches": {
+      "de": "Ergebnis- und Anbieter-Caches leeren",
+      "fr": "Vider les caches de résultats et fournisseurs",
+      "it": "Svuota cache dei risultati e dei servizi",
+      "es": "Vaciar cachés de resultados y proveedores",
+      "el": "Εκκαθάριση κρυφών μνημών αποτελεσμάτων και παρόχων",
+      "pl": "Wyczyść pamięć wyników i dostawców",
+      "cs": "Vymazat mezipaměť výsledků a poskytovatelů",
+      "ru": "Очистить кэш результатов и сервисов"
+    },
+    "Start fresh with an archive": {
+      "de": "Mit Archiv neu beginnen",
+      "fr": "Repartir à zéro avec une archive",
+      "it": "Ricomincia archiviando il lavoro",
+      "es": "Empezar de nuevo con un archivo",
+      "el": "Νέα αρχή με αρχειοθέτηση",
+      "pl": "Zacznij od nowa z archiwum",
+      "cs": "Začít znovu s archivem",
+      "ru": "Начать заново с архивом"
+    },
+    "Delete archived investigations": {
+      "de": "Archivierte Untersuchungen löschen",
+      "fr": "Supprimer les analyses archivées",
+      "it": "Elimina analisi archiviate",
+      "es": "Eliminar investigaciones archivadas",
+      "el": "Διαγραφή αρχειοθετημένων αναλύσεων",
+      "pl": "Usuń zarchiwizowane analizy",
+      "cs": "Smazat archivované analýzy",
+      "ru": "Удалить архивированные исследования"
+    },
+    "All current investigations and staged metadata edits move into a recoverable archive. Loaded workspaces are detached. Original libraries, audio, inputs and completed exports stay unchanged.": {
+      "de": "Alle aktuellen Untersuchungen und vorgemerkten Metadatenänderungen werden wiederherstellbar archiviert. Geladene Arbeitsbereiche werden getrennt. Originalbibliotheken, Audio, Eingaben und fertige Exporte bleiben unverändert.",
+      "fr": "Toutes les analyses actuelles et modifications préparées sont archivées et récupérables. Les espaces chargés sont détachés. Bibliothèques originales, audio, fichiers d’entrée et exports terminés restent inchangés.",
+      "it": "Tutte le analisi correnti e le modifiche ai metadati vengono archiviate e sono recuperabili. Le aree caricate vengono scollegate. Librerie originali, audio, file di ingresso ed esportazioni completate restano invariati.",
+      "es": "Todas las investigaciones y ediciones preparadas pasan a un archivo recuperable. Se desconectan los espacios cargados. Bibliotecas originales, audio, entradas y exportaciones terminadas no cambian.",
+      "el": "Όλες οι τρέχουσες αναλύσεις και προετοιμασμένες αλλαγές μεταδεδομένων αρχειοθετούνται με δυνατότητα ανάκτησης. Οι φορτωμένοι χώροι αποσυνδέονται. Αρχικές βιβλιοθήκες, ήχος, είσοδοι και ολοκληρωμένες εξαγωγές παραμένουν αμετάβλητα.",
+      "pl": "Wszystkie bieżące analizy i przygotowane zmiany metadanych trafiają do odzyskiwalnego archiwum. Załadowane obszary zostają odłączone. Oryginalne biblioteki, audio, dane wejściowe i ukończone eksporty pozostają bez zmian.",
+      "cs": "Všechny aktuální analýzy a připravené změny metadat se přesunou do obnovitelného archivu. Načtené prostory se odpojí. Původní knihovny, zvuk, vstupy a dokončené exporty zůstanou beze změn.",
+      "ru": "Все текущие исследования и подготовленные правки метаданных перемещаются в восстанавливаемый архив. Загруженные пространства отключаются. Исходные библиотеки, аудио, входные файлы и готовые экспорты не меняются."
+    },
+    "I reviewed the listed changes": {
+      "de": "Ich habe die aufgeführten Änderungen geprüft",
+      "fr": "J’ai vérifié les changements indiqués",
+      "it": "Ho esaminato le modifiche elencate",
+      "es": "He revisado los cambios indicados",
+      "el": "Έλεγξα τις αναφερόμενες αλλαγές",
+      "pl": "Sprawdzono wymienione zmiany",
+      "cs": "Zkontroloval(a) jsem uvedené změny",
+      "ru": "Я проверил перечисленные изменения"
+    },
+    "Permanent deletion removes these archives and their saved analysis copies. Recovery will no longer be available. Original libraries, audio, inputs and completed exports are kept.": {
+      "de": "Dauerhaftes Löschen entfernt diese Archive und ihre gespeicherten Analysekopien. Eine Wiederherstellung ist danach nicht mehr möglich. Originalbibliotheken, Audio, Eingaben und fertige Exporte bleiben erhalten.",
+      "fr": "La suppression définitive efface ces archives et leurs copies d’analyse. La récupération ne sera plus possible. Bibliothèques originales, audio, fichiers d’entrée et exports terminés sont conservés.",
+      "it": "L’eliminazione permanente rimuove questi archivi e le copie di analisi salvate. Il recupero non sarà più possibile. Librerie originali, audio, ingressi ed esportazioni completate vengono conservati.",
+      "es": "La eliminación permanente borra estos archivos y sus copias de análisis. Ya no se podrán recuperar. Se conservan bibliotecas originales, audio, entradas y exportaciones terminadas.",
+      "el": "Η οριστική διαγραφή αφαιρεί αυτά τα αρχεία και τα αποθηκευμένα αντίγραφα ανάλυσης. Δεν θα είναι πλέον δυνατή η ανάκτηση. Διατηρούνται αρχικές βιβλιοθήκες, ήχος, είσοδοι και ολοκληρωμένες εξαγωγές.",
+      "pl": "Trwałe usunięcie kasuje te archiwa i zapisane kopie analiz. Odzyskanie nie będzie możliwe. Oryginalne biblioteki, audio, dane wejściowe i ukończone eksporty pozostają.",
+      "cs": "Trvalé smazání odstraní tyto archivy a uložené kopie analýz. Obnova již nebude možná. Původní knihovny, zvuk, vstupy a dokončené exporty zůstanou zachovány.",
+      "ru": "Безвозвратное удаление уберёт эти архивы и сохранённые копии анализов. Восстановление станет невозможным. Исходные библиотеки, аудио, входные файлы и готовые экспорты сохраняются."
+    },
+    "I understand this deletion cannot be undone": {
+      "de": "Ich verstehe, dass dieses Löschen nicht rückgängig gemacht werden kann",
+      "fr": "Je comprends que cette suppression est irréversible",
+      "it": "Comprendo che questa eliminazione è irreversibile",
+      "es": "Entiendo que esta eliminación es irreversible",
+      "el": "Κατανοώ ότι αυτή η διαγραφή δεν αναιρείται",
+      "pl": "Rozumiem, że tego usunięcia nie można cofnąć",
+      "cs": "Rozumím, že toto smazání nelze vrátit",
+      "ru": "Я понимаю, что это удаление нельзя отменить"
+    },
+    "Permanently delete these archives": {
+      "de": "Diese Archive dauerhaft löschen",
+      "fr": "Supprimer définitivement ces archives",
+      "it": "Elimina definitivamente questi archivi",
+      "es": "Eliminar permanentemente estos archivos",
+      "el": "Οριστική διαγραφή αυτών των αρχείων",
+      "pl": "Trwale usuń te archiwa",
+      "cs": "Trvale smazat tyto archivy",
+      "ru": "Безвозвратно удалить эти архивы"
+    },
     "Saved investigations": {
       "de": "Gespeicherte Untersuchungen",
       "fr": "Analyses enregistrées",

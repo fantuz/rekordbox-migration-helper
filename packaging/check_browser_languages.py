@@ -98,6 +98,8 @@ def main():
                 report['workspace_ui']=check_workspace_ui(browser,page,base,sid,args.output,offline)
                 from check_native_collection_ui import check_native_collection_ui
                 report['native_collection_ui']=check_native_collection_ui(browser,base,data,args.output,root)
+                from check_workspace_maintenance_ui import check_workspace_maintenance_ui
+                report['maintenance_ui']=check_workspace_maintenance_ui(browser,base,args.output)
                 page.goto(Path(offline['directory']).joinpath('library.html').as_uri(),wait_until='load')
                 for code in LANGUAGES:
                     page.select_option('#language',code);page.wait_for_function('(code)=>document.documentElement.lang===code',arg=code)

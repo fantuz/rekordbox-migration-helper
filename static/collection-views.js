@@ -74,6 +74,7 @@ window.Investigations=(()=>{
       $('#investigations-confirm').onclick=wrap(async()=>{if(!preview)return;await api('/api/investigations/archive',{method:'POST',body:JSON.stringify(preview)});await refreshLists();});
     });
     host.querySelectorAll('[data-restore-investigations]').forEach(b=>b.onclick=wrap(async()=>{await api('/api/investigations/'+b.dataset.restoreInvestigations+'/restore',{method:'POST',body:'{}'});await refreshLists();}));
+    if(window.WorkspaceMaintenance)await WorkspaceMaintenance.load(data);
   }
   function invalidate(){preview=null;$('#investigation-preview').innerHTML='';}
   async function refreshLists(){await load();await Journeys.load();await loadAnalyzer();await loadLab();await loadWorkspace();notify(I18n.t('Saved investigations updated'));}
