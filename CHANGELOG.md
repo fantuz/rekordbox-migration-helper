@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add bounded SQLite-backed local audio-file evidence shared by playback availability and duplicate comparisons. Display playable, missing, inaccessible and unverified classifications with a refresh action and advisory filtering; no source modifications or automatic deletions.
+
 - Add shared loading feedback after 200 ms, elapsed time and a one-second waiting notice, with a clearer message after 30 seconds without a response or progress change. Keep background status checks quiet and clear feedback after completion, cancellation or failure.
 - Remove the permanent selection-like accent from Saved investigations; mark only the current sidebar page as active, preserving a distinct keyboard focus outline.
 
