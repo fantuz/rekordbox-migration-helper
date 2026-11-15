@@ -309,6 +309,7 @@ function showView(view) {
   if(view==='journeys')GuidedJourneys.load().catch(error=>notify(error.message,true));
   if (view==="statistics") renderStatistics().catch(error=>notify(error.message,true));
   if (view==="inventory") loadInventory().catch(error=>notify(error.message,true));
+  if (view==="file-health") window.FileHealth?.load().catch(error=>notify(error.message,true));
   if (view==="analyzer") loadAnalyzer().catch(error=>notify(error.message,true));
   if (view==="storage") loadStorageInfo().catch(error=>notify(error.message,true));
   if (view==="quick") loadQuickExports().catch(error=>notify(error.message,true));
@@ -322,11 +323,12 @@ function showView(view) {
   if (view==="intelligence") Intelligence.load().catch(error=>notify(error.message,true));
   if (view==="files" && window.Journeys) Journeys.load().catch(error=>notify(error.message,true));
   if (view==="files" || view==="exports") loadWorkspace().catch(error=>notify(error.message,true));
-  $("#collection-metrics").hidden=["files","analyzer","storage","quick","lab","musicbrainz","history","insights","bubbles","tonality","intelligence"].includes(view);
-  $(".dataset-bar").hidden=["analyzer","storage","quick","lab","musicbrainz","history","insights","bubbles","tonality","intelligence"].includes(view);
+  $("#collection-metrics").hidden=["files","analyzer","storage","quick","lab","musicbrainz","history","insights","bubbles","tonality","intelligence","file-health"].includes(view);
+  $(".dataset-bar").hidden=["analyzer","storage","quick","lab","musicbrainz","history","insights","bubbles","tonality","intelligence","file-health"].includes(view);
   $("#page-title").textContent={get files(){return I18n.t("Library preparation");},get analyzer(){return I18n.t("Source analysis");},get storage(){return I18n.t("Cloud and local storage");},get quick(){return I18n.t("Offline metadata export");},get review(){return I18n.t("Duplicate review");},get reference(){return I18n.t("File references");},get activity(){return I18n.t("Activity and reports");},get statistics(){return I18n.t("Collection statistics");},get inventory(){return I18n.t("Media inventory");},get exports(){return I18n.t("Library export");}}[view];
   window.scrollTo(0,0);
   if(view==='musicbrainz')$('#page-title').textContent=I18n.t('MusicBrainz');
+  if(view==='file-health')$('#page-title').textContent=I18n.t('File health');
   if (view==='lab') $('#page-title').textContent=I18n.t("Library lab");
   if (view==='history') $('#page-title').textContent=I18n.t("Play history");
   if (view==='insights') $('#page-title').textContent=I18n.t("DJ insights");
