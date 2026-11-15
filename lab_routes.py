@@ -35,6 +35,8 @@ def workspace_overrides(data,session):
 def register(owner):
     app=owner.app
     edit_unlocked=set();network_pool=ThreadPoolExecutor(max_workers=1)
+    # Multiple jobs wait in one serial provider queue; do not exceed the provider's rate limit.
+    MAX_MUSICBRAINZ_JOBS=8
     gate=RateGate();cancellations={};network_lock=RLock()
     def store():return Store(owner.DATA/'workbench-sidecar.sqlite3')
     def enabled():return os.environ.get('LIBRARY_WORKBENCH_MUSICBRAINZ','1')!='0' and store().setting('musicbrainz_enabled',False) is True
@@ -251,7 +253,8 @@ def register(owner):
             saved=store();recover_batches(saved);record=batch_record(saved,identity)
             if record['status']=='complete':raise ValueError('This batch is complete. Preview a new sample to run another batch.')
             if not record['total']:raise ValueError('This sample has no tracks to look up')
-            if cancellations:raise ValueError('A pilot is already running or stopping. Wait until it finishes before starting another.')
+            if identity in cancellations or record['status'] in ('running','queued'):raise ValueError('This batch is already running or queued')
+            if len(cancellations)>=MAX_MUSICBRAINZ_JOBS:raise ValueError('MusicBrainz queue is full (8 batches). Finish or cancel a batch before adding another.')
             event=Event();cancellations[identity]=event
             with saved.connection() as db:db.execute('UPDATE mb_batches SET status=? WHERE id=?',('queued',identity))
             def work(progress):
@@ -269,7 +272,7 @@ def register(owner):
                 event.set();cancellations.pop(identity,None)
                 with saved.connection() as db:db.execute('UPDATE mb_batches SET status=? WHERE id=?',('interrupted',identity))
                 raise
-        return jsonify(job=job,batch_id=identity,background=True)
+        return jsonify(job=job,batch_id=identity,background=True,queue_depth=len(cancellations))
 
     @app.post('/api/lab/musicbrainz/<identity>/cancel')
     def lab_pilot_cancel(identity):
