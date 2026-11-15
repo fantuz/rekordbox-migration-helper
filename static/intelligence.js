@@ -4,16 +4,19 @@ window.Intelligence=(()=>{
   const t=key=>I18n.t(key),e=value=>esc(value),node=id=>document.getElementById(id);
   function select(id,rows,label){const el=node(id),old=el.value;el.innerHTML='<option value="">'+e(t('Choose a snapshot'))+'</option>'+rows.map(r=>'<option value="'+e(r.id)+'">'+e(label(r))+'</option>').join('');if(rows.some(r=>r.id===old))el.value=old;}
   async function load(){
-    const info=await api('/api/lab');choices=info.snapshots;
+    const [info,context]=await Promise.all([api('/api/lab'),api('/api/journeys')]);
+    choices=[...info.snapshots,...context.sources.filter(r=>r.id.startsWith('capture:'))];
     for(const id of ['intelligence-source','intelligence-before','intelligence-after'])select(id,choices,r=>r.label+' · '+date(r.created));
     const shared=window.Journeys?.context?.();
-    if(shared?.snapshot && choices.some(r=>r.id===shared.snapshot))node('intelligence-source').value=shared.snapshot;
-    if(shared && !shared.snapshot)node('intelligence-source').value='';
+    const selected=shared?.snapshot || (shared?.source?.startsWith('capture:')?shared.source:'');
+    if(shared)node('intelligence-source').value=choices.some(r=>r.id===selected)?selected:'';
+    node('intelligence-duplicates').disabled=!info.workspace || Boolean(shared && shared.source!=='workspace');
     if(!shared && !node('intelligence-source').value && choices.length)node('intelligence-source').value=choices[0].id;
     await sourceChanged();
   }
   async function sourceChanged(){
     const revision=++sourceRevision;requestRevision++;
+    if(node('intelligence-source').value)node('intelligence-duplicates').disabled=true;
     window.EnrichmentExports?.reset();
     node('intelligence-results').replaceChildren();last=null;node('intelligence-save').disabled=true;node('intelligence-download').hidden=true;
     node('intelligence-pagination').hidden=true;
@@ -24,11 +27,13 @@ window.Intelligence=(()=>{
     if(revision!==sourceRevision || snapshot!==node('intelligence-source').value)return;
     select('intelligence-playlist',info.playlists,r=>r.name+' · '+num(r.entries));node('intelligence-playlist').disabled=false;
     select('intelligence-history',info.histories,r=>r.name+' · '+date(r.date));
-    node('intelligence-history').disabled=!info.history_order;
-    node('intelligence-session').disabled=!info.history_order;
+    const historyAvailable=info.history_details && info.history_order && info.histories.length>0;
+    node('intelligence-history').disabled=!historyAvailable;
+    node('intelligence-session').disabled=!historyAvailable;
     node('intelligence-playlists').disabled=info.playlists.length===0;
     node('intelligence-contents').disabled=info.playlists.length===0;node('intelligence-lenses').disabled=false;
-    for(const option of node('intelligence-lens').options)option.disabled=['recurring','history_absent'].includes(option.value)&&!info.history_details;
+    for(const option of node('intelligence-lens').options)option.disabled=(['recurring','history_absent'].includes(option.value)&&!info.history_details)||(option.value==='unfiled'&&!info.playlist_membership);
+    if(node('intelligence-lens').selectedOptions[0]?.disabled)node('intelligence-lens').value='all';
   }
   function table(headers,rows,tracks=[],titleColumn=-1){return '<div class="lab-table"><table><thead><tr>'+headers.map(x=>'<th>'+e(t(x))+'</th>').join('')+'</tr></thead><tbody>'+rows.map((row,i)=>'<tr>'+row.map((x,j)=>'<td>'+e(x ?? '—')+(j===titleColumn?TrackPlayback.button(node('intelligence-source').value,tracks[i]?.track_id):'')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';}
   function render(data,kind){

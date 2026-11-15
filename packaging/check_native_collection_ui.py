@@ -12,6 +12,10 @@ def check_native_collection_ui(browser, base, data, output, root):
     original = folder / 'master.db'
     with native_fixture(original) as db:
         db.execute("INSERT INTO djmdContent VALUES('copy','Track A','/Music/a.mp3','artist',243,'2023-03-01',0)")
+        db.executescript("""CREATE TABLE djmdPlaylist(ID TEXT,Name TEXT,Attribute INTEGER);
+            CREATE TABLE djmdSongPlaylist(ID TEXT,PlaylistID TEXT,ContentID TEXT,TrackNo INTEGER);
+            INSERT INTO djmdPlaylist VALUES('p','Synthetic set',0),('q','Related set',0);
+            INSERT INTO djmdSongPlaylist VALUES('1','p','a',1),('2','p','b',2),('3','p','a',3),('4','q','b',1),('5','q','a',2);""")
     db.close()
     before = original.read_bytes()
     identity = 'e' * 32
@@ -38,6 +42,26 @@ def check_native_collection_ui(browser, base, data, output, root):
             select = page.locator('#journey-context-source').bounding_box()
             assert select['x'] >= label['x'] + label['width'] + 8 or select['y'] >= label['y'] + label['height'] + 8
         page.set_viewport_size({'width':1715, 'height':1000})
+        page.locator('.nav[data-view=intelligence]').click()
+        page.wait_for_function('(id)=>document.querySelector("#intelligence-source").value==="capture:"+id',arg=identity)
+        page.wait_for_selector('#intelligence-playlist option[value="p"]',state='attached')
+        assert page.locator('#intelligence-duplicates').is_disabled()
+        page.select_option('#intelligence-playlist','p');page.locator('#intelligence-contents').click()
+        page.wait_for_function('document.querySelectorAll("#intelligence-results tbody tr").length===3')
+        page.locator('#intelligence-playlists').click()
+        page.wait_for_function('document.querySelector("#intelligence-results").textContent.includes("Related set")')
+        page.select_option('#intelligence-history','h');page.locator('#intelligence-session').click()
+        page.wait_for_function('document.querySelectorAll("#intelligence-results tbody tr").length===5')
+        page.locator('#intelligence-save').click();page.wait_for_selector('#intelligence-download',state='visible')
+        assert page.context.request.get(base+page.locator('#intelligence-download').get_attribute('href')).ok
+        # Remove this temporary test report so the later archive test has no dependency blocker.
+        saved=page.locator('#intelligence-download').get_attribute('href').split('/')[4]
+        from workbench_store import Store
+        with Store(data/'workbench-sidecar.sqlite3').connection() as db:
+            db.execute('DELETE FROM report_rows WHERE report_id=?',(saved,));db.execute('DELETE FROM reports WHERE id=?',(saved,))
+        page.select_option('#intelligence-lens','all');page.locator('#intelligence-lenses').click()
+        page.wait_for_function('document.querySelectorAll("#intelligence-results tbody tr").length===3')
+        page.screenshot(path=str(output/'native-library-intelligence.png'))
         page.locator('.nav[data-view=statistics]').click()
         page.wait_for_selector('#stats-cards .stat-card')
         page.wait_for_function("document.querySelector('#stats-cards .stat-card strong').textContent==='3'")
@@ -78,7 +102,7 @@ def check_native_collection_ui(browser, base, data, output, root):
         assert original.read_bytes() == before
         assert not errors, errors
         assert not failures, failures
-        return {'native_statistics':True, 'candidate_review':True, 'recorded_references':True,
+        return {'direct_intelligence':True,'native_statistics':True, 'candidate_review':True, 'recorded_references':True,
                 'direct_history':True, 'snapshot_action':True, 'archive_restore':True,
                 'context_spacing':True, 'source_unchanged':True, 'synthetic':True}
     finally:

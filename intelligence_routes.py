@@ -1,6 +1,7 @@
 """Local read-only intelligence; deliberate report exports live in the sidecar."""
 from flask import jsonify, request
 from workbench_store import Store
+from collection_sources import resolve
 from library_intelligence import playlists,playlist_overlap,session_progression,evolution,duplicate_impact,playlist_contents,collection_lenses
 from metadata_export import capture_catalog
 from engine import decision_map
@@ -15,7 +16,11 @@ def register(owner):
         if not isinstance(value,str) or not value or len(value)>128:
             raise ValueError('Choose a saved Library lab snapshot')
         return value
-    def captured(saved,value):return saved.snapshot(identity(value))
+    def captured(saved,value):
+        value=identity(value)
+        result=resolve(owner,value) if value.startswith(('capture:','snapshot:')) else saved.snapshot(value)
+        if value.startswith('capture:'):result['id']=value
+        return result
     def snapshot():return captured(store(),request.args.get('snapshot',''))
     def body():
         value=request.get_json(silent=True)
@@ -27,6 +32,7 @@ def register(owner):
         s=snapshot()
         return jsonify(playlists=[{k:p[k] for k in ('id','name','order_available')}|{'entries':len(p['tracks']),'smart':p['smart']} for p in playlists(s)],
                        histories=[{'id':h['id'],'name':h.get('name',''),'date':h.get('date')} for h in s.get('histories',[]) if not h.get('folder')],
+                       playlist_membership='playlists' in s or bool(s['tracks']) and all('playlists' in t for t in s['tracks']),
                        history_order=s.get('capabilities',{}).get('history_order',False),history_details=s.get('capabilities',{}).get('history_details',False))
 
     @owner.app.get('/api/intelligence/playlists')
@@ -83,7 +89,7 @@ def register(owner):
         if values.get('network_consent') is not True:raise ValueError('Confirm fetching the public ListenBrainz chart')
         saved=store();s=captured(saved,values.get('snapshot',''))
         result=match_chart(s,charts.fetch(values.get('period','week')))
-        report=saved.save_report('ListenBrainz chart draft',[s['id']],{k:v for k,v in result.items() if k!='rows'},
+        report=saved.save_report('ListenBrainz chart draft',[values.get('snapshot','')],{k:v for k,v in result.items() if k!='rows'},
                                  [{'section':'chart',**r} for r in result['rows']])
         return jsonify(**result,report_id=report['id'])
 
