@@ -1,7 +1,8 @@
 /* One local playback action shared by every live-library track renderer. */
 window.TrackPlayback=(()=>{
   const queue=new Set(),cache=new Map();let timer=null,running=false;
-  let refreshPending=false,lastForcedRefresh=0;
+  // Per-button force markers survive batched IntersectionObserver callbacks.
+  const forceRefresh=new WeakSet();let lastForcedRefresh=0;
   const MIN_FORCE_INTERVAL_MS=5000;
   const t=key=>I18n.t(key);
   function button(snapshot,identity,workspace=''){
@@ -25,20 +26,18 @@ window.TrackPlayback=(()=>{
     try{
       const groups=new Map();
       for(const b of queue){queue.delete(b);if(!b.isConnected)continue;
-        const old=cache.get(key(b));if(old && Date.now()-old.time<10000){status(b,old.available);continue;}
+        const old=cache.get(key(b));if(!forceRefresh.has(b) && old && Date.now()-old.time<10000){status(b,old.available);continue;}
         const id=JSON.stringify(scope(b));if(!groups.has(id))groups.set(id,[]);groups.get(id).push(b);
       }
-      // A genuine focus/visibility refresh bypasses the persistent SQLite
-      // observation cache as well as the short-lived browser cache.
-      // Keep the pending refresh until at least one visible group is checked.
-      const force=refreshPending && groups.size>0;
-      if(force)refreshPending=false;
+      // A focus/visibility refresh bypasses SQLite for every group, including
+      // buttons whose visibility callback arrives in a later animation frame.
       for(const [source,buttons] of groups){
+        const force=buttons.some(b=>forceRefresh.has(b));
         const ids=[...new Set(buttons.map(b=>b.dataset.playTrack))];
         for(let offset=0;offset<ids.length;offset+=100){
           const r=await api('/api/playback/availability',{feedback:false,method:'POST',body:JSON.stringify({...JSON.parse(source),track_ids:ids.slice(offset,offset+100),...(force?{refresh:true}:{})})});
           for(const b of buttons)if(Object.hasOwn(r.tracks,b.dataset.playTrack)){
-            const available=r.tracks[b.dataset.playTrack];cache.set(key(b),{available,time:Date.now()});if(b.isConnected)status(b,available);
+            const available=r.tracks[b.dataset.playTrack];cache.set(key(b),{available,time:Date.now()});forceRefresh.delete(b);if(b.isConnected)status(b,available);
           }
         }
       }
@@ -76,11 +75,13 @@ window.TrackPlayback=(()=>{
   window.addEventListener('workbench-language',()=>{for(const b of document.querySelectorAll('[data-play-track]'))if(b.dataset.available)status(b,b.dataset.available==='true');});
   function recheck(){
     const now=Date.now();
-    if(now-lastForcedRefresh>=MIN_FORCE_INTERVAL_MS){
-      refreshPending=true;lastForcedRefresh=now;
-    }
+    const forced=now-lastForcedRefresh>=MIN_FORCE_INTERVAL_MS;
+    if(forced)lastForcedRefresh=now;
     cache.clear();
-    for(const b of document.querySelectorAll('[data-play-track]')){observer.unobserve(b);observer.observe(b);}
+    for(const b of document.querySelectorAll('[data-play-track]')){
+      if(forced)forceRefresh.add(b);
+      observer.unobserve(b);observer.observe(b);
+    }
   }
   function bind(selector,snapshot){
     for(const title of document.querySelectorAll(selector+' [data-insight-open]')){
