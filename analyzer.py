@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import time
+import stat as stat_constants
 
 from engine import is_auto
 from media import cloud_placeholder
@@ -59,6 +61,7 @@ def snapshot_database(root,destination,progress,database_name='master.db'):
             while chunk:=src.read(2*1024**2):
                 out.write(chunk)
                 digest.update(chunk)
+                progress(10,"Copying "+name+" into the private analysis workspace")
         copied.append({"name":name,**stamp,"sha256":digest.hexdigest()})
         progress(15,"Copied "+name+" into the private analysis workspace")
     if source_stamps(root,database_name)!=before:
@@ -72,33 +75,59 @@ def analysis_folder(path):
     return marker+value.split(marker,1)[1].rsplit("/",1)[0] if marker in value else None
 
 
-def footprint(root,progress):
-    totals=defaultdict(lambda:{"files":0,"bytes":0})
-    directories=set()
-    warnings=[]
-    files=total=0
-    cloud=0
-    def unreadable(error):warnings.append(str(error))
-    for folder,children,names in os.walk(root,followlinks=False,onerror=unreadable):
-        children[:]=[name for name in children if not (Path(folder)/name).is_symlink() and not (Path(folder)/name).is_junction()]
-        for name in names:
-            path=Path(folder)/name
-            if path.is_symlink():continue
-            try:
-                stat=path.stat()
-            except OSError as error:
-                warnings.append(str(error));continue
-            extension=path.suffix.lower() or "(no extension)"
-            totals[extension]["files"]+=1
-            totals[extension]["bytes"]+=stat.st_size
-            files+=1;total+=stat.st_size
-            if cloud_placeholder(stat):cloud+=1
-            key=analysis_folder(path.relative_to(root))
-            if key:directories.add(key)
-            if files%5000==0:progress(40,f"Counted {files:,} files in the selected source folder")
+def footprint(root,progress,recursive=False,max_entries=None,max_seconds=30,max_depth=16):
+    """A bounded metadata walk; ordinary captures never enter subdirectories."""
+    max_entries=max_entries or (100000 if recursive else 1000)
+    started=time.monotonic();totals=defaultdict(lambda:{"files":0,"bytes":0})
+    directories=set();warnings=[];files=total=cloud=entries=skipped=unreadable=0
+    root_info=Path(root).stat();seen={(root_info.st_dev,root_info.st_ino)};folder_counts=Counter()
+    pending=[(Path(root),0)];limit=None
+    while pending and not limit:
+        folder,depth=pending.pop()
+        progress(30,f"Source file inventory: {entries:,} entries inspected (limit {max_entries:,}) · {str(folder.relative_to(root))[:180]}")
+        try:
+            with os.scandir(folder) as children:
+                for item in children:
+                    if entries>=max_entries:limit='entry_limit';break
+                    if time.monotonic()-started>=max_seconds:limit='time_limit';break
+                    entries+=1
+                    if entries%128==0:progress(30,f"Source file inventory: {entries:,} entries inspected (limit {max_entries:,}) · {str(folder.relative_to(root))[:180]}")
+                    try:
+                        info=item.stat(follow_symlinks=False)
+                        if item.is_symlink() or getattr(info,'st_file_attributes',0)&0x400:
+                            skipped+=1;continue
+                        if stat_constants.S_ISDIR(info.st_mode):
+                            if not recursive:continue
+                            if depth>=max_depth or cloud_placeholder(info):skipped+=1;continue
+                            # Windows DirEntry.stat can omit device/inode identity.
+                            identity_info=os.stat(item.path,follow_symlinks=False)
+                            identity=(identity_info.st_dev,identity_info.st_ino)
+                            if identity[0]!=root_info.st_dev or (identity[1] and identity in seen):skipped+=1;continue
+                            if identity[1]:seen.add(identity)
+                            pending.append((Path(item.path),depth+1));continue
+                        if not stat_constants.S_ISREG(info.st_mode):skipped+=1;continue
+                    except OSError as error:
+                        unreadable+=1
+                        if len(warnings)<20:warnings.append(str(error))
+                        continue
+                    path=Path(item.path);extension=path.suffix.lower() or "(no extension)"
+                    totals[extension]['files']+=1;totals[extension]['bytes']+=info.st_size
+                    files+=1;total+=info.st_size
+                    relative=path.relative_to(root);folder_counts[relative.parts[0] if len(relative.parts)>1 else "."]+=1
+                    if cloud_placeholder(info):cloud+=1
+                    key=analysis_folder(path.relative_to(root))
+                    if key:directories.add(key)
+        except InterruptedError:raise
+        except OSError as error:
+            unreadable+=1
+            if len(warnings)<20:warnings.append(str(error))
+    complete=not limit and not skipped and not unreadable
     return {"files":files,"bytes":total,"cloud_placeholders":cloud,
-            "extensions":[{"extension":extension,**values} for extension,values in sorted(totals.items(),key=lambda row:row[1]["bytes"],reverse=True)],
-            "warnings":warnings[:20],"unreadable_entries":len(warnings)},directories
+            "scope":"recursive" if recursive else "top_level","complete":complete,"limit_reached":limit,
+            "entries_inspected":entries,"entry_limit":max_entries,"skipped_entries":skipped,
+            "max_depth":max_depth,"max_seconds":max_seconds,"files_by_top_level_folder":dict(folder_counts),
+            "extensions":[{"extension":extension,**values} for extension,values in sorted(totals.items(),key=lambda row:row[1]['bytes'],reverse=True)],
+            "warnings":warnings,"unreadable_entries":unreadable},directories if recursive and complete else None
 
 
 def inspect_database(path,asset_folders):
@@ -175,8 +204,8 @@ def inspect_database(path,asset_folders):
         health={"broken_track_links":sum(links.values()),"broken_links_by_table":links,
                 "duplicate_recorded_path_groups":sum(count>1 for count in paths.values()),
                 "tracks_in_duplicate_paths":sum(count for count in paths.values() if count>1),
-                "analysis_folders_found":len(asset_folders),"unlinked_analysis_folders":len(asset_folders-owners) if "AnalysisDataPath" in columns["djmdContent"] else None,
-                "analysis_folders_not_found_here":len(owners-asset_folders) if "AnalysisDataPath" in columns["djmdContent"] else None,"audio_availability":None}
+                "analysis_folders_found":len(asset_folders) if asset_folders is not None else None,"unlinked_analysis_folders":len(asset_folders-owners) if asset_folders is not None and "AnalysisDataPath" in columns["djmdContent"] else None,
+                "analysis_folders_not_found_here":len(owners-asset_folders) if asset_folders is not None and "AnalysisDataPath" in columns["djmdContent"] else None,"audio_availability":None}
         result.update(counters=counters,health=health,metadata_records=metadata_records)
         result["track_paths"]=[{"id":t["ID"],"current_path":t["FolderPath"],"original_path":t["OrgFolderPath"],"size":t["FileSize"]} for t in tracks]
         result["health"]["different_original_paths"]=sum(bool(t["OrgFolderPath"] and str(t["OrgFolderPath"]).replace("\\","/").casefold()!=str(t["FolderPath"] or "").replace("\\","/").casefold()) for t in tracks)
@@ -193,7 +222,7 @@ def inspect_database(path,asset_folders):
         return result
 
 
-def analyze_folder(source,output,progress,version_hint="",snapshot_root=None):
+def analyze_folder(source,output,progress,version_hint="",snapshot_root=None,recursive_inventory=False):
     root=Path(str(source).strip().strip('"')).expanduser()
     selected_database=None
     if root.is_absolute() and root.is_file() and root.suffix.lower()=='.xml':
@@ -203,6 +232,7 @@ def analyze_folder(source,output,progress,version_hint="",snapshot_root=None):
         if root.is_symlink():raise ValueError('Select the real database file rather than a link')
         selected_database=root.name;root=root.parent
     if not root.is_absolute() or not root.is_dir():raise ValueError("Choose the full path of a rekordbox data folder or collection XML export")
+    if root.is_symlink() or root.is_junction():raise ValueError('Choose the real database folder rather than a link or junction')
     root=root.resolve()
     output=Path(output).resolve()
     if output.is_relative_to(root):raise ValueError("Choose the rekordbox data folder, not a parent of this application's workspace")
@@ -227,8 +257,12 @@ def analyze_folder(source,output,progress,version_hint="",snapshot_root=None):
         if stamps.get("master.db-wal") or stamps.get("master.db-journal"):
             result["messages"].append({"level":"info","text":"Database journal files were captured with the private copy. Close rekordbox and pause sync before capture for a stable snapshot."})
         if legacy:result["messages"].append({"level":"info","text":"Legacy .edb files are also present. This report inspects master.db; older files were not converted or merged."})
-    inventory,assets=footprint(root,progress)
+    inventory,assets=footprint(root,progress,recursive=recursive_inventory)
     result["footprint"]=inventory
+    if not recursive_inventory:
+        result['messages'].append({'level':'info','text':'File footprint covers top-level files only. Subfolders and audio locations were not scanned. Analysis-folder availability is unknown; enable the optional recursive inventory to check the selected folder.'})
+    elif not inventory['complete']:
+        result['messages'].append({'level':'warning','text':'The optional folder inventory is partial: a limit, linked/online-only entry or unreadable location prevented a complete walk. Analysis-folder availability remains unknown.'})
     if modern:
         progress(60,"Checking database integrity and library relationships on the private copy")
         try:

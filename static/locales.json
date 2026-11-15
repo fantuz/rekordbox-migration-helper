@@ -783,6 +783,26 @@
       "cs": "Analyzovat existující soubory",
       "ru": "Анализировать существующие файлы"
     },
+    "Include subfolders in file inventory (optional)": {
+      "de": "Unterordner in die Dateiinventur einbeziehen (optional)",
+      "fr": "Inclure les sous-dossiers dans l’inventaire des fichiers (facultatif)",
+      "it": "Includi le sottocartelle nell’inventario dei file (facoltativo)",
+      "es": "Incluir subcarpetas en el inventario de archivos (opcional)",
+      "el": "Συμπερίληψη υποφακέλων στην απογραφή αρχείων (προαιρετικό)",
+      "pl": "Uwzględnij podfoldery w spisie plików (opcjonalnie)",
+      "cs": "Zahrnout podsložky do přehledu souborů (volitelné)",
+      "ru": "Включить подпапки в инвентаризацию файлов (необязательно)"
+    },
+    "Default: database checks and top-level files only. Recursive inventory stops at 100,000 entries or 30 seconds.": {
+      "de": "Standard: nur Datenbankprüfungen und Dateien der obersten Ebene. Die rekursive Inventur endet bei 100.000 Einträgen oder nach 30 Sekunden.",
+      "fr": "Par défaut : contrôles de la base et fichiers du premier niveau uniquement. L’inventaire récursif s’arrête à 100 000 entrées ou après 30 secondes.",
+      "it": "Predefinito: controlli del database e soli file del primo livello. L’inventario ricorsivo si ferma a 100.000 elementi o dopo 30 secondi.",
+      "es": "Por defecto: comprobaciones de la base y archivos del primer nivel. El inventario recursivo se detiene a las 100.000 entradas o a los 30 segundos.",
+      "el": "Προεπιλογή: έλεγχοι βάσης και μόνο αρχεία ανώτατου επιπέδου. Η αναδρομική απογραφή σταματά στις 100.000 εγγραφές ή στα 30 δευτερόλεπτα.",
+      "pl": "Domyślnie: kontrola bazy i tylko pliki najwyższego poziomu. Rekurencyjny spis kończy się po 100 000 wpisów lub 30 sekundach.",
+      "cs": "Výchozí: kontrola databáze a pouze soubory nejvyšší úrovně. Rekurzivní přehled končí po 100 000 položkách nebo 30 sekundách.",
+      "ru": "По умолчанию: проверка базы и только файлы верхнего уровня. Рекурсивная инвентаризация прекращается после 100 000 записей или 30 секунд."
+    },
     "Analyze read-only snapshot": {
       "de": "Schreibgeschützten Snapshot analysieren",
       "fr": "Analyser l’instantané en lecture seule",
