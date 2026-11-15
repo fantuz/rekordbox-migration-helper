@@ -49,6 +49,12 @@ def check_sharing_ui(page,base,sid,output):
         assert offline.locator('.filters').is_hidden()
         assert offline.locator('#metadata-table tbody tr').count()>=1
         assert offline.locator('#metrics').inner_text().find('12')>=0
+        assert offline.locator('#offline-bubble-map circle').count()>0
+        assert offline.locator('#offline-bubble-dimension option').count()>1
+        offline.select_option('#offline-bubble-dimension','artists')
+        assert offline.locator('#offline-bubble-map circle').count()>0
+        assert offline.locator('#offline-bubble-note').inner_text()
+        assert offline.locator('#offline-bubble-legend span').count()>0
         offline.screenshot(path=str(Path(output)/'public-summary.png'))
         assert not errors,errors
     finally:offline.close()
