@@ -79,6 +79,7 @@ def context(snapshot, *, source='', overrides=0):
     capabilities = snapshot.get('capabilities', {})
     return {'source': source, 'snapshot': snapshot.get('id'), 'label': snapshot.get('label', 'Loaded library'),
             'captured': snapshot.get('source_captured') or snapshot.get('captured'),
+            'saved_at': snapshot.get('saved_at'),
             'scope': snapshot.get('scope', 'all'), 'scope_key': snapshot.get('scope_key'),
             'source_kind': snapshot.get('source_kind'), 'tracks': len(tracks),
             'basis': 'captured', 'working_override_fields': overrides,
