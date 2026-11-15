@@ -32,6 +32,7 @@ def check_review_workspace_ui(browser,base,source,output):
         left=page.locator('.native-review-workspace>.review-candidates').bounding_box()
         right=page.locator('.native-detail').bounding_box()
         assert right['x']>=left['x']+left['width'] and abs(right['y']-left['y'])<2,(left,right)
+        assert page.locator('.native-detail .review-close').is_hidden()
         table=page.locator('.native-review-workspace>.review-candidates>.native-table')
         assert table.evaluate('(e)=>e.scrollTop')>0
         assert page.locator('[data-native-group="g49"]').evaluate('(e)=>{const r=e.getBoundingClientRect(),p=e.closest(".native-table").getBoundingClientRect();return r.left>=p.left && r.right<=p.right && r.top>=p.top && r.bottom<=p.bottom}')
@@ -47,11 +48,13 @@ def check_review_workspace_ui(browser,base,source,output):
         for width in (768,390):
             page.set_viewport_size({'width':width,'height':844})
             page.locator('[data-native-group="g49"]').click();page.wait_for_selector('.review-drawer[open] .native-save')
+            page.locator('.review-drawer[open]').evaluate('(e)=>Promise.all(e.getAnimations().map(a=>a.finished))')
             assert page.locator('.native-save').evaluate('(e)=>{const r=e.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth && r.bottom<=innerHeight}')
             assert page.locator('.native-status').input_value()=='keep_separate'
-            for _ in range(8):
-                page.keyboard.press('Tab')
-                assert page.evaluate('Boolean(document.activeElement.closest(".review-drawer"))')
+            for key in ('Tab','Shift+Tab'):
+                for _ in range(8):
+                    page.keyboard.press(key)
+                    assert page.evaluate('Boolean(document.activeElement.closest(".review-drawer"))')
             page.screenshot(path=str(output/('native-review-drawer-'+str(width)+'.png')))
             page.keyboard.press('Escape');page.wait_for_selector('.review-drawer[open]',state='hidden')
             assert page.locator('[data-native-group="g49"]').evaluate('(e)=>e===document.activeElement')

@@ -15,8 +15,13 @@ window.ReviewWorkspace=(()=>{
   function layout(entry){
     const width=entry.root.getBoundingClientRect().width;if(!width)return;
     entry.compact=width<=930;entry.root.dataset.reviewCompact=String(entry.compact);
-    if(!entry.compact && entry.drawer.open){entry.drawer.close();restore(entry,false);}
+    if(!entry.compact && entry.drawer.open)closeDrawer(entry,false);
     if(!entry.drawer.open)entry.panel.hidden=entry.compact;
+  }
+  function closeDrawer(entry,focus=true){
+    entry.returnFocus=focus;
+    if(entry.drawer.open)entry.drawer.close();
+    restore(entry,false);
   }
   function mount(root,panel){
     if(entries.has(root))return entries.get(root);
@@ -30,19 +35,32 @@ window.ReviewWorkspace=(()=>{
     const entry={root,panel,home,drawer,openButton,compact:false,opener:null,ready:false};entries.set(root,entry);
     panel.classList.add('review-inspector');panel.tabIndex=-1;
     openButton.onclick=()=>present(root,openButton);
-    drawer.addEventListener('close',()=>{if(!drawer.open)restore(entry);});
+    drawer.addEventListener('close',()=>{if(!drawer.open)restore(entry,entry.returnFocus!==false);});
+    drawer.addEventListener('keydown',event=>{
+      if(event.key!=='Tab')return;
+      const controls=[...drawer.querySelectorAll('button,a[href],input,select,textarea,[tabindex]')]
+        .filter(node=>node.tabIndex>=0 && !node.disabled && node.getClientRects().length && !node.closest('[hidden],[inert]'));
+      const first=controls[0],last=controls.at(-1),active=document.activeElement;
+      if(!first){event.preventDefault();entry.panel.focus();}
+      else if(event.shiftKey && (active===first || !controls.includes(active))){event.preventDefault();last.focus();}
+      else if(!event.shiftKey && active===last){event.preventDefault();first.focus();}
+    });
     drawer.addEventListener('click',event=>{
       if(event.target!==drawer)return;
       const r=drawer.getBoundingClientRect();
       if(event.clientX<r.left || event.clientX>r.right || event.clientY<r.top || event.clientY>r.bottom)drawer.close();
     });
-    entry.observer=new ResizeObserver(()=>layout(entry));entry.observer.observe(root);layout(entry);
+    // Change layout outside the observer delivery phase: opening/closing a
+    // modal changes document scrollbars and can resize the observed root.
+    entry.observer=new ResizeObserver(()=>{
+      cancelAnimationFrame(entry.frame);entry.frame=requestAnimationFrame(()=>layout(entry));
+    });entry.observer.observe(root);layout(entry);
     return entry;
   }
   function refresh(root,panel,actions=[],ready=true){
     if(!root || !panel)return;
     const entry=mount(root,panel);entry.ready=ready;entry.openButton.disabled=!ready;
-    if(!ready && entry.drawer.open){entry.drawer.close();restore(entry);}
+    if(!ready && entry.drawer.open)closeDrawer(entry);
     const body=document.createElement('div');body.className='review-inspector-body';body.tabIndex=0;
     body.dataset.i18nAria='Review';body.setAttribute('role','region');I18n.apply(body);
     while(panel.firstChild)body.append(panel.firstChild);
@@ -56,17 +74,17 @@ window.ReviewWorkspace=(()=>{
   }
   function present(root,opener){
     const entry=entries.get(root);if(!entry || !entry.ready)return;
-    entry.opener=opener || entry.openButton;layout(entry);entry.panel.hidden=false;
+    entry.opener=opener || entry.openButton;entry.returnFocus=true;layout(entry);entry.panel.hidden=false;
     if(entry.compact){
       entry.drawer.append(entry.panel);if(!entry.drawer.open)entry.drawer.showModal();
     }else root.scrollIntoView({block:'start',behavior:'instant'});
     entry.panel.querySelector('.review-inspector-body').scrollTop=0;
     entry.panel.querySelector('.review-panel-heading h3').focus({preventScroll:true});
   }
-  function closeAll(){for(const entry of entries.values())if(entry.drawer.open){entry.drawer.close();restore(entry,false);}}
+  function closeAll(){for(const entry of entries.values())if(entry.drawer.open)closeDrawer(entry,false);}
   function dispose(root){
     const entry=entries.get(root);if(!entry)return;
-    if(entry.drawer.open)entry.drawer.close();restore(entry,false);entry.observer.disconnect();entries.delete(root);
+    closeDrawer(entry,false);entry.observer.disconnect();cancelAnimationFrame(entry.frame);entries.delete(root);
   }
   window.addEventListener('workbench-context',closeAll);
   return {refresh,present,closeAll,dispose};

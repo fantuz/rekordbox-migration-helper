@@ -142,6 +142,7 @@ def check_duplicate_review_ui(browser,base,output):
         page.select_option('#language','de');page.wait_for_function('document.documentElement.lang==="de" && document.documentElement.dataset.languageBusy!=="true"')
         page.locator('[data-pair="synthetic-pair"]').click()
         page.wait_for_selector('.review-drawer[open] #detail-panel')
+        page.locator('.review-drawer[open]').evaluate('(e)=>Promise.all(e.getAnimations().map(a=>a.finished))')
         assert 'Hinzugefügt' in page.locator('.sibling dl').first.inner_text()
         assert page.locator('[data-keeper="synthetic-b"]').evaluate('el=>el.classList.contains("chosen")')
         assert page.locator('#accept-auto').is_checked() and page.locator('#accept-rating').is_checked()
@@ -149,7 +150,7 @@ def check_duplicate_review_ui(browser,base,output):
         detail=page.locator('#detail-panel').bounding_box()
         assert detail['x']>=0 and detail['y']>=0 and detail['height']<=844,detail
         first=page.locator('[data-keeper="synthetic-a"]').bounding_box();second=page.locator('[data-keeper="synthetic-b"]').bounding_box()
-        assert second['y']>=first['y']+first['height'] and abs(second['x']-first['x'])<2
+        assert second['y']>=first['y']+first['height'] and abs(second['x']-first['x'])<2,(first,second)
         assert first['width']>=detail['width']*.8
         page.locator('.sibling-cards').scroll_into_view_if_needed()
         assert page.locator('#stage-pair').evaluate('(e)=>{const r=e.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight}')

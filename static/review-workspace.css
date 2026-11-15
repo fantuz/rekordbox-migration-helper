@@ -11,7 +11,8 @@
 .review-action-dock .action-row{margin:0!important;flex-wrap:wrap}
 #view-review .review-action-dock .button{white-space:normal;font-size:13px;min-height:40px}
 .review-action-dock .text-button{font-size:12px;min-height:36px}
-.review-close{display:none}
+.review-workspace .review-panel-heading .review-close{display:none}
+#view-review .review-workspace[data-review-compact=false]{grid-template-columns:minmax(280px,1fr) minmax(0,2.2fr)}
 .review-workspace .native-table thead{position:sticky;top:0;background:var(--panel2);z-index:1}
 .review-workspace .native-table table{font-size:12px}
 .native-review-workspace>.wide-card{padding:14px}
@@ -35,7 +36,7 @@
 .review-drawer{inset-block:0;inset-inline-start:auto;inset-inline-end:0;margin:0;padding:0;width:min(760px,98vw);max-width:98vw;height:100dvh;max-height:100dvh;border:0;border-radius:14px 0 0 14px;overflow:hidden;background:var(--panel);color:var(--text)}
 .review-drawer[open]{display:flex;animation:review-enter .16s ease-out}
 .review-drawer .review-inspector{width:100%;height:100%;border:0;border-radius:0}
-.review-drawer .review-close{display:inline-block}
+.review-workspace .review-drawer .review-panel-heading .review-close{display:inline-block}
 .review-drawer::backdrop{background:#122c4677;backdrop-filter:blur(2px)}
 html:has(.review-drawer[open]){overflow:hidden}
 html[dir=rtl] .review-drawer{border-radius:0 14px 14px 0}
