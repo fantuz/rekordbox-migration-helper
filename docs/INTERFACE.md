@@ -8,6 +8,8 @@ Create an untouched rekordbox Backup Library backup before preparing transformed
 
 Source analyzer can instead inspect a database folder or collection XML. Close rekordbox and pause Cloud Library Sync for capture. Windows and Mac suggestions are optional; manual paths also work on Linux for a user-mounted filesystem. Read [migration](MIGRATION.md), [compatibility](COMPATIBILITY.md) and [capture/asset/history procedures](DISCOVERY-ASSETS-HISTORY.md) for details.
 
+File health includes a **Playable?** column and full-index filters. **Yes** indicates a successful local file inspection; **No** groups Missing and Inaccessible. **Unknown** represents Unverified; records never inspected remain Unchecked and must not be treated as No. The filter and column sort run against the complete indexed scan, before the 50-record page is selected. Playback still independently verifies whether a file can actually be decoded.
+
 ## Review and evidence
 
 Duplicate decisions, reference changes and metadata overrides are staged locally. Cues inferred as manual or mixed take keeper priority; cue origin is inferred from editable labels. Review unresolved conflicts before export. Snapshot statistics describe captured library entries and can include duplicates. A zero play count does not prove a track was never played.
