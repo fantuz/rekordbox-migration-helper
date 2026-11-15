@@ -3,6 +3,15 @@ const $ = s => document.querySelector(s);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num = n => I18n.number(Number(n || 0));
 const date = d => d ? I18n.date(d) : I18n.t("Unknown");
+// Saved snapshots retain an ISO-8601 timestamp. Display the browser's local
+// time with its time-zone abbreviation; older date-only values stay date-only.
+const snapshotMoment = value => {
+  if(!value)return I18n.t("Unknown");
+  const options=/[T ]\d{2}:\d{2}/u.test(String(value))
+    ?{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'}
+    :{year:'numeric',month:'short',day:'numeric'};
+  return I18n.date(value,options);
+};
 const bytes = value => {const n=Number(value || 0);const unit=n>=1024**3?3:n>=1024**2?2:n>=1024?1:0;return I18n.number(n/1024**unit,{maximumFractionDigits:1})+" "+["B","KiB","MiB","GiB"][unit];};
 const autoCue = c => ["cue(auto)", "1.1bars"].includes((c.Comment || "").trim().toLowerCase());
 let token = "", session = null, filter = "all", offset = 0, total = 0, selected = null, chosen = null, batchMode = null, busy = false;
@@ -144,8 +153,8 @@ async function loadQuickExports() {
   const info=await api("/api/quick-export"),select=$("#quick-source"),old=select.value;
   const options=[];
   if(session) options.push(("<option value=\"session\">"+esc(I18n.t("Loaded XML/ZIP workspace ·"))+" ")+num(session.counts.tracks)+(" "+esc("tracks")+"</option>"));
-  options.push(...(info.snapshots || []).map(s=>'<option value="lab:'+esc(s.id)+'">'+esc(s.label)+' · '+esc(date(s.created))+'</option>'));
-  options.push(...info.sources.map(s=>'<option value="'+esc(s.id)+("\">"+esc(I18n.t("Source snapshot ·"))+" "+"")+esc(new Date(s.created).toLocaleString(I18n.language))+' · '+num(s.tracks)+(" "+esc("tracks")+"</option>")));
+  options.push(...(info.snapshots || []).map(s=>'<option value="lab:'+esc(s.id)+'">'+esc(s.label)+' · '+esc(snapshotMoment(s.created))+'</option>'));
+  options.push(...info.sources.map(s=>'<option value="'+esc(s.id)+("\">"+esc(I18n.t("Source snapshot ·"))+" "+"")+esc(snapshotMoment(s.created))+' · '+num(s.tracks)+(" "+esc("tracks")+"</option>")));
   select.innerHTML=options.join("") || ("<option value=\"\">"+esc(I18n.t("Load a workspace or analyze a source folder first"))+"</option>");
   const shared=window.Journeys?.context?.();
   const wanted=shared?(shared.snapshot?'lab:'+shared.snapshot:shared.source==='workspace'?'session':shared.source?.startsWith('capture:')?shared.source.slice(8):''):old;
