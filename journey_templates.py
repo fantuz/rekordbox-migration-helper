@@ -25,7 +25,7 @@ TEMPLATES={
     'guide-cleanup':dict(title='Review duplicates',group='library',note='Compare evidence and stage copy changes',
         steps=[BACKUP,CAPTURE,step('review','Duplicate review','review'),step('impact','Library intelligence','intelligence'),step('export','Create copy exports','exports')]),
     'guide-enrichment':dict(title='MusicBrainz metadata',group='library',note='Preview community matches, years, genres and available ratings.',
-        steps=[CAPTURE,SNAPSHOT,step('pilot','MusicBrainz metadata','lab',tab='pilot'),step('review','Metadata editor','lab',tab='editor'),step('export','Create copy exports','exports')]),
+        steps=[CAPTURE,SNAPSHOT,step('pilot','MusicBrainz metadata','musicbrainz'),step('review','Metadata editor','lab',tab='editor'),step('export','Create copy exports','exports')]),
     'guide-refinement':dict(title='Metadata editor',group='library',note='Review tags and stage field, comment or colour edits.',
         steps=[CAPTURE,SNAPSHOT,step('insights','Library bubbles','bubbles'),step('edit','Metadata editor','lab',tab='editor'),step('compare','Compare snapshots','lab',tab='compare')]),
     'guide-sharing':dict(title='Share & offline summary',group='library',note='Sharing exports metadata only; audio files are not included.',

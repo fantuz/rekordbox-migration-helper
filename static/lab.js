@@ -1,6 +1,6 @@
 /* All library-derived strings are escaped; mutations use the local action token. */
 let labInfo=null,labReport=null,labReportOffset=0,labTrackOffset=0,labTrackRows=[],labEdited=null,labUnlocked=false,labTracksRevision=0;
-let labBatch=null,labPilotOffset=0,labPilotTimer=null,labPilotStatus=null,labPilotRevision=0;
+let labBatch=null,labPilotOffset=0,labPilotTimer=null,labPilotStatus=null,labPilotRevision=0,labPilotSnapshot=null;
 const labPost=(url,data)=>api('/api/lab/'+url,{method:'POST',body:JSON.stringify(data)});
 const labSnapshot=()=>$('#lab-snapshot').value;
 const labSummary=data=>'<div class="lab-summary">'+Object.entries(data || {}).filter(([,v])=>v===null || typeof v!=='object').map(([k,v])=>'<div><span>'+esc(k.replaceAll('_',' '))+'</span><b>'+esc(v===null?I18n.t("Unknown"):v===true?I18n.t("Yes"):v===false?I18n.t("No"):v)+'</b></div>').join('')+'</div>';
@@ -110,12 +110,13 @@ $('#lab-html').onclick=wrap(async()=>{
 });
 
 function labPilotButtons() {
-  $('#lab-pilot-start').disabled=!labBatch || ['running','queued','complete'].includes(labPilotStatus) || !$('#lab-pilot-enabled').checked || !$('#lab-pilot-consent').checked;
+  $('#lab-pilot-preview').disabled=!musicBrainzSnapshot();
+  $('#lab-pilot-start').disabled=!labBatch || labPilotSnapshot!==musicBrainzSnapshot() || ['running','queued','complete'].includes(labPilotStatus) || !$('#lab-pilot-enabled').checked || !$('#lab-pilot-consent').checked;
 }
 $('#lab-pilot-consent').onchange=labPilotButtons;
 $('#lab-pilot-enabled').onchange=wrap(async()=>{try{const r=await labPost('features',{musicbrainz_enabled:$('#lab-pilot-enabled').checked});$('#lab-pilot-enabled').checked=r.musicbrainz_enabled;}finally{labPilotButtons();}});
 $('#lab-pilot-preview').onclick=wrap(async()=>{
-  const r=await labPost('musicbrainz/preview',{snapshot:labSnapshot(),top_genres:$('#lab-pilot-top').value,seed:$('#lab-pilot-seed').value,speed:$('#lab-pilot-speed').value,sample_size:$('#lab-pilot-size').value});labBatch=r.id;labPilotOffset=0;
+  const r=await labPost('musicbrainz/preview',{snapshot:musicBrainzSnapshot(),top_genres:$('#lab-pilot-top').value,seed:$('#lab-pilot-seed').value,speed:$('#lab-pilot-speed').value,sample_size:$('#lab-pilot-size').value});labBatch=r.id;labPilotOffset=0;
   preferences.set('workbench-lab-batch',labBatch);$('#lab-pilot-consent').checked=false;await labLoadPilot();labPilotButtons();
 });
 async function labLoadPilot(feedback=true) {
@@ -123,7 +124,9 @@ async function labLoadPilot(feedback=true) {
   const revision=++labPilotRevision,batch=labBatch;
   const r=await api('/api/lab/musicbrainz/'+encodeURIComponent(labBatch)+'?offset='+labPilotOffset,{feedback});
   if(revision!==labPilotRevision || batch!==labBatch)return;
-  labPilotStatus=r.status;labPilotButtons();$('#lab-pilot-cancel').disabled=!['queued','running'].includes(r.status);
+  labPilotSnapshot=r.snapshot_id;labPilotStatus=r.status;labPilotButtons();
+  const batchSource=musicBrainzInfo?.snapshots.find(s=>s.id===r.snapshot_id);
+  $('#musicbrainz-batch-source').textContent=I18n.t('Source snapshot')+' · '+(batchSource?.label || r.snapshot_id);$('#lab-pilot-cancel').disabled=!['queued','running'].includes(r.status);
   $('#lab-pilot-progress').textContent=r.status+' · '+num(r.summary.done)+' / '+num(r.total)+' tracks · '+num(r.summary.requests)+' requests · '+num(r.summary.cache_hits)+' cached'+(r.summary.message?' · '+r.summary.message:'');
   $('#lab-pilot-summary').innerHTML=labSummary(Object.fromEntries(['tracks','done','candidate_matches','rating_available','genre_available','tags_available','year_available','service_errors'].filter(k=>r.summary[k]!=null).map(k=>[k,r.summary[k]])))+'<p class="subtle">'+r.summary.groups.map(g=>esc(g.genre)+': '+num(g.sampled)+(g.requested==null?'':' / '+num(g.requested))).join(' · ')+'</p>';
   $('#lab-pilot-results').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Local tags"))+"</th><th>"+esc(I18n.t("Best candidate · review required"))+"</th><th>"+esc(I18n.t("Community evidence"))+"</th></tr></thead><tbody>")+r.rows.map(t=>{
@@ -133,7 +136,7 @@ async function labLoadPilot(feedback=true) {
   $('#lab-pilot-count').textContent=num(r.total)+" "+I18n.t("selected tracks ·")+" "+num(labPilotOffset+1)+'–'+num(Math.min(labPilotOffset+50,r.total));$('#lab-pilot-prev').disabled=!labPilotOffset;$('#lab-pilot-next').disabled=labPilotOffset+50>=r.total;
   $$('[data-lab-approve]').forEach(b=>b.onclick=wrap(async()=>{await labPost('musicbrainz/'+labBatch+'/review',{track_id:b.dataset.labApprove,approved:b.dataset.approved==='true'});await labLoadPilot();}));
   $$('[data-lab-proposal]').forEach(b=>b.onclick=wrap(async()=>{
-    const t=r.rows.find(t=>t.id===b.dataset.labProposal);if(r.snapshot_id!==labSnapshot())throw new Error(I18n.t("Select the snapshot used for this pilot before staging suggestions"));
+    const t=r.rows.find(t=>t.id===b.dataset.labProposal);if(r.snapshot_id!==musicBrainzSnapshot())throw new Error(I18n.t("Select the snapshot used for this pilot before staging suggestions"));
     await labPost('musicbrainz/'+labBatch+'/stage',{track_id:t.id,field:b.dataset.field});notify(I18n.t("Proposed")+" "+b.dataset.field+" "+I18n.t("staged after identity approval"));await labLoadTracks();
   }));
   return r;
@@ -146,4 +149,4 @@ $('#lab-pilot-start').onclick=wrap(async()=>{
 $('#lab-pilot-cancel').onclick=wrap(async()=>{if(labBatch)await labPost('musicbrainz/'+labBatch+'/cancel',{});});
 $('#lab-pilot-prev').onclick=wrap(async()=>{labPilotOffset=Math.max(0,labPilotOffset-50);await labLoadPilot();});
 $('#lab-pilot-next').onclick=wrap(async()=>{labPilotOffset+=50;await labLoadPilot();});
-labBatch=preferences.get('workbench-lab-batch');if(labBatch)labLoadPilot().catch(()=>{labBatch=null;preferences.remove('workbench-lab-batch');});
+labBatch=preferences.get('workbench-lab-batch');

@@ -1,8 +1,8 @@
 /* Purpose colours complement labels; the light-blue base remains the default. */
-:root{--nav-source:#78b9ed;--nav-insight:#71c7b5;--nav-cleanup:#e5b370;--nav-export:#bba3e5}
-:root[data-theme=light]{--nav-source:#21659c;--nav-insight:#176d5e;--nav-cleanup:#8c5616;--nav-export:#72509a}
+:root{--nav-source:#78b9ed;--nav-insight:#71c7b5;--nav-cleanup:#e5b370;--nav-export:#bba3e5;--nav-enrich:#dfa1bd}
+:root[data-theme=light]{--nav-source:#21659c;--nav-insight:#176d5e;--nav-cleanup:#8c5616;--nav-export:#72509a;--nav-enrich:#8b4567}
 .nav-group{--section-colour:var(--nav-source);border-top:0;border-left:3px solid var(--section-colour);padding:8px 5px;margin:8px 0;border-radius:10px;background:color-mix(in srgb,var(--section-colour) 6%,transparent)}
-.nav-group:nth-child(2){--section-colour:var(--nav-insight)}.nav-group:nth-child(3){--section-colour:var(--nav-cleanup)}.nav-group:nth-child(4){--section-colour:var(--nav-export)}
+.nav-group[data-nav-section=insights]{--section-colour:var(--nav-insight)}.nav-group[data-nav-section=enrich]{--section-colour:var(--nav-enrich)}.nav-group[data-nav-section=cleanup]{--section-colour:var(--nav-cleanup)}.nav-group[data-nav-section=exports]{--section-colour:var(--nav-export)}
 .nav-group-title{color:var(--section-colour);letter-spacing:.5px}.sidebar .nav.active{border-left-color:var(--section-colour);color:var(--section-colour);background:color-mix(in srgb,var(--section-colour) 13%,var(--panel));font-weight:700}
 .wide-card,.list-panel,.detail-panel,.tool-entry{border-radius:14px}.wide-card{margin-bottom:16px}.view>.wide-card{margin-top:12px}
 .metrics{gap:10px;margin:12px 0 18px}.metrics article{padding:10px 13px;border-radius:14px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-content:start;gap:3px 12px}
@@ -21,3 +21,6 @@
 @media(max-width:760px){.metrics article{padding:10px}.metrics article>strong,.metrics .metric-duplicates>strong{font-size:22px}.nav-group{margin:0}.background-status{padding:9px}}
 
 .track-play{display:inline-flex;align-items:center;justify-content:center;width:1.5rem;height:1.5rem;flex:none;margin:0 .35rem 0 0;padding:0;border:1px solid #aacbd1;border-radius:50%;background:#e4f5f2;color:#17665b;font-size:.72rem;vertical-align:middle;cursor:pointer}.track-play:disabled{opacity:.4;cursor:not-allowed}.track-play:focus-visible{outline:3px solid #308fcb;outline-offset:2px}.track-play:hover:enabled{background:#c9ece3}
+
+/* MusicBrainz has its own enrichment page and source selector. */
+#view-musicbrainz .wide-card{padding:20px}#view-musicbrainz .lab-controls{margin-block:16px}#view-musicbrainz label:not(.backup-acknowledgement){display:block;font-size:13px}#view-musicbrainz select,#view-musicbrainz input:not([type=checkbox]){display:block;width:100%;padding:8px;margin-top:5px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text)}#view-musicbrainz .lab-actions{flex-wrap:wrap}#view-musicbrainz .musicbrainz-source{border-inline-start:5px solid var(--nav-enrich);display:flex;align-items:end;gap:12px;flex-wrap:wrap}#view-musicbrainz .musicbrainz-source label{flex:1;min-width:200px}#view-musicbrainz .musicbrainz-source p{flex-basis:100%;margin:0}.lab-tabs{grid-template-columns:repeat(3,minmax(0,1fr))!important}@media(max-width:680px){.lab-tabs{grid-template-columns:1fr!important}}

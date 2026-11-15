@@ -28,7 +28,7 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     assert 'File → Library → Restore Library' in restore.inner_text()
     assert 'Do not import it after restoring the ZIP.' in restore.inner_text()
     page.screenshot(path=str(output/'restore-file-guide.png'))
-    assert page.locator('.nav-group').count()==4
+    assert page.locator('.nav-group').count()==5
     for size in ('compact','standard','wide'):
         page.select_option('#sidebar-size',size)
         bounds=page.locator('.sidebar').bounding_box()

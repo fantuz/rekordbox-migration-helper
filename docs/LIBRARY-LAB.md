@@ -30,6 +30,8 @@ Any snapshot can generate offline HTML with or without its staged metadata. This
 
 ## MusicBrainz proof of concept
 
+Open **Enrich → MusicBrainz** in the sidebar. The dedicated page has its own snapshot selector, preview controls, saved batches and results. Home-page shortcuts, the enrichment journey and the background status strip open this page. Library lab retains snapshot capture, comparison and the metadata editor. Select the same source snapshot as the saved batch before starting retrieval or staging a suggestion.
+
 Retrieval is **disabled by default**, controlled separately from editing. `LIBRARY_WORKBENCH_MUSICBRAINZ=0` forces it off. It can be disabled during a batch; cancellation retains partial results.
 
 1. Preview up to 150, 300 (default) or 1,000 distinct tag identities, balanced across 3–12 selected top genres and an unknown-genre bucket. Insufficient unique identities produce smaller samples. A seed gives repeatable selection.
