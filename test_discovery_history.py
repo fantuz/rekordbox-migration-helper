@@ -1,5 +1,6 @@
 """Synthetic fixtures only; formal execution belongs to GitHub CI."""
 from hashlib import sha256
+from datetime import datetime
 from pathlib import Path
 import json
 import sqlite3
@@ -64,6 +65,9 @@ class HistoryTests(unittest.TestCase):
         with native_fixture(path) as db:s=capture_private_database(db,'synthetic')
         db.close();store=Store(self.root/'working.sqlite3');record=store.save_snapshot(s,'Synthetic history')
         path.unlink();saved=store.snapshot(record['id'])
+        self.assertEqual(saved['saved_at'],record['created'])
+        self.assertIsNotNone(datetime.fromisoformat(saved['saved_at']).tzinfo)
+        self.assertEqual(store.snapshots()[0]['created'],saved['saved_at'])
         self.assertEqual(history_session(saved,'h')['recorded_entries'],5)
         unknown={'tracks':[],'capabilities':{}}
         self.assertFalse(list_history(unknown)['available'])
