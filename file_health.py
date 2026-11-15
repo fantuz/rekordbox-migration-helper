@@ -69,7 +69,7 @@ def register(owner):
             # make successive pages deterministic.
             if direction=='desc':
                 first,separator,tail=order.partition(', ')
-                order=first+' DESC'+(separator+tail if separator else '')'
+                order=first+' DESC'+(separator+tail if separator else '')
             sql='SELECT track_id,title,artist,genre,status,checked_at FROM file_health_records WHERE '+where+' ORDER BY '+order+' LIMIT ? OFFSET ?'
             rows=[dict(r) for r in db.execute(sql,[*params,PAGE_SIZE,offset])]
             counts={r['status']:r['n'] for r in db.execute('SELECT status,count(*) n FROM file_health_records WHERE source=? GROUP BY status',(source,))}
