@@ -65,14 +65,17 @@ def register(owner):
             matched=db.execute('SELECT count(*) FROM file_health_records WHERE '+where,params).fetchone()[0]
             order=ORDER[sorting]
             # Whitelisted clauses only: no SQL fragments from request values.
-            # Reverse the primary category, leaving stable secondaries intact.
-            if direction=='desc':order=order.replace(', ', ' DESC, ',1) if ', ' in order else order+' DESC'
+            # Reverse only the selected primary key; stable secondary keys
+            # make successive pages deterministic.
+            if direction=='desc':
+                first,separator,tail=order.partition(', ')
+                order=first+' DESC'+(separator+tail if separator else '')'
             sql='SELECT track_id,title,artist,genre,status,checked_at FROM file_health_records WHERE '+where+' ORDER BY '+order+' LIMIT ? OFFSET ?'
             rows=[dict(r) for r in db.execute(sql,[*params,PAGE_SIZE,offset])]
             counts={r['status']:r['n'] for r in db.execute('SELECT status,count(*) n FROM file_health_records WHERE source=? GROUP BY status',(source,))}
             observed=sum(counts.values())
         return jsonify(source=source,source_total=total_records,checked=observed,
-                       unchecked=max(0,total_records-observed),scan_state=record['state'] if record else 'not_started',
+                       unchecked=max(0,total_records-observed),scan_state=('partial' if record and record['state']=='running' and observed<total_records else record['state']) if record else 'not_started',
                        scan_time=record['checked_at'] if record else None,
                        counts={name:counts.get(name,0) for name in STATUS},
                        rows=rows,total=matched,offset=offset,sort=sorting,direction=direction,
@@ -84,7 +87,9 @@ def register(owner):
         value=request.get_json(silent=True)
         if not isinstance(value,dict):raise ValueError('Provide a file-health scan request')
         source=selected_source(value.get('source'))
-        force=value.get('force',False)
+        # An explicit Scan normally refreshes all evidence; only an explicit
+        # Continue partial request reuses previously checked records.
+        force=value.get('force',True)
         if not isinstance(force,bool):raise ValueError('Choose a supported refresh mode')
         snapshot=resolve(owner,source)
         tracks=snapshot['tracks']
@@ -99,6 +104,7 @@ def register(owner):
         def work(progress):
             started=time.time()
             saved=store()
+            progress(0,'Preparing local file-health inspection')
             with saved.connection() as db:
                 if force:
                     db.execute('DELETE FROM file_health_records WHERE source=?',(source,))
@@ -111,7 +117,9 @@ def register(owner):
                 for index in range(0,len(remaining),BATCH_SIZE):
                     batch=remaining[index:index+BATCH_SIZE]
                     probes={str(t['id']):t for t in batch}
-                    states,_=cached_inspect(owner,probes,refresh=force)
+                    # A scan is an explicit request for current filesystem
+                    # evidence, never merely a replay of the status TTL.
+                    states,_=cached_inspect(owner,probes,refresh=True)
                     with saved.connection() as db:
                         db.executemany('INSERT OR REPLACE INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text) VALUES (?,?,?,?,?,?,?,?)',
                             [(source,identity,str(t.get('title') or ''),str(t.get('artist') or ''),
