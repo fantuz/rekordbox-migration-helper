@@ -14921,6 +14921,136 @@
       "cs": "Exportovat playlist M3U8",
       "ru": "Экспорт плейлиста M3U8"
     },
+    "Preview Serato export": {
+      "de": "Serato-Exportvorschau",
+      "fr": "Aperçu de l’export Serato",
+      "it": "Anteprima esportazione Serato",
+      "es": "Vista previa de exportación Serato",
+      "el": "Προεπισκόπηση εξαγωγής Serato",
+      "pl": "Podgląd eksportu Serato",
+      "cs": "Náhled exportu Serato",
+      "ru": "Предпросмотр экспорта Serato"
+    },
+    "Readback passed; Serato import remains unverified.": {
+      "de": "Rückleseprüfung bestanden; Serato-Import weiterhin ungeprüft.",
+      "fr": "Relecture validée ; import dans Serato non vérifié.",
+      "it": "Rilettura verificata; importazione in Serato non ancora verificata.",
+      "es": "Lectura de comprobación correcta; importación en Serato sin verificar.",
+      "el": "Η επαλήθευση ανάγνωσης ολοκληρώθηκε· η εισαγωγή στο Serato δεν έχει επαληθευτεί.",
+      "pl": "Weryfikacja odczytu zakończona; import do Serato nie został sprawdzony.",
+      "cs": "Zpětné načtení ověřeno; import do Serato zatím neověřen.",
+      "ru": "Повторное чтение проверено; импорт в Serato ещё не проверен."
+    },
+    "Crates": {
+      "de": "Crates",
+      "fr": "Crates",
+      "it": "Crate",
+      "es": "Crates",
+      "el": "Crates",
+      "pl": "Crates",
+      "cs": "Crates",
+      "ru": "Crates"
+    },
+    "Omitted records": {
+      "de": "Ausgelassene Datensätze",
+      "fr": "Enregistrements omis",
+      "it": "Record esclusi",
+      "es": "Registros omitidos",
+      "el": "Εγγραφές που παραλείφθηκαν",
+      "pl": "Pominięte rekordy",
+      "cs": "Vynechané záznamy",
+      "ru": "Пропущенные записи"
+    },
+    "Omitted playlist entries": {
+      "de": "Ausgelassene Playlist-Einträge",
+      "fr": "Entrées de playlists omises",
+      "it": "Elementi delle playlist esclusi",
+      "es": "Entradas de listas omitidas",
+      "el": "Στοιχεία λίστας που παραλείφθηκαν",
+      "pl": "Pominięte pozycje playlist",
+      "cs": "Vynechané položky seznamů",
+      "ru": "Пропущенные элементы плейлистов"
+    },
+    "Preview shows up to 100 rows per section. The ZIP manifest contains every detail.": {
+      "de": "Die Vorschau zeigt bis zu 100 Zeilen je Abschnitt. Das ZIP-Manifest enthält alle Details.",
+      "fr": "L’aperçu affiche au maximum 100 lignes par section. Le manifeste du ZIP contient tous les détails.",
+      "it": "L’anteprima mostra fino a 100 righe per sezione. Il manifesto nello ZIP contiene tutti i dettagli.",
+      "es": "La vista previa muestra hasta 100 filas por sección. El manifiesto del ZIP contiene todos los detalles.",
+      "el": "Η προεπισκόπηση δείχνει έως 100 γραμμές ανά ενότητα. Το αρχείο καταγραφής του ZIP περιέχει όλες τις λεπτομέρειες.",
+      "pl": "Podgląd zawiera do 100 wierszy na sekcję. Manifest ZIP zawiera wszystkie szczegóły.",
+      "cs": "Náhled zobrazuje až 100 řádků v sekci. Manifest v ZIP obsahuje všechny podrobnosti.",
+      "ru": "Предпросмотр показывает до 100 строк на раздел. Манифест в ZIP содержит все сведения."
+    },
+    "Folder": {
+      "de": "Ordner",
+      "fr": "Dossier",
+      "it": "Cartella",
+      "es": "Carpeta",
+      "el": "Φάκελος",
+      "pl": "Folder",
+      "cs": "Složka",
+      "ru": "Папка"
+    },
+    "Reason": {
+      "de": "Grund",
+      "fr": "Motif",
+      "it": "Motivo",
+      "es": "Motivo",
+      "el": "Αιτία",
+      "pl": "Powód",
+      "cs": "Důvod",
+      "ru": "Причина"
+    },
+    "Export notes": {
+      "de": "Exporthinweise",
+      "fr": "Notes d’export",
+      "it": "Note di esportazione",
+      "es": "Notas de exportación",
+      "el": "Σημειώσεις εξαγωγής",
+      "pl": "Uwagi dotyczące eksportu",
+      "cs": "Poznámky k exportu",
+      "ru": "Примечания к экспорту"
+    },
+    "Metadata coverage": {
+      "de": "Metadatenabdeckung",
+      "fr": "Couverture des métadonnées",
+      "it": "Copertura dei metadati",
+      "es": "Cobertura de metadatos",
+      "el": "Κάλυψη μεταδεδομένων",
+      "pl": "Pokrycie metadanych",
+      "cs": "Pokrytí metadat",
+      "ru": "Полнота метаданных"
+    },
+    "Field": {
+      "de": "Feld",
+      "fr": "Champ",
+      "it": "Campo",
+      "es": "Campo",
+      "el": "Πεδίο",
+      "pl": "Pole",
+      "cs": "Pole",
+      "ru": "Поле"
+    },
+    "Not transferred": {
+      "de": "Nicht übertragen",
+      "fr": "Non transféré",
+      "it": "Non trasferiti",
+      "es": "No transferido",
+      "el": "Δεν μεταφέρονται",
+      "pl": "Nie przeniesiono",
+      "cs": "Nepřeneseno",
+      "ru": "Не переносится"
+    },
+    "No tracks can be exported for this volume.": {
+      "de": "Für dieses Volume können keine Titel exportiert werden.",
+      "fr": "Aucun titre ne peut être exporté pour ce volume.",
+      "it": "Nessun brano esportabile per questo volume.",
+      "es": "No se pueden exportar pistas para este volumen.",
+      "el": "Δεν είναι δυνατή η εξαγωγή κομματιών για αυτόν τον τόμο.",
+      "pl": "Nie można wyeksportować utworów dla tego woluminu.",
+      "cs": "Pro tento svazek nelze exportovat žádné skladby.",
+      "ru": "Для этого тома нет доступных для экспорта треков."
+    },
     "Serato interoperability draft": {
       "de": "Serato-Interoperabilitätsentwurf",
       "fr": "Ébauche d’interopérabilité Serato",

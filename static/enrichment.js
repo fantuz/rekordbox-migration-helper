@@ -85,10 +85,5 @@ window.EnrichmentExports=(()=>{
     const selected=[...node('chart-results').querySelectorAll('[data-chart-rank]')].filter(e=>e.value).map(e=>({rank:e.dataset.chartRank,track_id:e.value}));
     await download('/api/intelligence/chart/export',{report_id:chart.report_id,selected,reviewed:node('chart-reviewed').checked},'listenbrainz-chart.m3u8');
   });
-  node('serato-export').onclick=wrap(async()=>{
-    node('serato-export').disabled=true;
-    try{await download('/api/intelligence/serato',{snapshot:node('intelligence-source').value,volume_root:node('serato-volume').value,draft_acknowledged:node('serato-ack').checked},'serato-draft.zip');}
-    finally{node('serato-export').disabled=false;}
-  });
   return {reset};
 })();

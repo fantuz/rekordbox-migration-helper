@@ -5,7 +5,7 @@ from library_intelligence import playlists,playlist_overlap,session_progression,
 from metadata_export import capture_catalog
 from engine import decision_map
 from chart_playlists import ChartClient,match_chart,chart_m3u
-from serato_bridge import draft_package
+from serato_bridge import draft_package,preview_package
 
 
 def register(owner):
@@ -97,6 +97,11 @@ def register(owner):
         text=chart_m3u(s,report,values.get('selected'))
         return owner.app.response_class(text,mimetype='audio/x-mpegurl',
             headers={'Content-Disposition':'attachment; filename="listenbrainz-chart.m3u8"'})
+
+    @owner.app.post('/api/intelligence/serato/preview')
+    def intelligence_serato_preview():
+        values=body()
+        return jsonify(preview_package(captured(store(),values.get('snapshot','')),values.get('volume_root','')))
 
     @owner.app.post('/api/intelligence/serato')
     def intelligence_serato():
