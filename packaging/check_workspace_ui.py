@@ -11,6 +11,17 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     with urllib.request.urlopen(base+'/api/lab') as response:lab=json.load(response)
     page.select_option('#language','en');page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
     page.locator('.nav[data-view="files"]').click()
+    entry=page.locator('.local-library-entry');assert entry.is_visible()
+    local=entry.locator('[data-view="analyzer"]')
+    assert local.inner_text()=='Use local library'
+    for theme in ('light','dark'):
+        page.select_option('#theme',theme)
+        assert local.evaluate('(el)=>getComputedStyle(el).backgroundColor!==getComputedStyle(document.body).backgroundColor')
+        page.screenshot(path=str(output/('local-library-entry-'+theme+'.png')))
+    local.click();assert page.locator('#view-analyzer').is_visible()
+    assert page.locator('#analyzer-directory').is_visible()
+    assert page.locator('#progress').is_visible() is False
+    page.locator('.nav[data-view="files"]').click()
     guide=page.locator('.file-preparation-guide');assert guide.is_visible()
     assert 'File → Library → Backup Library' in guide.inner_text()
     assert 'File → Export Collection in xml format' in guide.inner_text()

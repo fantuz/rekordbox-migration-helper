@@ -4,6 +4,10 @@
 
 - Add bounded SQLite-backed local audio-file evidence shared by playback availability and duplicate comparisons. Display playable, missing, inaccessible and unverified classifications with a refresh action and advisory filtering; no source modifications or automatic deletions.
 
+- Consolidate temporary-copy and page-specific information banners into the shared, responsive header between titles and selectors. The Play history, Collection statistics and Library lab explanations retain translated content and working help links behind Details.
+
+- Highlight the local-library entry on the home page and shared header; use category-only, smaller multiline bubble labels.
+
 - Add shared loading feedback after 200 ms, elapsed time and a one-second waiting notice, with a clearer message after 30 seconds without a response or progress change. Keep background status checks quiet and clear feedback after completion, cancellation or failure.
 - Remove the permanent selection-like accent from Saved investigations; mark only the current sidebar page as active, preserving a distinct keyboard focus outline.
 

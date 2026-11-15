@@ -87,7 +87,8 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Draw reproducible, genre-balanced random selections with a selection seed.
 - Follow eight optional saved journeys for both Serato migration directions, consistency checks, duplicate review, enrichment, metadata refinement, sharing, and backup preparation. Serato → rekordbox is a preparation/checklist workflow; no Serato importer is implemented. Every tool remains accessible independently.
 - Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
-- Bubble labels keep a consistent readable size, wrap to measured text width and highlight the matching category on hover or keyboard focus. Circle areas continue to represent the chosen metric.
+- Bubble labels prioritize category names at a consistent 12-pixel size, wrapping up to four lines. Counts remain in the category table and accessible labels; circle areas still represent the chosen metric.
+- A prominent “Use local library” entry opens source selection directly, without requiring XML/ZIP exports.
 - Audit preparation coverage, saved analysis references and STEMS-related evidence.
 - Inspect comments, personal stars, colour assignments and other captured metadata in a single-track view.
 - Stage metadata edits in a private sidecar; quick comments and colours remain separate from the original files.
@@ -117,6 +118,7 @@ The objective is long-term library maintainability: distinguish redundant record
 - Open MusicBrainz from the dedicated **Enrich** sidebar section, with source selection, saved batches, progress and results on one page.
 - Run opted-in lookups in the background with pacing, cached results, cancellation, resume and an in-app completion notice.
 - See shared loading feedback after 200 ms, a “Waiting…” message after one second without a response or progress change, and elapsed time during longer operations. These notices do not cancel work; existing cancellation controls remain available.
+- Read compact, contextual guidance between the page title and language controls rather than repeated full-width notices; expand Details to view full history, statistics and lab explanations and documentation links.
 - Review recording matches, separate community ratings and vote counts, genres, tags and release-year suggestions.
 - Preserve unknown ratings and personal stars; identity approval is required before staging supported suggestions.
 - Retrieve public ListenBrainz weekly, monthly or yearly listening charts and match them locally to the selected snapshot.

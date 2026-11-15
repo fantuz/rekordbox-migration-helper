@@ -85,3 +85,11 @@
 .restore-file-guide{background:var(--soft-green)}.restore-file-guide h3{margin:0 0 8px;font-size:17px}.restore-file-guide ol{padding-left:22px;margin:10px 0}.restore-file-guide li{padding-left:4px;margin-bottom:10px}
 .import-file-guide{padding:14px}.import-file-guide strong{font-size:15px}.import-file-guide p{margin:8px 0;font-size:13px}.import-file-guide code{overflow-wrap:anywhere;font-size:12px}
 .file-preparation-guide .text-button,.restore-file-guide .text-button,.import-file-guide .text-button{font-size:13px;line-height:1.5;text-align:left}
+
+/* A visible entry for DJs who already have a library on this computer. */
+.local-library-entry{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:0 0 20px;padding:20px 22px;border:1px solid #b9a3dd;border-inline-start:5px solid #7553a8;border-radius:14px;background:#eee7fb;color:#302044}
+.local-library-entry>div{min-width:0;max-width:760px}.local-library-entry h2{font-size:20px;margin:0 0 6px}.local-library-entry p{font-size:14px;line-height:1.6;margin:0}
+.button.local-library-action,.detected-source button[data-use-source],.detected-source button[data-discovery-choice=source]{background:#684493;color:#fff;border:1px solid #684493;border-radius:9px;padding:10px 15px;font-weight:650;white-space:normal;flex-shrink:0}
+.button.local-library-action:hover,.detected-source button[data-use-source]:hover{background:#55337d;border-color:#55337d}.local-library-action:focus-visible{outline:3px solid #7553a8;outline-offset:4px}
+[data-theme=dark] .local-library-entry{background:#30283f;border-color:#8e73ae;color:#f1eafa}[data-theme=dark] .button.local-library-action,[data-theme=dark] .detected-source button[data-use-source],[data-theme=dark] .detected-source button[data-discovery-choice=source]{background:#c3a1ed;color:#241533;border-color:#c3a1ed}[data-theme=dark] .button.local-library-action:hover{background:#d5baf4}
+@media(max-width:700px){.local-library-entry{align-items:stretch;flex-direction:column;padding:17px}.local-library-entry .button{align-self:flex-start}.header-actions .local-library-action{max-width:100%}}

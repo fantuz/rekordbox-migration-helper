@@ -326,6 +326,7 @@ function showView(view) {
   if (view==='docs'){$('#page-title').textContent=I18n.t('Documentation');$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;}
   if(view==='investigations'){$('#page-title').textContent=I18n.t('Saved investigations');$('#collection-metrics').hidden=true;$('.dataset-bar').hidden=true;Investigations.load().catch(e=>notify(e.message,true));}
   window.NativeCollection?.update(view);
+  window.HeaderInformation?.refresh(view);
 }
 async function example() {
   if (busy) return;
