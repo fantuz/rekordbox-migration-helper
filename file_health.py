@@ -1,0 +1,133 @@
+"""Explicit, bounded local file-health scans over captured library metadata.
+
+This is advisory evidence, separate from user review decisions. A full scan
+runs in the existing cancellable job worker, never during page rendering.
+"""
+import ipaddress
+import re
+import time
+from flask import jsonify,request
+
+from collection_sources import resolve
+from file_status_cache import inspect as cached_inspect
+from workbench_store import Store
+
+PAGE_SIZE=50
+BATCH_SIZE=100
+STATUS=('playable','missing','inaccessible','unverified')
+ORDER={'artist':'artist COLLATE NOCASE, title COLLATE NOCASE, track_id',
+       'title':'title COLLATE NOCASE, artist COLLATE NOCASE, track_id',
+       'status':"CASE status WHEN 'playable' THEN 0 WHEN 'missing' THEN 1 WHEN 'inaccessible' THEN 2 ELSE 3 END, artist COLLATE NOCASE, track_id",
+       'checked':'checked_at, track_id'}
+
+
+def selected_source(source):
+    if not isinstance(source,str) or not (re.fullmatch(r'(?:snapshot:|capture:)[0-9a-f]{32}',source)):
+        raise ValueError('Choose a saved library snapshot or source capture')
+    return source
+
+
+def local_request():
+    try:
+        remote=ipaddress.ip_address(request.remote_addr or '')
+        host=request.host.split(':')[0] if not request.host.startswith('[') else request.host[1:].split(']')[0]
+        local_host=host=='localhost' or ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+    return remote.is_loopback and local_host
+
+
+def register(owner):
+    app=owner.app
+    def store():return Store(owner.DATA/'workbench-sidecar.sqlite3')
+
+    @app.get('/api/file-health')
+    def get_file_health():
+        source=selected_source(request.args.get('source',''))
+        status=request.args.get('status','all')
+        sorting=request.args.get('sort','artist')
+        direction=request.args.get('direction','asc')
+        query=request.args.get('q','').strip().casefold()
+        try:offset=int(request.args.get('offset',0))
+        except (TypeError,ValueError):raise ValueError('Choose a valid offset') from None
+        if status not in ('all',*STATUS) or sorting not in ORDER or direction not in ('asc','desc') or not 0<=offset<=10000000 or len(query)>200:
+            raise ValueError('Choose a supported file-health filter and sort')
+        snapshot=resolve(owner,source)
+        total_records=len(snapshot['tracks'])
+        if total_records>250000:raise ValueError('This library exceeds the file-health scan limit')
+        with store().connection() as db:
+            # The index is a snapshot of an explicit scan, not automatically
+            # inferred from playback visits or unverified cached statuses.
+            record=db.execute('SELECT total,done,checked_at,state FROM file_health_scans WHERE source=?',(source,)).fetchone()
+            where='source=?';params=[source]
+            if status!='all':where+=' AND status=?';params.append(status)
+            if query:where+=' AND instr(search_text,?)>0';params.append(query)
+            matched=db.execute('SELECT count(*) FROM file_health_records WHERE '+where,params).fetchone()[0]
+            order=ORDER[sorting]
+            # Whitelisted clauses only: no SQL fragments from request values.
+            # Reverse the primary category, leaving stable secondaries intact.
+            if direction=='desc':order=order.replace(', ', ' DESC, ',1) if ', ' in order else order+' DESC'
+            sql='SELECT track_id,title,artist,genre,status,checked_at FROM file_health_records WHERE '+where+' ORDER BY '+order+' LIMIT ? OFFSET ?'
+            rows=[dict(r) for r in db.execute(sql,[*params,PAGE_SIZE,offset])]
+            counts={r['status']:r['n'] for r in db.execute('SELECT status,count(*) n FROM file_health_records WHERE source=? GROUP BY status',(source,))}
+            observed=sum(counts.values())
+        return jsonify(source=source,source_total=total_records,checked=observed,
+                       unchecked=max(0,total_records-observed),scan_state=record['state'] if record else 'not_started',
+                       scan_time=record['checked_at'] if record else None,
+                       counts={name:counts.get(name,0) for name in STATUS},
+                       rows=rows,total=matched,offset=offset,sort=sorting,direction=direction,
+                       note='File status is local, advisory evidence from the last explicit scan. Unchecked tracks are not Unverified. Re-scan after connecting storage or changing paths.')
+
+    @app.post('/api/file-health/scan')
+    def scan_file_health():
+        if not local_request():raise ValueError('Local file-health inspection requires the local application')
+        value=request.get_json(silent=True)
+        if not isinstance(value,dict):raise ValueError('Provide a file-health scan request')
+        source=selected_source(value.get('source'))
+        force=value.get('force',False)
+        if not isinstance(force,bool):raise ValueError('Choose a supported refresh mode')
+        snapshot=resolve(owner,source)
+        tracks=snapshot['tracks']
+        if len(tracks)>250000:raise ValueError('This library exceeds the file-health scan limit')
+        if len({str(t['id']) for t in tracks})!=len(tracks):
+            raise ValueError('File-health scanning requires unique track IDs')
+        # Duplicate clicks cannot start multiple scans for the same source.
+        jobs=getattr(owner,'tasks',{})
+        for job in jobs.values():
+            if job.get('status')=='running' and job.get('file_health_source')==source:
+                return jsonify(job=job['id'],source=source,resumed=True)
+        def work(progress):
+            started=time.time()
+            saved=store()
+            with saved.connection() as db:
+                if force:
+                    db.execute('DELETE FROM file_health_records WHERE source=?',(source,))
+                prior={row[0] for row in db.execute('SELECT track_id FROM file_health_records WHERE source=?',(source,))}
+                db.execute('INSERT OR REPLACE INTO file_health_scans (source,total,done,checked_at,state) VALUES (?,?,?,?,?)',
+                           (source,len(tracks),len(prior),started,'running'))
+            remaining=[t for t in tracks if str(t['id']) not in prior]
+            finished=False
+            try:
+                for index in range(0,len(remaining),BATCH_SIZE):
+                    batch=remaining[index:index+BATCH_SIZE]
+                    probes={str(t['id']):t for t in batch}
+                    states,_=cached_inspect(owner,probes,refresh=force)
+                    with saved.connection() as db:
+                        db.executemany('INSERT OR REPLACE INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text) VALUES (?,?,?,?,?,?,?,?)',
+                            [(source,identity,str(t.get('title') or ''),str(t.get('artist') or ''),
+                              str(t.get('genre') or ''),states[identity],time.time(),
+                              ' '.join(str(t.get(k) or '') for k in ('id','title','artist','genre')).casefold())
+                             for identity,t in probes.items()])
+                        done=len(prior)+index+len(batch)
+                        db.execute('UPDATE file_health_scans SET done=?,checked_at=? WHERE source=?',(done,time.time(),source))
+                    progress(100*done/max(1,len(tracks)),f'Checking local files: {done:,} / {len(tracks):,}')
+                finished=True
+                return {'source':source,'tracks':len(tracks),'checked':len(tracks),'audio_files_modified':False}
+            finally:
+                with saved.connection() as db:
+                    db.execute('UPDATE file_health_scans SET state=?,checked_at=? WHERE source=?',
+                               ('complete' if finished else 'partial',time.time(),source))
+        job=owner.launch(work,'Checking local file health')
+        # Keep the existing task list useful for refresh and duplicate-click checks.
+        if job in jobs:jobs[job]['file_health_source']=source
+        return jsonify(job=job,source=source,resumed=False)
