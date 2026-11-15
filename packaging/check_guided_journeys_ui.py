@@ -22,7 +22,7 @@ def check_guided_journeys_ui(page,base,sid,output):
     assert 'draft' in page.locator('.guided-plan .callout').inner_text()
     page.screenshot(path=str(output/'guided-migration.png'))
     page.locator('[data-guide-open="4"]').click();page.wait_for_selector('#view-intelligence',state='visible')
-    assert page.locator('.serato-entry').get_attribute('open') is not None
+    page.wait_for_selector('.serato-entry[open]',state='visible')
     page.locator('.serato-entry summary').click()  # Restore the next test's initial panel state.
     page.locator('.nav[data-view="journeys"]').click();page.wait_for_selector('[data-guide="guide-sharing"]')
     page.locator('[data-guide="guide-sharing"]').click()
