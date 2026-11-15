@@ -14,7 +14,7 @@ window.NativeCollection=(()=>{
     const panel=document.createElement('div');panel.className='native-collection';panel.hidden=true;host.append(panel);
   }
   function playback(id){const s=source();return TrackPlayback.button(s.startsWith('snapshot:')?s.slice(9):s,id);}
-  function track(t){return '<strong>'+esc(t.title || I18n.t('Untitled'))+'</strong>'+playback(t.id)+'<br><span>'+esc(t.artist || '')+'</span>';}
+  function track(t){return playback(t.id)+'<strong>'+esc(t.title || I18n.t('Untitled'))+'</strong>'+'<br><span>'+esc(t.artist || '')+'</span>';}
   function pager(view,data){return '<div class="action-row"><button class="button secondary" data-native-prev="'+view+'" '+(!data.offset?'disabled':'')+'>'+text('Previous')+'</button><span>'+num(data.total)+' '+text('results')+'</span><button class="button secondary" data-native-next="'+view+'" '+(data.offset+50>=data.total?'disabled':'')+'>'+text('Next')+'</button></div>';}
   async function load(view){
     setup(view);const panel=$('#view-'+view+' .native-collection'),old=$('#view-'+view+' .workspace-collection');
@@ -74,6 +74,7 @@ window.Investigations=(()=>{
       $('#investigations-confirm').onclick=wrap(async()=>{if(!preview)return;await api('/api/investigations/archive',{method:'POST',body:JSON.stringify(preview)});await refreshLists();});
     });
     host.querySelectorAll('[data-restore-investigations]').forEach(b=>b.onclick=wrap(async()=>{await api('/api/investigations/'+b.dataset.restoreInvestigations+'/restore',{method:'POST',body:'{}'});await refreshLists();}));
+    if(window.WorkspaceMaintenance)await WorkspaceMaintenance.load(data);
   }
   function invalidate(){preview=null;$('#investigation-preview').innerHTML='';}
   async function refreshLists(){await load();await Journeys.load();await loadAnalyzer();await loadLab();await loadWorkspace();notify(I18n.t('Saved investigations updated'));}

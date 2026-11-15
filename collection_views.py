@@ -6,6 +6,7 @@ import ntpath
 import re
 import unicodedata
 
+from result_cache import cached_collection
 from flask import jsonify, request
 
 from collection_sources import resolve, source_report
@@ -102,6 +103,7 @@ def register(owner):
         return Store(owner.DATA / 'workbench-sidecar.sqlite3').setting('duplicate_reviews:' + key, {})
 
     @app.get('/api/collection/statistics')
+    @cached_collection(owner)
     def collection_statistics():
         key, snapshot = source()
         minimum = float(request.args.get('min') or 0) * 60
@@ -111,6 +113,7 @@ def register(owner):
         return jsonify(source=key, **statistics(snapshot, minimum, maximum, source_report(owner, snapshot)))
 
     @app.get('/api/collection/duplicates')
+    @cached_collection(owner)
     def collection_duplicates():
         key, snapshot = source()
         groups = duplicate_groups(snapshot, request.args.get('basis', 'path'))
@@ -122,6 +125,7 @@ def register(owner):
                        note='Candidates only. Paths and matching tags do not prove identical audio; versions, durations and cues need review. No merge or source write is performed.')
 
     @app.get('/api/collection/duplicates/<identity>')
+    @cached_collection(owner)
     def collection_duplicate(identity):
         key, snapshot = source()
         group = next((g for g in duplicate_groups(snapshot, request.args.get('basis', 'path')) if g['id'] == identity), None)
@@ -148,6 +152,7 @@ def register(owner):
         return jsonify(saved=True, source_writes=False)
 
     @app.get('/api/collection/references')
+    @cached_collection(owner)
     def collection_references():
         key, snapshot = source()
         mode = request.args.get('mode', 'all')

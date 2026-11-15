@@ -43,6 +43,9 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.wait_for_selector('#dj-tracks [data-insight-open="demo0"]')
     page.wait_for_function('()=>{const b=document.querySelector(\'#dj-tracks [data-play-track="demo0"]\');if(!b)return false;b.scrollIntoView({block:"center"});return b.dataset.available==="true";}')
     page.wait_for_function('()=>{const b=document.querySelector(\'#dj-tracks [data-play-track="demo1"]\');if(!b)return false;b.scrollIntoView({block:"center"});return b.dataset.available==="false";}')
+    play=page.locator('#dj-tracks [data-play-track="demo0"]')
+    assert play.evaluate('(b)=>b.nextElementSibling?.dataset.insightOpen==="demo0"')
+    assert play.bounding_box()['width']<=25
     launches=[]
     def launch(route):
         launches.append(route.request.post_data_json)
@@ -59,6 +62,7 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.locator('#dj-tracks [data-insight-open="demo0"]').click()
     page.wait_for_selector('#track-detail-dialog[open]')
     assert page.locator('#track-detail-title [data-play-track="demo0"]').count()==1
+    assert page.locator('#track-detail-title').evaluate('(e)=>e.firstChild.matches("[data-play-track]")')
     page.screenshot(path=str(output/'readme-track-editor.png'))
     page.locator('#track-detail-dialog .close-dialog').click()
     page.unroute('**/api/playback/open',launch)

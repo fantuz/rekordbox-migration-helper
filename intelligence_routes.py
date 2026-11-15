@@ -10,6 +10,9 @@ from serato_bridge import draft_package,preview_package
 
 def register(owner):
     charts=ChartClient()
+    def clear_chart_cache():
+        with charts.lock:charts.cache.clear()
+    owner.clear_chart_cache=clear_chart_cache
     def store():return Store(owner.DATA/'workbench-sidecar.sqlite3')
     def identity(value):
         if not isinstance(value,str) or not value or len(value)>128:
