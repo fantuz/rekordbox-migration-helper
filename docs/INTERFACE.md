@@ -14,6 +14,8 @@ Duplicate decisions, reference changes and metadata overrides are staged locally
 
 Routine pages use short technical labels. Expand information boxes or select **Details** for procedures and evidence limits. Small icons supplement visible labels; colour alone does not identify an action. See [Library lab](LIBRARY-LAB.md) and [DJ insights](DJ-INSIGHTS.md).
 
+Single-track **File view** provides 0–5 instant personal-star buttons alongside the existing instant colour palette. Both stage a local working edit on click, without a confirmation or advanced-field unlock. Reset restores the captured value. Supported native colour choices are constrained to verified palette mappings; nothing is written to original source libraries or audio files. Comments retain their separate Save action, and export still requires normal review.
+
 ## Export and cleanup
 
 The paired XML/ZIP export uses one frozen decision snapshot. XML retains its input collection scope. A successful consistency check does not prove that rekordbox will restore a native ZIP. Use an isolated library and follow [restore testing](RESTORE-TEST.md).
