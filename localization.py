@@ -4,7 +4,8 @@ from pathlib import Path
 import re
 
 LANGUAGES={'en':'English','de':'Deutsch','fr':'Français','it':'Italiano','es':'Español',
-           'el':'Ελληνικά','pl':'Polski','cs':'Čeština','ru':'Русский'}
+           'el':'Ελληνικά','pl':'Polski','cs':'Čeština','ru':'Русский',
+           'ja':'日本語','ar':'العربية','pt-PT':'Português (Portugal)','pt-BR':'Português (Brasil)'}
 PLACEHOLDERS=re.compile(r'\{([a-zA-Z][a-zA-Z0-9_]*)\}')
 
 

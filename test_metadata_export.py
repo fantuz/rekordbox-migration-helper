@@ -53,9 +53,13 @@ class MetadataExportTests(unittest.TestCase):
         self.assertIn("connect-src 'none'",text)
         self.assertNotRegex(text,r'<(?:script|link)[^>]+(?:src|href)="https?://')
         self.assertNotIn('fetch(',text)
+        # The same direction rules ship in both self-contained formats.
+        layout=(ASSETS/'language-layout.css').read_text(encoding='utf-8')
+        self.assertIn(layout,text)
         self.assertFalse(result['staged_changes_applied'])
         with zipfile.ZipFile(folder/'metadata-explorer.zip') as archive:
             self.assertIsNone(archive.testzip())
+            self.assertIn(layout,archive.read('explorer.css').decode('utf-8'))
             for page in ('index','tracks','genres','years','added','artists','albums','bpm','ratings','duration','formats','playlists','tonality','colours'):
                 self.assertIn(page+'.html',archive.namelist())
             script=archive.read('library-data.js').decode('utf-8')
