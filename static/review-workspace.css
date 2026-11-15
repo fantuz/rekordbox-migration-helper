@@ -66,9 +66,9 @@ html[dir=rtl] .review-drawer{border-radius:0 14px 14px 0}
 .native-review-workspace .review-candidates .native-table th.native-count{width:56px}
 .native-review-workspace .review-candidates .native-table th.native-spread{width:88px}
 .native-review-workspace .review-candidates .native-table th.native-review-state{width:100px}
-.native-review-workspace .review-candidates .native-table th:last-child{width:72px}
+.native-review-workspace .review-candidates .native-table th:last-child{width:90px}
 .native-review-workspace .native-candidate-artist{color:var(--muted);font-size:12px}
-.native-review-workspace [data-native-group]{padding:6px 8px;min-height:32px}
+.native-review-workspace [data-native-group]{padding:5px 8px;min-height:32px;line-height:1.4;white-space:nowrap}
 .native-review-workspace .review-candidates>.action-row{margin:0;padding:8px 12px;border-top:1px solid var(--line);gap:8px;flex-shrink:0}
 .native-review-workspace .review-candidates>.action-row .button{flex:0 0 auto;min-width:80px;padding:7px 12px}
 .native-review-workspace .review-candidates>.action-row span{flex:1;text-align:center;font-size:12px}
