@@ -92,7 +92,7 @@ class LocalizationTests(unittest.TestCase):
 
     def test_every_supported_language_has_complete_safe_messages_and_matching_slots(self):
         raw=json.loads((ASSETS/'locales.json').read_text(encoding='utf-8'))['messages']
-        self.assertEqual(set(LANGUAGES),{'en','de','fr','it','es','el','pl','cs','ru'})
+        self.assertEqual(set(LANGUAGES),{'en','de','fr','it','es','el','pl','cs','ru','ja','ar','pt-PT','pt-BR'})
         self.assertGreater(len(raw),100)
         for key,values in raw.items():
             self.assertNotIn('@@',key)

@@ -1,0 +1,37 @@
+/* Shared by the application and both offline export formats. No remote fonts. */
+html:lang(ja){--font:system-ui,-apple-system,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;font-family:var(--font);line-break:strict}
+html:lang(ar){--font:system-ui,"Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif;font-family:var(--font)}
+html:lang(ar) :is(h1,h2,h3,.eyebrow,.nav-group-title,.badge,.metric span){letter-spacing:normal}
+html:lang(ja) :is(h1,h2,h3,.eyebrow,.nav-group-title){letter-spacing:normal}
+:is(button,.button,.nav,.cell-link,.theme-label){overflow-wrap:anywhere}
+#language{max-width:14rem;direction:ltr}
+.language-control{white-space:normal}
+/* Isolate mixed-script source data without adding characters to copied values. */
+:is(.pair-title,.pair-artist,.sibling .title,[data-insight-open],.cell-link,dialog dd){unicode-bidi:plaintext}
+:is(code,pre,.path,.workbench-path,input[type=number],input[type=url],#analyzer-path,#discovery-roots,#serato-volume){direction:ltr;unicode-bidi:isolate;text-align:left}
+code{display:inline-block;max-width:100%;overflow-wrap:anywhere}
+/* Coordinates and cue positions remain chronological, independently of UI language. */
+:is(svg,.cue-lane,.cue-time){direction:ltr;unicode-bidi:isolate}
+html[dir=rtl] .sidebar{left:auto;right:0;border-right:0;border-left:1px solid var(--line)}
+html[dir=rtl] main{margin-left:0;margin-right:var(--sidebar-width,218px)}
+html[dir=rtl] :is(.nav,.pair-row,.bar-row,.cell-link,.journey-goal,.docs-layout>nav button,th,thead){text-align:start}
+html[dir=rtl] .nav b{margin-left:0;margin-right:auto}
+html[dir=rtl] :is(.sibling dd,.bar-row small,td.numeric){text-align:end}
+html[dir=rtl] .sidebar .nav{border-left:0;border-right:2px solid transparent}
+html[dir=rtl] .sidebar .nav.active{border-right-color:var(--accent)}
+html[dir=rtl] .close-dialog{right:auto;left:14px}
+html[dir=rtl] .close{float:left}
+html[dir=rtl] .progress-toast{right:auto;left:26px}
+html[dir=rtl] .skip{left:auto;right:225px}
+html[dir=rtl] :is(.icon-button,.discovery-panel select){margin-left:0;margin-right:5px}
+html[dir=rtl] .progress-toast b{margin-left:0;margin-right:auto}
+html[dir=rtl] :is(.dot,.legend i){margin-right:0;margin-left:6px}
+html[dir=rtl] .insight-sourcebar{border-left:0;border-right:3px solid var(--accent)}
+html[dir=rtl] #bubble-expanded .bubble-toolbar{padding-right:0;padding-left:34px}
+html[dir=rtl] :is(ul,ol){padding-left:0;padding-right:1.6rem}
+/* Bundled documentation remains in its source language. */
+#docs-content[dir=ltr]{text-align:left;unicode-bidi:isolate}
+#docs-content[dir=ltr] :is(ul,ol){padding-right:0;padding-left:1.6rem}
+@media(max-width:800px){html[dir=rtl] body[data-mode] main{margin-right:0}html[dir=rtl] body[data-mode] .sidebar{border-left:0}}
+@media(max-width:760px){html[dir=rtl] main{margin-right:0}html[dir=rtl] .sidebar{border-left:0}#language{max-width:12rem}html[dir=rtl] #bubble-expanded .bubble-toolbar{padding-left:20px}}
+@media print{html[dir=rtl] main{margin:0}}

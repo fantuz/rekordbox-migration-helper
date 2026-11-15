@@ -15,7 +15,7 @@
   <br>
   <a href="#start"><img src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-507269" alt="Supported platforms" height="20"></a>
   <a href="#start"><img src="https://img.shields.io/badge/Python-3.13%2B-3776ab" alt="Linux source runtime: Python 3.13 or newer" height="20"></a>
-  <a href="docs/LOCALIZATION.md"><img src="https://img.shields.io/badge/interface-9%20languages-2e7d32" alt="Nine interface languages" height="20"></a>
+  <a href="docs/LOCALIZATION.md"><img src="https://img.shields.io/badge/interface-13%20languages-2e7d32" alt="Thirteen interface languages" height="20"></a>
   <a href="SECURITY.md"><img src="https://img.shields.io/badge/security-private%20reporting-507269" alt="Security policy and private reporting" height="20"></a>
 </p>
 <!-- project-badges:end -->
@@ -125,7 +125,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Choose public aggregates, a selected track list or a private explorer; file paths are optional and audio is excluded.
 - Use shared collection context and guided health-check, migration, duplicate-review and sharing workflows.
 - Use compact summary cards, colour-coded navigation and light/dark themes.
-- Switch between nine interface languages without translating source metadata.
+- Switch between 13 interface languages without translating source metadata.
 - Run Python source or packaged applications on Windows, macOS and Linux; GitHub builds and checks the supported packages.
 
 This inventory describes implemented behavior, not a compatibility certification. See [compatibility](docs/COMPATIBILITY.md), [MusicBrainz](docs/COMMUNITY-RATINGS.md), [chart playlists](docs/CHART-PLAYLISTS.md) and [Serato draft limits](docs/SERATO-BRIDGE.md). Feature changes must update this inventory and their detailed guide in the same PR.

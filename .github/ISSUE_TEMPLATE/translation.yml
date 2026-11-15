@@ -6,7 +6,7 @@ body:
     id: language
     attributes:
       label: Language
-      options: [English, Deutsch, Français, Italiano, Español, Ελληνικά, Polski, Čeština, Русский]
+      options: [English, Deutsch, Français, Italiano, Español, Ελληνικά, Polski, Čeština, Русский, 日本語, العربية, Português (Portugal), Português (Brasil)]
     validations:
       required: true
   - type: input

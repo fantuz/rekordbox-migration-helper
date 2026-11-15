@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Japanese, Arabic with right-to-left layout, European Portuguese and Brazilian Portuguese to the web interface and offline explorers; preserve regional preferences and mixed-script library metadata.
+
 - Connect captured master.db sources to statistics, native duplicate review, recorded file references and saved play history without requiring XML/ZIP imports.
 - Add granular, reversible saved-investigation cleanup with dependency previews and restore support.
 - Space the shared collection label and selector, emphasize the direct snapshot action, and reduce the temporary-copy banner to one sentence.

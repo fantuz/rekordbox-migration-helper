@@ -4,10 +4,15 @@ window.I18n=(() => {
   const data=window.WORKBENCH_LOCALES || {languages:{en:'English'},messages:{en:{}}};
   const storageKey='library-workbench.language.v1';
   const supported=code=>Object.hasOwn(data.languages,code);
-  const normalize=code=>String(code || '').toLowerCase().split('-')[0];
+  const normalize=code=>{
+    const parts=String(code || '').trim().replaceAll('_','-').toLowerCase().split('-');
+    // Retain Portuguese regions; bare pt and other Portuguese regions use pt-PT.
+    const candidate=parts[0]==='pt'?(parts.slice(1).includes('br')?'pt-BR':'pt-PT'):parts[0];
+    return supported(candidate)?candidate:null;
+  };
   const browserLanguage=()=>[...(navigator.languages || []),navigator.language].map(normalize).find(supported) || 'en';
   const readPreference=()=>{try{return localStorage.getItem(storageKey);}catch{return null;}};
-  let language=supported(readPreference())?readPreference():browserLanguage();
+  let language=normalize(readPreference()) || browserLanguage();
   const missing=new Set(),rich=new WeakMap(),numberFormats=new Map();
   const escape=value=>String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const number=(value,options={})=>{const key=language+JSON.stringify(options);if(!numberFormats.has(key))numberFormats.set(key,new Intl.NumberFormat(language,options));return numberFormats.get(key).format(Number(value));};
@@ -45,7 +50,9 @@ window.I18n=(() => {
       for(const part of parts){
         const slot=part.match(/^\{slot(\d+)\}$/),field=part.match(/^\{([a-zA-Z][a-zA-Z0-9_]*)\}$/);
         if(slot && state.slots[Number(slot[1])] && key.includes(part))children.push(state.slots[Number(slot[1])]);
-        else children.push(document.createTextNode(field&&Object.hasOwn(params,field[1])?parameter(params[field[1]]):part));
+        else if(field&&Object.hasOwn(params,field[1])){
+          const value=document.createElement('bdi');value.dir='auto';value.textContent=parameter(params[field[1]]);children.push(value);
+        }else children.push(document.createTextNode(part));
       }
       node.replaceChildren(...children);
     }
@@ -53,14 +60,14 @@ window.I18n=(() => {
   function html(key,params={}){return '<span data-i18n="'+escape(key)+'" data-i18n-params="'+escape(JSON.stringify(params))+'">'+escape(t(key,params))+'</span>';}
   function text(node,key,params={}){node.dataset.i18n=key;node.dataset.i18nParams=JSON.stringify(params);rich.delete(node);apply(node);}
   function setLanguage(code){
-    if(!supported(code))code='en';
+    code=normalize(code) || 'en';
     language=code;try{localStorage.setItem(storageKey,code);}catch{}
-    document.documentElement.lang=code;document.documentElement.dir='ltr';
+    document.documentElement.lang=code;document.documentElement.dir=code==='ar'?'rtl':'ltr';
     for(const select of document.querySelectorAll('[data-language-select],#language'))select.value=code;
     apply();window.dispatchEvent(new CustomEvent('workbench-language',{detail:{language:code}}));
   }
   function start(){
-    document.documentElement.lang=language;document.documentElement.dir='ltr';
+    document.documentElement.lang=language;document.documentElement.dir=language==='ar'?'rtl':'ltr';
     for(const select of document.querySelectorAll('[data-language-select],#language')){select.value=language;select.addEventListener('change',()=>setLanguage(select.value));}
     apply();
     new MutationObserver(records=>{for(const record of records){if(record.type==='attributes')apply(record.target);else for(const node of record.addedNodes)if(node.nodeType===1)apply(node);}}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['data-i18n','data-i18n-params']});

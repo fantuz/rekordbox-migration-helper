@@ -256,6 +256,7 @@ def export_metadata(snapshot, root, export_id, assets, progress, title="My libra
                                                 key == "tracks" or PAGE_FIELDS.get(key) in data['columns'])}
         serialized = script_json(data)
         css, js = (assets/"explorer.css").read_text(encoding="utf-8"), (assets/"explorer.js").read_text(encoding="utf-8")
+        css+='\n'+(assets/'language-layout.css').read_text(encoding='utf-8')
         translations=browser_catalogues(assets)+'\n'+(assets/'i18n.js').read_text(encoding='utf-8')
         template = (assets/"explorer.html").read_text(encoding="utf-8")
         def page(view, single):

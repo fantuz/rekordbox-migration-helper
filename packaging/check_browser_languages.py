@@ -26,7 +26,7 @@ def main():
     messages=catalogues(ROOT/'static')
     with tempfile.TemporaryDirectory(prefix='workbench-language-') as tmp:
         root=Path(tmp);data=root/'data';data.mkdir();store=Store(data/'workbench-sidecar.sqlite3')
-        titles=['Unknown','Artist','Tracks','Ready','Most played','Copy','Grüße · Français · Città · Español','Ελληνικά · Łódź · Český · Русский','日本語 · 🎧 · cafe\u0301','</script><img src=x onerror="window.metadataExecuted=1">',' =1+1','\ufeff@SUM(1,1)']
+        titles=['Unknown','Artist','Tracks','Ready','Most played','Copy','Grüße · Français · Città · Español','Ελληνικά · Łódź · Český · Русский','日本語 · العربية · coração · 🎧 · cafe\u0301','</script><img src=x onerror="window.metadataExecuted=1">',' =1+1','\ufeff@SUM(1,1)']
         tracks=[{**track({'id':'t'+str(i),'title':title,'artist':'Автор & Łódź 🎧','album':'Album {slot0} <mix>','genre':'House' if i%2 else 'Unknown','bpm':120+i,'duration':240,'play_count':i+1,'rating':4,'manual_cues':1,'auto_cues':0,'analysed':True,'comment':'Local comment Ελληνικά 🎧','color_status':'assigned','color_key':'blue' if i%2 else 'green','color_name':'Closing' if i%2 else 'Opening','color_hex':'#2478bc' if i%2 else '#27815b'}),'cues':[]} for i,title in enumerate(titles)]
         snapshot={'schema':1,'scope_key':'synthetic:browser','source_kind':'Synthetic Unicode fixture','tracks':tracks,'playlists':[],'asset_references':[],'capabilities':{'cue_positions':True,'playlist_order':False}}
         saved=store.save_snapshot(snapshot,'Synthetic Unicode fixture');sid=saved['id'];before=deepcopy(store.snapshot(sid))
@@ -56,6 +56,7 @@ def main():
                     page.locator('.nav[data-view="insights"]').click();page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]',state='attached')
                     page.select_option('#dj-snapshot',sid);page.select_option('#dj-perspective','all');page.locator('#dj-filter-form button[type="submit"]').click();page.wait_for_selector('[data-insight-open="t0"]')
                     assert page.locator('[data-insight-open="t0"]').inner_text()=='Unknown'
+                    assert page.locator('[data-insight-open="t8"]').inner_text()==titles[8]
                     assert page.locator('[data-insight-open="t9"]').inner_text()==titles[9]
                     assert page.locator('img[src="x"]').count()==0
                     assert page.locator('.nav[data-view="review"]').inner_text().strip().endswith(messages[code]['Duplicate review'])
@@ -68,7 +69,8 @@ def main():
                     assert page.locator('#search').get_attribute('placeholder')==messages[code]['Find a track or artist']
                     assert page.locator('#search').get_attribute('aria-label')==messages[code]['Search candidate pairs']
                     report['languages'].append({'code':code,'app':'passed','metadata_unchanged':True})
-                    if code in ('en','de','el','ru'):page.screenshot(path=str(args.output/(code+'-insights.png')),full_page=False)
+                    assert page.locator('html').get_attribute('dir')==('rtl' if code=='ar' else 'ltr')
+                    if code in ('en','de','el','ru','ar','ja','pt-PT','pt-BR'):page.screenshot(path=str(args.output/(code+'-insights.png')),full_page=False)
                 page.locator('[data-insight-open="t0"]').click();page.wait_for_selector('#track-detail-dialog[open]')
                 assert page.locator('#track-comment-text').is_visible();note='Unsaved comment Σ Ł Č Русский 🎧 {slot0}'
                 page.fill('#track-comment-text',note);page.select_option('#language','fr');page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
@@ -86,6 +88,8 @@ def main():
                 assert not api_issues,api_issues
                 assert page.locator('#toast').is_hidden() or not page.locator('#toast').inner_text(), 'Unexpected caught UI error: '+page.locator('#toast').inner_text()
                 page.select_option('#language','en');page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
+                from check_regional_languages_ui import check_regional_languages_ui
+                report['regional_languages_ui']=check_regional_languages_ui(browser,base,args.output)
                 from check_journeys_ui import check_journeys_ui
                 report['journeys_ui']=check_journeys_ui(page,base,sid,args.output)
                 from check_guided_journeys_ui import check_guided_journeys_ui
@@ -110,9 +114,15 @@ def main():
                     page.locator('#navigation a[data-view="tracks"]').click();page.wait_for_selector('#metadata-table tbody tr')
                     assert page.locator('#metadata-table').inner_text().find(titles[9])>=0
                     assert page.locator('img[src="x"]').count()==0
+                    assert titles[8] in page.locator('#metadata-table').inner_text()
+                    assert page.locator('html').get_attribute('dir')==('rtl' if code=='ar' else 'ltr')
                     assert messages[code]['tracks'] in page.locator('#snapshot-info').inner_text()
                     assert messages[code]['Merge and relocation decisions are not applied.'] in page.locator('#scope-note').inner_text()
                     report['languages'][list(LANGUAGES).index(code)]['offline']='passed'
+                    if code=='ar':
+                        sidebar=page.locator('.sidebar').bounding_box();main=page.locator('main').bounding_box()
+                        assert sidebar['x']>=main['x']+main['width']-1,(sidebar,main)
+                        page.screenshot(path=str(args.output/'ar-offline.png'),full_page=False)
                 with page.expect_download() as download:
                     page.locator('#download-csv').click()
                 download_path=root/'browser-export.csv';download.value.save_as(download_path)
