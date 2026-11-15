@@ -4,6 +4,7 @@ from contextlib import closing
 from copy import copy, deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
+from hashlib import sha256
 from threading import RLock
 from uuid import uuid4
 import argparse
@@ -19,8 +20,8 @@ from engine import Catalog, analyze, enrich_usage, decision_map, export_xml
 from native_export import export_native
 from media import scan as scan_media, verify_pair
 from file_workflow import select_inputs, fingerprint_inputs, check_inputs, prepare_export, list_exports,pair_signature
-from analyzer import analyze_folder, COMPATIBILITY
-from platform_paths import default_data_directory, discover_cloud_roots
+from analyzer import analyze_folder, COMPATIBILITY, source_stamps
+from platform_paths import default_data_directory, discover_cloud_roots, database_names
 from discovery import suggestions as discover_locations,scan_roots as discover_scan
 from storage_audit import scan_storage, verify_group
 from metadata_export import capture_catalog, export_metadata, list_metadata_exports
@@ -255,6 +256,40 @@ def start_analyzer():
     report_id=uuid4().hex
     return jsonify(job=launch(lambda progress:analyze_folder(source,DATA/"analyzers"/report_id,progress,version,snapshot_root=TEMPORARY.folder('analyzers',report_id),recursive_inventory=recursive),
                              "Capturing a read-only source-folder snapshot"),report_id=report_id)
+
+
+@app.get("/api/analyzer/<report_id>/journal-status")
+def analyzer_journal_status(report_id):
+    """Metadata-only WAL/journal change detection on an already selected capture.
+
+    Never open an active encrypted database connection, parse WAL frames, alter
+    checkpoints or classify these stamps as committed transactions.
+    """
+    if not re_uuid(report_id):return jsonify(error="Report not found"),404
+    path=DATA/"analyzers"/report_id/"report.json"
+    if not path.is_file() or path.is_symlink():return jsonify(error="Report not found"),404
+    report=json.loads(path.read_text(encoding="utf-8"))
+    if report.get("format")!="Modern desktop master.db":
+        return jsonify(supported=False,changed=False,message="Live monitoring requires a saved modern desktop database capture")
+    root=Path(report["source"])
+    if not root.is_dir() or root.is_symlink() or root.is_junction():
+        return jsonify(supported=False,changed=False,message="The saved source directory is unavailable or is a link")
+    names=[name for name in database_names(root) if name.casefold()=="master.db"]
+    if len(names)!=1:
+        return jsonify(supported=False,changed=False,message="Exactly one source master.db must be present")
+    name=names[0]
+    for suffix in ("","-wal","-journal"):
+        if (root/(name+suffix)).is_symlink():
+            return jsonify(supported=False,changed=False,message="Linked database or journal files cannot be monitored")
+    current=source_stamps(root,name)
+    if current['master.db'] is None:return jsonify(supported=False,changed=False,message='Source master.db is no longer available')
+    baseline={row["name"]:{key:row.get(key) for key in ("bytes","mtime_ns","inode")} for row in report.get("source_files",[])}
+    changed=any(current[key]!=baseline.get(key) for key in current)
+    signature=sha256(json.dumps(current,sort_keys=True).encode()).hexdigest()
+    return jsonify(supported=True,changed=changed,signature=signature,
+                   wal_present=current.get("master.db-wal") is not None,
+                   journal_present=current.get("master.db-journal") is not None,
+                   message="File changes may include checkpoints or uncommitted writes; only a consistent private snapshot is presented")
 
 
 @app.get("/api/analyzer/<report_id>")

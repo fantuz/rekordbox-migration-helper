@@ -650,7 +650,57 @@ async function loadAnalyzer() {
   $("#analyzer-history").innerHTML=data.reports.map(report=>'<article class="analyzer-history-record"><div><strong>'+esc(report.format)+'</strong><span>'+esc(new Date(report.created).toLocaleString(I18n.language))+' · '+esc(report.read_status.replaceAll("_"," "))+'</span><code>'+esc(report.source)+'</code></div><button class="button secondary small" data-open-analysis="'+esc(report.id)+("\">"+esc(I18n.t("Open report"))+"</button></article>")).join("") || ("<p class=\"subtle\">"+esc(I18n.t("No saved source-folder reports yet."))+"</p>");
   $$("[data-open-analysis]").forEach(button=>button.onclick=wrap(async()=>{const report=await api('/api/analyzer/'+button.dataset.openAnalysis);renderAnalysis(report);if(report.metadata_available && window.Journeys){await Journeys.load();await Journeys.selectContext('capture:'+report.id,true);}$("#analyzer-result").scrollIntoView({behavior:"smooth",block:"start"});}));
 }
+let journalReport=null,journalStamp=null,journalStable=0,journalLastRefresh=0,journalActive=false,journalPolling=false,journalRevision=0;
+function journalCaptureSelected(report){
+  journalRevision++;
+  journalReport=report?.format==='Modern desktop master.db'?report:null;
+  journalStamp=null;journalStable=0;
+  if($('#analyzer-journal-state'))
+    $('#analyzer-journal-state').textContent=journalReport?'Source captured · monitoring is available':'Journal monitoring requires a modern source database capture';
+}
+async function pollAnalyzerJournal(){
+  if(!$('#analyzer-journal-watch')?.checked || !journalReport || $('#view-analyzer').hidden || document.hidden || busy || journalActive || journalPolling)return;
+  const old=journalReport,revision=journalRevision;
+  const current=()=>revision===journalRevision && journalReport===old && $('#analyzer-journal-watch').checked && !$('#view-analyzer').hidden && !document.hidden;
+  journalPolling=true;
+  try{
+    const state=await api('/api/analyzer/'+encodeURIComponent(old.id)+'/journal-status',{feedback:false});
+    if(!current())return;
+    if(!state.supported){$('#analyzer-journal-state').textContent=state.message;return;}
+    if(!state.changed){
+      journalStamp=null;journalStable=0;
+      $('#analyzer-journal-state').textContent='Source files match this capture · no changes detected';
+      return;
+    }
+    if(state.signature===journalStamp)journalStable++;
+    else{journalStamp=state.signature;journalStable=1;}
+    $('#analyzer-journal-state').textContent='Database/journal activity detected · '+(journalStable<2?'waiting for stable files':'stable changes detected')+(state.wal_present?' · WAL present':'');
+    if(journalStable<2 || Date.now()-journalLastRefresh<30000 || busy)return;
+    journalActive=true;journalLastRefresh=Date.now();
+    try{
+      const job=await api('/api/analyzer',{method:'POST',body:JSON.stringify({path:old.source,version:old.version_hint||'',recursive_inventory:old.footprint?.scope==='recursive'})});
+      const result=await poll(job.job);
+      if(!current())return;
+      renderAnalysis(result);const appliedRevision=journalRevision;await loadAnalyzer();
+      const stillSelected=()=>appliedRevision===journalRevision && $('#analyzer-journal-watch').checked && !$('#view-analyzer').hidden && !document.hidden;
+      if(!stillSelected())return;
+      if(result.metadata_available && window.Journeys){await Journeys.load();if(!stillSelected())return;await Journeys.selectContext('capture:'+result.id,true);}
+      $('#analyzer-journal-state').textContent='New read-only snapshot captured · '+snapshotMoment(result.created);
+    }catch(error){
+      if(current())$('#analyzer-journal-state').textContent='Capture not applied: '+error.message+' · retry after files are stable';
+    }finally{journalActive=false;}
+  }catch(error){if(current())$('#analyzer-journal-state').textContent='Journal monitor unavailable: '+error.message;}
+  finally{journalPolling=false;}
+}
+$('#analyzer-journal-watch').onchange=()=>{
+  journalRevision++;
+  journalStamp=null;journalStable=0;
+  if(!$('#analyzer-journal-watch').checked)$('#analyzer-journal-state').textContent='Journal monitoring disabled';
+  else void pollAnalyzerJournal();
+};
+setInterval(()=>{void pollAnalyzerJournal();},4000);
 function renderAnalysis(report) {
+  journalCaptureSelected(report);
   const target=$("#analyzer-result");target.hidden=false;
   const db=report.database, inventory=report.footprint;
   const status={get checked(){return I18n.t("Read completed");},get needs_review(){return I18n.t("Needs review");},get unsupported(){return I18n.t("Database unreadable");},get inventory_only(){return I18n.t("File inventory only");}}[report.read_status];
