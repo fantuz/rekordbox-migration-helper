@@ -74,6 +74,30 @@ class HistoryTests(unittest.TestCase):
         exported=json.dumps(payload(saved,'Synthetic library'))
         self.assertNotIn('Synthetic gig',exported);self.assertNotIn('histories',exported)
 
+    def test_native_playlist_schema_distinguishes_unavailable_from_empty(self):
+        from library_intelligence import collection_lenses
+        from collection_views import statistics
+        missing_db=native_fixture(self.root/'without-playlists.db')
+        unknown=capture_private_database(missing_db,'without-playlists')
+        missing_db.close()
+        self.assertFalse(unknown['capabilities']['playlist_membership'])
+        self.assertFalse(unknown['capabilities']['playlist_order'])
+        self.assertIsNone(statistics(unknown)['counters']['total_playlists'])
+        self.assertIsNone(collection_lenses(unknown,'all')['summary']['outside_playlists'])
+        with self.assertRaises(ValueError):collection_lenses(unknown,'unfiled')
+
+        known_db=native_fixture(self.root/'with-empty-playlists.db')
+        known_db.executescript("""
+            CREATE TABLE djmdPlaylist(ID TEXT,Name TEXT,Attribute INTEGER);
+            CREATE TABLE djmdSongPlaylist(PlaylistID TEXT,ContentID TEXT);
+        """)
+        known=capture_private_database(known_db,'with-empty-playlists')
+        known_db.close()
+        self.assertTrue(known['capabilities']['playlist_membership'])
+        self.assertFalse(known['capabilities']['playlist_order'])  # no TrackNo
+        self.assertEqual(statistics(known)['counters']['total_playlists'],0)
+        self.assertEqual(collection_lenses(known,'unfiled')['total'],2)
+
     def test_dates_are_addition_years_and_unknowns_do_not_disappear(self):
         result=added_years([{'date_added':v} for v in ('2024-02-01','20240102','2022/01/01',None,'garbage','0000-00-00')])
         self.assertEqual(result['years'],[{'year':'2024','tracks':2},{'year':'2022','tracks':1}]);self.assertEqual(result['unknown'],3)
