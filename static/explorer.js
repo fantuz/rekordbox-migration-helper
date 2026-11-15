@@ -93,8 +93,8 @@
     return element;
   }
   function bubbleCategories(key){
-    if(aggregateOnly)return (data.aggregates.categories[key]||[]).map(g=>({label:label(g.label),count:g.count}));
-    return groups(filtered(),bubbleMetricField[key]).map(g=>({label:g.label,count:g.count}));
+    if(aggregateOnly)return (data.aggregates.categories[key]||[]).map(g=>({label:label(g.label),count:g.count,key:canonical(g.label)}));
+    return groups(filtered(),bubbleMetricField[key]).map(g=>({label:g.label,count:g.count,key:g.key}));
   }
   function renderOfflineBubbles(){
     const panel=$('#offline-bubble-panel');
@@ -129,6 +129,17 @@
     for(const [i,g] of nodes.entries()){
       const group=bubbleElement('g');
       const hue=(i*137.508+175)%360;
+      group.classList.add('offline-bubble-node');
+      group.setAttribute('tabindex','0');group.setAttribute('role','button');
+      group.setAttribute('aria-label',g.label+' · '+number.format(g.count)+' '+I18n.t('tracks'));
+      const open=()=>{
+        if(aggregateOnly || g.label==='Other')go(key,{});
+        else go('tracks',{...state,[bubbleMetricField[key]]:g.key});
+      };
+      group.addEventListener('click',open);
+      group.addEventListener('keydown',event=>{
+        if(event.key==='Enter' || event.key===' '){event.preventDefault();open();}
+      });
       group.append(bubbleElement('circle',{cx:g.x,cy:g.y,r:g.r,fill:'hsl('+hue+' 48% 59%)',stroke:'hsl('+hue+' 45% 35%)','stroke-width':2}));
       const title=bubbleElement('title');title.textContent=g.label+' · '+number.format(g.count);group.append(title);
       if(g.r>20){

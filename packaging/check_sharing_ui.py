@@ -55,6 +55,9 @@ def check_sharing_ui(page,base,sid,output):
         assert offline.locator('#offline-bubble-map circle').count()>0
         assert offline.locator('#offline-bubble-note').inner_text()
         assert offline.locator('#offline-bubble-legend span').count()>0
+        offline.locator('#offline-bubble-map [role="button"]').first.click()
+        offline.wait_for_function('new URLSearchParams(location.hash.slice(1)).get("view")==="artists"')
+        assert offline.locator('#metadata-table tbody tr').count()>0
         offline.screenshot(path=str(Path(output)/'public-summary.png'))
         assert not errors,errors
     finally:offline.close()
