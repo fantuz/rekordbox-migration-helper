@@ -2,10 +2,15 @@
 
 ## Unreleased
 
+No unreleased changes recorded yet.
+
+## 1.0.9 — 2026-11-15
+
+This stable update adds sortable results and whole-library file-health investigations, simplifies targeted MusicBrainz enrichment, and improves snapshot edition timestamps and playlist/file availability evidence. Source music and rekordbox libraries remain unchanged.
+
 - Add accessible click-to-sort headers to bounded result tables, with a file-status column beside local playback controls. Sorting in paged tables affects displayed rows; File health uses indexed, library-wide server sorting.
 - Add opt-in, cancellable local File health scans with SQLite-backed status totals, search, filtering and global sorting. Distinguish not-yet-checked records from scanned Unverified evidence; no original media or database is modified.
 - Simplify MusicBrainz enrichment with a quick target selector for balanced genres, deterministic random, specific genre/album/year/playlist and missing metadata, plus explanatory parameters and unchanged consent/staging safeguards.
-
 - Fix storage-reconnection focus refresh to bypass the SQLite audio-status cache (with focus-event throttling); distinguish absent native playlist membership from genuinely empty playlist collections and keep unknown membership counts unverified.
 - Record exact snapshot save times with timezone-aware UTC timestamps and display local date/time/zone across snapshot selectors, keeping older date-only records compatible.
 
