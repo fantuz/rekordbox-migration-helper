@@ -157,7 +157,7 @@ def check_track_details_ui(browser,base,output):
         assert ('POST',{'snapshot':sid,'track_id':tid,'field':'rating','value':5}) in writes
         assert page.locator('#track-comment-text').input_value()==original['comment']
         page.locator('#track-rating-reset').click()
-        page.wait_for_function('document.querySelector("[data-track-rating=\\"3\\"]")?.getAttribute("aria-pressed")==="true" && !document.querySelector("#track-rating-reset").disabled')
+        page.wait_for_function('document.querySelector("[data-track-rating=\\"3\\"]")?.getAttribute("aria-pressed")==="true" && document.querySelector("#track-rating-reset").disabled')
         assert 'rating' not in edits
         assert not errors,errors
         assert not unexpected,unexpected
