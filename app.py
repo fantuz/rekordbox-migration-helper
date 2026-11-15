@@ -1111,6 +1111,8 @@ from investigations import register as register_investigations
 register_investigations(sys.modules[__name__])
 from journeys_routes import register as register_journeys
 register_journeys(sys.modules[__name__])
+from file_health import register as register_file_health
+register_file_health(sys.modules[__name__])
 
 
 if __name__=="__main__":
