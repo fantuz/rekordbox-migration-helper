@@ -35,6 +35,21 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
         assert round(bounds['width'])=={'compact':200,'standard':240,'wide':300}[size]
     page.reload(wait_until='networkidle');assert page.locator('#sidebar-size').input_value()=='wide'
     page.select_option('#sidebar-size','standard')
+    # Saved investigations must not retain a selection-like edge after navigation.
+    for theme in ('light','dark'):
+        page.select_option('#theme',theme)
+        for view in ('investigations','bubbles','files'):
+            page.locator('.nav[data-view="'+view+'"]').click()
+            assert page.locator('.sidebar .nav.active').count()==1
+            assert page.locator('.sidebar .nav[aria-current="page"]').get_attribute('data-view')==view
+            assert page.locator('.sidebar .nav:not(.active)').evaluate_all('''els=>els.every(el=>{
+                const style=getComputedStyle(el),edge=style.direction==='rtl'?'borderRightColor':'borderLeftColor';
+                return style[edge]==='rgba(0, 0, 0, 0)' && style.backgroundColor==='rgba(0, 0, 0, 0)';
+            })''')
+            if view=='bubbles':page.screenshot(path=str(output/('sidebar-selection-'+theme+'.png')))
+    page.select_option('#theme','light')
+    page.locator('.nav[data-view="investigations"]').focus();page.keyboard.press('Tab')
+    assert page.locator('.nav[data-view="files"]').evaluate('e=>e.matches(":focus-visible") && parseFloat(getComputedStyle(e).outlineWidth)>=2')
     page.locator('.nav[data-view="inventory"]').click();page.wait_for_selector('#collection-metrics',state='visible')
     assert page.locator('#collection-metrics small').evaluate_all('(els)=>els.every(el=>parseFloat(getComputedStyle(el).fontSize)>=13)')
     assert page.locator('#collection-metrics article>span').evaluate_all('(els)=>els.every(el=>parseFloat(getComputedStyle(el).fontSize)>=12)')

@@ -16,9 +16,10 @@ def check_activity_ui(browser,base,output):
         # A real navigation stays interactive while its documentation is loading.
         context.route('**/api/docs',lambda route:held.update(docs=route))
         page.locator('.nav[data-view="docs"]').click()
+        page.evaluate('window.navigationFocus=document.activeElement')
         page.wait_for_function('!document.querySelector("#request-activity").hidden',timeout=2000)
         assert page.locator('dialog[open]').count()==0
-        assert page.evaluate('document.activeElement.matches(".nav[data-view=docs]")')
+        assert page.evaluate('document.activeElement===window.navigationFocus')
         page.wait_for_function('document.querySelector("#request-activity strong").textContent==="Waiting…"',timeout=2500)
         assert page.locator('#request-activity small').inner_text().startswith('Elapsed: ')
         page.screenshot(path=str(output/'activity-waiting-light.png'))
@@ -27,6 +28,7 @@ def check_activity_ui(browser,base,output):
         page.wait_for_timeout(300)
         held['docs'].continue_()
         page.wait_for_selector('#docs-content h1')
+        context.unroute('**/api/docs')
         assert page.locator('#request-activity').is_visible()
         held['second'].continue_()
         page.wait_for_function('window.waitResults.second && document.querySelector("#request-activity").hidden')

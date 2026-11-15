@@ -290,7 +290,10 @@ function showView(view) {
   if(view!=="review")ReviewWorkspace.closeAll();
   if(view!=="bubbles" && $("#bubble-expanded").open)$("#bubble-expanded").close();
   $$(".view").forEach(v=>v.hidden=v.id!=="view-"+view);
-  $$(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===view));
+  $$(".nav").forEach(n=>{
+    const current=n.dataset.view===view;n.classList.toggle("active",current);
+    if(current)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');
+  });
   if(view==='journeys')GuidedJourneys.load().catch(error=>notify(error.message,true));
   if (view==="statistics") renderStatistics().catch(error=>notify(error.message,true));
   if (view==="inventory") loadInventory().catch(error=>notify(error.message,true));

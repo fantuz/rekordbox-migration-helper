@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add shared loading feedback after 200 ms, elapsed time and a one-second waiting notice, with a clearer message after 30 seconds without a response or progress change. Keep background status checks quiet and clear feedback after completion, cancellation or failure.
+- Remove the permanent selection-like accent from Saved investigations; mark only the current sidebar page as active, preserving a distinct keyboard focus outline.
 
 - Add Japanese, Arabic with right-to-left layout, European Portuguese and Brazilian Portuguese to the web interface and offline explorers; preserve regional preferences and mixed-script library metadata.
 
