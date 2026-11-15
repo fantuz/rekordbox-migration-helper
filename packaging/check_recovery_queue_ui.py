@@ -119,7 +119,8 @@ def check_recovery_queue_ui(browser,base,sid,output):
         page.select_option('#lab-pilot-target','genre')
         page.wait_for_function('document.querySelector("#lab-pilot-target-value").getAttribute("aria-busy")==="true"')
         assert page.locator('#lab-pilot-target-value').is_disabled()
-        assert page.locator('#lab-pilot-target-value').inner_text()=='Loading'
+        # Firefox does not expose closed native option text through innerText.
+        assert page.locator('#lab-pilot-target-value').evaluate('(s)=>s.selectedOptions[0]?.text')=='Loading'
         page.select_option('#lab-pilot-target','album')
         page.wait_for_timeout(100)
         assert len(target_requests)==1
@@ -151,11 +152,12 @@ def check_recovery_queue_ui(browser,base,sid,output):
         page.locator('#pilot-background-open').click()
         page.wait_for_function('labBatch==="synthetic-batch-1"')
         page.wait_for_function('document.querySelector("#lab-pilot-progress").getBoundingClientRect().bottom<innerHeight')
-        # WebKit finishes smooth scrolling on a later frame than the result
-        # selection. Assert the final sticky position after scrolling settles.
+        # Wait for scrolling, then use the DOM viewport rectangle consistently.
+        # WebKit's protocol box can report the pre-sticky layout position.
         page.wait_for_function('()=>{const y=document.querySelector("#pilot-background").getBoundingClientRect().top;return y>=0 && y<=10;}')
-        banner=page.locator('#pilot-background').bounding_box()
-        assert 0<=banner['y']<=10,banner
+        banner_y=page.locator('#pilot-background').evaluate('(n)=>n.getBoundingClientRect().top')
+        assert 0<=banner_y<=10,banner_y
+        page.screenshot(path=str(output/'enrichment-running-banner.png'))
         page.locator('#pilot-background-dismiss').click();page.evaluate('()=>BackgroundPilot.refresh()')
         assert page.locator('#pilot-background').is_hidden()
         batches[0].update(status='complete',queue_position=None)
