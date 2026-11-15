@@ -15754,6 +15754,26 @@
       "pl": "Archiwizuj zapisane analizy, aby usunąć je z aktywnych menu. Możesz je przywrócić poniżej. Oryginalne biblioteki, muzyka, przesłane pliki i eksporty pozostają zachowane. Archiwa nadal zajmują miejsce na dysku.",
       "cs": "Archivujte uložené analýzy, aby zmizely z aktivních nabídek. Níže je můžete obnovit. Původní knihovny, hudba, nahrané vstupy a exporty zůstanou zachovány. Archivy nadále zabírají místo na disku.",
       "ru": "Архивируйте сохранённые исследования, чтобы убрать их из активных меню. Восстановление доступно ниже. Исходные библиотеки, музыка, загруженные файлы и экспорты сохраняются. Архивы продолжают занимать место на диске."
+    },
+    "Rekordbox → Serato": {
+      "de": "Rekordbox → Serato",
+      "fr": "Rekordbox → Serato",
+      "it": "Rekordbox → Serato",
+      "es": "Rekordbox → Serato",
+      "el": "Rekordbox → Serato",
+      "pl": "Rekordbox → Serato",
+      "cs": "Rekordbox → Serato",
+      "ru": "Rekordbox → Serato"
+    },
+    "Serato → Rekordbox": {
+      "de": "Serato → Rekordbox",
+      "fr": "Serato → Rekordbox",
+      "it": "Serato → Rekordbox",
+      "es": "Serato → Rekordbox",
+      "el": "Serato → Rekordbox",
+      "pl": "Serato → Rekordbox",
+      "cs": "Serato → Rekordbox",
+      "ru": "Serato → Rekordbox"
     }
   }
 }

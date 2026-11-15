@@ -23,6 +23,7 @@ def check_guided_journeys_ui(page,base,sid,output):
     page.screenshot(path=str(output/'guided-migration.png'))
     page.locator('[data-guide-open="4"]').click();page.wait_for_selector('#view-intelligence',state='visible')
     assert page.locator('.serato-entry').get_attribute('open') is not None
+    page.locator('.serato-entry summary').click()  # Restore the next test's initial panel state.
     page.locator('.nav[data-view="journeys"]').click();page.wait_for_selector('[data-guide="guide-sharing"]')
     page.locator('[data-guide="guide-sharing"]').click()
     assert 'audio files are not included' in page.locator('.guided-plan').inner_text()
