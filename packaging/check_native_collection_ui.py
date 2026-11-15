@@ -99,11 +99,13 @@ def check_native_collection_ui(browser, base, data, output, root):
         page.locator('[data-restore-investigations]').first.click()
         page.wait_for_selector('[data-investigation="captures"][value="captures:' + identity + '"]')
         page.screenshot(path=str(output / 'saved-investigations.png'))
+        from check_review_workspace_ui import check_review_workspace_ui
+        review_workspace=check_review_workspace_ui(browser,base,'capture:'+identity,output)
         assert original.read_bytes() == before
         assert not errors, errors
         assert not failures, failures
         return {'direct_intelligence':True,'native_statistics':True, 'candidate_review':True, 'recorded_references':True,
                 'direct_history':True, 'snapshot_action':True, 'archive_restore':True,
-                'context_spacing':True, 'source_unchanged':True, 'synthetic':True}
+                'context_spacing':True, 'source_unchanged':True, 'synthetic':True,'review_workspace':review_workspace}
     finally:
         context.close()

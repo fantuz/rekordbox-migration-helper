@@ -92,6 +92,9 @@ def check_duplicate_review_ui(browser,base,output):
         page.wait_for_selector('#detail-panel [data-keeper="synthetic-a"]',state='attached')
         page.locator('.nav[data-view="review"]').click()
         page.wait_for_selector('#detail-panel .sibling.chosen')
+        page.locator('[data-pair="synthetic-pair"]').click()
+        page.wait_for_selector('#detail-panel .review-action-dock #stage-pair')
+        assert page.locator('#stage-pair').evaluate('(e)=>{const r=e.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight}'), 'Merge action is outside the review viewport'
         assert page.locator('#toast').is_hidden() or not page.locator('#toast').inner_text(),page.locator('#toast').inner_text()
         assert page.locator('#detail-panel img').count()==0
         assert page.evaluate('window.duplicateMetadataExecuted') is None
@@ -137,22 +140,28 @@ def check_duplicate_review_ui(browser,base,output):
 
         page.set_viewport_size({'width':390,'height':844})
         page.select_option('#language','de');page.wait_for_function('document.documentElement.lang==="de" && document.documentElement.dataset.languageBusy!=="true"')
+        page.locator('[data-pair="synthetic-pair"]').click()
+        page.wait_for_selector('.review-drawer[open] #detail-panel')
         assert 'Hinzugefügt' in page.locator('.sibling dl').first.inner_text()
         assert page.locator('[data-keeper="synthetic-b"]').evaluate('el=>el.classList.contains("chosen")')
         assert page.locator('#accept-auto').is_checked() and page.locator('#accept-rating').is_checked()
-        page.locator('.review-layout').scroll_into_view_if_needed()
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
-        candidates=page.locator('#view-review .list-panel').bounding_box();detail=page.locator('#detail-panel').bounding_box()
-        assert detail['y']>=candidates['y']+candidates['height'],(candidates,detail)
+        detail=page.locator('#detail-panel').bounding_box()
+        assert detail['x']>=0 and detail['y']>=0 and detail['height']<=844,detail
         first=page.locator('[data-keeper="synthetic-a"]').bounding_box();second=page.locator('[data-keeper="synthetic-b"]').bounding_box()
         assert second['y']>=first['y']+first['height'] and abs(second['x']-first['x'])<2
         assert first['width']>=detail['width']*.8
         page.locator('.sibling-cards').scroll_into_view_if_needed()
+        assert page.locator('#stage-pair').evaluate('(e)=>{const r=e.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight}')
         page.screenshot(path=str(output/'duplicate-review-narrow.png'))
+        page.keyboard.press('Escape');page.wait_for_selector('.review-drawer[open]',state='hidden')
+        assert page.locator('[data-pair="synthetic-pair"]').evaluate('(e)=>e===document.activeElement')
+        page.keyboard.press('Enter');page.wait_for_selector('.review-drawer[open]')
 
         # A language refresh must keep the inspected comparison and group keeper
         # together, rather than merely restoring a select's displayed value.
         page.set_viewport_size({'width':1440,'height':1000})
+        page.wait_for_selector('.review-drawer[open]',state='hidden')
         page.select_option('#review-mode','groups')
         page.wait_for_selector('#group-comparison option[value="synthetic-alternate"]',state='attached')
         page.wait_for_selector('[data-group-status="synthetic-b"][data-status="ready"]')
@@ -205,7 +214,7 @@ def check_duplicate_review_ui(browser,base,output):
         assert not unexpected_mutations,unexpected_mutations
         assert page.locator('#toast').is_hidden() or '2' in page.locator('#toast').inner_text(),page.locator('#toast').inner_text()
         return {'readable_native_controls':True,'comparison_width_prioritized':True,'mouse_and_keyboard_keeper':True,
-                'decision_payload_preserved':True,'escaped_unicode_metadata':True,'responsive_german_layout':True,
+                'decision_payload_preserved':True,'escaped_unicode_metadata':True,'responsive_german_layout':True,'persistent_merge_actions':True,'mobile_review_drawer_and_focus_return':True,
                 'group_comparison_refresh_preserved':True,'all_group_members_visible':True,'donor_exclusion_and_policy_preserved':True,'multi_donor_stage_payload':True,'removed_comparison_fallback':True,'different_group_uses_representative':True,
                 'transport':'synthetic browser responses; no source files or real decisions'}
     finally:

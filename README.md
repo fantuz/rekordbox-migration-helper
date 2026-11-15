@@ -97,6 +97,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 **Duplicates, references and storage**
 
 - Review connected duplicate groups with keeper selection, donor exclusions and cue/rating conflict evidence.
+- Keep duplicate candidates and comparisons in separate scrolling panes, with visible review actions and a keyboard-accessible drawer on narrower screens, for captured databases and XML/ZIP workspaces.
 - Compare automatic/manual cue labels, saved waveforms, grids, usage and path evidence.
 - Stage compatible merges, retain unresolved conflicts and undo batch decisions.
 - Filter candidates by tags, duration, cue category, BPM, bitrate, playlist and media availability.

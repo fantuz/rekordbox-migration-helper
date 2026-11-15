@@ -1,0 +1,67 @@
+"""Long-list interaction checks with intercepted, entirely invented native records."""
+from urllib.parse import urlsplit
+
+
+def check_review_workspace_ui(browser,base,source,output):
+    context=browser.new_context(locale='en-US',viewport={'width':1715,'height':1000})
+    context.add_init_script("localStorage.setItem('library-workbench.language.v1','en')")
+    reviews={};writes=[];errors=[]
+    def duplicates(route):
+        request=route.request;path=urlsplit(request.url).path
+        if path.endswith('/review'):
+            value=request.post_data_json;writes.append(value);reviews[path.split('/')[-2]]=value['status']
+            route.fulfill(json={'saved':True});return
+        if path=='/api/collection/duplicates':
+            route.fulfill(json={'note':'Synthetic long list; no library files are opened.', 'groups':50,'tracks':100,'total':50,'offset':0,
+                'rows':[{'id':'g'+str(i),'title':'Synthetic recording '+str(i),'artist':'Synthetic artist',
+                         'count':2,'duration_spread':0,'review':reviews.get('g'+str(i),'unreviewed')} for i in range(50)]});return
+        identity=path.split('/')[-1]
+        route.fulfill(json={'total':50,'offset':0,'review':reviews.get(identity,'unreviewed'),
+            'rows':[{'id':'synthetic-member-'+str(i),'title':'Synthetic sibling '+str(i),'artist':'Synthetic artist',
+                     'duration':240,'rating':4,'play_count':1,'manual_cues':2,'auto_cues':1,
+                     'current_path':'/Synthetic/Music/'+('long-folder/'*6)+str(i)+'.flac'} for i in range(50)]})
+    context.route('**/api/collection/duplicates**',duplicates)
+    context.route('**/api/playback/availability',lambda route:route.fulfill(json={'tracks':{i:False for i in route.request.post_data_json['track_ids']}}))
+    page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
+    try:
+        page.goto(base,wait_until='networkidle')
+        page.select_option('#journey-context-source',source)
+        page.wait_for_function('(source)=>Journeys.context()?.source===source',arg=source)
+        page.locator('.nav[data-view=review]').click();page.wait_for_selector('[data-native-group="g49"]')
+        page.locator('[data-native-group="g49"]').click();page.wait_for_selector('.native-save')
+        left=page.locator('.native-review-workspace>.review-candidates').bounding_box()
+        right=page.locator('.native-detail').bounding_box()
+        assert right['x']>=left['x']+left['width'] and abs(right['y']-left['y'])<2,(left,right)
+        table=page.locator('.native-review-workspace>.review-candidates>.native-table')
+        assert table.evaluate('(e)=>e.scrollTop')>0
+        assert page.locator('[data-native-group="g49"]').evaluate('(e)=>{const r=e.getBoundingClientRect(),p=e.closest(".native-table").getBoundingClientRect();return r.left>=p.left && r.right<=p.right && r.top>=p.top && r.bottom<=p.bottom}')
+        for position in ('start','end'):
+            page.locator('.native-detail .review-inspector-body').evaluate('(e,end)=>e.scrollTop=end?e.scrollHeight:0',position=='end')
+            assert page.locator('.native-save').evaluate('(e)=>{const r=e.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight}'),position
+        old_scroll=table.evaluate('(e)=>e.scrollTop')
+        page.select_option('.native-status','keep_separate');page.locator('.native-save').click()
+        page.wait_for_function('document.querySelector(".native-status")?.value==="keep_separate"')
+        assert writes==[{'source':source,'basis':'path','status':'keep_separate'}],writes
+        assert table.evaluate('(e)=>e.scrollTop')>=old_scroll-2
+        page.screenshot(path=str(output/'native-duplicate-review-split.png'))
+        for width in (768,390):
+            page.set_viewport_size({'width':width,'height':844})
+            page.locator('[data-native-group="g49"]').click();page.wait_for_selector('.review-drawer[open] .native-save')
+            assert page.locator('.native-save').evaluate('(e)=>{const r=e.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth && r.bottom<=innerHeight}')
+            assert page.locator('.native-status').input_value()=='keep_separate'
+            for _ in range(8):
+                page.keyboard.press('Tab')
+                assert page.evaluate('Boolean(document.activeElement.closest(".review-drawer"))')
+            page.screenshot(path=str(output/('native-review-drawer-'+str(width)+'.png')))
+            page.keyboard.press('Escape');page.wait_for_selector('.review-drawer[open]',state='hidden')
+            assert page.locator('[data-native-group="g49"]').evaluate('(e)=>e===document.activeElement')
+            assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+        page.keyboard.press('Enter');page.wait_for_selector('.review-drawer[open]')
+        page.set_viewport_size({'width':1715,'height':1000});page.wait_for_selector('.review-drawer[open]',state='hidden')
+        assert page.locator('.native-status').input_value()=='keep_separate'
+        assert not errors,errors
+        return {'long_list':50,'long_comparison':50,'split_panes':True,'persistent_save_action':True,
+                'list_scroll_preserved_after_save':True,'drawer_widths':[768,390],
+                'keyboard_focus_trap_and_return':True,'resize_preserves_review':True,'synthetic':True}
+    finally:
+        context.close()

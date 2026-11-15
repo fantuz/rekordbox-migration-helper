@@ -1,0 +1,49 @@
+/* Keep the selected record and its actions beside long lists. */
+.review-workspace{display:grid;grid-template-columns:minmax(280px,1fr) minmax(0,2.2fr);gap:16px;align-items:stretch!important;height:min(900px,calc(100dvh - 28px));min-height:520px;scroll-margin-top:14px;margin-block:16px}
+.review-workspace>.review-candidates{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;margin:0}
+.review-workspace .review-candidates>.pair-list,.review-workspace .review-candidates>.native-table{flex:1;min-height:100px;height:auto!important;overflow:auto;overscroll-behavior:contain;margin-block:0}
+.review-workspace .review-candidates>:not(.pair-list):not(.native-table){flex-shrink:0}
+.review-list-heading,.review-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+.review-panel-heading h3{margin:0;font-size:15px}
+.review-workspace .review-inspector{display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;margin:0!important;border:1px solid var(--line);border-radius:12px;background:var(--panel);max-width:none!important}
+.review-inspector-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.review-action-dock{display:flex;align-items:center;flex-wrap:wrap;gap:10px;flex-shrink:0;padding:12px 14px;border-top:1px solid var(--line);background:var(--panel2);box-shadow:0 -4px 12px #0001;max-height:40%;overflow:auto}
+.review-action-dock .action-row{margin:0!important;flex-wrap:wrap}
+#view-review .review-action-dock .button{white-space:normal;font-size:13px;min-height:40px}
+.review-action-dock .text-button{font-size:12px;min-height:36px}
+.review-close{display:none}
+.review-workspace .native-table thead{position:sticky;top:0;background:var(--panel2);z-index:1}
+.review-workspace .native-table table{font-size:12px}
+.native-review-workspace>.wide-card{padding:14px}
+.native-review-workspace .native-filter{gap:8px;margin:10px 0}
+.native-review-workspace .native-filter label{min-width:120px}
+.native-review-workspace .native-table td,.native-review-workspace .native-table th{padding:9px}
+.native-review-workspace .review-candidates .native-table table{table-layout:fixed}
+.native-review-workspace .review-candidates .native-table th{white-space:normal}
+.native-review-workspace .review-candidates .native-table td{overflow-wrap:anywhere}
+.native-review-workspace .review-candidates .native-table th:last-child{width:90px}
+.native-review-workspace .review-candidates .native-table th:nth-child(2){width:90px}
+.native-review-workspace .review-candidates .native-table small{display:block;margin-top:6px;color:var(--muted);font-size:11px}
+.native-review-workspace [data-native-group]{padding:8px;font-size:12px;white-space:normal}
+.native-review-workspace .native-detail .wide-card{margin:0;border:0;padding:14px}
+.native-review-actions{display:flex;align-items:end;flex-wrap:wrap;gap:10px;width:100%}
+.native-review-actions label{flex:1;min-width:180px}
+.native-review-actions .native-status{margin:5px 0 0;max-width:none}
+.native-review-workspace tr:has([aria-expanded=true]){background:var(--soft-blue)}
+.review-workspace[data-review-compact=true]{display:block;height:auto;min-height:0}
+.review-workspace[data-review-compact=true]>.review-candidates{height:min(850px,90dvh);min-height:580px}
+.review-drawer{inset-block:0;inset-inline-start:auto;inset-inline-end:0;margin:0;padding:0;width:min(760px,98vw);max-width:98vw;height:100dvh;max-height:100dvh;border:0;border-radius:14px 0 0 14px;overflow:hidden;background:var(--panel);color:var(--text)}
+.review-drawer[open]{display:flex;animation:review-enter .16s ease-out}
+.review-drawer .review-inspector{width:100%;height:100%;border:0;border-radius:0}
+.review-drawer .review-close{display:inline-block}
+.review-drawer::backdrop{background:#122c4677;backdrop-filter:blur(2px)}
+html:has(.review-drawer[open]){overflow:hidden}
+html[dir=rtl] .review-drawer{border-radius:0 14px 14px 0}
+@keyframes review-enter{from{opacity:.5;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+@media(prefers-reduced-motion:reduce){.review-drawer[open]{animation:none}}
+@media(max-height:600px){.review-workspace{height:calc(100dvh - 20px);min-height:420px}.review-action-dock{max-height:45%}}
+/* Result actions precede their long tables and remain available while reading. */
+.result-actions{position:sticky;top:8px;z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 3px 10px #0001;margin-block:12px}
+.result-actions label{margin:0;flex:1;min-width:180px}
+.result-actions .button{white-space:normal}
+@media print{.review-workspace,.review-workspace>.review-candidates,.review-inspector-body{height:auto!important;overflow:visible}.review-action-dock,.review-open-selected,.result-actions{display:none}}
