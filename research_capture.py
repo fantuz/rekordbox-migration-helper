@@ -75,6 +75,7 @@ def capture_private_database(db,scope_key):
     snapshot.update(schema=1,scope_key=scope_key,asset_references=references,
                     capabilities={'cue_positions':{'ContentID','Kind','InMsec'}<=columns.get('djmdCue',set()),
                                   'playlist_order':{'ContentID','PlaylistID','TrackNo'}<=columns.get('djmdSongPlaylist',set()),
+                                  'playlist_membership':{'ID','Name'}<=columns.get('djmdPlaylist',set()) and {'ContentID','PlaylistID'}<=columns.get('djmdSongPlaylist',set()),
                                   'history_details':{'ID','DateCreated'}<=columns.get('djmdHistory',set()) and {'ContentID','HistoryID'}<=columns.get('djmdSongHistory',set()),
                                   'history_order':'TrackNo' in columns.get('djmdSongHistory',set()),
                                   'analysis_references':'AnalysisDataPath' in columns['djmdContent'] and 'Path' in columns.get('contentFile',set())})
@@ -90,6 +91,6 @@ def capture_workspace(catalog,scope_key):
                      cues=[{'id':c.get('ID'),'uuid':c.get('UUID'),'kind':c['Kind'],'in_ms':c['InMsec'],'out_ms':c.get('OutMsec'),
                             'label':c.get('Comment') or '', 'color':c.get('Color'),'auto':is_auto(c)} for c in catalog.cues[track['id']]])
     snapshot.update(schema=1,scope_key=scope_key,playlists=[],asset_references=[],
-                    histories=[],capabilities={'cue_positions':True,'playlist_order':False,'analysis_references':False,
+                    histories=[],capabilities={'cue_positions':True,'playlist_order':False,'playlist_membership':True,'analysis_references':False,
                                                'history_details':False,'history_order':False})
     return snapshot
