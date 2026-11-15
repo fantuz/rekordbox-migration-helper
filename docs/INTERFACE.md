@@ -26,7 +26,7 @@ MusicBrainz retrieval requires an explicit sample review, enable switch and conf
 
 ## Navigation and long operations
 
-The sidebar separates sources, analysis/insights, cleanup/migration, and exports/help. Menu labels use larger text without decorative icons; uppercase group captions identify scope. Its width selector remembers Compact, Standard or Wide locally. Small screens show the groups above the workspace instead of hiding their labels. The header keeps routine controls compact; expand the temporary-copy notice for full retention instructions.
+The sidebar separates sources, analysis/insights, cleanup/migration, and exports/help. Menu labels use larger text without decorative icons; uppercase group captions identify scope. Its width selector remembers Compact, Standard or Wide locally. Small screens show the groups above the workspace instead of hiding their labels. The shared header places a compact informational notice between the title and selectors. Its first line explains that source files remain unchanged; on Play history, Collection statistics and Library lab it also presents the relevant page guidance and an expandable Details control. The original translated explanations and their documentation links remain available there, without full-width repeated banners. On smaller screens the note wraps beneath the controls.
 
 Uploads, analysis and transformations show a centred progress dialog. Navigation is inactive while it is open. Escape does not dismiss an active operation; wait for completion or use **Stop and clean up** to open the normal cleanup confirmation. The optional MusicBrainz run has a Cancel action. Indeterminate transfers show activity without a fabricated percentage.
 
