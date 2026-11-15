@@ -20,6 +20,19 @@ Archive filenames contain the version and architecture without a `-preview` suff
 
 The README download buttons always open the latest stable release's **Downloads** table. That table is generated for each release with links to its exact five versioned archives, so no README version edit is needed. Existing published releases keep their original names.
 
+## Required release alignment (future stable releases)
+
+Treat each release as a reviewed source milestone, not merely a version override.
+
+1. Confirm the previous stable tag, the intended `main` commit, and that the target release and tag do not already exist. Merge feature PRs before starting release preparation.
+2. Open a separate **release-preparation PR**. Set the root `VERSION` file to the target version. Move completed entries under **Unreleased** into a dated `## <version> — YYYY-MM-DD` section in `CHANGELOG.md`; attribute earlier released features to their historical release instead of duplicating them. Preserve `Unreleased` for new development.
+3. Use GitHub Actions to validate the PR: source checks across Linux/Windows/macOS, browser tests across Chromium/Firefox/WebKit, native packaging, aggregate checks and security. Merge only after checks pass.
+4. Confirm that the merge-triggered **Check and package** and **Security checks** on the exact new `main` SHA succeeded. Verify the version in `VERSION` matches the dated changelog and that no intervening merge changed the release target.
+5. On **Actions → Create release → Run workflow**, select **main**, use the same version, check **Publish when complete**, and leave **Preview / prerelease** unchecked for a stable release. The workflow creates the immutable tag only after validating the correct five archives, checksums and complete commit log.
+6. Verify that `v<version>` points to the validated commit, that the release is the latest stable, and that all five archives, `SHA256SUMS`, `COMMIT-LOG.txt` and release notes are present. Do not consider a release published merely because a development run passed.
+
+The release workflow technically supports an explicit version override, but use it only for deliberate exceptional releases—not as a substitute for updating `VERSION` on `main`. Do not create hand-written releases, overwrite existing tags or bypass the release workflow.
+
 ## Release without a shell
 
 Open **Actions → Create release → Run workflow**. Select **main**, enter a version such as `0.4.5` or `0.4.6-rc.1` (blank uses `VERSION`), and choose:
