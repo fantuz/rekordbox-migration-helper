@@ -31,7 +31,10 @@ window.I18n=(() => {
   const field=key=>Object.hasOwn(fieldNames,key)?t(fieldNames[key]):String(key).replaceAll('_',' ');
   function date(value,options={}){
     if(!value)return t('Unknown');
-    const d=new Date(value);return Number.isNaN(d.getTime())?String(value):new Intl.DateTimeFormat(language,options).format(d);
+    // Arabic formatters add direction marks between date components. Native
+    // selects cannot isolate inline spans, so keep the formatted date atomic
+    // using its digits and separators; source metadata is never normalized.
+    const d=new Date(value);return Number.isNaN(d.getTime())?String(value):new Intl.DateTimeFormat(language,options).format(d).replace(/[\u200e\u200f]/g,'');
   }
   function apply(root=document){
     const nodes=[...(root.nodeType===1&&root.matches('[data-i18n],[data-i18n-placeholder],[data-i18n-title],[data-i18n-aria]')?[root]:[]),...(root.querySelectorAll?.('[data-i18n],[data-i18n-placeholder],[data-i18n-title],[data-i18n-aria]') || [])];
