@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-No unreleased changes recorded yet.
+- Fix storage-reconnection focus refresh to bypass the SQLite audio-status cache (with focus-event throttling); distinguish absent native playlist membership from genuinely empty playlist collections and keep unknown membership counts unverified.
 
 ## 1.0.8 — 2026-11-15
 
