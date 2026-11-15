@@ -85,6 +85,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Draw reproducible, genre-balanced random selections with a selection seed.
 - Follow eight optional saved journeys for both Serato migration directions, consistency checks, duplicate review, enrichment, metadata refinement, sharing, and backup preparation. Serato → rekordbox is a preparation/checklist workflow; no Serato importer is implemented. Every tool remains accessible independently.
 - Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
+- Bubble labels keep a consistent readable size, wrap to measured text width and highlight the matching category on hover or keyboard focus. Circle areas continue to represent the chosen metric.
 - Audit preparation coverage, saved analysis references and STEMS-related evidence.
 - Inspect comments, personal stars, colour assignments and other captured metadata in a single-track view.
 - Stage metadata edits in a private sidecar; quick comments and colours remain separate from the original files.
@@ -111,6 +112,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Preserve unknown ratings and personal stars; identity approval is required before staging supported suggestions.
 - Retrieve public ListenBrainz weekly, monthly or yearly listening charts and match them locally to the selected snapshot.
 - Review ambiguous versions and duplicate matches before exporting a chart-ordered M3U8 playlist.
+- Preview Serato export coverage, omitted records and playlist entries before downloading. Each generated database and crate is read back and checked for metadata, order and valid references.
 - Generate a detached Serato `database V2` and static crate ZIP as an interoperability draft. Real Serato import remains unverified; cues, grids, ratings, history and audio tags are not transferred.
 
 **Outputs and interface**
@@ -179,7 +181,7 @@ To test a generated native backup, use **File → Library → Restore Library** 
 
 ## Two workflows
 
-1. **Source analyzer** reads a source data folder through a private database/journal snapshot. It reports integrity, schema compatibility, track/cue/playlist counters, reference issues and selected-folder footprint. It does not modify the source. Close rekordbox and pause Cloud Library Sync during capture. No XML or ZIP input is required for this mode.
+1. **Source analyzer** reads a source data folder through a private database/journal snapshot. It reports integrity, schema compatibility, track/cue/playlist counters, reference issues and top-level file footprint. Recursive subfolder inventory is optional and bounded to 100,000 entries or 30 seconds; unscanned analysis assets remain unknown. It does not modify the source. Close rekordbox and pause Cloud Library Sync during capture. No XML or ZIP input is required for this mode.
 2. **Import XML + ZIP** loads a consecutive Backup Library ZIP and collection XML export. Choose files to copy them into a workspace, or use existing files by full path without another large copy. Compare duplicate groups, cues, ratings and file references, then generate XML and native ZIP together from one frozen decision snapshot.
 
 **Library lab** includes snapshot comparison, metadata consistency, analysis asset audits, genre/BPM preparation coverage and a locked metadata editor backed by a separate local SQLite store. An opt-in MusicBrainz pilot previews up to 150, 300 or 1,000 tracks across selected genres, with background lookup pacing, saved batches and separate community-rating/tag evidence. Sources stay unchanged. See the [Library lab guide](docs/LIBRARY-LAB.md) for scope, privacy, export behavior and limits, and the [changelog](CHANGELOG.md) for additions since 0.4.0.

@@ -89,6 +89,28 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     assert page.locator('#chart-reviewed').is_checked() is False
     page.unroute('**/api/intelligence/chart')
 
+    page.locator('.serato-entry summary').click()
+    assert page.locator('#serato-export').is_disabled()
+    page.locator('#serato-volume').fill('Z:/');page.locator('#serato-preview').click()
+    page.wait_for_function('document.querySelector("#serato-report").textContent.includes("No tracks can be exported")')
+    assert page.locator('#serato-export').is_disabled()
+    page.locator('#serato-volume').fill('/');page.locator('#serato-preview').click()
+    page.wait_for_function('document.querySelector("#serato-report").textContent.includes("Readback passed")')
+    assert page.locator('#serato-export').is_disabled()
+    page.locator('#serato-ack').check()
+    with page.expect_download() as download:page.locator('#serato-export').click()
+    target=output/'synthetic-serato-draft.zip';download.value.save_as(target)
+    from io import BytesIO
+    import zipfile
+    with zipfile.ZipFile(target) as archive:
+        manifest=json.loads(archive.read('manifest.json'))
+        assert manifest['validation']['status']=='passed'
+        assert manifest['tracks_written']==12 and manifest['serato_import_verified'] is False
+    page.screenshot(path=str(output/'serato-preview.png'))
+    page.locator('#serato-volume').fill('/Volumes/Changed')
+    assert page.locator('#serato-report').inner_text()==''
+    assert page.locator('#serato-export').is_disabled() and not page.locator('#serato-ack').is_checked()
+
     batch=create_batch(store,before,sample_size=1000)
     def start(route):
         with store.connection() as db:db.execute("UPDATE mb_batches SET status='complete' WHERE id=?",(batch['id'],))
@@ -107,4 +129,4 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.select_option('#theme',previous_theme);page.set_viewport_size(previous_viewport)
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',original_id)
     return {'playback_identity':True,'unavailable_audio':True,'playlist_contents':True,'recurring_sessions':True,
-            'chart_review':True,'background_completion':True,'immutable_capture':True,'screenshots':'synthetic','fixture_inventory':inventory}
+            'serato_preview_and_readback':True,'chart_review':True,'background_completion':True,'immutable_capture':True,'screenshots':'synthetic','fixture_inventory':inventory}

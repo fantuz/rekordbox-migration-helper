@@ -98,6 +98,8 @@ def main():
                 report['enrichment_ui']=check_enrichment_ui(page,base,sid,args.output,store,root)
                 from check_workspace_ui import check_workspace_ui
                 report['workspace_ui']=check_workspace_ui(browser,page,base,sid,args.output,offline)
+                from check_bubble_labels_ui import check_bubble_labels_ui
+                report['bubble_labels_ui']=check_bubble_labels_ui(page,base,sid,args.output,store)
                 from check_native_collection_ui import check_native_collection_ui
                 report['native_collection_ui']=check_native_collection_ui(browser,base,data,args.output,root)
                 page.goto(Path(offline['directory']).joinpath('library.html').as_uri(),wait_until='load')

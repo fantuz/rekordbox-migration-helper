@@ -47,7 +47,7 @@ class AnalyzerTests(unittest.TestCase):
         for name in ("PIONEER/USBANLZ/P001/A/ANLZ.DAT","PIONEER/USBANLZ/P001/unlinked/ANLZ.EXT"):
             path=self.source/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b"analysis")
         before=hashes(self.source)
-        report=analyze_folder(str(self.source),self.output,lambda *_:None,"7.2.19")
+        report=analyze_folder(str(self.source),self.output,lambda *_:None,"7.2.19",recursive_inventory=True)
         self.assertEqual(report["read_status"],"checked")
         self.assertEqual(report["database"]["counters"]["tracks"],2)
         self.assertEqual(report["database"]["counters"]["mixed"],1)

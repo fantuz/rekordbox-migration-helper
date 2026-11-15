@@ -642,7 +642,7 @@ $("#analyzer-form").onsubmit=wrap(async event=>{
   event.preventDefault();if (busy) return;
   const button=event.target.querySelector('button[type="submit"]');button.disabled=true;
   try {
-    const started=await api("/api/analyzer",{method:"POST",body:JSON.stringify({path:$("#analyzer-path").value,version:$("#analyzer-version").value})});
+    const started=await api("/api/analyzer",{method:"POST",body:JSON.stringify({path:$("#analyzer-path").value,version:$("#analyzer-version").value,recursive_inventory:$("#analyzer-recursive").checked})});
     const report=await poll(started.job);renderAnalysis(report);await loadAnalyzer();if(report.metadata_available && window.Journeys){await Journeys.load();await Journeys.selectContext('capture:'+report.id,true);}
     notify(I18n.t("Read-only source report saved"));$("#analyzer-result").scrollIntoView({behavior:"smooth",block:"start"});
   } finally {button.disabled=false;}
