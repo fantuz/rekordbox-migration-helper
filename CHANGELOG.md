@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.1.1 — 2026-11-15
+
+This update adds advanced relocation and makes current-library enrichment, queued batches and workflow results easier to use.
+
 - Add opt-in advanced relocation in Media inventory: bounded local folder searches, renamed-file tag/duration matching, ranked candidate evidence, unresolved filters, recovery reports, and backup guidance. Stage and undo reviewed unique references in export copies; recheck candidates and reject stale results. No live library or audio deletion is performed.
 - Keep MusicBrainz batches visible in queue order with individual progress and recent completed results. Retry stalled browser status requests, prioritize the running batch in the banner, and release queue reservations when a job is cancelled before its worker starts.
 - Rename the enrichment section to Enrich current library. Default to the loaded XML/ZIP environment, offer connected Rekordbox sources, and prepare their metadata locally in the same workflow. Block new batches without an available collection while retaining historical results for review.
