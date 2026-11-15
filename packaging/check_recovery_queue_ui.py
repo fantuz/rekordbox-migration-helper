@@ -150,10 +150,11 @@ def check_recovery_queue_ui(browser,base,sid,output):
         assert '2 queued' in page.locator('#pilot-background-text').inner_text()
         # The running batch opens first even when a newer queued batch exists.
         page.locator('#pilot-background-open').click()
+        page.wait_for_function('!document.querySelector("#pilot-background-open").disabled')
         page.wait_for_function('labBatch==="synthetic-batch-1"')
         page.wait_for_function('document.querySelector("#lab-pilot-progress").getBoundingClientRect().bottom<innerHeight')
-        # Wait for scrolling, then use the DOM viewport rectangle consistently.
-        # WebKit's protocol box can report the pre-sticky layout position.
+        # Wait for navigation above, then for scrolling, before checking the
+        # viewport position. Selecting the batch alone precedes navigation.
         page.wait_for_function('()=>{const y=document.querySelector("#pilot-background").getBoundingClientRect().top;return y>=0 && y<=10;}')
         banner_y=page.locator('#pilot-background').evaluate('(n)=>n.getBoundingClientRect().top')
         assert 0<=banner_y<=10,banner_y

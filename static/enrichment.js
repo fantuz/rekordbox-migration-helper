@@ -60,9 +60,13 @@ window.BackgroundPilot=(()=>{
   }
   node('lab-pilot-batches').onchange=wrap(()=>selectBatch(node('lab-pilot-batches').value));
   node('pilot-background-open').onclick=wrap(async()=>{
-    if(!latest)return;labBatch=latest.id;labPilotOffset=0;preferences.set('workbench-lab-batch',labBatch);
-    await Journeys.selectContext('snapshot:'+latest.snapshot_id);showView('musicbrainz');await loadMusicBrainz(true);
-    node('lab-pilot-progress').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+    const button=node('pilot-background-open');if(!latest || button.disabled)return;
+    button.disabled=true;button.setAttribute('aria-busy','true');
+    try{
+      labBatch=latest.id;labPilotOffset=0;preferences.set('workbench-lab-batch',labBatch);
+      await Journeys.selectContext('snapshot:'+latest.snapshot_id);showView('musicbrainz');await loadMusicBrainz(true);
+      node('lab-pilot-progress').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+    }finally{button.disabled=false;button.removeAttribute('aria-busy');}
   });
   node('pilot-background-dismiss').onclick=()=>{if(latest)preferences.set('workbench-pilot-dismissed',noticeKey);node('pilot-background').hidden=true;};
   async function tick(){try{await refresh();}catch{/* Retry quietly if the local application is stopping or temporarily busy. */}
