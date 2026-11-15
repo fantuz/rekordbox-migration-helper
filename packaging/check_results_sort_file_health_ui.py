@@ -57,7 +57,7 @@ def check_results_sort_file_health_ui(browser,base,sid,output):
         page.select_option('#musicbrainz-snapshot',sid)
         page.select_option('#lab-pilot-target','random')
         assert page.locator('#musicbrainz-target-value-label').is_hidden()
-        assert 'seed' in page.locator('.musicbrainz-parameters').text_content().lower()
+        assert 'seed' in page.locator('.musicbrainz-parameters').last.text_content().lower()
         page.select_option('#lab-pilot-target','missing_genre')
         assert page.locator('#lab-pilot-preview').is_enabled()
         assert page.locator('#lab-pilot-start').is_disabled()
