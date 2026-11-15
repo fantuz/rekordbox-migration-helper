@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fix storage-reconnection focus refresh to bypass the SQLite audio-status cache (with focus-event throttling); distinguish absent native playlist membership from genuinely empty playlist collections and keep unknown membership counts unverified.
+- Record exact snapshot save times with timezone-aware UTC timestamps and display local date/time/zone across snapshot selectors, keeping older date-only records compatible.
 
 ## 1.0.8 — 2026-11-15
 
