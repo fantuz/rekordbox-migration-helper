@@ -8,6 +8,12 @@ Create an untouched rekordbox Backup Library backup before preparing transformed
 
 Source analyzer can instead inspect a database folder or collection XML. Close rekordbox and pause Cloud Library Sync for capture. Windows and Mac suggestions are optional; manual paths also work on Linux for a user-mounted filesystem. Read [migration](MIGRATION.md), [compatibility](COMPATIBILITY.md) and [capture/asset/history procedures](DISCOVERY-ASSETS-HISTORY.md) for details.
 
+## Opt-in journal activity monitoring
+
+Source analyzer can now monitor filesystem metadata for `master.db`, `master.db-wal` and `master.db-journal` from an existing saved modern source capture. Monitoring is **off by default**. When enabled on the Source analyzer page, the application checks for changes every four seconds; after two unchanged samples it can launch a new, independent read-only snapshot. It preserves the earlier report and never rewrites the source. Failed or changing captures are not presented as updated library state; reattempts are throttled. The normal progress dialog appears during a recapture.
+
+This feature detects journal/file activity, **not necessarily committed database transactions**. It is not a raw WAL decoder, does not read uncommitted edits, and is not a guarantee of an immediately consistent view of an actively edited SQLCipher database. A WAL checkpoint can produce a stamp change without a logical library change. SQLite WAL transactions need a valid commit frame and snapshot-consistent access (see [SQLite WAL overview](https://www.sqlite.org/wal.html)). For a reliable migration snapshot, the normal recommendation remains to close Rekordbox and pause Cloud Library Sync.
+
 ## Review and evidence
 
 Duplicate decisions, reference changes and metadata overrides are staged locally. Cues inferred as manual or mixed take keeper priority; cue origin is inferred from editable labels. Review unresolved conflicts before export. Snapshot statistics describe captured library entries and can include duplicates. A zero play count does not prove a track was never played.
