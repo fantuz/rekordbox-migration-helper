@@ -44,7 +44,8 @@ class Store:
 
     def save_snapshot(self,payload,label):
         payload=deepcopy(payload);identity=uuid4().hex;created=now()
-        payload.update(id=identity,label=str(label).strip()[:160] or 'Library snapshot')
+        # Keep the precise save moment separate from any older source-capture time.
+        payload.update(id=identity,label=str(label).strip()[:160] or 'Library snapshot',saved_at=created)
         raw=encoded(payload);digest=sha256(raw.encode()).hexdigest()
         with self.connection() as db:db.execute('INSERT INTO snapshots VALUES (?,?,?,?,?,?,?)',(identity,payload['label'],created,payload.get('source_kind'),payload.get('scope_key',identity),digest,raw))
         return {"id":identity,"label":payload['label'],"created":created,"tracks":len(payload['tracks']),"digest":digest}
