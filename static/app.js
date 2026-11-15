@@ -7,10 +7,13 @@ const date = d => d ? I18n.date(d) : I18n.t("Unknown");
 // time with its time-zone abbreviation; older date-only values stay date-only.
 const snapshotMoment = value => {
   if(!value)return I18n.t("Unknown");
-  const options=/[T ]\d{2}:\d{2}/u.test(String(value))
+  const raw=String(value),dateOnly=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/u);
+  const options=/[T ]\d{2}:\d{2}/u.test(raw)
     ?{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'}
     :{year:'numeric',month:'short',day:'numeric'};
-  return I18n.date(value,options);
+  // A legacy date-only value represents a calendar day, not UTC midnight.
+  const localDay=dateOnly?new Date(Number(dateOnly[1]),Number(dateOnly[2])-1,Number(dateOnly[3])):value;
+  return I18n.date(localDay,options);
 };
 const bytes = value => {const n=Number(value || 0);const unit=n>=1024**3?3:n>=1024**2?2:n>=1024?1:0;return I18n.number(n/1024**unit,{maximumFractionDigits:1})+" "+["B","KiB","MiB","GiB"][unit];};
 const autoCue = c => ["cue(auto)", "1.1bars"].includes((c.Comment || "").trim().toLowerCase());
