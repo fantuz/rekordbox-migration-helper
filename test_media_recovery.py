@@ -29,7 +29,9 @@ def tagged_wave(path, title='Test song', artist='Test artist', seconds=3):
 class RecoveryTests(unittest.TestCase):
     def setUp(self):
         temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup)
-        self.root=Path(temporary.name);self.music=self.root/'music';self.music.mkdir()
+        # macOS exposes temporary directories through /var -> /private/var.
+        # Use their real location: recovery intentionally rejects linked roots.
+        self.root=Path(temporary.name).resolve();self.music=self.root/'music';self.music.mkdir()
         self.audio=self.music/'Renamed.wav';tagged_wave(self.audio)
         self.track={'track_id':'a','title':'Test song','artist':'Test artist',
                     'current_path':str(self.root/'Lost.wav'),'size_bytes':10,
