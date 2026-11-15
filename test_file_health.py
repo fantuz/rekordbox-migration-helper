@@ -61,6 +61,21 @@ class FileHealthTests(unittest.TestCase):
         self.assertEqual([r['track_id'] for r in self.query(sort='title',direction='desc').json['rows']],['playable','unknown','missing'])
         self.assertFalse(any('current_path' in r for r in status['rows']))
 
+    def test_indexed_sort_and_pagination_do_not_reload_large_snapshot(self):
+        self.scan()
+        # Once scanned, page/sort queries must use the indexed SQLite rows,
+        # not reconstruct the complete saved collection for every request.
+        with patch('file_health.resolve',side_effect=AssertionError('unexpected JSON reload')):
+            rows=self.query(sort='status',direction='desc')
+            self.assertEqual(rows.status_code,200,rows.json)
+            self.assertEqual(rows.json['source_total'],3)
+            self.assertEqual(rows.json['checked'],3)
+            self.assertEqual(rows.json['rows'][-1]['status'],'playable')
+        # An index is not permission to expose an archived/deleted snapshot.
+        with self.store.connection() as db:
+            db.execute('DELETE FROM snapshots WHERE id=?',(self.source[9:],))
+        self.assertEqual(self.query().status_code,400)
+
     def test_explicit_refresh_recaptures_changed_media_state(self):
         self.scan()
         self.audio.unlink()
