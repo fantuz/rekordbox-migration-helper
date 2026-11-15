@@ -5,7 +5,7 @@ window.BackgroundPilot=(()=>{
   async function refresh(){
     if(pending)return pending;
     pending=(async()=>{
-      const info=await api('/api/lab/musicbrainz/batches'),rows=info.batches;
+      const info=await api('/api/lab/musicbrainz/batches',{feedback:false}),rows=info.batches;
       const signature=rows.map(r=>r.id+':'+r.status).join('|');
       if(signature!==choiceSignature){
         labSelect('#lab-pilot-batches',rows,r=>(r.label || t('Library snapshot'))+' · '+r.status+' · '+date(r.created),t('Saved batches'));
@@ -26,7 +26,7 @@ window.BackgroundPilot=(()=>{
       }
       const selected=rows.find(r=>r.id===labBatch);
       if(selected){labPilotStatus=selected.status;labPilotButtons();node('lab-pilot-cancel').disabled=!['running','queued'].includes(selected.status);}
-      if(labBatch && !node('view-lab').hidden && !node('lab-panel-pilot').hidden)await labLoadPilot();
+      if(labBatch && !node('view-lab').hidden && !node('lab-panel-pilot').hidden)await labLoadPilot(false);
       return rows;
     })();
     try{return await pending;}finally{pending=null;}

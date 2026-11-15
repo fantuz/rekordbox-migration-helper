@@ -18,7 +18,7 @@
 <nav aria-label="Workspace navigation" data-i18n-aria="Workspace navigation">
 <section class="nav-group"><h2 class="nav-group-title" data-i18n="Sources">Sources</h2>
 <button class="nav" data-view="investigations" data-i18n="Saved investigations">Saved investigations</button>
-<button class="nav active" data-view="files"><span data-i18n="Files &amp; workflow"> Files &amp; workflow</span></button>
+<button class="nav active" aria-current="page" data-view="files"><span data-i18n="Files &amp; workflow"> Files &amp; workflow</span></button>
 <button class="nav" data-view="journeys" data-i18n="Library journeys">Library journeys</button>
 <button class="nav" data-view="analyzer"><span data-i18n="Source analyzer"> Source analyzer</span></button>
 </section>
@@ -230,6 +230,7 @@
 <dialog class="operation-progress" id="progress" hidden aria-labelledby="progress-title" aria-describedby="progress-label progress-hint"><span class="spinner" aria-hidden="true"></span><h2 id="progress-title" tabindex="-1" autofocus data-i18n="Operation in progress">Operation in progress</h2><p id="progress-label" role="status" aria-live="polite"><span data-i18n="Working">Working</span></p><div class="progress-meter"><progress id="progress-bar" max="100"></progress><b id="progress-percent">—</b></div><p id="progress-hint" data-i18n="Keep this window open until the operation finishes.">Keep this window open until the operation finishes.</p><p class="subtle" data-i18n="Source files stay unchanged">Source files stay unchanged</p><button type="button" class="button secondary" id="progress-cancel" hidden data-i18n="Cancel">Cancel</button><button type="button" class="text-button" id="progress-stop" data-i18n="Stop and clean up">Stop and clean up</button></dialog>
 <div hidden="" id="toast" role="status"></div><dialog id="bubble-expanded" aria-label="Expanded bubble map" data-i18n-aria="Expanded bubble map"><button class="close-dialog" type="button" id="bubble-expand-close" data-i18n-aria="Close" aria-label="Close">×</button></dialog>
 <script src="/static/review-workspace.js"></script>
+<script src="/static/activity.js"></script>
 <script src="/static/app.js"></script>
 <script src="/static/playback.js"></script>
 <script src="/static/lab.js"></script>

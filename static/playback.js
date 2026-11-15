@@ -29,7 +29,7 @@ window.TrackPlayback=(()=>{
       for(const [source,buttons] of groups){
         const ids=[...new Set(buttons.map(b=>b.dataset.playTrack))];
         for(let offset=0;offset<ids.length;offset+=100){
-          const r=await api('/api/playback/availability',{method:'POST',body:JSON.stringify({...JSON.parse(source),track_ids:ids.slice(offset,offset+100)})});
+          const r=await api('/api/playback/availability',{feedback:false,method:'POST',body:JSON.stringify({...JSON.parse(source),track_ids:ids.slice(offset,offset+100)})});
           for(const b of buttons)if(Object.hasOwn(r.tracks,b.dataset.playTrack)){
             const available=r.tracks[b.dataset.playTrack];cache.set(key(b),{available,time:Date.now()});if(b.isConnected)status(b,available);
           }

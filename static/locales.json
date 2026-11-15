@@ -22212,6 +22212,76 @@
       "ar": "أرشف الدراسات المحفوظة لإزالتها من القوائم النشطة. يمكنك التراجع عن التنظيف أدناه. تُحفظ المكتبات الأصلية والموسيقى والمدخلات المرفوعة والصادرات. تظل الأرشيفات تشغل مساحة القرص.",
       "pt-PT": "Arquive investigações guardadas para as remover dos menus ativos. Restaure uma limpeza abaixo. Bibliotecas originais, música, entradas carregadas e exportações são preservadas. Os arquivos continuam a ocupar espaço em disco.",
       "pt-BR": "Arquive investigações salvas para as remover dos menus ativos. Restaure uma limpeza abaixo. Bibliotecas originais, música, entradas carregadas e exportações são preservadas. Os arquivos continuam a ocupar espaço em disco."
+    },
+    "Elapsed: {seconds} s": {
+      "de": "Vergangen: {seconds} s",
+      "fr": "Temps écoulé : {seconds} s",
+      "it": "Tempo trascorso: {seconds} s",
+      "es": "Tiempo transcurrido: {seconds} s",
+      "el": "Χρόνος που πέρασε: {seconds} s",
+      "pl": "Upłynęło: {seconds} s",
+      "cs": "Uplynulo: {seconds} s",
+      "ru": "Прошло: {seconds} с",
+      "ja": "経過時間: {seconds} 秒",
+      "ar": "الوقت المنقضي: {seconds} ثانية",
+      "pt-PT": "Tempo decorrido: {seconds} s",
+      "pt-BR": "Tempo decorrido: {seconds} s"
+    },
+    "This is taking longer. Avoid starting the same action again.": {
+      "de": "Dies dauert länger. Bitte starten Sie dieselbe Aktion nicht erneut.",
+      "fr": "Cette opération prend du temps. Évitez de relancer la même action.",
+      "it": "L’operazione sta richiedendo più tempo. Evita di avviare di nuovo la stessa azione.",
+      "es": "Esta operación está tardando. Evita iniciar de nuevo la misma acción.",
+      "el": "Η διαδικασία διαρκεί περισσότερο. Μην ξεκινήσετε ξανά την ίδια ενέργεια.",
+      "pl": "Ta operacja trwa dłużej. Nie uruchamiaj ponownie tej samej czynności.",
+      "cs": "Tato operace trvá déle. Nespouštějte stejnou akci znovu.",
+      "ru": "Операция занимает больше времени. Не запускайте это действие повторно.",
+      "ja": "処理に時間がかかっています。同じ操作を再度開始しないでください。",
+      "ar": "تستغرق العملية وقتًا أطول. تجنّب بدء الإجراء نفسه مرة أخرى.",
+      "pt-PT": "A operação está a demorar. Evite iniciar novamente a mesma ação.",
+      "pt-BR": "A operação está demorando. Evite iniciar a mesma ação novamente."
+    },
+    "Waiting for the application to respond.": {
+      "de": "Warten auf eine Antwort der Anwendung.",
+      "fr": "En attente de la réponse de l’application.",
+      "it": "In attesa della risposta dell’applicazione.",
+      "es": "Esperando la respuesta de la aplicación.",
+      "el": "Αναμονή για απόκριση της εφαρμογής.",
+      "pl": "Oczekiwanie na odpowiedź aplikacji.",
+      "cs": "Čekání na odpověď aplikace.",
+      "ru": "Ожидание ответа приложения.",
+      "ja": "アプリケーションからの応答を待っています。",
+      "ar": "في انتظار استجابة التطبيق.",
+      "pt-PT": "A aguardar a resposta da aplicação.",
+      "pt-BR": "Aguardando a resposta do aplicativo."
+    },
+    "Waiting for the next progress update.": {
+      "de": "Warten auf die nächste Fortschrittsmeldung.",
+      "fr": "En attente de la prochaine mise à jour de la progression.",
+      "it": "In attesa del prossimo aggiornamento sull’avanzamento.",
+      "es": "Esperando la próxima actualización del progreso.",
+      "el": "Αναμονή για την επόμενη ενημέρωση προόδου.",
+      "pl": "Oczekiwanie na kolejną aktualizację postępu.",
+      "cs": "Čekání na další aktualizaci průběhu.",
+      "ru": "Ожидание следующего обновления хода операции.",
+      "ja": "次の進捗更新を待っています。",
+      "ar": "في انتظار تحديث التقدم التالي.",
+      "pt-PT": "A aguardar a próxima atualização do progresso.",
+      "pt-BR": "Aguardando a próxima atualização do progresso."
+    },
+    "Waiting…": {
+      "de": "Bitte warten…",
+      "fr": "En attente…",
+      "it": "In attesa…",
+      "es": "Esperando…",
+      "el": "Αναμονή…",
+      "pl": "Oczekiwanie…",
+      "cs": "Čekání…",
+      "ru": "Ожидание…",
+      "ja": "待機中…",
+      "ar": "جارٍ الانتظار…",
+      "pt-PT": "A aguardar…",
+      "pt-BR": "Aguardando…"
     }
   }
 }
