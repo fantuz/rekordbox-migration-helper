@@ -52,8 +52,15 @@ def check_results_sort_file_health_ui(browser,base,sid,output):
         # MusicBrainz quick targets use saved tags/playlist membership only.
         # Changing target criteria invalidates the prior preview; it must
         # never silently authorize a different enrichment selection.
+        # This isolated fixture has no connected personal library. Provide an
+        # explicit synthetic current context; availability gating is tested
+        # separately by check_recovery_queue_ui against empty and active contexts.
+        page.route('**/api/lab/musicbrainz/context',lambda route:route.fulfill(json={
+            'sources':[{'id':'synthetic:targets','kind':'workspace','label':'Synthetic target collection'}],
+            'snapshots':[{'id':sid,'scope_key':'synthetic:targets','label':'Synthetic target collection','created':'2026-01-01T00:00:00Z'}]}))
         page.locator('.nav[data-view="musicbrainz"]').click()
         page.wait_for_selector('#musicbrainz-snapshot option[value="'+sid+'"]',state='attached')
+        page.locator('.musicbrainz-source details summary').click()
         page.select_option('#musicbrainz-snapshot',sid)
         page.select_option('#lab-pilot-target','random')
         assert page.locator('#musicbrainz-target-value-label').is_hidden()

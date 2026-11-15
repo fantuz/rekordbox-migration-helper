@@ -43,3 +43,9 @@ window.SeratoDraft=(()=>{
   });
   return {reset};
 })();
+document.querySelectorAll('[data-open-serato]').forEach(button=>button.onclick=()=>{
+  showView('intelligence');
+  const entry=document.querySelector('.serato-entry');entry.open=true;
+  entry.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+  document.getElementById('serato-volume').focus({preventScroll:true});
+});

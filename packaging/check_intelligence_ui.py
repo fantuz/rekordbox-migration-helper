@@ -20,6 +20,11 @@ def check_intelligence_ui(page,base,sid,output,store):
     page.select_option('#intelligence-playlist','a');page.locator('#intelligence-playlists').click()
     page.wait_for_function('document.querySelector("#intelligence-results").textContent.includes("Set B")')
     assert '100%' in page.locator('#intelligence-results').inner_text()
+    page.locator('#intelligence-contents').click()
+    page.wait_for_function('document.activeElement?.id==="intelligence-results"')
+    page.wait_for_function('document.querySelector("#intelligence-results").getBoundingClientRect().top<innerHeight')
+    assert page.locator('#view-intelligence').is_visible()
+    assert page.locator('#intelligence-results h3').inner_text()=='Set A'
     page.select_option('#intelligence-history','gig');page.locator('#intelligence-session').click()
     page.wait_for_function('document.querySelectorAll("#intelligence-results tbody tr").length===2')
     assert 'Unknown' in page.locator('#intelligence-results').inner_text()
@@ -32,4 +37,4 @@ def check_intelligence_ui(page,base,sid,output,store):
     page.screenshot(path=str(output/'library-intelligence.png'))
     assert store.snapshot(sid)==first
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',sid)
-    return {'playlist_overlap':True,'saved_order_progression':True,'snapshot_evolution':True,'immutable_capture':True,'saved_report':True}
+    return {'playlist_overlap':True,'browse_scroll_and_focus':True,'saved_order_progression':True,'snapshot_evolution':True,'immutable_capture':True,'saved_report':True}

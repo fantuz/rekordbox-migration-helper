@@ -92,7 +92,7 @@ def task_progress(job, amount, text):
         tasks[job].update(progress=amount,message=text)
 
 
-def launch(work, message, pool=None):
+def launch(work, message, pool=None, on_finished=None):
     if shutdown.requested.is_set():raise ValueError('The application is stopping')
     job = uuid4().hex
     tasks[job] = {"id":job,"status":"running","progress":0,"message":message}
@@ -110,7 +110,11 @@ def launch(work, message, pool=None):
             with lock:
                 tasks[job].update(status="error",message=str(error),progress=0)
         finally:
-            with lock:task_controls.pop(job,None)
+            try:
+                # Also notify owners when cancellation happens before work starts.
+                if on_finished:on_finished(tasks[job]['status'])
+            finally:
+                with lock:task_controls.pop(job,None)
     (pool or executor).submit(run)
     return job
 
@@ -947,10 +951,23 @@ def group_details():
 
 @app.post("/api/inventory/scan")
 def inventory_scan():
-    mappings=(request.get_json() or {}).get("roots",[])
+    from file_health import local_request
+    if not local_request():raise ValueError('Media searches require the local application')
+    body=request.get_json(silent=True)
+    if not isinstance(body,dict):raise ValueError('Provide a media search request')
+    mappings=body.get("roots",[])
+    advanced=body.get('advanced',False)
+    if not isinstance(advanced,bool):raise ValueError('Choose a supported search mode')
     session=current()
+    if body.get('workspace')!=session['id']:raise ValueError('This workspace is no longer loaded')
     def work(progress):
-        result=scan_media(session["catalog"].tracks,mappings,progress)
+        if advanced:
+            from media_recovery import scan
+            result=scan(session['catalog'].tracks,mappings,progress)
+        else:
+            result=scan_media(session["catalog"].tracks,mappings,progress)
+            result['scan_id']=uuid4().hex
+        progress(99,'Saving the media search results')
         inventory_path=DATA/session["id"]/"inventory.json"
         temporary=inventory_path.with_suffix(".tmp")
         temporary.write_text(json.dumps(result,ensure_ascii=False),encoding="utf-8")
@@ -961,11 +978,18 @@ def inventory_scan():
             session["inventory_path"]=str(inventory_path)
             log(session,f"Indexed {result['file_count']:,} media files in selected roots")
         return {"counts":result["counts"],"files":result["file_count"],"warnings":result["warnings"]}
-    return jsonify(job=launch(work,"Scanning the selected media roots"))
+    with lock:
+        for job in tasks.values():
+            if job.get('inventory_workspace')==session['id'] and job['status']=='running':
+                return jsonify(job=job['id'])
+        job=launch(work,"Scanning the selected media roots")
+        tasks[job]['inventory_workspace']=session['id']
+    return jsonify(job=job)
 
 
 @app.get("/api/inventory")
 def inventory_items():
+    from media_recovery import UNRESOLVED
     session=current()
     inventory=session.get("inventory")
     if not inventory:return jsonify(counts={},rows=[],total=0,file_count=0)
@@ -975,11 +999,25 @@ def inventory_items():
     rows=[]
     for i,match in inventory["matches"].items():
         track=session["catalog"].tracks[i]
-        if status!="all" and match["status"]!=status:continue
+        if status=='unresolved':
+            if match['status'] not in UNRESOLVED:continue
+        elif status!="all" and match["status"]!=status:continue
         if query and query not in (track["title"]+" "+track["artist"]+" "+i).casefold():continue
-        rows.append({"track_id":i,"title":track["title"],"artist":track["artist"],**match})
+        rows.append({"track_id":i,"title":track["title"],"artist":track["artist"],
+                     'staged_uri':session['relocations'].get(i),**match})
     return jsonify(counts=inventory["counts"],file_count=inventory["file_count"],roots=inventory["roots"],
+                   scan_id=inventory.get('scan_id'),advanced=inventory.get('advanced',False),
+                   complete=inventory.get('complete'),note=inventory.get('note'),
                    warnings=inventory["warnings"],total=len(rows),rows=rows[offset:offset+50])
+
+
+@app.get('/api/inventory/report')
+def inventory_report():
+    from media_recovery import recovery_report
+    with lock:
+        payload=recovery_report(current())
+    return app.response_class(json.dumps(payload,ensure_ascii=False,indent=2),mimetype='application/json',
+                              headers={'Content-Disposition':'attachment; filename="recovery-review.json"'})
 
 
 @app.post("/api/inventory/verify")
@@ -998,16 +1036,30 @@ def verify_media():
 
 @app.post("/api/inventory/stage")
 def stage_inventory_reference():
-    session=current()
-    i=(request.get_json() or {}).get("track_id")
-    match=(session.get("inventory") or {}).get("matches",{}).get(i,{})
-    if match.get("status")!="found" or len(match.get("candidates",[]))!=1:
-        raise ValueError("Choose a reference with exactly one local candidate")
-    uri=match["candidates"][0].get("export_uri")
-    if not uri:raise ValueError("Set an export root URI in the mapping and scan again")
-    session["relocations"][i]=uri
-    log(session,"Staged inventory reference for "+session["catalog"].tracks[i]["title"])
-    return jsonify(session=summary(session))
+    from file_health import local_request
+    from media_recovery import stage_candidate
+    if not local_request():raise ValueError('Relocation requires the local application')
+    body=request.get_json(silent=True)
+    if not isinstance(body,dict):raise ValueError('Provide a relocation request')
+    with lock:
+        session=current()
+        inventory=session.get('inventory') or {}
+        if body.get('workspace')!=session['id']:raise ValueError('This workspace is no longer loaded')
+        if not inventory.get('scan_id') or body.get('scan_id')!=inventory['scan_id']:
+            raise ValueError('The search results changed; reload and review the candidate')
+        i=body.get('track_id')
+        match=inventory.get('matches',{}).get(i,{})
+        if body.get('undo') is True:
+            candidates=match.get('candidates',[])
+            if not candidates or session['relocations'].get(i)!=candidates[0].get('export_uri'):
+                raise ValueError('The staged reference changed; review it in File references')
+            session['relocations'].pop(i)
+            log(session,'Cleared inventory reference for '+session['catalog'].tracks[i]['title'])
+            return jsonify(session=summary(session))
+        uri=stage_candidate(inventory,match)
+        session['relocations'][i]=uri
+        log(session,'Staged inventory reference for '+session['catalog'].tracks[i]['title'])
+        return jsonify(session=summary(session))
 
 
 @app.get("/api/sessions")

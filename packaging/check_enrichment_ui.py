@@ -84,7 +84,8 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
            'rows':[{'rank':1,'title':tracks[0]['title'],'artist':tracks[0]['artist'],'status':'exact_tags','candidates':[tracks[0]]},
                    {'rank':2,'title':'Remote recording without local match','artist':'Synthetic artist','status':'unmatched','candidates':[]}]}
     page.route('**/api/intelligence/chart',lambda route:route.fulfill(json=chart))
-    page.locator('.chart-entry summary').click();page.locator('#chart-consent').check();page.locator('#chart-fetch').click()
+    assert page.locator('.intelligence-tools>.tool-entry').count()==6
+    page.locator('#chart-consent').check();page.locator('#chart-fetch').click()
     page.wait_for_selector('[data-chart-rank="1"]')
     assert page.locator('[data-chart-rank="1"]').input_value()=='demo0'
     assert page.locator('[data-chart-rank="2"]').input_value()==''
@@ -109,7 +110,9 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     with zipfile.ZipFile(target) as archive:
         manifest=json.loads(archive.read('manifest.json'))
         assert manifest['validation']['status']=='passed'
-        assert manifest['tracks_written']==12 and manifest['serato_import_verified'] is False
+        # The real playback fixture has a drive letter on Windows and is
+        # intentionally outside the POSIX / volume used for this draft.
+        assert manifest['tracks_written']==(11 if audio.drive else 12) and manifest['serato_import_verified'] is False
     page.screenshot(path=str(output/'serato-preview.png'))
     page.locator('#serato-volume').fill('/Volumes/Changed')
     assert page.locator('#serato-report').inner_text()==''
@@ -120,6 +123,11 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
         with store.connection() as db:db.execute("UPDATE mb_batches SET status='complete' WHERE id=?",(batch['id'],))
         route.fulfill(json={'job':'synthetic-background','batch_id':batch['id'],'background':True})
     page.route('**/api/lab/musicbrainz/'+batch['id']+'/start',start)
+    # This existing page fixture supplies an available current collection.
+    # The real absence/reconnect guard has separate API and browser tests.
+    page.route('**/api/lab/musicbrainz/context',lambda route:route.fulfill(json={
+        'sources':[{'id':'session:synthetic','label':'Synthetic current library','kind':'workspace'}],
+        'snapshots':[{'id':i,'scope_key':'session:synthetic','label':'Synthetic','created':'2026-11-15'} for i in (sid,original_id)]}))
     page.locator('.nav[data-view="musicbrainz"]').click()
     page.wait_for_selector('#musicbrainz-snapshot option[value="'+sid+'"]',state='attached')
     assert page.locator('#musicbrainz-snapshot').input_value()==sid
@@ -139,11 +147,13 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.locator('.nav[data-view="files"]').click();page.locator('[data-open-lab="pilot"]').click()
     page.wait_for_selector('#view-musicbrainz',state='visible')
     assert page.locator('#page-title').inner_text()=='MusicBrainz'
+    page.locator('.musicbrainz-source details summary').click()
     page.select_option('#musicbrainz-snapshot',original_id)
     page.wait_for_function('(sid)=>Journeys.context()?.snapshot===sid',arg=original_id)
     assert page.locator('#lab-pilot-consent').is_checked() is False
     assert page.locator('#lab-pilot-start').is_disabled()
     page.unroute('**/api/lab/musicbrainz/'+batch['id']+'/start')
+    page.unroute('**/api/lab/musicbrainz/context')
     assert store.snapshot(sid)==before
     page.select_option('#theme',previous_theme);page.set_viewport_size(previous_viewport)
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',original_id)

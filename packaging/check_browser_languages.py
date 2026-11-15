@@ -73,7 +73,7 @@ def main():
                     assert page.locator('#dj-perspective option[value="most"]').inner_text()==messages[code]['Most played']
                     assert page.locator('#dj-search').get_attribute('placeholder')==messages[code]['Search captured tags']
                     assert page.locator('#dj-filter-reset').inner_text()==messages[code]['Reset']
-                    assert page.locator('#dj-result-title').inner_text()==messages[code]['All matching tracks']
+                    page.wait_for_function('(label)=>document.querySelector("#dj-result-title").textContent===label',arg=messages[code]['All matching tracks'])
                     assert page.locator('#search').get_attribute('placeholder')==messages[code]['Find a track or artist']
                     assert page.locator('#search').get_attribute('aria-label')==messages[code]['Search candidate pairs']
                     report['languages'].append({'code':code,'app':'passed','metadata_unchanged':True})
@@ -116,6 +116,8 @@ def main():
                 report['enrichment_ui']=check_enrichment_ui(page,base,sid,args.output,store,root)
                 from check_results_sort_file_health_ui import check_results_sort_file_health_ui
                 report['result_sort_and_file_health']=check_results_sort_file_health_ui(browser,base,sid,args.output)
+                from check_recovery_queue_ui import check_recovery_queue_ui
+                report['recovery_and_queue']=check_recovery_queue_ui(browser,base,sid,args.output)
                 from check_header_information_ui import check_header_information_ui
                 report['header_information_ui']=check_header_information_ui(page,args.output)
                 from check_workspace_ui import check_workspace_ui

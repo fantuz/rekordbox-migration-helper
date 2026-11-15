@@ -92,11 +92,13 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
 - Bubble labels prioritize category names at a consistent 12-pixel size, wrapping up to four lines. Counts remain in the category table and accessible labels; circle areas still represent the chosen metric.
 - A prominent “Use local library” entry opens source selection directly, without requiring XML/ZIP exports.
+- Compact Rekordbox and Serato cards on Files & workflow open local source analysis and the existing experimental Serato export workflow. Serato library import is not implemented.
 - Audit preparation coverage, saved analysis references and STEMS-related evidence.
 - Inspect comments, personal stars, colour assignments and other captured metadata in a single-track view.
 - Stage metadata edits in a private sidecar; quick comments and colours remain separate from the original files.
 - Play available recorded audio files in the computer's default media player from live track views.
 - Save bounded evidence reports for later inspection.
+- Enrich the current loaded XML/ZIP library or a connected Rekordbox source, preparing local metadata within the workflow. New MusicBrainz batches default to playable audio, with an explicit override for unavailable files. Category lists show loading and retry feedback; queued and recent batches remain visible with a sticky progress notice.
 
 **Library health, redundancy and storage**
 
@@ -112,6 +114,7 @@ The objective is long-term library maintainability: distinguish redundant record
 - Stage compatible merges, retain unresolved conflicts and undo batch decisions.
 - Filter candidates by tags, duration, cue category, BPM, bitrate, playlist and media availability.
 - Scan selected music folders for relocation candidates and stage reference corrections.
+- Use opt-in [Advanced relocate](docs/RECOVERY.md) to find renamed audio through tags and duration, review unique candidates, filter unresolved entries, and download a recovery report with backup guidance. Incomplete and conflicting evidence stays in review.
 - Perform optional SHA-256 verification when explicitly requested.
 - Audit local and cloud-synced folders for logical size, local allocation, placeholders and possible extra copies.
 - Distinguish several records referring to one file from several physical copies; account for overlapping roots and hard links.

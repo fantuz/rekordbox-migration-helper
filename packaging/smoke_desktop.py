@@ -137,8 +137,19 @@ def main():
                 request('/api/lab/overrides',{'snapshot':sid,'track_id':'synthetic-1','field':'comment','value':'Synthetic private working comment'})
                 detail=request('/api/lab/track?snapshot='+sid+'&track_id=synthetic-1')
                 assert detail['unlocked'] is False and detail['overrides']['comment']['value']=='Synthetic private working comment'
-                preview=request('/api/lab/musicbrainz/preview',{'snapshot':sid,'speed':'gentle'})
+                # This fixture deliberately references absent audio. Exercise the
+                # explicit opt-in and wait for the local availability/preview job.
+                started=request('/api/lab/musicbrainz/preview',{'snapshot':sid,'speed':'gentle','include_unavailable':True})
+                deadline=time.monotonic()+30
+                while time.monotonic()<deadline:
+                    preview_job=request('/api/tasks/'+started['job'])
+                    if preview_job['status']=='error':raise RuntimeError(preview_job['message'])
+                    if preview_job['status']=='complete':break
+                    time.sleep(.2)
+                else:raise RuntimeError('Local enrichment preview timed out')
+                preview=preview_job['result']
                 assert preview['summary']['seconds_per_request']==3 and preview['summary']['requests']==0
+                assert preview['summary']['playable_only'] is False
                 started=request("/api/quick-export",{"source":result["id"],"title":"Synthetic offline CI explorer"})
                 deadline=time.monotonic()+30
                 while time.monotonic()<deadline:

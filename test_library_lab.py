@@ -245,7 +245,7 @@ class MusicBrainzTests(unittest.TestCase):
 
     def test_empty_strict_search_uses_tag_fallback_without_approval(self):
         track=song('fallback',title='Dancing (Extended Mix)',artist='Example DJ')
-        batch=create_batch(self.store,snapshot([track]))
+        batch=create_batch(self.store,snapshot([track]),playable_only=False)
         calls=[]
         recording={'id':'01234567-89ab-cdef-0123-456789abcdef',
                    'title':'Dancing','artist-credit':[{'name':'Example DJ'}], 'length':240000}
@@ -285,7 +285,7 @@ class MusicBrainzTests(unittest.TestCase):
             wait.assert_called_once_with(7)
 
     def test_provider_failures_are_not_local_tag_failures_and_matches_not_approved(self):
-        s=snapshot();record=create_batch(self.store,s)
+        s=snapshot();record=create_batch(self.store,s,playable_only=False)
         client=SimpleNamespace(requests=0,cache_hits=0,get=lambda *a:(_ for _ in ()).throw(ValueError('provider JSON malformed')))
         self.assertEqual(run_batch(self.store,record['id'],client,lambda *_:None)['status'],'complete_with_errors')
         with self.store.connection() as db:r=db.execute('SELECT status FROM mb_results').fetchone()
@@ -293,7 +293,7 @@ class MusicBrainzTests(unittest.TestCase):
 
     def test_resuming_does_not_erase_reviewed_matches_or_query_them_again(self):
         from workbench_store import encoded
-        s=snapshot();record=create_batch(self.store,s)
+        s=snapshot();record=create_batch(self.store,s,playable_only=False)
         previous={'status':'candidate_needs_review','match_approved':True,'proposal':{'community_score':4.1,'genre':'house','year':2001}}
         with self.store.connection() as db:db.execute('INSERT INTO mb_results VALUES (?,?,?,?)',(record['id'],'one',previous['status'],encoded(previous)))
         client=SimpleNamespace(requests=0,cache_hits=0,get=lambda *a:(_ for _ in ()).throw(AssertionError('Reviewed tracks must not be queried again')))
@@ -322,9 +322,12 @@ class LabApiTests(unittest.TestCase):
         self.assertIsNone(self.client.get('/api/status',headers={'Origin':'https://evil.example'}).headers.get('Access-Control-Allow-Origin'))
 
     def test_local_sample_preview_does_not_enable_network(self):
-        response=self.client.post('/api/lab/musicbrainz/preview',json={'snapshot':self.sid,'speed':'gentle'},headers=self.headers)
-        self.assertEqual(response.status_code,200);self.assertEqual(response.json['summary']['seconds_per_request'],3)
-        start=self.client.post('/api/lab/musicbrainz/'+response.json['id']+'/start',json={'query_consent':True},headers=self.headers)
+        result={}
+        def launch(work,*args):result.update(work(lambda *_:None));return 'synthetic-preview'
+        with patch('enrichment_context.source_details',return_value={'kind':'workspace'}),patch.object(self.application,'launch',side_effect=launch):
+            response=self.client.post('/api/lab/musicbrainz/preview',json={'snapshot':self.sid,'speed':'gentle','include_unavailable':True},headers=self.headers)
+        self.assertEqual(response.status_code,200);self.assertEqual(result['summary']['seconds_per_request'],3)
+        start=self.client.post('/api/lab/musicbrainz/'+result['id']+'/start',json={'query_consent':True},headers=self.headers)
         self.assertEqual(start.status_code,400)
         with patch.dict('os.environ',{'LIBRARY_WORKBENCH_MUSICBRAINZ':'0'}):
             self.assertEqual(self.client.post('/api/lab/features',json={'musicbrainz_enabled':True},headers=self.headers).status_code,400)

@@ -66,6 +66,11 @@ window.Intelligence=(()=>{
     else data=await api('/api/intelligence/'+kind+'?'+new URLSearchParams(args));
     if(revision!==requestRevision || (kind!=='evolution' && kind!=='duplicates' && args.snapshot!==node('intelligence-source').value) || (kind==='evolution' && (args.before!==node('intelligence-before').value || args.after!==node('intelligence-after').value)))return;
     last={kind,...args};render(data,kind);
+    if(kind==='contents' && reset && !node('view-intelligence').hidden){
+      const results=node('intelligence-results');results.tabIndex=-1;
+      results.focus({preventScroll:true});
+      results.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+    }
   }
   function init(){
     node('intelligence-source').onchange=wrap(sourceChanged);
