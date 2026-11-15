@@ -10,7 +10,7 @@ html:lang(ja) :is(h1,h2,h3,.eyebrow,.nav-group-title){letter-spacing:normal}
 :is(.pair-title,.pair-artist,.sibling .title,[data-insight-open],.cell-link,dialog dd,td){unicode-bidi:plaintext}
 :is(td.numeric,.metric strong,.metrics strong,.insight-cards strong,.stat-card strong){direction:ltr;unicode-bidi:isolate}
 /* Keep source labels and dates together even inside an RTL interface. */
-select[id$="-snapshot"],#journey-context-source{unicode-bidi:plaintext}
+select[id$="-snapshot"],#journey-context-source{direction:ltr;unicode-bidi:isolate;text-align:start}
 .journey-context-row>label{flex:1 1 300px;min-width:min(100%,300px)}
 .journey-context-detail{flex:2 1 420px;min-width:0}
 .journey-context-detail strong{white-space:nowrap}
@@ -25,6 +25,7 @@ html[dir=rtl] :is(.nav,.pair-row,.bar-row,.cell-link,.journey-goal,.docs-layout>
 html[dir=rtl] .nav b{margin-left:0;margin-right:auto}
 html[dir=rtl] :is(.sibling dd,.bar-row small,td.numeric){text-align:end}
 html[dir=rtl] td.numeric{text-align:left}
+html[dir=rtl] :is(.metric strong,.metrics strong,.insight-cards strong,.stat-card strong){text-align:right}
 html[dir=rtl] .sidebar .nav{border-left:0;border-right:2px solid transparent}
 html[dir=rtl] .sidebar .nav.active{border-right-color:var(--accent)}
 html[dir=rtl] .close-dialog{right:auto;left:14px}

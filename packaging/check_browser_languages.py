@@ -70,6 +70,7 @@ def main():
                     assert page.locator('#search').get_attribute('aria-label')==messages[code]['Search candidate pairs']
                     report['languages'].append({'code':code,'app':'passed','metadata_unchanged':True})
                     assert page.locator('html').get_attribute('dir')==('rtl' if code=='ar' else 'ltr')
+                    assert page.locator('#dj-snapshot').evaluate('(node)=>getComputedStyle(node).direction')=='ltr'
                     assert page.evaluate('''() => {
                         const select=document.querySelector('#journey-context-source').getBoundingClientRect();
                         const detail=document.querySelector('.journey-context-detail').getBoundingClientRect();
