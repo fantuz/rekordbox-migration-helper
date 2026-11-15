@@ -8,6 +8,8 @@ Create an untouched rekordbox Backup Library backup before preparing transformed
 
 Source analyzer can instead inspect a database folder or collection XML. Close rekordbox and pause Cloud Library Sync for capture. Windows and Mac suggestions are optional; manual paths also work on Linux for a user-mounted filesystem. Read [migration](MIGRATION.md), [compatibility](COMPATIBILITY.md) and [capture/asset/history procedures](DISCOVERY-ASSETS-HISTORY.md) for details.
 
+In saved native snapshot **Duplicate review** and **File references**, click a sortable column heading to order the entire filtered collection, not only the visible 50 rows. Click again to reverse direction; changing the column resets to page one, and Previous/Next retain the chosen sort. The arrows indicate direction, while the Review action column is not sortable. Large requests use the shared Loading / Waiting feedback without locking the page. File health independently sorts its full scanned SQLite index before paging.
+
 ## Review and evidence
 
 Duplicate decisions, reference changes and metadata overrides are staged locally. Cues inferred as manual or mixed take keeper priority; cue origin is inferred from editable labels. Review unresolved conflicts before export. Snapshot statistics describe captured library entries and can include duplicates. A zero play count does not prove a track was never played.

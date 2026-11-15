@@ -72,6 +72,56 @@ class NativeViewsTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/collection/statistics', query_string={'source': 'capture:../outside'}).status_code, 400)
         self.assertEqual(self.client.get('/api/lab/history', query_string={'source': 'capture:' + 'f'*32}).status_code, 400)
 
+
+    def test_native_sort_orders_full_filtered_set_before_pagination(self):
+        tracks = []
+        for index in range(60):
+            for sibling in range(2 + index % 3):
+                tracks.append({'id': f'g{index:03}-{sibling}', 'title': f'Title {59-index:03}',
+                               'artist': f'Artist {index % 5}', 'duration': 100 + sibling * 2,
+                               'current_path': f'/Music/{index:03}.mp3', 'original_path': f'/Old/{index:03}.mp3',
+                               'analysis_path': f'/Analyze/{index:03}'})
+        tracks.append({'id': 'unknown-path', 'title': 'Unknown path', 'artist': 'No path',
+                       'current_path': None, 'original_path': None, 'analysis_path': None})
+        saved = self.store.save_snapshot({'tracks': tracks, 'playlists': [], 'source_kind': 'test'}, 'Sort pages')
+        source = 'snapshot:' + saved['id']
+
+        def get(endpoint, sort, direction, offset=0):
+            response = self.client.get('/api/collection/' + endpoint,
+                                       query_string={'source': source, 'sort': sort, 'direction': direction, 'offset': offset})
+            self.assertEqual(response.status_code, 200, response.json)
+            return response.json
+
+        first = get('duplicates', 'title', 'asc')
+        second = get('duplicates', 'title', 'asc', 50)
+        self.assertEqual(first['total'], 60)
+        self.assertEqual(len(first['rows']), 50)
+        self.assertEqual(len(second['rows']), 10)
+        self.assertEqual([r['title'] for r in first['rows'] + second['rows']],
+                         [f'Title {n:03}' for n in range(60)])
+        self.assertEqual([r['title'] for r in get('duplicates', 'title', 'desc')['rows'][:2]],
+                         ['Title 059', 'Title 058'])
+        self.assertEqual([r['count'] for r in get('duplicates', 'count', 'desc')['rows'][:10]], [4] * 10)
+        self.assertEqual([r['duration_spread'] for r in get('duplicates', 'duration_spread', 'asc')['rows'][:10]], [2] * 10)
+        self.assertEqual(first['sort'], 'title')
+        self.assertEqual(first['direction'], 'asc')
+
+        # Reference sorting spans multiple 50-row pages and keeps unknown paths
+        # at the end, regardless of the requested direction.
+        ref_first = get('references', 'current_path', 'desc')
+        ref_last = get('references', 'current_path', 'desc', 150)
+        self.assertEqual(ref_first['total'], len(tracks))
+        self.assertEqual(len(ref_first['rows']), 50)
+        self.assertEqual(ref_last['rows'][-1]['id'], 'unknown-path')
+        self.assertTrue(all(ref_first['rows'][i]['current_path'] >= ref_first['rows'][i+1]['current_path']
+                            for i in range(49)))
+
+        for endpoint in ('duplicates', 'references'):
+            for query in ({'sort': '__class__', 'direction': 'asc'},
+                          {'sort': 'title', 'direction': 'sideways'}):
+                response = self.client.get('/api/collection/' + endpoint, query_string={'source': source, **query})
+                self.assertEqual(response.status_code, 400, response.json)
+
     def test_duplicates_preserve_versions_and_posix_case_and_missing_metadata(self):
         s = {'tracks': [{'id': '1', 'artist': 'Example', 'title': 'Track', 'current_path': '/Music/A.mp3'},
                         {'id': '2', 'artist': 'EXAMPLE', 'title': 'Track (remix)', 'current_path': '/Music/a.mp3'},
