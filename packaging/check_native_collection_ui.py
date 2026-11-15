@@ -139,6 +139,7 @@ def check_native_collection_ui(browser, base, data, output, root):
         page.evaluate('() => Journeys.load()')
         page.wait_for_selector('#journey-context-source option[value="snapshot:' + sorted_snapshot['id'] + '"]',state='attached')
         page.select_option('#journey-context-source', 'snapshot:' + sorted_snapshot['id'])
+        page.wait_for_function('(id)=>window.Journeys.context()?.source==="snapshot:"+id',arg=sorted_snapshot['id'])
         page.locator('.nav[data-view=review]').click()
         page.wait_for_function('document.querySelectorAll("#view-review .native-collection .native-table tbody tr").length===50')
         page.locator('#view-review .native-collection [data-native-sort="title"]').click()
