@@ -73,7 +73,7 @@ window.EnrichmentExports=(()=>{
           row.candidates.map(c=>'<option value="'+esc(c.id)+'" '+(row.status==='exact_tags'?'selected':'')+'>'+esc(c.title)+' · '+esc(c.artist)+' · '+esc(c.album || '')+' · '+esc(c.id)+'</option>').join('')+'</select></td></tr>').join('')+'</tbody></table></div>';
       const choices=node('chart-results').querySelectorAll('[data-chart-rank]');
       for(const choice of choices){
-        const play=document.createElement('span');choice.after(play);
+        const play=document.createElement('span');choice.before(play);
         const update=()=>{play.innerHTML=TrackPlayback.button(snapshot,choice.value);node('chart-reviewed').checked=false;};
         choice.addEventListener('change',update);update();
       }
