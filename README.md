@@ -110,6 +110,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Preserve unknown ratings and personal stars; identity approval is required before staging supported suggestions.
 - Retrieve public ListenBrainz weekly, monthly or yearly listening charts and match them locally to the selected snapshot.
 - Review ambiguous versions and duplicate matches before exporting a chart-ordered M3U8 playlist.
+- Preview Serato export coverage, omitted records and playlist entries before downloading. Each generated database and crate is read back and checked for metadata, order and valid references.
 - Generate a detached Serato `database V2` and static crate ZIP as an interoperability draft. Real Serato import remains unverified; cues, grids, ratings, history and audio tags are not transferred.
 
 **Outputs and interface**
