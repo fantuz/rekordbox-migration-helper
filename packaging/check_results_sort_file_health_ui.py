@@ -48,8 +48,27 @@ def check_results_sort_file_health_ui(browser,base,sid,output):
         assert page.locator('#synthetic-result-sort-fixture tbody tr td:last-child').all_inner_texts()==['12','8','3']
         assert page.locator('#synthetic-result-sort-fixture th[aria-sort="descending"]').count()==1
         page.evaluate("document.querySelector('#synthetic-result-sort-fixture').remove()")
+
+        # MusicBrainz quick targets use saved tags/playlist membership only.
+        # Changing target criteria invalidates the prior preview; it must
+        # never silently authorize a different enrichment selection.
+        page.locator('.nav[data-view="musicbrainz"]').click()
+        page.wait_for_selector('#musicbrainz-snapshot option[value="'+sid+'"]',state='attached')
+        page.select_option('#musicbrainz-snapshot',sid)
+        page.select_option('#lab-pilot-target','random')
+        assert page.locator('#musicbrainz-target-value-label').is_hidden()
+        assert 'seed' in page.locator('.musicbrainz-parameters').inner_text().lower()
+        page.select_option('#lab-pilot-target','missing_genre')
+        assert page.locator('#lab-pilot-preview').is_enabled()
+        assert page.locator('#lab-pilot-start').is_disabled()
+        page.select_option('#lab-pilot-target','genre')
+        page.wait_for_selector('#lab-pilot-target-value option',state='attached')
+        page.wait_for_function('document.querySelector("#lab-pilot-target-value").options.length>1')
+        assert page.locator('#musicbrainz-target-value-label').is_visible()
+        assert page.locator('#lab-pilot-start').is_disabled()
+
         assert not errors,errors
         return {'scanned_rows':rows,'global_filter':True,'global_sort':True,
-                'visible_rows_sort':True,'aria_sort':True,'no_page_errors':True}
+                'visible_rows_sort':True,'aria_sort':True,'quick_targets':True,'no_page_errors':True}
     finally:
         context.close()
