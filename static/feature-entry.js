@@ -5,6 +5,7 @@ function renderFeaturedTools(){
 }
 document.addEventListener('click',event=>{
   const link=event.target.closest('[data-open-lab]');if(!link)return;
+  if(link.dataset.openLab==='pilot'){showView('musicbrainz');return;}
   showView('lab');document.querySelector('[data-lab-tab="'+link.dataset.openLab+'"]').click();
   $('#view-lab .lab-tabs').scrollIntoView({block:'start',behavior:'smooth'});
 });

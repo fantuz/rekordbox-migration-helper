@@ -26,18 +26,18 @@ window.BackgroundPilot=(()=>{
       }
       const selected=rows.find(r=>r.id===labBatch);
       if(selected){labPilotStatus=selected.status;labPilotButtons();node('lab-pilot-cancel').disabled=!['running','queued'].includes(selected.status);}
-      if(labBatch && !node('view-lab').hidden && !node('lab-panel-pilot').hidden)await labLoadPilot(false);
+      if(labBatch && !node('view-musicbrainz').hidden)await labLoadPilot(false);
       return rows;
     })();
     try{return await pending;}finally{pending=null;}
   }
   node('lab-pilot-batches').onchange=wrap(async()=>{
     labBatch=node('lab-pilot-batches').value;labPilotOffset=0;node('lab-pilot-consent').checked=false;
-    preferences.set('workbench-lab-batch',labBatch);await labLoadPilot();labPilotButtons();
+    preferences.set('workbench-lab-batch',labBatch);const batch=await labLoadPilot();if(batch)await Journeys.selectContext('snapshot:'+batch.snapshot_id);labPilotButtons();
   });
   node('pilot-background-open').onclick=wrap(async()=>{
     if(!latest)return;labBatch=latest.id;labPilotOffset=0;preferences.set('workbench-lab-batch',labBatch);
-    showView('lab');document.querySelector('[data-lab-tab="pilot"]').click();await labLoadPilot();
+    await Journeys.selectContext('snapshot:'+latest.snapshot_id);showView('musicbrainz');await loadMusicBrainz(true);
     node('lab-panel-pilot').scrollIntoView({behavior:'smooth',block:'start'});
   });
   node('pilot-background-dismiss').onclick=()=>{if(latest)preferences.set('workbench-pilot-dismissed',latest.id+':'+latest.status);node('pilot-background').hidden=true;};

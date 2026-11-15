@@ -120,7 +120,11 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
         with store.connection() as db:db.execute("UPDATE mb_batches SET status='complete' WHERE id=?",(batch['id'],))
         route.fulfill(json={'job':'synthetic-background','batch_id':batch['id'],'background':True})
     page.route('**/api/lab/musicbrainz/'+batch['id']+'/start',start)
-    page.locator('.nav[data-view="lab"]').click();page.locator('[data-lab-tab="pilot"]').click()
+    page.locator('.nav[data-view="musicbrainz"]').click()
+    page.wait_for_selector('#musicbrainz-snapshot option[value="'+sid+'"]',state='attached')
+    assert page.locator('#musicbrainz-snapshot').input_value()==sid
+    assert page.locator('#view-lab #lab-panel-pilot').count()==0
+    assert page.locator('.nav[data-view="musicbrainz"]').evaluate('e=>e.closest(".nav-group").dataset.navSection==="enrich"')
     page.evaluate('(id)=>{labBatch=id;return labLoadPilot();}',batch['id'])
     page.locator('#lab-pilot-enabled').check();page.locator('#lab-pilot-consent').check();page.locator('#lab-pilot-start').click()
     page.wait_for_function('document.querySelector("#pilot-background-text").textContent.includes("complete")')
@@ -128,9 +132,20 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     assert page.locator('#lab-pilot-start').is_disabled()
     page.locator('.nav[data-view="intelligence"]').click()
     assert page.locator('#pilot-background').is_visible()
+    page.locator('#pilot-background-open').click();page.wait_for_selector('#view-musicbrainz',state='visible')
+    page.wait_for_function('(sid)=>document.querySelector("#musicbrainz-snapshot").value===sid',arg=sid)
+    assert page.locator('#lab-pilot-progress').inner_text().startswith('complete')
+    page.screenshot(path=str(output/'musicbrainz-enrichment-page.png'))
+    page.locator('.nav[data-view="files"]').click();page.locator('[data-open-lab="pilot"]').click()
+    page.wait_for_selector('#view-musicbrainz',state='visible')
+    assert page.locator('#page-title').inner_text()=='MusicBrainz'
+    page.select_option('#musicbrainz-snapshot',original_id)
+    page.wait_for_function('(sid)=>Journeys.context()?.snapshot===sid',arg=original_id)
+    assert page.locator('#lab-pilot-consent').is_checked() is False
+    assert page.locator('#lab-pilot-start').is_disabled()
     page.unroute('**/api/lab/musicbrainz/'+batch['id']+'/start')
     assert store.snapshot(sid)==before
     page.select_option('#theme',previous_theme);page.set_viewport_size(previous_viewport)
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',original_id)
     return {'playback_identity':True,'unavailable_audio':True,'playlist_contents':True,'recurring_sessions':True,
-            'serato_preview_and_readback':True,'chart_review':True,'background_completion':True,'immutable_capture':True,'screenshots':'synthetic','fixture_inventory':inventory}
+            'serato_preview_and_readback':True,'chart_review':True,'background_completion':True,'dedicated_musicbrainz_page':True,'source_scope_guard':True,'enrich_navigation':True,'immutable_capture':True,'screenshots':'synthetic','fixture_inventory':inventory}

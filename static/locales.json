@@ -22282,6 +22282,34 @@
       "ar": "جارٍ الانتظار…",
       "pt-PT": "A aguardar…",
       "pt-BR": "Aguardando…"
+    },
+    "Enrich": {
+      "de": "Anreichern",
+      "fr": "Enrichir",
+      "it": "Arricchisci",
+      "es": "Enriquecer",
+      "el": "Εμπλουτισμός",
+      "pl": "Wzbogacanie",
+      "cs": "Obohacení",
+      "ru": "Обогащение",
+      "ja": "情報の追加",
+      "ar": "إثراء",
+      "pt-PT": "Enriquecer",
+      "pt-BR": "Enriquecer"
+    },
+    "MusicBrainz": {
+      "de": "MusicBrainz",
+      "fr": "MusicBrainz",
+      "it": "MusicBrainz",
+      "es": "MusicBrainz",
+      "el": "MusicBrainz",
+      "pl": "MusicBrainz",
+      "cs": "MusicBrainz",
+      "ru": "MusicBrainz",
+      "ja": "MusicBrainz",
+      "ar": "MusicBrainz",
+      "pt-PT": "MusicBrainz",
+      "pt-BR": "MusicBrainz"
     }
   }
 }

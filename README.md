@@ -111,6 +111,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 **External metadata and interoperability**
 
 - Preview MusicBrainz samples of up to 150, 300 or 1,000 tracks, balanced across selected genres.
+- Open MusicBrainz from the dedicated **Enrich** sidebar section, with source selection, saved batches, progress and results on one page.
 - Run opted-in lookups in the background with pacing, cached results, cancellation, resume and an in-app completion notice.
 - See shared loading feedback after 200 ms, a “Waiting…” message after one second without a response or progress change, and elapsed time during longer operations. These notices do not cancel work; existing cancellation controls remain available.
 - Review recording matches, separate community ratings and vote counts, genres, tags and release-year suggestions.
