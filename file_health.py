@@ -18,7 +18,8 @@ STATUS=('playable','missing','inaccessible','unverified')
 ORDER={'artist':'artist COLLATE NOCASE, title COLLATE NOCASE, track_id',
        'title':'title COLLATE NOCASE, artist COLLATE NOCASE, track_id',
        'status':"CASE status WHEN 'playable' THEN 0 WHEN 'missing' THEN 1 WHEN 'inaccessible' THEN 2 ELSE 3 END, artist COLLATE NOCASE, track_id",
-       'checked':'checked_at, track_id'}
+       'checked':'checked_at, track_id',
+       'playability':"CASE status WHEN 'playable' THEN 0 WHEN 'missing' THEN 1 WHEN 'inaccessible' THEN 1 ELSE 2 END, artist COLLATE NOCASE, track_id"}
 
 
 def selected_source(source):
@@ -50,7 +51,7 @@ def register(owner):
         query=request.args.get('q','').strip().casefold()
         try:offset=int(request.args.get('offset',0))
         except (TypeError,ValueError):raise ValueError('Choose a valid offset') from None
-        if status not in ('all',*STATUS) or sorting not in ORDER or direction not in ('asc','desc') or not 0<=offset<=10000000 or len(query)>200:
+        if status not in ('all','not_playable',*STATUS) or sorting not in ORDER or direction not in ('asc','desc') or not 0<=offset<=10000000 or len(query)>200:
             raise ValueError('Choose a supported file-health filter and sort')
         saved=store()
         with saved.connection() as db:
@@ -75,7 +76,8 @@ def register(owner):
                 total_records=len(resolve(owner,source)['tracks'])
             if total_records>250000:raise ValueError('This library exceeds the file-health scan limit')
             where='source=?';params=[source]
-            if status!='all':where+=' AND status=?';params.append(status)
+            if status=='not_playable':where+=" AND status IN ('missing','inaccessible')"
+            elif status!='all':where+=' AND status=?';params.append(status)
             if query:where+=' AND instr(search_text,?)>0';params.append(query)
             matched=db.execute('SELECT count(*) FROM file_health_records WHERE '+where,params).fetchone()[0]
             order=ORDER[sorting]
