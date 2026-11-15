@@ -4,6 +4,20 @@
 
 No unreleased changes recorded yet.
 
+## 1.1.0 — 2026-11-15
+
+This update brings whole-collection sorting, clearer file-health evidence, queued MusicBrainz enrichment, instant personal-star edits, offline bubble charts and opt-in source journal monitoring.
+
+- Sort saved native duplicate-review and file-reference results across the complete filtered collection before pagination. Keep stable page boundaries, accessible headings and loading feedback.
+- Add a Playable? column and Not playable filter to File health, with global indexed sorting. Missing and Inaccessible count as No; Unverified and unchecked records remain distinct. Give file-status badges clearer coloured outlines.
+- Queue up to eight independently approved MusicBrainz batches through one shared provider worker, with aggregate progress and cancellation. Broaden text matching with bounded fallback searches and up to 20 candidates while retaining exact ISRC lookup and manual match approval. Acoustic fingerprinting is not included.
+- Add instant 0–5 personal-star controls alongside the existing colour palette. Save and reset working edits without unlocking advanced fields; captured sources and original audio remain unchanged.
+- Add interactive, keyboard-accessible offline bubble charts to shared HTML explorers and minisites using the existing disclosed metadata. Public summaries remain aggregate-only. Restrict page navigation to known local destinations.
+- Add off-by-default DB/WAL/journal activity monitoring for saved modern source captures. Wait for stable file metadata before a new private snapshot, throttle refreshes, and discard stale responses after monitoring or selection changes. This detects file activity, not uncommitted transactions or guaranteed live database consistency.
+- Increase optional recursive source inventory to 1,000,000 entries or 120 seconds while preserving depth limits, cancellation and unknown evidence for unscanned files.
+- Document Serato 4.x library-layout evidence and the limits of the legacy-format draft exporter. Serato 4.x import compatibility remains unverified.
+- Extend synthetic regression coverage for global sorting, enrichment queues, instant ratings, offline navigation and delayed journal responses; close the journal test's SQLite connection before Windows cleanup.
+
 ## 1.0.9 — 2026-11-15
 
 This stable update adds sortable results and whole-library file-health investigations, simplifies targeted MusicBrainz enrichment, and improves snapshot edition timestamps and playlist/file availability evidence. Source music and rekordbox libraries remain unchanged.
