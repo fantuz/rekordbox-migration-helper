@@ -14001,6 +14001,156 @@
       "cs": "Přenést knihovnu",
       "ru": "Перенести библиотеку"
     },
+    "Library journeys": {
+      "de": "Bibliotheksabläufe",
+      "fr": "Parcours de bibliothèque",
+      "it": "Percorsi della libreria",
+      "es": "Recorridos de biblioteca",
+      "el": "Διαδρομές βιβλιοθήκης",
+      "pl": "Ścieżki pracy z biblioteką",
+      "cs": "Postupy pro knihovnu",
+      "ru": "Сценарии работы с библиотекой"
+    },
+    "Choose a guided journey": {
+      "de": "Geführten Ablauf wählen",
+      "fr": "Choisir un parcours guidé",
+      "it": "Scegli un percorso guidato",
+      "es": "Elegir un recorrido guiado",
+      "el": "Επιλογή καθοδηγούμενης διαδρομής",
+      "pl": "Wybierz ścieżkę z przewodnikiem",
+      "cs": "Vybrat postup s průvodcem",
+      "ru": "Выбрать сценарий с подсказками"
+    },
+    "Start journey": {
+      "de": "Ablauf starten",
+      "fr": "Démarrer le parcours",
+      "it": "Avvia percorso",
+      "es": "Iniciar recorrido",
+      "el": "Έναρξη διαδρομής",
+      "pl": "Rozpocznij ścieżkę",
+      "cs": "Zahájit postup",
+      "ru": "Начать сценарий"
+    },
+    "Guided steps are optional. Every tool remains available in the sidebar.": {
+      "de": "Geführte Schritte sind optional. Alle Werkzeuge bleiben in der Seitenleiste verfügbar.",
+      "fr": "Les étapes guidées sont facultatives. Tous les outils restent accessibles dans la barre latérale.",
+      "it": "I passaggi guidati sono facoltativi. Tutti gli strumenti restano disponibili nella barra laterale.",
+      "es": "Los pasos guiados son opcionales. Todas las herramientas siguen disponibles en la barra lateral.",
+      "el": "Τα καθοδηγούμενα βήματα είναι προαιρετικά. Όλα τα εργαλεία παραμένουν διαθέσιμα στην πλαϊνή στήλη.",
+      "pl": "Kroki z przewodnikiem są opcjonalne. Wszystkie narzędzia pozostają dostępne na pasku bocznym.",
+      "cs": "Kroky průvodce jsou volitelné. Všechny nástroje zůstávají dostupné v postranním panelu.",
+      "ru": "Шаги сценария необязательны. Все инструменты остаются доступны на боковой панели."
+    },
+    "These confirmations record your progress; they do not certify a migration or backup.": {
+      "de": "Diese Bestätigungen halten Ihren Fortschritt fest; sie zertifizieren keine Migration oder Sicherung.",
+      "fr": "Ces confirmations enregistrent votre progression ; elles ne certifient ni migration ni sauvegarde.",
+      "it": "Queste conferme registrano i tuoi progressi; non certificano una migrazione o un backup.",
+      "es": "Estas confirmaciones registran su progreso; no certifican una migración ni una copia de seguridad.",
+      "el": "Οι επιβεβαιώσεις καταγράφουν την πρόοδό σας· δεν πιστοποιούν μεταφορά ή αντίγραφο ασφαλείας.",
+      "pl": "Potwierdzenia zapisują postęp; nie poświadczają migracji ani kopii zapasowej.",
+      "cs": "Potvrzení zaznamenávají postup; neověřují migraci ani zálohu.",
+      "ru": "Подтверждения фиксируют прогресс, но не удостоверяют миграцию или резервную копию."
+    },
+    "Backup and recovery": {
+      "de": "Sicherung und Wiederherstellung",
+      "fr": "Sauvegarde et restauration",
+      "it": "Backup e ripristino",
+      "es": "Copia de seguridad y recuperación",
+      "el": "Αντίγραφα ασφαλείας και ανάκτηση",
+      "pl": "Kopia zapasowa i odzyskiwanie",
+      "cs": "Záloha a obnova",
+      "ru": "Резервное копирование и восстановление"
+    },
+    "Check the destination application": {
+      "de": "Zielanwendung prüfen",
+      "fr": "Vérifier dans l’application cible",
+      "it": "Verifica nell’applicazione di destinazione",
+      "es": "Comprobar en la aplicación de destino",
+      "el": "Έλεγχος στην εφαρμογή προορισμού",
+      "pl": "Sprawdź aplikację docelową",
+      "cs": "Zkontrolovat cílovou aplikaci",
+      "ru": "Проверить в целевом приложении"
+    },
+    "Create and restore backups in rekordbox. Workbench checks captured evidence.": {
+      "de": "Sicherungen in rekordbox erstellen und wiederherstellen. Workbench prüft erfasste Nachweise.",
+      "fr": "Créez et restaurez les sauvegardes dans rekordbox. Workbench vérifie les données capturées.",
+      "it": "Crea e ripristina i backup in rekordbox. Workbench verifica i dati acquisiti.",
+      "es": "Cree y restaure las copias en rekordbox. Workbench comprueba los datos capturados.",
+      "el": "Δημιουργήστε και επαναφέρετε αντίγραφα στο rekordbox. Το Workbench ελέγχει τα καταγεγραμμένα στοιχεία.",
+      "pl": "Twórz i przywracaj kopie w rekordbox. Workbench sprawdza zapisane dane.",
+      "cs": "Zálohy vytvářejte a obnovujte v rekordbox. Workbench kontroluje zachycená data.",
+      "ru": "Создавайте и восстанавливайте копии в rekordbox. Workbench проверяет сохранённые данные."
+    },
+    "Migration outside Workbench": {
+      "de": "Migration außerhalb von Workbench",
+      "fr": "Migration en dehors de Workbench",
+      "it": "Migrazione fuori da Workbench",
+      "es": "Migración fuera de Workbench",
+      "el": "Μεταφορά εκτός Workbench",
+      "pl": "Migracja poza Workbench",
+      "cs": "Migrace mimo Workbench",
+      "ru": "Миграция вне Workbench"
+    },
+    "Playlist explorer": {
+      "de": "Playlist-Explorer",
+      "fr": "Explorateur de playlists",
+      "it": "Esplora playlist",
+      "es": "Explorador de listas",
+      "el": "Εξερεύνηση λιστών αναπαραγωγής",
+      "pl": "Przeglądarka playlist",
+      "cs": "Průzkumník seznamů skladeb",
+      "ru": "Обозреватель плейлистов"
+    },
+    "Review migration limits": {
+      "de": "Migrationsgrenzen prüfen",
+      "fr": "Consulter les limites de migration",
+      "it": "Esamina i limiti della migrazione",
+      "es": "Revisar límites de migración",
+      "el": "Έλεγχος περιορισμών μεταφοράς",
+      "pl": "Sprawdź ograniczenia migracji",
+      "cs": "Prohlédnout omezení migrace",
+      "ru": "Изучить ограничения миграции"
+    },
+    "Review sharing privacy": {
+      "de": "Datenschutz beim Teilen prüfen",
+      "fr": "Vérifier la confidentialité du partage",
+      "it": "Controlla la privacy della condivisione",
+      "es": "Revisar privacidad al compartir",
+      "el": "Έλεγχος απορρήτου κοινοποίησης",
+      "pl": "Sprawdź prywatność udostępniania",
+      "cs": "Zkontrolovat soukromí sdílení",
+      "ru": "Проверить конфиденциальность общего доступа"
+    },
+    "Serato export is a draft. Verify it in a separate Serato library.": {
+      "de": "Der Serato-Export ist ein Entwurf. Prüfen Sie ihn in einer separaten Serato-Bibliothek.",
+      "fr": "L’export Serato est un brouillon. Vérifiez-le dans une bibliothèque Serato séparée.",
+      "it": "L’esportazione Serato è una bozza. Verificala in una libreria Serato separata.",
+      "es": "La exportación Serato es un borrador. Verifíquela en una biblioteca Serato separada.",
+      "el": "Η εξαγωγή Serato είναι προσχέδιο. Ελέγξτε την σε ξεχωριστή βιβλιοθήκη Serato.",
+      "pl": "Eksport Serato jest wersją roboczą. Sprawdź go w oddzielnej bibliotece Serato.",
+      "cs": "Export Serato je návrh. Ověřte jej v samostatné knihovně Serato.",
+      "ru": "Экспорт Serato — черновой. Проверьте его в отдельной библиотеке Serato."
+    },
+    "Serato import is not implemented. This checklist records preparation and checks around a migration performed outside Workbench.": {
+      "de": "Serato-Import ist nicht implementiert. Diese Checkliste dokumentiert Vorbereitung und Prüfungen einer außerhalb von Workbench durchgeführten Migration.",
+      "fr": "L’import Serato n’est pas implémenté. Cette liste consigne la préparation et les vérifications d’une migration effectuée hors de Workbench.",
+      "it": "L’importazione Serato non è implementata. Questa lista registra preparazione e verifiche di una migrazione eseguita fuori da Workbench.",
+      "es": "La importación Serato no está implementada. Esta lista registra la preparación y las comprobaciones de una migración realizada fuera de Workbench.",
+      "el": "Η εισαγωγή Serato δεν έχει υλοποιηθεί. Αυτή η λίστα καταγράφει την προετοιμασία και τους ελέγχους μιας μεταφοράς εκτός Workbench.",
+      "pl": "Import Serato nie jest zaimplementowany. Lista zapisuje przygotowania i kontrole migracji wykonanej poza Workbench.",
+      "cs": "Import Serato není implementován. Tento seznam zaznamenává přípravu a kontroly migrace provedené mimo Workbench.",
+      "ru": "Импорт Serato не реализован. Этот список фиксирует подготовку и проверки миграции, выполненной вне Workbench."
+    },
+    "Sharing exports metadata only; audio files are not included.": {
+      "de": "Beim Teilen werden nur Metadaten exportiert; Audiodateien sind nicht enthalten.",
+      "fr": "Le partage exporte uniquement les métadonnées ; les fichiers audio ne sont pas inclus.",
+      "it": "La condivisione esporta solo metadati; i file audio non sono inclusi.",
+      "es": "Al compartir se exportan solo metadatos; no se incluyen archivos de audio.",
+      "el": "Η κοινοποίηση εξάγει μόνο μεταδεδομένα· δεν περιλαμβάνονται αρχεία ήχου.",
+      "pl": "Udostępnianie eksportuje tylko metadane; pliki audio nie są dołączane.",
+      "cs": "Sdílení exportuje pouze metadata; zvukové soubory nejsou součástí.",
+      "ru": "При обмене экспортируются только метаданные; аудиофайлы не включаются."
+    },
     "Migration assistant": {
       "de": "Migrationsassistent",
       "fr": "Assistant de migration",
@@ -15604,6 +15754,26 @@
       "pl": "Archiwizuj zapisane analizy, aby usunąć je z aktywnych menu. Możesz je przywrócić poniżej. Oryginalne biblioteki, muzyka, przesłane pliki i eksporty pozostają zachowane. Archiwa nadal zajmują miejsce na dysku.",
       "cs": "Archivujte uložené analýzy, aby zmizely z aktivních nabídek. Níže je můžete obnovit. Původní knihovny, hudba, nahrané vstupy a exporty zůstanou zachovány. Archivy nadále zabírají místo na disku.",
       "ru": "Архивируйте сохранённые исследования, чтобы убрать их из активных меню. Восстановление доступно ниже. Исходные библиотеки, музыка, загруженные файлы и экспорты сохраняются. Архивы продолжают занимать место на диске."
+    },
+    "Rekordbox → Serato": {
+      "de": "Rekordbox → Serato",
+      "fr": "Rekordbox → Serato",
+      "it": "Rekordbox → Serato",
+      "es": "Rekordbox → Serato",
+      "el": "Rekordbox → Serato",
+      "pl": "Rekordbox → Serato",
+      "cs": "Rekordbox → Serato",
+      "ru": "Rekordbox → Serato"
+    },
+    "Serato → Rekordbox": {
+      "de": "Serato → Rekordbox",
+      "fr": "Serato → Rekordbox",
+      "it": "Serato → Rekordbox",
+      "es": "Serato → Rekordbox",
+      "el": "Serato → Rekordbox",
+      "pl": "Serato → Rekordbox",
+      "cs": "Serato → Rekordbox",
+      "ru": "Serato → Rekordbox"
     }
   }
 }
