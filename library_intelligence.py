@@ -171,7 +171,7 @@ def collection_lenses(snapshot, lens='unfiled', query='', offset=0):
                             str(r['artist'] or '').casefold(),str(r['title'] or '').casefold(),r['track_id']))
     active_ids={t['id'] for t in tracks}
     return {'lens':lens,'rows':rows[offset:offset+50],'total':len(rows),'offset':offset,
-            'summary':{'collection_tracks':len(tracks),'playlists':len(lists),'captured_sessions':len(histories),
+            'summary':{'collection_tracks':len(tracks),'playlists':len(lists) if membership_available else None,'captured_sessions':len(histories),
                        'outside_playlists':sum(not membership[t['id']] for t in tracks) if membership_available else None,
                        'history_metadata_missing':sum(n for i,n in appearances.items() if i not in active_ids)},
             'basis':'Playlist counts use distinct captured memberships. Recurring means present in at least two saved sessions; repeated entries within one session do not qualify. Absence from captured history does not mean a track has never been played. Personal stars are unchanged.'}
