@@ -50,7 +50,7 @@ The current lookup already requests recording `ratings`. MusicBrainz supports ag
 
 ## Larger background pilots
 
-The current interface offers limits of 150, 300 (default) and 1,000 tracks. Selection rotates across the chosen top genres and unknown-genre bucket, deduplicates artist/title/duration identities and is reproducible for a seed. A small library or sparse strata can yield fewer tracks. Legacy API callers that omit the size retain the original per-genre sample behavior.
+The current interface offers limits of 150, 300 (default) and 1,000 tracks. Quick targets now allow genre, album, year, playlist, deterministic random and missing-tag selections; they only change which **local recordings** enter the batch. A saved album target does not imply MusicBrainz album-level lookup or inherited album ratings. All existing identity approval and opt-in requests remain unchanged. Selection rotates across the chosen top genres and unknown-genre bucket, deduplicates artist/title/duration identities and is reproducible for a seed. A small library or sparse strata can yield fewer tracks. Legacy API callers that omit the size retain the original per-genre sample behavior.
 
 Starting a confirmed pilot queues one background worker. You can navigate to other local views, or close the browser tab while leaving the application running. A persistent in-app status strip and saved-batch selector show progress and completion; no system notification permission is needed. Cancel stops further requests. A stopped or crashed application leaves a recoverable interrupted batch; resume skips completed records and preserves identity approvals. This is not a scheduled service that runs while the application is closed.
 
