@@ -1,4 +1,5 @@
 """Synthetic bounded source-folder inspection, including cancellation and links."""
+from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -70,7 +71,7 @@ class SourceInventoryTests(unittest.TestCase):
 
     def test_default_capture_keeps_database_statistics_and_unknown_asset_availability(self):
         (self.root/'master.db').unlink()
-        with sqlite3.connect(self.root/'master.db') as db:schema(db);add_track(db);db.commit()
+        with closing(sqlite3.connect(self.root/'master.db')) as db:schema(db);add_track(db);db.commit()
         result=analyze_folder(self.root,Path(self.tmp.name)/'output',lambda *_:None)
         self.assertEqual(result['read_status'],'checked',result['messages'])
         self.assertEqual(result['database']['counters']['tracks'],1)

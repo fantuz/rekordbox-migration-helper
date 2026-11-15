@@ -99,7 +99,9 @@ def footprint(root,progress,recursive=False,max_entries=None,max_seconds=30,max_
                         if stat_constants.S_ISDIR(info.st_mode):
                             if not recursive:continue
                             if depth>=max_depth or cloud_placeholder(info):skipped+=1;continue
-                            identity=(getattr(info,'st_dev',None),getattr(info,'st_ino',0))
+                            # Windows DirEntry.stat can omit device/inode identity.
+                            identity_info=os.stat(item.path,follow_symlinks=False)
+                            identity=(identity_info.st_dev,identity_info.st_ino)
                             if identity[0]!=root_info.st_dev or (identity[1] and identity in seen):skipped+=1;continue
                             if identity[1]:seen.add(identity)
                             pending.append((Path(item.path),depth+1));continue
