@@ -11,10 +11,11 @@ window.TrackPlayback=(()=>{
   }
   function scope(b){return b.dataset.playWorkspace?{workspace:b.dataset.playWorkspace}:{snapshot:b.dataset.playSnapshot};}
   function key(b){return JSON.stringify([scope(b),b.dataset.playTrack]);}
-  function status(b,available){
-    b.disabled=!available;b.dataset.available=String(available);b.setAttribute('aria-busy','false');
+  function status(b,available,fileState='unverified'){
+    b.disabled=!available;b.dataset.available=String(available);b.dataset.fileStatus=fileState;b.setAttribute('aria-busy','false');
     b.title=t(available?'Play in default media player':'Audio file unavailable at the recorded library paths');
     b.setAttribute('aria-label',b.title);
+    b.dispatchEvent(new CustomEvent('workbench-file-status',{bubbles:true,detail:{status:fileState}}));
   }
   const observer=new IntersectionObserver(entries=>{
     for(const entry of entries)if(entry.isIntersecting){observer.unobserve(entry.target);queue.add(entry.target);}
@@ -26,7 +27,7 @@ window.TrackPlayback=(()=>{
     try{
       const groups=new Map();
       for(const b of queue){queue.delete(b);if(!b.isConnected)continue;
-        const old=cache.get(key(b));if(!forceRefresh.has(b) && old && Date.now()-old.time<10000){status(b,old.available);continue;}
+        const old=cache.get(key(b));if(!forceRefresh.has(b) && old && Date.now()-old.time<10000){status(b,old.available,old.fileState);continue;}
         const id=JSON.stringify(scope(b));if(!groups.has(id))groups.set(id,[]);groups.get(id).push(b);
       }
       // A focus/visibility refresh bypasses SQLite for every group, including
@@ -37,7 +38,7 @@ window.TrackPlayback=(()=>{
         for(let offset=0;offset<ids.length;offset+=100){
           const r=await api('/api/playback/availability',{feedback:false,method:'POST',body:JSON.stringify({...JSON.parse(source),track_ids:ids.slice(offset,offset+100),...(force?{refresh:true}:{})})});
           for(const b of buttons)if(Object.hasOwn(r.tracks,b.dataset.playTrack)){
-            const available=r.tracks[b.dataset.playTrack];cache.set(key(b),{available,time:Date.now()});forceRefresh.delete(b);if(b.isConnected)status(b,available);
+            const available=r.tracks[b.dataset.playTrack],fileState=r.statuses?.[b.dataset.playTrack] || (available?'playable':'unverified');cache.set(key(b),{available,fileState,time:Date.now()});forceRefresh.delete(b);if(b.isConnected)status(b,available,fileState);
           }
         }
       }
@@ -72,7 +73,7 @@ window.TrackPlayback=(()=>{
   document.addEventListener('keydown',event=>{if(event.target.matches('[data-play-track]'))event.stopPropagation();},true);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)recheck();});
   window.addEventListener('focus',recheck);
-  window.addEventListener('workbench-language',()=>{for(const b of document.querySelectorAll('[data-play-track]'))if(b.dataset.available)status(b,b.dataset.available==='true');});
+  window.addEventListener('workbench-language',()=>{for(const b of document.querySelectorAll('[data-play-track]'))if(b.dataset.available)status(b,b.dataset.available==='true',b.dataset.fileStatus);});
   function recheck(){
     const now=Date.now();
     const forced=now-lastForcedRefresh>=MIN_FORCE_INTERVAL_MS;
