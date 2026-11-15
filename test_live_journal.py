@@ -1,4 +1,5 @@
 """Journal activity monitoring never reads or alters the active database."""
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 import sqlite3
@@ -13,7 +14,7 @@ class JournalActivityTests(unittest.TestCase):
     def test_monitor_detects_wal_and_base_changes_without_database_connection(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)/'source';root.mkdir()
-            with sqlite3.connect(root/'master.db') as db:
+            with closing(sqlite3.connect(root/'master.db')) as db:
                 db.execute('CREATE TABLE synthetic(value TEXT)')
                 db.commit()
             data=Path(temp)/'work'
