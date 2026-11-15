@@ -53,6 +53,9 @@ class MetadataExportTests(unittest.TestCase):
         self.assertIn("connect-src 'none'",text)
         self.assertNotRegex(text,r'<(?:script|link)[^>]+(?:src|href)="https?://')
         self.assertNotIn('fetch(',text)
+        self.assertIn('id="offline-bubble-map"',text)
+        self.assertIn('function renderOfflineBubbles()',text)
+        self.assertIn('renderOfflineBubbles',text)
         # The same direction rules ship in both self-contained formats.
         layout=(ASSETS/'language-layout.css').read_text(encoding='utf-8')
         self.assertIn(layout,text)
@@ -102,6 +105,7 @@ class MetadataExportTests(unittest.TestCase):
             self.assertNotIn('ratings.html',archive.namelist());self.assertNotIn('added.html',archive.namelist())
             embedded=archive.read('library-data.js').decode('utf-8')
             self.assertNotIn('PRIVATE-TITLE',embedded);self.assertNotIn('My playlist',embedded)
+            self.assertIn('id="offline-bubble-map"',archive.read('index.html').decode('utf-8'))
             self.assertEqual(json.loads(embedded.removeprefix('window.METADATA_SNAPSHOT=').removesuffix(';'))['rows'],[])
 
     def test_selected_track_list_and_private_field_choices_are_enforced_in_data(self):

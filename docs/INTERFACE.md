@@ -24,7 +24,7 @@ Single-track **File view** provides 0–5 instant personal-star buttons alongsid
 
 The paired XML/ZIP export uses one frozen decision snapshot. XML retains its input collection scope. A successful consistency check does not prove that rekordbox will restore a native ZIP. Use an isolated library and follow [restore testing](RESTORE-TEST.md).
 
-Quick export generates an offline HTML explorer and minisite ZIP. They contain metadata and interface language resources, not audio or a native backup. Changing display language does not rewrite metadata. Use **Stop and clean up** to remove temporary imports, database copies and incomplete exports; completed exports, reports and decisions remain. See [temporary-file handling](TEMPORARY-FILES.md).
+Quick export generates an offline HTML explorer and minisite ZIP. Both now include an on-demand category bubble chart on the Overview page, grouping only dimensions included in that export. Public summaries use aggregate-only counts and labels; no individual track rows, audio, paths, usage or private ratings are added by the chart. The chart is rendered locally from existing export data, without a network dependency, and presents a readable category legend.  They contain metadata and interface language resources, not audio or a native backup. Changing display language does not rewrite metadata. Use **Stop and clean up** to remove temporary imports, database copies and incomplete exports; completed exports, reports and decisions remain. See [temporary-file handling](TEMPORARY-FILES.md).
 
 ## Optional internet queries
 

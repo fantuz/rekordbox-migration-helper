@@ -49,7 +49,31 @@ def check_sharing_ui(page,base,sid,output):
         assert offline.locator('.filters').is_hidden()
         assert offline.locator('#metadata-table tbody tr').count()>=1
         assert offline.locator('#metrics').inner_text().find('12')>=0
+        assert offline.locator('#offline-bubble-map circle').count()>0
+        assert offline.locator('#offline-bubble-dimension option').count()>1
+        offline.select_option('#offline-bubble-dimension','artists')
+        assert offline.locator('#offline-bubble-map circle').count()>0
+        assert offline.locator('#offline-bubble-note').inner_text()
+        assert offline.locator('#offline-bubble-legend span').count()>0
+        offline.locator('#offline-bubble-map [role="button"]').first.click()
+        offline.wait_for_function('new URLSearchParams(location.hash.slice(1)).get("view")==="artists"')
+        assert offline.locator('#metadata-table tbody tr').count()>0
         offline.screenshot(path=str(Path(output)/'public-summary.png'))
+        # Minisite navigation must never interpret a DOM-controlled category as a URL scheme.
+        minisite=(Path(output)/'index.html').resolve()
+        minisite.write_text(html.replace('data-mode="single"','data-mode="multi"'),encoding='utf-8')
+        offline.goto(minisite.as_uri(),wait_until='load')
+        offline.evaluate("""() => {
+          const key='javascript:window.bubbleNavigationExecuted=1//';
+          window.METADATA_SNAPSHOT.aggregates.categories[key]=window.METADATA_SNAPSHOT.aggregates.categories.artists;
+          const select=document.querySelector('#offline-bubble-dimension'),option=document.createElement('option');
+          option.value=key;option.textContent='Synthetic invalid category';select.append(option);select.value=key;
+          select.dispatchEvent(new Event('change'));
+        }""")
+        offline.locator('#offline-bubble-map [role="button"]').first.click()
+        offline.wait_for_url(minisite.as_uri())
+        assert offline.evaluate('window.bubbleNavigationExecuted') is None
+
         assert not errors,errors
     finally:offline.close()
 

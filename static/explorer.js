@@ -29,7 +29,8 @@
   let state={}, view="index", page=0, pageSize=50, sortField="", ascending=true, shown=[], tableColumns=[];
   const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
   const single=document.body.dataset.mode==="single";
-  function href(next, filters=state){const params=new URLSearchParams(filters);if(single)params.set("view",next);return (single?"":next+".html")+(params.size?"#"+params.toString():"");}
+  const pagePaths={index:"index.html",tracks:"tracks.html",genres:"genres.html",years:"years.html",added:"added.html",artists:"artists.html",albums:"albums.html",bpm:"bpm.html",ratings:"ratings.html",duration:"duration.html",formats:"formats.html",playlists:"playlists.html",tonality:"tonality.html",colours:"colours.html"};
+  function href(next, filters=state){const target=Object.hasOwn(pagePaths,next)?pagePaths[next]:pagePaths.index;const params=new URLSearchParams(filters);if(single)params.set("view",next);return (single?"":target)+(params.size?"#"+params.toString():"");}
   function go(next,filters){location.href=href(next,filters);}
   function applyFilters(){
     const next={...state};
@@ -84,6 +85,83 @@
     for(const [field,name,count] of [["genre",I18n.t("Without a genre"),rows.filter(r=>!r.genre).length],["year",I18n.t("Without a release year"),rows.filter(r=>empty(r.year)).length],["bpm",I18n.t("Without a saved BPM"),rows.filter(r=>empty(r.bpm)).length],["rating",I18n.t("No personal star rating"),rows.filter(r=>r.rating===0).length],["duration",I18n.t("Duration not saved"),rows.filter(r=>empty(r.duration)).length],["analysed",I18n.t("Analysis status unknown"),rows.filter(r=>empty(r.analysed)).length]])if(included.has(field))dl.append(node("dt",name),node("dd",number.format(count)));
     quality.append(dl,node("p",I18n.t("An unknown tag is a review opportunity, not proof of a damaged track."),"muted"));if(included.has("genre"))target.append(top);target.append(quality);
   }
+  const offlineBubbleDims=[['genres','Genres'],['artists','Artists'],['albums','Albums'],['years','Release years'],['bpm','BPM ranges'],['duration','Duration'],['formats','Formats'],['tonality','Tonality'],['colours','Track colours']];
+  const bubbleMetricField={genres:'genre',artists:'artist',albums:'album',years:'year',bpm:'bpm_group',duration:'duration_group',formats:'format',tonality:'tonality',colours:'color_group'};
+  const svgNS='http://www.w3.org/2000/svg';
+  function bubbleElement(tag,attributes={}){
+    const element=document.createElementNS(svgNS,tag);
+    for(const [key,value] of Object.entries(attributes))element.setAttribute(key,String(value));
+    return element;
+  }
+  function bubbleCategories(key){
+    if(aggregateOnly)return (data.aggregates.categories[key]||[]).map(g=>({label:label(g.label),count:g.count,key:canonical(g.label)}));
+    return groups(filtered(),bubbleMetricField[key]).map(g=>({label:g.label,count:g.count,key:g.key}));
+  }
+  function renderOfflineBubbles(){
+    const panel=$('#offline-bubble-panel');
+    if(!panel)return;
+    const select=$('#offline-bubble-dimension'),key=select.value;
+    const all=bubbleCategories(key).filter(g=>g.count>0).sort((a,b)=>b.count-a.count||collator.compare(a.label,b.label));
+    const top=all.slice(0,45),extra=all.slice(45).reduce((n,g)=>n+g.count,0);
+    if(extra)top.push({label:'Other',count:extra});
+    const svg=$('#offline-bubble-map');svg.replaceChildren();
+    const count=top.reduce((n,g)=>n+g.count,0);
+    if(!count){$('#offline-bubble-note').textContent=I18n.t('0 results');$('#offline-bubble-legend').replaceChildren();return;}
+    // Deterministic area-proportional bubbles, placed without overlaps in a
+    // bounded spiral. No additional library or copied track-level payload.
+    const nodes=[],width=960,height=510,centerX=width/2,centerY=height/2;
+    const min=8,max=68;
+    const raw=top.map(g=>Math.sqrt(g.count/count)*265);
+    const radii=raw.map(r=>Math.max(min,Math.min(max,r)));
+    const placed=[];
+    for(let index=0;index<top.length;index++){
+      const radius=radii[index];let chosen=null;
+      for(let step=0;step<12000;step++){
+        const angle=step*2.399963229728653+index*0.3,distance=step===0?0:1.6*Math.sqrt(step)*3;
+        const x=centerX+Math.cos(angle)*distance,y=centerY+Math.sin(angle)*distance;
+        if(x-radius<3||x+radius>width-3||y-radius<3||y+radius>height-3)continue;
+        if(placed.some(n=>(n.x-x)**2+(n.y-y)**2<(n.r+radius+3)**2))continue;
+        chosen={x,y,r:radius};break;
+      }
+      if(!chosen)continue;
+      placed.push(chosen);
+      nodes.push({...chosen,...top[index]});
+    }
+    for(const [i,g] of nodes.entries()){
+      const group=bubbleElement('g');
+      const hue=(i*137.508+175)%360;
+      group.classList.add('offline-bubble-node');
+      group.setAttribute('tabindex','0');group.setAttribute('role','button');
+      group.setAttribute('aria-label',g.label+' · '+number.format(g.count)+' '+I18n.t('tracks'));
+      const open=()=>{
+        if(aggregateOnly || g.label==='Other')go(key,{});
+        else go('tracks',{...state,[bubbleMetricField[key]]:g.key});
+      };
+      group.addEventListener('click',open);
+      group.addEventListener('keydown',event=>{
+        if(event.key==='Enter' || event.key===' '){event.preventDefault();open();}
+      });
+      group.append(bubbleElement('circle',{cx:g.x,cy:g.y,r:g.r,fill:'hsl('+hue+' 48% 59%)',stroke:'hsl('+hue+' 45% 35%)','stroke-width':2}));
+      const title=bubbleElement('title');title.textContent=g.label+' · '+number.format(g.count);group.append(title);
+      if(g.r>20){
+        const caption=bubbleElement('text',{x:g.x,y:g.y,'text-anchor':'middle','dominant-baseline':'middle',fill:'#152732','font-size':g.r>44?12:10,'font-weight':600});
+        const trimmed=g.label.length>Math.floor(g.r/3)?g.label.slice(0,Math.floor(g.r/3))+'…':g.label;
+        caption.textContent=trimmed;group.append(caption);
+      }
+      svg.append(group);
+    }
+    $('#offline-bubble-note').textContent=I18n.t('Tracks')+': '+number.format(count)+' · '+I18n.t('Categories')+': '+number.format(all.length)+(extra?' · '+'Other'+': '+number.format(extra):'');
+    const legend=$('#offline-bubble-legend');legend.replaceChildren();
+    for(const g of all.slice(0,15)){const span=node('span',g.label+' · '+number.format(g.count));legend.append(span);}
+  }
+  function initializeOfflineBubbles(){
+    const options=offlineBubbleDims.filter(([key])=>aggregateOnly?Object.hasOwn(data.aggregates.categories,key):included.has({bpm:'bpm',duration:'duration',years:'year',colours:'color_status'}[key]||bubbleMetricField[key]));
+    const panel=$('#offline-bubble-panel'),select=$('#offline-bubble-dimension');
+    panel.hidden=!options.length;
+    if(!options.length)return;
+    select.replaceChildren(...options.map(([key,label])=>{const option=node('option',I18n.t(label));option.value=key;return option;}));
+    select.onchange=renderOfflineBubbles;
+  }
   function render(){
     if(aggregateOnly){renderAggregates();return;}
     const rows=filtered();const metrics=$("#metrics");metrics.replaceChildren(
@@ -91,7 +169,7 @@
       ...(included.has("rating")?[metric(I18n.t("Personal stars"),number.format(rows.filter(r=>r.rating>0).length),I18n.t("Tracks with a saved rating"))]:[]),
       ...(included.has("analysed")?[metric(I18n.t("Saved as analyzed"),number.format(rows.filter(r=>r.analysed===true).length),I18n.t("Status from captured metadata"))]:[]),
       ...(included.has("duration")?[metric(I18n.t("Recorded duration"),hours(totalDuration(rows)),I18n.t("Sum of available track lengths"))]:[]));
-    overview(rows);const category=facet[view];
+    overview(rows);if(view==='index')renderOfflineBubbles();$('#offline-bubble-panel').hidden=view!=='index';const category=facet[view];
     shown=category?groups(rows,category):rows.slice();
     tableColumns=category?[["label",pages[view],false],["count",I18n.t("Tracks"),true],...(included.has('duration')?[["duration",I18n.t("Recorded duration"),true]]:[]),...(included.has('rating')?[["rated",I18n.t("Starred tracks"),true]]:[]),...(included.has('bpm')?[["average_bpm",I18n.t("Mean saved BPM"),true]]:[]),...(included.has('play_count')?[["plays",I18n.t("Saved plays"),true]]:[])]:
       [["title",I18n.t("Track"),false],["artist",I18n.t("Artist"),false],["album",I18n.t("Album"),false],["genre",I18n.t("Genre"),false],["year",I18n.t("Year"),true],["bpm","BPM",true],["rating",I18n.t("Personal stars"),true],["duration",I18n.t("Duration"),true],["format",I18n.t("Format"),false],["play_count",I18n.t("Plays"),true]];
@@ -116,7 +194,7 @@
   function renderAggregates(){
     const summary=data.aggregates, category=view==='index'?'genres':view;
     $('#metrics').replaceChildren(metric(I18n.t('Tracks'),number.format(summary.tracks),I18n.t('Aggregate summary')),metric(I18n.t('Recorded duration'),hours(summary.duration),number.format(summary.duration_known)+' '+I18n.t('tracks')),metric(I18n.t('Mean saved BPM'),summary.average_bpm===null?I18n.t('Unknown'):number.format(summary.average_bpm),number.format(summary.bpm_known)+' '+I18n.t('tracks')));
-    $('#overview').hidden=true;
+    $('#overview').hidden=true;$('#offline-bubble-panel').hidden=view!=='index';if(view==='index')renderOfflineBubbles();
     shown=(summary.categories[category] || []).map(g=>({...g,label:label(g.label)}));
     const direction=sortField?(ascending?1:-1):-1, order=sortField || 'count';
     shown.sort((a,b)=>direction*(typeof a[order]==='number'&&typeof b[order]==='number'?a[order]-b[order]:collator.compare(String(a[order]??''),String(b[order]??''))));
@@ -149,7 +227,7 @@
   if(aggregateOnly)$('#scope-note').textContent=I18n.t('Aggregate summary only. Individual tracks and personal usage are excluded.')+' '+I18n.t('Merge and relocation decisions are not applied.');
   if(data.disclosure){$('#disclosure-note').textContent=I18n.t('Included fields')+': '+data.disclosure.fields.map(f=>data.columns.includes(f)?I18n.field(f):I18n.t(f)).join(', ')+'. '+I18n.t('Metadata state')+': '+I18n.t(data.data_state==='working'?'Working metadata':'Captured metadata')+'.';}
   }
-  snapshotNotes();
+  snapshotNotes();initializeOfflineBubbles();
   $("#theme").onchange=()=>{const next={...state,theme:$("#theme").value};if(single)next.view=view;location.hash=new URLSearchParams(next).toString();};document.body.dataset.theme="system";
   let debounce;$("#search").oninput=()=>{clearTimeout(debounce);debounce=setTimeout(applyFilters,180);};
   for(const id of ["rating-filter","format-filter","bpm-min","bpm-max","duration-min","duration-max"])$("#"+id).onchange=applyFilters;
