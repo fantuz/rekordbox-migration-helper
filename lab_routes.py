@@ -1,5 +1,6 @@
 """Local Library lab endpoints; all mutable state lives in a separate sidecar."""
 from concurrent.futures import ThreadPoolExecutor
+from collections import OrderedDict
 from contextlib import closing
 from copy import deepcopy
 import json
@@ -38,6 +39,7 @@ def register(owner):
     # Multiple jobs wait in one serial provider queue; do not exceed the provider's rate limit.
     MAX_MUSICBRAINZ_JOBS=8
     gate=RateGate();cancellations={};network_lock=RLock()
+    target_cache=OrderedDict();target_lock=RLock()
     def store():return Store(owner.DATA/'workbench-sidecar.sqlite3')
     def enabled():return os.environ.get('LIBRARY_WORKBENCH_MUSICBRAINZ','1')!='0' and store().setting('musicbrainz_enabled',False) is True
     def cancel_all():
@@ -220,15 +222,55 @@ def register(owner):
     def lab_pilot_targets():
         snapshot_id=request.args.get('snapshot','')
         # Target lists stay local and contain only bounded, saved tag values.
-        return jsonify(target_options(store().snapshot(snapshot_id)))
+        saved=store()
+        with saved.connection() as db:
+            row=db.execute('SELECT digest FROM snapshots WHERE id=?',(snapshot_id,)).fetchone()
+        if not row:raise ValueError('Choose a saved Library lab snapshot')
+        key=(str(owner.DATA),snapshot_id,row['digest'])
+        # Snapshots are immutable. Cache only the small option lists, and share
+        # the first build between overlapping requests for the same snapshot.
+        with target_lock:
+            if key not in target_cache:
+                target_cache[key]=target_options(saved.snapshot(snapshot_id))
+                if len(target_cache)>8:target_cache.popitem(last=False)
+            else:target_cache.move_to_end(key)
+            return jsonify(target_cache[key])
+
+    @app.get('/api/lab/musicbrainz/context')
+    def lab_pilot_context():
+        from enrichment_context import context
+        return jsonify(context(owner,store()))
+
+    @app.post('/api/lab/musicbrainz/prepare')
+    def lab_pilot_prepare():
+        from enrichment_context import prepare,source_details
+        from file_health import local_request
+        if not local_request():raise ValueError('Preparing library metadata requires the local application')
+        source=body().get('source','')
+        if not isinstance(source,str):raise ValueError('Choose a current library')
+        source_details(owner,source)
+        return jsonify(job=owner.launch(lambda progress:prepare(owner,store(),source,progress),
+                                        'Preparing the current library for enrichment'))
 
     @app.post('/api/lab/musicbrainz/preview')
     def lab_pilot_preview():
         b=body();s=store().effective(snapshot(b));speed=b.get('speed','balanced')
+        from enrichment_context import require_snapshot,playable_collection
+        require_snapshot(owner,s)
         if speed not in SPEEDS:raise ValueError('Choose gentle, balanced or fast lookup pacing')
-        return jsonify(create_batch(store(),s,b.get('top_genres',5),b.get('seed','preview'),
-                                    SPEEDS[speed],b.get('sample_size'),
-                                    b.get('target','balanced'),b.get('target_value','')))
+        include=b.get('include_unavailable',False)
+        if not isinstance(include,bool):raise ValueError('Choose whether to include unavailable audio')
+        def work(progress):
+            require_snapshot(owner,s)
+            from musicbrainz_pilot import target_selection
+            target=b.get('target','balanced');value=b.get('target_value','')
+            selected={**s,'tracks':target_selection(s,target,value)}
+            eligible,excluded=playable_collection(selected,include,progress)
+            progress(95,'Preparing the local batch preview')
+            return create_batch(store(),eligible,b.get('top_genres',5),b.get('seed','preview'),
+                                SPEEDS[speed],b.get('sample_size'),target,value,
+                                playable_only=not include,excluded_unplayable=excluded)
+        return jsonify(job=owner.launch(work,'Checking local audio before batch preview'))
 
     @app.get('/api/lab/musicbrainz/batches')
     def lab_pilot_batches():
@@ -236,7 +278,11 @@ def register(owner):
             saved=store();recover_batches(saved)
             with saved.connection() as db:
                 rows=db.execute("SELECT b.id,b.snapshot_id,b.created,b.status,b.summary,s.label FROM mb_batches b LEFT JOIN snapshots s ON s.id=b.snapshot_id ORDER BY CASE WHEN b.status IN ('running','queued') THEN 0 ELSE 1 END,b.created DESC LIMIT 100").fetchall()
-            return jsonify(batches=[{**dict(r),'summary':json.loads(r['summary'])} for r in rows])
+            positions={identity:n+1 for n,identity in enumerate(cancellations)}
+            batches=[{**dict(r),'summary':json.loads(r['summary']),
+                      'queue_position':positions.get(r['id'])} for r in rows]
+            batches.sort(key=lambda r:positions.get(r['id'],MAX_MUSICBRAINZ_JOBS+1))
+            return jsonify(batches=batches)
 
     @app.get('/api/lab/musicbrainz/<identity>')
     def lab_pilot_record(identity):
@@ -251,12 +297,26 @@ def register(owner):
         if b.get('query_consent') is not True:raise ValueError('Review and confirm sending selected public tags/identifiers to MusicBrainz')
         with network_lock:
             saved=store();recover_batches(saved);record=batch_record(saved,identity)
+            from enrichment_context import require_snapshot
+            require_snapshot(owner,saved.snapshot(record['snapshot_id']))
+            if 'playable_only' not in record['summary']:
+                raise ValueError('Preview a new batch to choose whether unavailable audio is included')
             if record['status']=='complete':raise ValueError('This batch is complete. Preview a new sample to run another batch.')
             if not record['total']:raise ValueError('This sample has no tracks to look up')
             if identity in cancellations or record['status'] in ('running','queued'):raise ValueError('This batch is already running or queued')
             if len(cancellations)>=MAX_MUSICBRAINZ_JOBS:raise ValueError('MusicBrainz queue is full (8 batches). Finish or cancel a batch before adding another.')
             event=Event();cancellations[identity]=event
             with saved.connection() as db:db.execute('UPDATE mb_batches SET status=? WHERE id=?',('queued',identity))
+            def finished(task_status):
+                # launch() can stop at its own checkpoint before work() runs.
+                # In that case work's finally never executes; release the queue
+                # reservation here and preserve an explicit resumable status.
+                with network_lock:
+                    if cancellations.get(identity) is not event:return
+                    status='cancelled' if task_status=='cancelled' or event.is_set() else 'interrupted'
+                    with saved.connection() as db:
+                        db.execute("UPDATE mb_batches SET status=? WHERE id=? AND status IN ('queued','running')",(status,identity))
+                    event.set();cancellations.pop(identity,None)
             def work(progress):
                 try:
                     client=MusicBrainzClient(saved,gate,enabled,record['summary']['seconds_per_request'],event)
@@ -267,7 +327,7 @@ def register(owner):
                 finally:
                     event.set()
                     with network_lock:cancellations.pop(identity,None)
-            try:job=owner.launch(work,'Looking up selected public metadata with MusicBrainz',pool=network_pool)
+            try:job=owner.launch(work,'Looking up selected public metadata with MusicBrainz',pool=network_pool,on_finished=finished)
             except Exception:
                 event.set();cancellations.pop(identity,None)
                 with saved.connection() as db:db.execute('UPDATE mb_batches SET status=? WHERE id=?',('interrupted',identity))

@@ -254,14 +254,15 @@ class MusicBrainzClient:
         raise RuntimeError('Provider request failed')
 
 
-def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None,target='balanced',target_value=''):
+def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None,target='balanced',target_value='',playable_only=True,excluded_unplayable=0):
     delay=float(delay)
     if not 1.1<=delay<=60:raise ValueError('Lookup spacing must be between 1.1 and 60 seconds')
     selected,groups=sample_genres(snapshot,top,seed,sample_size,target,target_value)
     identity=uuid4().hex
     sample=[{k:t.get(k) for k in ('id','title','artist','album','genre','year','rating','duration','isrc','metadata_origin')} for t in selected]
     summary={'groups':groups,'target':target,'target_value':target_value,'requested_tracks':sample_size,'estimated_uncached_seconds':round(2*len(sample)*delay),'tracks':len(sample),'seconds_per_request':float(delay),'requests':0,'cache_hits':0,'done':0,
-             'rating_available':0,'genre_available':0,'year_available':0,'experimental':True,'queries_include_audio':False,'queries_include_paths':False}
+             'rating_available':0,'genre_available':0,'year_available':0,'experimental':True,'queries_include_audio':False,'queries_include_paths':False,
+             'playable_only':playable_only,'excluded_unplayable':excluded_unplayable}
     with store.connection() as db:db.execute('INSERT INTO mb_batches VALUES (?,?,?,?,?,?)',(identity,snapshot['id'],now(),'preview',encoded(summary),encoded(sample)))
     return {'id':identity,'summary':summary,'sample':sample,'status':'preview'}
 
@@ -284,13 +285,17 @@ def run_batch(store,identity,client,progress):
         previous={r['track_id']:json.loads(r['payload']) for r in db.execute('SELECT track_id,payload FROM mb_results WHERE batch_id=?',(identity,))}
         db.execute('UPDATE mb_batches SET status=? WHERE id=?',('running',identity))
     prior_requests=summary.get('requests',0);prior_hits=summary.get('cache_hits',0)
-    consecutive_errors=0;status='complete';totals=Counter(rating_available=0,genre_available=0,tags_available=0,year_available=0,service_errors=0,needs_local_tags=0,candidate_matches=0,no_match=0)
+    local_tracks={t['id']:t for t in store.snapshot(r['snapshot_id'])['tracks']} if summary.get('playable_only') else {}
+    consecutive_errors=0;status='complete';totals=Counter(rating_available=0,genre_available=0,tags_available=0,year_available=0,service_errors=0,needs_local_tags=0,candidate_matches=0,no_match=0,skipped_unplayable=0)
     summary.update(done=0,**totals);summary.pop('message',None)
     for n,t in enumerate(sample):
         reused=False
         try:
             if getattr(client,'cancel',None) and client.cancel.is_set():raise InterruptedError('Pilot cancelled')
-            if t['id'] in previous and previous[t['id']]['status']!='service_error':result=previous[t['id']];reused=True
+            from track_playback import inspect_audio
+            if t['id'] in previous and previous[t['id']]['status'] not in ('service_error','not_playable'):result=previous[t['id']];reused=True
+            elif summary.get('playable_only') and inspect_audio(local_tracks.get(t['id'],{}))[0]!='playable':
+                result={'status':'not_playable','error':'Audio unavailable at lookup time; no provider request sent'}
             else:
                 try:query=public_query(t)
                 except ValueError as error:query=None;result={'status':'needs_local_tags','error':str(error)}
@@ -314,7 +319,7 @@ def run_batch(store,identity,client,progress):
         except InterruptedError as error:status='cancelled';summary['message']=str(error);break
         except Exception as error:
             consecutive_errors+=1;result={'status':'service_error','error':type(error).__name__+': '+str(error)[:200]}
-        totals[{'service_error':'service_errors','candidate_needs_review':'candidate_matches'}.get(result['status'],result['status'])]+=1
+        totals[{'service_error':'service_errors','candidate_needs_review':'candidate_matches','not_playable':'skipped_unplayable'}.get(result['status'],result['status'])]+=1
         proposal=result.get('proposal') or {}
         totals['rating_available']+=proposal.get('community_score') is not None
         totals['tags_available']+=bool(proposal.get('tags'))
@@ -326,6 +331,7 @@ def run_batch(store,identity,client,progress):
         progress(100*(n+1)/max(1,len(sample)),f"MusicBrainz {n+1}/{len(sample)} · {client.requests} requests · {client.cache_hits} cached")
         if consecutive_errors>=5:status='service_paused';summary['message']='Stopped after five consecutive service errors; partial results retained';break
     if status=='complete' and totals['service_errors']:status='complete_with_errors'
+    if status=='complete' and totals['skipped_unplayable']:status='complete_with_skips'
     summary.update(requests=prior_requests+client.requests,cache_hits=prior_hits+client.cache_hits,**totals)
     with store.connection() as db:db.execute('UPDATE mb_batches SET status=?,summary=? WHERE id=?',(status,encoded(summary),identity))
     return {'batch_id':identity,'status':status,'summary':summary}

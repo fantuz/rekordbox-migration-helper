@@ -1,22 +1,24 @@
 /* Background retrieval remains opt-in. No native notifications or external requests from this page. */
 window.BackgroundPilot=(()=>{
   const node=id=>document.getElementById(id),t=key=>I18n.t(key);
-  let pending=null,latest=null,known=new Map(),choiceSignature='';
+  let pending=null,latest=null,known=new Map(),choiceSignature='',noticeKey='';
   async function refresh(){
     if(pending)return pending;
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
     pending=(async()=>{
-      const info=await api('/api/lab/musicbrainz/batches',{feedback:false}),rows=info.batches;
+      const info=await api('/api/lab/musicbrainz/batches',{feedback:false,signal:controller.signal}),rows=info.batches;
       const signature=rows.map(r=>r.id+':'+r.status).join('|');
       if(signature!==choiceSignature){
         labSelect('#lab-pilot-batches',rows,r=>(r.label || t('Library snapshot'))+' · '+r.status+' · '+date(r.created),t('Saved batches'));
-        node('lab-pilot-batches').value=labBatch || '';choiceSignature=signature;
+        choiceSignature=signature;
       }
+      node('lab-pilot-batches').value=labBatch || '';
       for(const row of rows){
         if(['running','queued'].includes(known.get(row.id))&&!['running','queued'].includes(row.status))
           notify(t('MusicBrainz pilot')+' · '+row.status);
         known.set(row.id,row.status);
       }
-      latest=rows.find(r=>['running','queued'].includes(r.status)) || rows.find(r=>r.id===labBatch&&r.status!=='preview') || rows.find(r=>r.status!=='preview');
+      latest=rows.find(r=>r.status==='running') || rows.find(r=>r.status==='queued') || rows.find(r=>r.id===labBatch&&r.status!=='preview') || rows.find(r=>r.status!=='preview');
       const active=rows.filter(r=>['running','queued'].includes(r.status));
       const running=active.filter(r=>r.status==='running').length,queued=active.length-running;
       const totals=active.reduce((sum,r)=>{
@@ -24,7 +26,8 @@ window.BackgroundPilot=(()=>{
         return sum;
       },{done:0,tracks:0,requests:0,cache_hits:0});
       const banner=node('pilot-background');
-      banner.hidden=!latest || (!active.length && preferences.get('workbench-pilot-dismissed')===latest.id+':'+latest.status);
+      noticeKey=active.length?active.map(r=>r.id+':'+r.status).join('|'):latest?latest.id+':'+latest.status:'';
+      banner.hidden=!latest || preferences.get('workbench-pilot-dismissed')===noticeKey;
       if(latest){
         const message=active.length
           ?t('MusicBrainz pilot')+' · '+num(running)+' '+t('running')+' · '+num(queued)+' '+t('queued')+' · '+
@@ -36,21 +39,32 @@ window.BackgroundPilot=(()=>{
       }
       const selected=rows.find(r=>r.id===labBatch);
       if(selected){labPilotStatus=selected.status;labPilotButtons();node('lab-pilot-cancel').disabled=!['running','queued'].includes(selected.status);}
-      if(labBatch && !node('view-musicbrainz').hidden)await labLoadPilot(false);
+      // Keep finished/interrupted batches visible alongside the queue. Their
+      // completed work must not look as if it disappeared from the counters.
+      const visible=[...active,...rows.filter(r=>!['preview','running','queued'].includes(r.status)).slice(0,10)];
+      const focused=node('lab-pilot-queue').contains(document.activeElement)?document.activeElement.dataset.pilotBatch:null;
+      node('lab-pilot-queue').innerHTML=visible.map(r=>'<div class="pilot-queue-row"><button class="text-button" data-pilot-batch="'+esc(r.id)+'" aria-pressed="'+(r.id===labBatch)+'">'+esc((r.queue_position?'#'+r.queue_position+' · ':'')+(r.label||t('Library snapshot')))+'<small>'+esc(r.summary.target||'balanced')+(r.summary.target_value?' · '+esc(r.summary.target_value):'')+'</small></button><span>'+esc(t(r.status))+'</span><span>'+num(r.summary.done||0)+' / '+num(r.summary.tracks||0)+' '+esc(t('tracks'))+'</span></div>').join('');
+      for(const button of node('lab-pilot-queue').querySelectorAll('[data-pilot-batch]')){
+        button.onclick=wrap(()=>selectBatch(button.dataset.pilotBatch));
+        if(button.dataset.pilotBatch===focused)button.focus({preventScroll:true});
+      }
+      if(labBatch && !node('view-musicbrainz').hidden)await labLoadPilot(false,controller.signal);
       return rows;
     })();
-    try{return await pending;}finally{pending=null;}
+    try{return await pending;}finally{clearTimeout(timeout);pending=null;}
   }
-  node('lab-pilot-batches').onchange=wrap(async()=>{
-    labBatch=node('lab-pilot-batches').value;labPilotOffset=0;node('lab-pilot-consent').checked=false;
+  async function selectBatch(identity){
+    labBatch=identity;labPilotOffset=0;labPilotPreviewDirty=false;node('lab-pilot-consent').checked=false;
     preferences.set('workbench-lab-batch',labBatch);const batch=await labLoadPilot();if(batch)await Journeys.selectContext('snapshot:'+batch.snapshot_id);labPilotButtons();
-  });
+    node('lab-pilot-batches').value=labBatch||'';
+  }
+  node('lab-pilot-batches').onchange=wrap(()=>selectBatch(node('lab-pilot-batches').value));
   node('pilot-background-open').onclick=wrap(async()=>{
     if(!latest)return;labBatch=latest.id;labPilotOffset=0;preferences.set('workbench-lab-batch',labBatch);
     await Journeys.selectContext('snapshot:'+latest.snapshot_id);showView('musicbrainz');await loadMusicBrainz(true);
-    node('lab-panel-pilot').scrollIntoView({behavior:'smooth',block:'start'});
+    node('lab-pilot-progress').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
   });
-  node('pilot-background-dismiss').onclick=()=>{if(latest)preferences.set('workbench-pilot-dismissed',latest.id+':'+latest.status);node('pilot-background').hidden=true;};
+  node('pilot-background-dismiss').onclick=()=>{if(latest)preferences.set('workbench-pilot-dismissed',noticeKey);node('pilot-background').hidden=true;};
   async function tick(){try{await refresh();}catch{/* Retry quietly if the local application is stopping or temporarily busy. */}
     setTimeout(tick,document.hidden?15000:4000);}
   tick();

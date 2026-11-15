@@ -2,7 +2,13 @@
 
 ## Unreleased
 
-No unreleased changes recorded yet.
+- Add opt-in advanced relocation in Media inventory: bounded local folder searches, renamed-file tag/duration matching, ranked candidate evidence, unresolved filters, recovery reports, and backup guidance. Stage and undo reviewed unique references in export copies; recheck candidates and reject stale results. No live library or audio deletion is performed.
+- Keep MusicBrainz batches visible in queue order with individual progress and recent completed results. Retry stalled browser status requests, prioritize the running batch in the banner, and release queue reservations when a job is cancelled before its worker starts.
+- Rename the enrichment section to Enrich current library. Default to the loaded XML/ZIP environment, offer connected Rekordbox sources, and prepare their metadata locally in the same workflow. Block new batches without an available collection while retaining historical results for review.
+- Default new batches to playable tracks, with a deliberate unavailable-audio override, excluded counts, and a second availability check before new provider lookups. Show loading, empty and retry states in category dropdowns; share concurrent requests and cache immutable target lists.
+- Keep MusicBrainz progress visible while scrolling, open results directly, preserve dismissal until the queue changes, and respect reduced motion. Add compact side-by-side Rekordbox and Serato export cards on Files & workflow.
+- Scroll Browse playlist results into view in Library intelligence and move keyboard focus to the new list without leaving the page.
+- Move Chart to playlist into the Library intelligence tool grid as its sixth card, retaining explicit fetch/review controls and bounded result scrolling.
 
 ## 1.1.0 — 2026-11-15
 

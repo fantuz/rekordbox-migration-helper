@@ -1,5 +1,13 @@
 # Community ratings: a separate, optional enrichment layer
 
+## Current-library workflow
+
+Open MusicBrainz and use **Enrich current library**. The loaded XML/ZIP workspace is preferred; another connected Rekordbox desktop source can be selected. **Use this library** prepares metadata locally, making a fresh private source capture when needed. The user need not create a separate Library lab snapshot, although an immutable snapshot still underlies every batch. Unavailable libraries and metadata-only historical samples cannot launch new lookups. Saved batches remain reviewable. Already approved queued work retains its frozen sample if the user later changes the visible library.
+
+New previews scan the chosen collection target for readable local audio and sample **playable tracks only** by default. The **Include tracks with unavailable or unverified audio** checkbox deliberately relaxes that filter and requires a new preview and confirmation. The preview reports exclusions, and each new lookup rechecks audio availability before contacting MusicBrainz. Tracks lost since preview are reported as skipped; saved successful results can be reused without a new request. This is a local path/readability check, not audio decoding or fingerprinting. Old batches without an availability policy must be previewed again before running.
+
+Category lists show loading and retry states, share overlapping requests, and cache the small option lists for immutable snapshots. A sticky notice keeps queue progress visible while scrolling. **View results** opens the current batch results; the batch list retains recent finished/interrupted rows so their work does not appear to disappear when active totals change. Dismissing the notice does not cancel jobs; a meaningful queue transition shows it again.
+
 The optional MusicBrainz proof of concept is implemented and disabled by default. Other providers below are research candidates, not enabled integrations or a working provider selector. Opt-in retrieval sends only reviewed public tags/identifiers. Artwork is outside the scope. Sources and provider policies were reviewed on 13 November 2026 and must be checked again before integration.
 
 ## Providers and what the number means

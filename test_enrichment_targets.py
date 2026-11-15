@@ -76,5 +76,14 @@ class EnrichmentTargetTests(unittest.TestCase):
                 self.assertEqual(application.app.test_client().get('/api/lab/musicbrainz/targets',
                                         query_string={'snapshot':'../../etc'}).status_code,400)
 
+    def test_immutable_target_lists_are_cached_without_reloading_the_collection(self):
+        with tempfile.TemporaryDirectory() as tmp,patch.object(application,'DATA',Path(tmp)):
+            saved=Store(Path(tmp)/'workbench-sidecar.sqlite3').save_snapshot(self.snapshot,'Cached target source')
+            with patch('lab_routes.target_options',wraps=target_options) as build:
+                client=application.app.test_client()
+                for _ in range(3):
+                    self.assertEqual(client.get('/api/lab/musicbrainz/targets',query_string={'snapshot':saved['id']}).status_code,200)
+                build.assert_called_once()
+
 
 if __name__=='__main__':unittest.main()

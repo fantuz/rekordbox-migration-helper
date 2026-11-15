@@ -34,6 +34,12 @@ def chunks(data):
 
 
 class LargerPilotTests(unittest.TestCase):
+    def setUp(self):
+        # Queue tests isolate the provider lifecycle; current-library gates
+        # are exercised against real paths in test_enrichment_context.py.
+        context=patch('enrichment_context.source_details',return_value={'kind':'workspace'})
+        context.start();self.addCleanup(context.stop)
+
     def test_stratified_sample_is_bounded_deterministic_and_deduplicated(self):
         source=snapshot([song(str(n),genre='Genre '+str(n%3)) for n in range(1300)])
         first,groups=sample_genres(source,3,'bigger',1000)
