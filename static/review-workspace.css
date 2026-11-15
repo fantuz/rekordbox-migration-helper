@@ -44,6 +44,7 @@ html[dir=rtl] .review-drawer{border-radius:0 14px 14px 0}
 @media(prefers-reduced-motion:reduce){.review-drawer[open]{animation:none}}
 @media(max-height:600px){.review-workspace{height:calc(100dvh - 20px);min-height:420px}.review-action-dock{max-height:45%}}
 /* Result actions precede their long tables and remain available while reading. */
+.wide-card:has(>.result-actions){overflow:visible}
 .result-actions{position:sticky;top:8px;z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 3px 10px #0001;margin-block:12px}
 .result-actions label{margin:0;flex:1;min-width:180px}
 .result-actions .button{white-space:normal}

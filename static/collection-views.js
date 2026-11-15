@@ -45,7 +45,15 @@ window.NativeCollection=(()=>{
     host.innerHTML='<article class="wide-card"><h3>'+text('Compare captured records')+'</h3><p>'+text('Review notes are saved locally. Merging and path edits require the XML + ZIP export workspace.')+'</p><div class="native-table"><table><thead><tr>'+['Track','Duration','Rating','Play count','Manual cues','Automatic cues','Current path'].map(t=>'<th>'+text(t)+'</th>').join('')+'</tr></thead><tbody>'+r.rows.map(t=>'<tr><td>'+track(t)+'</td>'+['duration','rating','play_count','manual_cues','auto_cues'].map(f=>'<td>'+esc(t[f] ?? I18n.t('Unknown'))+'</td>').join('')+'<td><code>'+esc(t.current_path)+'</code></td></tr>').join('')+'</tbody></table></div>'+pager('detail',r)+'<div class="native-review-actions"><label>'+text('Review status')+'<select class="native-status">'+Object.entries(labels).map(([v,l])=>'<option value="'+v+'" '+(v===r.review?'selected':'')+'>'+text(l)+'</option>').join('')+'</select></label><button class="button native-save">'+text('Save review')+'</button></div></article>';
     host.querySelector('[data-native-prev]').onclick=wrap(()=>detail(id,Math.max(0,offset-50)));
     host.querySelector('[data-native-next]').onclick=wrap(()=>detail(id,offset+50));
-    host.querySelector('.native-save').onclick=wrap(async()=>{const listScroll=root.querySelector('.review-candidates>.native-table').scrollTop;await api('/api/collection/duplicates/'+encodeURIComponent(id)+'/review',{method:'POST',body:JSON.stringify({source:scope,basis,status:host.querySelector('select').value})});await load('review');$('#view-review .review-candidates>.native-table').scrollTop=listScroll;await detail(id,offset);notify(I18n.t('Review saved locally'));});
+    host.querySelector('.native-save').onclick=wrap(async()=>{
+      const listScroll=root.querySelector('.review-candidates>.native-table').scrollTop;
+      await api('/api/collection/duplicates/'+encodeURIComponent(id)+'/review',{method:'POST',body:JSON.stringify({source:scope,basis,status:host.querySelector('select').value})});
+      if(scope!==source() || revision!==revisions.review || !root.isConnected || root.closest('[hidden]'))return;
+      await load('review');
+      if(scope!==source() || revisions.review!==revision+1 || $('#view-review').hidden)return;
+      $('#view-review .review-candidates>.native-table').scrollTop=listScroll;
+      await detail(id,offset);notify(I18n.t('Review saved locally'));
+    });
     ReviewWorkspace.refresh(root,host,['.native-review-actions']);
     if(hadFocus)host.querySelector('.review-panel-heading h3').focus({preventScroll:true});
   }

@@ -5,11 +5,13 @@ from urllib.parse import urlsplit
 def check_review_workspace_ui(browser,base,source,output):
     context=browser.new_context(locale='en-US',viewport={'width':1715,'height':1000})
     context.add_init_script("localStorage.setItem('library-workbench.language.v1','en')")
-    reviews={};writes=[];errors=[]
+    reviews={};writes=[];errors=[];held=[];hold_save=False
     def duplicates(route):
         request=route.request;path=urlsplit(request.url).path
         if path.endswith('/review'):
             value=request.post_data_json;writes.append(value);reviews[path.split('/')[-2]]=value['status']
+            if hold_save:
+                held.append(route);return
             route.fulfill(json={'saved':True});return
         if path=='/api/collection/duplicates':
             route.fulfill(json={'note':'Synthetic long list; no library files are opened.', 'groups':50,'tracks':100,'total':50,'offset':0,
@@ -25,6 +27,7 @@ def check_review_workspace_ui(browser,base,source,output):
     page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
     try:
         page.goto(base,wait_until='networkidle')
+        page.select_option('#theme','light')
         page.select_option('#journey-context-source',source)
         page.wait_for_function('(source)=>Journeys.context()?.source===source',arg=source)
         page.locator('.nav[data-view=review]').click();page.wait_for_selector('[data-native-group="g49"]')
@@ -62,9 +65,35 @@ def check_review_workspace_ui(browser,base,source,output):
         page.keyboard.press('Enter');page.wait_for_selector('.review-drawer[open]')
         page.set_viewport_size({'width':1715,'height':1000});page.wait_for_selector('.review-drawer[open]',state='hidden')
         assert page.locator('.native-status').input_value()=='keep_separate'
+        # A delayed save may finish after the user navigates elsewhere. It must
+        # not reopen the inspector or move keyboard focus back into Review.
+        hold_save=True
+        with page.expect_request(lambda request:urlsplit(request.url).path.endswith('/review')):
+            page.locator('.native-save').click()
+        page.locator('.nav[data-view=intelligence]').click();page.wait_for_selector('#view-intelligence',state='visible')
+        assert len(held)==1
+        with page.expect_response(lambda response:urlsplit(response.url).path.endswith('/review')):
+            held.pop().fulfill(json={'saved':True})
+        page.wait_for_load_state('networkidle')
+        assert page.locator('.review-drawer[open]').count()==0
+        assert page.locator('#view-review').is_hidden()
+        assert not page.evaluate('Boolean(document.activeElement.closest("#view-review"))')
+        # Long result areas must not push their actions out of reach. These
+        # invented paragraphs exercise layout only; no remote chart is fetched.
+        for results,action in (('#intelligence-results','#intelligence-save'),('#chart-results','#chart-export')):
+            page.locator(results).evaluate('''e=>{
+                if(e.closest('details'))e.closest('details').open=true;
+                e.replaceChildren(...Array.from({length:100},(_,i)=>{
+                    const p=document.createElement('p');p.textContent='Synthetic result '+i;return p;
+                }));
+            }''')
+            page.locator(results+' p').nth(40).scroll_into_view_if_needed()
+            assert page.locator(action).evaluate('(e)=>{const r=e.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight}'),action
+            page.screenshot(path=str(output/('visible-actions-'+results[1:]+'.png')))
         assert not errors,errors
         return {'long_list':50,'long_comparison':50,'split_panes':True,'persistent_save_action':True,
                 'list_scroll_preserved_after_save':True,'drawer_widths':[768,390],
-                'keyboard_focus_trap_and_return':True,'resize_preserves_review':True,'synthetic':True}
+                'keyboard_focus_trap_and_return':True,'resize_preserves_review':True,'late_save_respects_navigation':True,
+                'chart_and_intelligence_actions_visible_during_scroll':True,'synthetic':True}
     finally:
         context.close()
