@@ -64,8 +64,11 @@ def build_plan(snapshot,volume):
         if identity in identities:raise ValueError('Duplicate track identity in the captured library')
         identities.add(identity)
         try:relative=volume_relative(track.get('current_path'),volume)
-        except ValueError as error:
-            omitted.append({'track_id':identity,'code':'unusable_path','reason':str(error)});continue
+        except ValueError:
+            # This manifest is returned by the API and included in the ZIP.
+            # Keep diagnostics fixed: parser exceptions may contain internal details.
+            omitted.append({'track_id':identity,'code':'unusable_path',
+                            'reason':'Track path is invalid, unsupported, or outside the selected volume'});continue
         key=relative.casefold() if re.match(r'^[A-Za-z]:',volume) else relative
         if key in canonical:
             paths[identity]=canonical[key]
@@ -81,8 +84,9 @@ def build_plan(snapshot,volume):
         if isinstance(duration,(int,float)) and not isinstance(duration,bool) and 0<=duration<864000:
             seconds=int(duration);row['tlen']=str(seconds//60)+':'+str(seconds%60).zfill(2)
         try:encoded=field('otrk',b''.join(field(tag,value) for tag,value in row.items()))
-        except ValueError as error:
-            omitted.append({'track_id':identity,'code':'invalid_metadata','reason':str(error)});continue
+        except ValueError:
+            omitted.append({'track_id':identity,'code':'invalid_metadata',
+                            'reason':'Track metadata contains invalid Unicode or exceeds the Serato field size limit'});continue
         size+=len(encoded)
         if size>64*1024**2:raise ValueError('Serato draft exceeds 64 MB')
         paths[identity]=relative;canonical[key]=relative;records.append(row)

@@ -107,4 +107,47 @@ class SeratoValidationTests(unittest.TestCase):
             self.assertEqual(response.status_code,200);self.assertTrue(response.json['export_ready'])
             self.assertEqual(store.snapshot(sid),before)
 
+    def test_exception_details_do_not_reach_preview_or_downloaded_manifest(self):
+        import app
+        import serato_bridge
+        from workbench_store import Store
+        diagnostic='Traceback (most recent call last): /internal/secret.py:42 INTERNAL_DETAIL_SENTINEL'
+        data={'id':'synthetic','scope_key':'synthetic:errors',
+              'tracks':[{'id':'bad','title':'Rejected metadata','current_path':'C:/Music/Rejected.wav'},
+                        {'id':'good','title':'Valid metadata','current_path':'C:/Music/Valid.wav'}],
+              'playlists':[{'id':'set','name':'Synthetic set','tracks':['bad','good']}],
+              'capabilities':{'playlist_order':True}}
+        cases=(('volume_relative','unusable_path','C:/Music/Rejected.wav'),
+               ('field','invalid_metadata','Rejected metadata'))
+        with tempfile.TemporaryDirectory() as tmp,patch.object(app,'DATA',Path(tmp)):
+            store=Store(Path(tmp)/'workbench-sidecar.sqlite3')
+            sid=store.save_snapshot(data,'Synthetic')['id'];before=store.snapshot(sid)
+            client=app.app.test_client();headers={'X-Workbench-Token':app.TOKEN}
+            body={'snapshot':sid,'volume_root':'C:/','draft_acknowledged':True}
+            for helper,code,rejected in cases:
+                with self.subTest(helper=helper):
+                    original=getattr(serato_bridge,helper)
+                    def fail_selected(*args):
+                        if rejected in args:raise ValueError(diagnostic)
+                        return original(*args)
+                    with patch.object(serato_bridge,helper,side_effect=fail_selected):
+                        preview=client.post('/api/intelligence/serato/preview',json=body,headers=headers)
+                        self.assertEqual(preview.status_code,200)
+                        export=client.post('/api/intelligence/serato',json=body,headers=headers)
+                        self.assertEqual(export.status_code,200)
+                    with zipfile.ZipFile(BytesIO(export.data)) as archive:
+                        manifest=json.loads(archive.read('manifest.json'))
+                        for name in archive.namelist():
+                            self.assertNotIn(b'INTERNAL_DETAIL_SENTINEL',archive.read(name))
+                    self.assertNotIn('INTERNAL_DETAIL_SENTINEL',preview.get_data(as_text=True))
+                    for report in (preview.json,manifest):
+                        self.assertEqual(report['omission_counts'],{code:1})
+                        self.assertEqual(report['omitted'][0]['track_id'],'bad')
+                        self.assertTrue(report['omitted'][0]['reason'])
+                        self.assertEqual(report['tracks_written'],1)
+                        self.assertEqual(report['validation']['status'],'passed')
+                        self.assertEqual(report['crates'][0]['entries'],1)
+                        self.assertEqual(report['omitted_playlist_entries'][0]['track_id'],'bad')
+                    self.assertEqual(store.snapshot(sid),before)
+
 if __name__=='__main__':unittest.main()
