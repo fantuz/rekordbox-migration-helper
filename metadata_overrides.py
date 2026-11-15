@@ -2,7 +2,7 @@
 from datetime import datetime,timezone
 
 FIELDS=('title','artist','year','rating','album','genre','comment','colour')
-FREE_FIELDS=('comment','colour')
+FREE_FIELDS=('comment','colour','rating')
 XML_FIELDS={'title':'Name','artist':'Artist','year':'Year','rating':'Rating','album':'Album','genre':'Genre','comment':'Comments','colour':'Colour'}
 
 

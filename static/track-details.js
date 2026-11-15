@@ -1,6 +1,23 @@
-/* A single-track file view. Comments and colours stage in the private sidecar. */
+/* A single-track file view. Comments, stars and colours stage in the private sidecar. */
 let trackDetailState=null,trackDetailRevision=0;
 const trackHasOverride=(record,field)=>Object.hasOwn(record.overrides,field);
+function trackRatingValue(record){
+  const value=trackHasOverride(record,'rating')?record.overrides.rating.value:record.original.rating;
+  return value==null?null:Number(value);
+}
+function renderTrackRating(s){
+  if(trackDetailState!==s)return;
+  const value=trackRatingValue(s.record),palette=$('#track-rating-palette');
+  palette.innerHTML=Array.from({length:6},(_,n)=>{
+    const label=n?num(n)+' ★':I18n.t('Unrated');
+    return '<button type="button" class="track-rating-choice" data-track-rating="'+n+'" aria-pressed="'+(value===n)+'" aria-label="'+esc(I18n.t('Personal stars')+': '+(n?num(n)+' / 5':I18n.t('Unrated')))+'"'+(s.saving?' disabled':'')+'>'+esc(label)+'</button>';
+  }).join('');
+  palette.setAttribute('aria-busy',String(s.saving));
+  $('#track-rating-reset').disabled=s.saving || !trackHasOverride(s.record,'rating');
+  const original=s.record.original.rating;
+  $('#track-rating-original').textContent=I18n.t('Captured:')+' '+(original==null?I18n.t('Unknown'):num(original)+' / 5');
+  $('#track-rating-state').textContent=s.saving?I18n.t('Saving working edits…'):trackHasOverride(s.record,'rating')?I18n.t('Staged working edits')+': '+num(value)+' / 5':I18n.t('No staged changes');
+}
 function trackColourValue(record){return trackHasOverride(record,'colour')?record.overrides.colour.value:record.original.colour;}
 function trackPaletteLabel(item){return I18n.t(item.name)+(item.native_name && item.native_name!==item.name?' · '+item.native_name:'');}
 function trackColourLabel(record,value){
@@ -43,7 +60,8 @@ function renderTrackCommentState(s){
 async function trackStoreEdit(s,field,value,reset=false){
   if(s.saving)return false;
   const focusedColour=document.activeElement?.dataset.trackColour;
-  s.saving=true;renderTrackColour(s);renderTrackCommentState(s);
+  const focusedRating=document.activeElement?.dataset.trackRating;
+  s.saving=true;renderTrackRating(s);renderTrackColour(s);renderTrackCommentState(s);
   try{
     const body={snapshot:s.snapshot,track_id:s.trackId,field};
     const result=reset?await api('/api/lab/overrides',{method:'DELETE',body:JSON.stringify(body)}):await labPost('overrides',{...body,value});
@@ -56,11 +74,13 @@ async function trackStoreEdit(s,field,value,reset=false){
     if(session && status.session?.id===session.id){session=status.session;renderSession();}
     return true;
   }finally{
-    s.saving=false;renderTrackColour(s);renderTrackCommentState(s);
+    s.saving=false;renderTrackRating(s);renderTrackColour(s);renderTrackCommentState(s);
     if(trackDetailState===s && focusedColour!==undefined && $('#track-detail-dialog').open){
       const choice=[...$('#track-colour-palette').querySelectorAll('[data-track-colour]')].find(button=>button.dataset.trackColour===focusedColour);
       choice?.focus({preventScroll:true});
     }
+    if(trackDetailState===s && focusedRating!==undefined && $('#track-detail-dialog').open)
+      $('#track-rating-palette [data-track-rating="'+focusedRating+'"]')?.focus({preventScroll:true});
   }
 }
 async function openTrackDetails(snapshot,trackId){
@@ -74,7 +94,7 @@ async function openTrackDetails(snapshot,trackId){
   $('#track-comments-panel').open=true;$('#track-advanced-panel').open=false;
   $('#track-comment-text').value=record.overrides.comment?.value ?? t.comment ?? '';
   $('#track-comment-provenance').textContent=(record.comment_captured?I18n.t("Original comment captured."):I18n.t("Original comment not captured. Recapture matching inputs before applying this working comment to an export."))+" "+I18n.t("Comments are excluded from insight tables, CSV and shareable HTML. Rekordbox can append My Tags to comments; retain any text you want to preserve.");
-  renderTrackCommentState(s);renderTrackColour(s);renderTrackWorkingEdits(s);
+  renderTrackCommentState(s);renderTrackRating(s);renderTrackColour(s);renderTrackWorkingEdits(s);
   $('#track-detail-fields').innerHTML=record.editable_fields.filter(field=>!['comment','colour'].includes(field)).map(field=>{
     const value=record.overrides[field]?.value ?? t[field];
     return '<label>'+esc(I18n.field(field))+'<input data-track-edit-field="'+esc(field)+'" '+(['rating','year'].includes(field)?'type="number" step="1" '+(field==='rating'?'min="0" max="5"':'min="1000" max="'+(new Date().getFullYear()+1)+'"'):'maxlength="255"')+' value="'+esc(value ?? '')+'" '+(!record.unlocked?'disabled':'')+("><small class=\"subtle\">"+esc(I18n.t("Captured:"))+" ")+esc(t[field] ?? I18n.t("Unknown"))+'</small>'+(record.overrides[field]?'<button type="button" class="text-button" data-track-field-reset="'+esc(field)+'" '+(!record.unlocked?'disabled':'')+(">"+esc(I18n.t("Reset override"))+"</button>"):'')+'</label>';
@@ -108,6 +128,14 @@ $('#track-comment-reset').onclick=wrap(async()=>{
   $('#track-comment-text').value=s.record.original.comment ?? '';renderTrackCommentState(s);
 });
 $('#track-comment-text').addEventListener('input',()=>{if(trackDetailState)renderTrackCommentState(trackDetailState);});
+$('#track-rating-palette').addEventListener('click',wrap(async event=>{
+  const button=event.target.closest('[data-track-rating]'),s=trackDetailState;
+  if(!button || button.disabled || !s || trackRatingValue(s.record)===Number(button.dataset.trackRating))return;
+  if(await trackStoreEdit(s,'rating',Number(button.dataset.trackRating)))notify(I18n.t('Staged working edits'));
+}));
+$('#track-rating-reset').onclick=wrap(async()=>{
+  const s=trackDetailState;if(s)await trackStoreEdit(s,'rating',undefined,true);
+});
 $('#track-colour-palette').addEventListener('click',wrap(async event=>{
   const button=event.target.closest('[data-track-colour]'),s=trackDetailState;
   if(!button || button.disabled || !s || trackColourValue(s.record)===button.dataset.trackColour)return;
