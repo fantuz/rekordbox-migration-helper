@@ -52,13 +52,28 @@ def register(owner):
         except (TypeError,ValueError):raise ValueError('Choose a valid offset') from None
         if status not in ('all',*STATUS) or sorting not in ORDER or direction not in ('asc','desc') or not 0<=offset<=10000000 or len(query)>200:
             raise ValueError('Choose a supported file-health filter and sort')
-        snapshot=resolve(owner,source)
-        total_records=len(snapshot['tracks'])
-        if total_records>250000:raise ValueError('This library exceeds the file-health scan limit')
-        with store().connection() as db:
-            # The index is a snapshot of an explicit scan, not automatically
-            # inferred from playback visits or unverified cached statuses.
+        saved=store()
+        with saved.connection() as db:
+            # After a scan, avoid deserializing the entire (potentially 250k
+            # track) saved JSON on every filter, sort or page request. Use the
+            # indexed total, but still reject a missing/archived source.
             record=db.execute('SELECT total,done,checked_at,state FROM file_health_scans WHERE source=?',(source,)).fetchone()
+            if record:
+                if source.startswith('snapshot:'):
+                    if not db.execute('SELECT 1 FROM snapshots WHERE id=?',(source[9:],)).fetchone():
+                        raise ValueError('Choose an existing saved library snapshot')
+                else:
+                    root=owner.DATA/'analyzers'/source[8:]
+                    report=root/'report.json'
+                    metadata=root/'comparison.json' if (root/'comparison.json').is_file() else root/'metadata.json'
+                    if (root.is_symlink() or root.is_junction() or
+                            not report.is_file() or report.is_symlink() or
+                            not metadata.is_file() or metadata.is_symlink()):
+                        raise ValueError('Choose an existing saved source capture')
+                total_records=record['total']
+            else:
+                total_records=len(resolve(owner,source)['tracks'])
+            if total_records>250000:raise ValueError('This library exceeds the file-health scan limit')
             where='source=?';params=[source]
             if status!='all':where+=' AND status=?';params.append(status)
             if query:where+=' AND instr(search_text,?)>0';params.append(query)
