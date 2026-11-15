@@ -32,9 +32,22 @@ class SourceInventoryTests(unittest.TestCase):
         self.assertLessEqual(report['entries_inspected'],1);self.assertFalse(report['complete'])
         self.assertEqual(report['limit_reached'],'entry_limit');self.assertIsNone(assets)
 
+    def test_recursive_default_budgets_are_extended(self):
+        report,assets=footprint(self.root,lambda *_:None,recursive=True)
+        self.assertEqual(report['entry_limit'],1_000_000)
+        self.assertEqual(report['max_seconds'],120)
+        self.assertTrue(report['complete']);self.assertIsNotNone(assets)
+
+    def test_30_seconds_does_not_stop_recursive_inventory(self):
+        with patch('analyzer.time.monotonic',side_effect=[0]+[31]*10):
+            report,assets=footprint(self.root,lambda *_:None,recursive=True)
+        self.assertIsNone(report['limit_reached'])
+        self.assertTrue(report['complete']);self.assertIsNotNone(assets)
+
     def test_elapsed_limit_is_partial(self):
-        with patch('analyzer.time.monotonic',side_effect=[0,31]):report,assets=footprint(self.root,lambda *_:None,recursive=True)
+        with patch('analyzer.time.monotonic',side_effect=[0,121]):report,assets=footprint(self.root,lambda *_:None,recursive=True)
         self.assertEqual(report['limit_reached'],'time_limit');self.assertIsNone(assets)
+        self.assertEqual(report['max_seconds'],120)
 
     def test_cancellation_propagates_instead_of_becoming_an_unreadable_warning(self):
         for i in range(150):(self.root/f'{i}.dat').touch()

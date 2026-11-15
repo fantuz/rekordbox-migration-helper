@@ -18,6 +18,10 @@ from platform_paths import database_names
 from report_files import save_json
 
 
+SOURCE_INVENTORY_MAX_ENTRIES = 1_000_000
+SOURCE_INVENTORY_MAX_SECONDS = 120
+
+
 COMPATIBILITY=[
     {"version":"5 and earlier","format":"Legacy .edb database / collection XML","status":"XML statistics; native database file inventory",
      "detail":"Select a collection XML export for track counts, title, artist, BPM, duration and other exported fields. Native .edb track records are not decoded yet, so their item count is unavailable. Full native checks require a converted copy. This row describes tool support, not the condition of a v6/v7 library."},
@@ -76,9 +80,9 @@ def analysis_folder(path):
     return marker+value.split(marker,1)[1].rsplit("/",1)[0] if marker in value else None
 
 
-def footprint(root,progress,recursive=False,max_entries=None,max_seconds=30,max_depth=16):
+def footprint(root,progress,recursive=False,max_entries=None,max_seconds=SOURCE_INVENTORY_MAX_SECONDS,max_depth=16):
     """A bounded metadata walk; ordinary captures never enter subdirectories."""
-    max_entries=max_entries or (100000 if recursive else 1000)
+    max_entries=max_entries or (SOURCE_INVENTORY_MAX_ENTRIES if recursive else 1000)
     started=time.monotonic();totals=defaultdict(lambda:{"files":0,"bytes":0})
     directories=set();warnings=[];files=total=cloud=entries=skipped=unreadable=0
     root_info=Path(root).stat();seen={(root_info.st_dev,root_info.st_ino)};folder_counts=Counter()
