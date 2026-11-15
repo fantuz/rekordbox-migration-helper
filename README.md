@@ -79,7 +79,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 
 **Library exploration and preparation**
 
-- Keep immutable metadata snapshots in a separate local SQLite store.
+- Keep immutable metadata snapshots in a separate local SQLite store. Saved editions record a timezone-aware creation time, displayed with local date, time of day and zone in snapshot selectors; older date-only evidence stays date-only.
 - Compare snapshots using recorded identity evidence and inspect changes in tags and collection distributions.
 - Browse playlists, captured order, repeated entries and missing track metadata.
 - Compare playlist overlap and saved order, including tracks shared across several lists.
