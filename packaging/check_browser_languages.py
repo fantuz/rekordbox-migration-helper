@@ -52,10 +52,11 @@ def main():
                 page.on('response',check_api_response)
                 page.goto(base,wait_until='networkidle');page.wait_for_function('typeof loadDJInsights === "function"')
                 page.locator('.nav[data-view="insights"]').click()
-                page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]')
-                # New captures show a local time of day; older date-only values
-                # must not invent a midnight time component.
-                assert re.search(r'\d{1,2}:\d{2}',page.locator('#dj-snapshot option[value="'+sid+'"]').inner_text())
+                page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]',state='attached')
+                # Native <option> elements are attached but not visually
+                # displayed in Chromium, Firefox or WebKit.
+                # New captures show time-of-day, unlike old date-only values.
+                assert re.search(r'\d{1,2}:\d{2}',page.locator('#dj-snapshot option[value="'+sid+'"]').text_content())
                 assert page.evaluate('''() => !/\d{1,2}:\d{2}/.test(snapshotMoment('2024-02-10'))''')
                 for code in LANGUAGES:
                     page.select_option('#language',code)
