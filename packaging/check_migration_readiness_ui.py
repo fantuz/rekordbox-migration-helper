@@ -81,6 +81,17 @@ def check_migration_readiness_ui(browser,base,store,root,output):
         assert manifest['summary']['checksum_status']=='verified'
         assert manifest['summary']['missing_analysis_references']==0
         assert any(r.get('sha256')==sha256(b'synthetic database').hexdigest() for r in manifest['rows'])
+        incomplete=root/'readiness-missing-dat.zip'
+        with zipfile.ZipFile(incomplete,'w') as archive:
+            archive.writestr('master.db',b'synthetic database')
+            archive.writestr('PIONEER/USBANLZ/P001/ABC/ANLZ0000.EXT',b'synthetic sibling')
+        incomplete_hash=sha256(incomplete.read_bytes()).hexdigest()
+        page.fill('#lab-backup-path',str(incomplete))
+        missing=run_report('backup')
+        assert missing['summary']['missing_analysis_references']==1
+        assert missing['summary']['checksum_status']=='verified'
+        assert any(r['section']=='missing_analysis' and r['title'].endswith('anlz0000.dat') for r in missing['rows'])
+        expect(page.locator('#lab-report-rows')).to_contain_text('anlz0000.dat')
         page.select_option('#lab-readiness-profile','cdj-2000nxs2');page.select_option('#lab-readiness-filesystem','fat32')
         ready=run_report('readiness')
         assert ready['summary']['tracks']==count
@@ -100,14 +111,40 @@ def check_migration_readiness_ui(browser,base,store,root,output):
                 });
             }''')
             page.screenshot(path=str(output/f'migration-readiness-{width}.png'))
+        xml=b'''<DJ_PLAYLISTS><PRODUCT Version="7.0"/><COLLECTION Entries="1">
+          <TRACK TrackID="xml-tempo" Name="XML tempo regression" AverageBpm="87" Tonality="Am"
+          Location="file://localhost/D:/Synthetic/tempo.wav"><TEMPO Bpm="174" Inizio="0" Metro="4/4" Battito="1"/></TRACK>
+          </COLLECTION></DJ_PLAYLISTS>'''
+        page.locator('.nav[data-view="quick"]').click()
+        page.locator('#quick-xml-input').set_input_files({'name':'tempo-regression.xml','mimeType':'application/xml','buffer':xml})
+        page.locator('#quick-xml-form button[type="submit"]').click()
+        page.wait_for_function('!busy && /^[a-f0-9]{32}$/.test(document.querySelector("#quick-source").value) && Journeys.context()?.source==="capture:"+document.querySelector("#quick-source").value')
+        capture=page.locator('#quick-source').input_value()
+        page.locator('.nav[data-view="lab"]').click()
+        page.select_option('#lab-source',capture)
+        page.fill('#lab-label','XML-only tempo evidence')
+        page.locator('#lab-capture-form button[type="submit"]').click()
+        page.wait_for_function('(prior)=>document.querySelector("#lab-snapshot").value && document.querySelector("#lab-snapshot").value!==prior',arg=sid)
+        captured=store.snapshot(page.locator('#lab-snapshot').input_value())
+        assert captured['tracks'][0]['grid_bpms']==[174]
+        assert captured['tracks'][0]['xml_bpm']==87
+        page.locator('[data-lab-tab="checks"]').click()
+        xml_tempo=run_report('tempo')
+        assert xml_tempo['summary']['tempo_disagreements']==1
+        assert xml_tempo['summary']['tempo_comparison_unknown']==0
+        assert any(r.get('half_double') and r['saved_bpm']==87 and 174 in r['evidence_bpms'] for r in xml_tempo['rows'])
+        expect(page.locator('#lab-report-rows')).to_contain_text('Possible half/double-tempo disagreement')
+        page.screenshot(path=str(output/'xml-only-tempo-regression.png'))
         assert store.snapshot(sid)==original
         assert store.edit_state(source['scope_key'])['overrides']=={}
         assert sha256(backup.read_bytes()).hexdigest()==original_zip
+        assert sha256(incomplete.read_bytes()).hexdigest()==incomplete_hash
         assert not errors,errors
         return {'status':'passed','tracks':count,'first_table_ms':round(first_ms,2),'search_p95_ms':round(p95,2),
                 'search_samples_ms':[round(v,2) for v in timings],
                 'budgets_ms':{'first_table':10000,'search_p95':5000},'max_dom_rows':30,
                 'backup_checksums':True,'fat32_and_player_profile':True,'tempo_key_advisories':True,
+                'missing_dat_with_ext_sibling_reported':True,'xml_only_capture_preserves_tempo':True,
                 'invalid_xml_edit_rejected_without_mutation':True,'source_unchanged':True}
     except Exception:
         page.screenshot(path=str(output/'readiness-failure.png'))
