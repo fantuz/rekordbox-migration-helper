@@ -65,7 +65,7 @@ class SeratoValidationTests(unittest.TestCase):
                 self.assertTrue(p['simulated']);self.assertTrue(p['legacy_database_only'])
         for target,profile in [('C:/Music','windows'),('C:','auto'),('//server/share','auto'),
                                ('/Users/DJ','macos'),('/Volumes/../DJ','macos'),('/Volumes/.','macos'),
-                               ('/Volumes/DJ/sub','macos'),('/Volumes/DJ\x00','macos')]:
+                               ('/Volumes/DJ/sub','macos'),('/Volumes/DJ\x00','macos'),('/Volumes/DJ\n','macos')]:
             with self.subTest(target=target):
                 with self.assertRaises(ValueError):resolve_serato_profile('C:/',target,profile,host='linux')
         self.assertFalse(resolve_serato_profile('C:/',profile='windows',host='win32')['simulated'])

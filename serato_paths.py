@@ -9,6 +9,7 @@ PROFILES=('auto','windows','macos')
 
 def _root(value):
     if not isinstance(value,str):raise ValueError('Choose a music volume root')
+    if any(ord(c)<32 for c in value):raise ValueError('Invalid target volume root')
     value=value.replace('\\','/').strip()
     if value.startswith('/') and not value.startswith('//'):value=value.rstrip('/') or '/'
     return value

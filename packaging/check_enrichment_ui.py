@@ -119,6 +119,7 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     assert page.locator('#serato-export').is_disabled() and not page.locator('#serato-ack').is_checked()
 
 
+    page.locator('#serato-volume').fill('C:/')
     page.locator('#serato-platform').select_option('macos')
     assert page.locator('#serato-target-root').input_value()=='/Volumes/DJ'
     page.locator('#serato-volume').fill('/')
