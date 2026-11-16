@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 import zipfile
 
-from serato_bridge import draft_package,preview_package,volume_relative
+from serato_bridge import draft_package,preview_package,volume_relative,serato_target_profile,serato_mapped_path
 from serato_reader import read_database,read_crate,validate_export
 
 
@@ -26,6 +26,31 @@ def source():
 
 
 class SeratoValidationTests(unittest.TestCase):
+    def test_explicit_target_profiles_and_linux_simulation(self):
+        from unittest.mock import patch
+        with patch('serato_bridge.sys.platform','linux'):
+            win=serato_target_profile('/Volumes/Source','windows','D:/')
+            mac=serato_target_profile('C:/','macos','/Volumes/DJ')
+            self.assertTrue(win['simulated']);self.assertTrue(mac['simulated'])
+            self.assertEqual(serato_mapped_path('Music/Track.wav',win),'D:/Music/Track.wav')
+            self.assertEqual(serato_mapped_path('Music/Track.wav',mac),'/Volumes/DJ/Music/Track.wav')
+            self.assertIn('Application Support/Serato/Library',mac['serato_library_folder'])
+            self.assertIn('AppData',win['serato_library_folder'].replace('LOCALAPPDATA','AppData'))
+            source_snapshot=source()
+            # Cross-platform profile does not alter source-relative legacy bytes.
+            old=preview_package(source_snapshot,'C:/')
+            converted=preview_package(source_snapshot,'C:/','macos','/Volumes/DJ')
+            self.assertEqual(old['tracks_written'],converted['tracks_written'])
+            self.assertEqual(converted['target_profile']['platform'],'macos')
+            self.assertEqual(converted['sample_mapped_paths'][0],'/Volumes/DJ/Music/Écho.wav')
+            for platform,target in [('windows','/Volumes/DJ'),('macos','C:/')]:
+                with self.assertRaises(ValueError):serato_target_profile('C:/',platform,target)
+            with self.assertRaises(ValueError):serato_target_profile('C:/','linux')
+        with patch('serato_bridge.sys.platform','darwin'):
+            self.assertFalse(serato_target_profile('/Volumes/DJ','auto')['simulated'])
+        with patch('serato_bridge.sys.platform','win32'):
+            self.assertFalse(serato_target_profile('C:/','auto')['simulated'])
+
     def test_case_aliases_reference_the_exact_database_spelling_and_keep_repetitions(self):
         original=source();before=deepcopy(original);payload,manifest=draft_package(original,'C:/')
         with zipfile.ZipFile(BytesIO(payload)) as archive:

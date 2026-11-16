@@ -10,6 +10,7 @@ from hashlib import sha256
 import json
 import re
 import struct
+import sys
 import zipfile
 
 from chart_playlists import local_audio_path
@@ -51,8 +52,54 @@ def crate_component(node):
     return safe_name(node.get('name'))+'-'+sha256(str(node['id']).encode()).hexdigest()[:10]
 
 
-def build_plan(snapshot,volume):
+TARGET_PLATFORMS=('auto','windows','macos')
+
+
+def serato_target_profile(source_volume,platform='auto',target_volume=''):
+    """Resolve a logical target, independent of the running browser or OS.
+
+    Linux always simulates Serato. Explicit platform selection is usable on
+    every OS, including when preparing an external drive for another system.
+    The legacy crate/database bytes contain volume-relative paths, not new
+    platform-specific absolute paths.
+    """
+    if platform not in TARGET_PLATFORMS:raise ValueError('Choose Windows or macOS as the Serato target platform')
+    source=local_audio_path(source_volume).replace('\\','/')
+    native='windows' if sys.platform=='win32' else 'macos' if sys.platform=='darwin' else None
+    resolved=platform if platform!='auto' else ('windows' if re.match(r'^[A-Za-z]:/',source) else 'macos')
+    target=local_audio_path(target_volume).replace('\\','/') if target_volume else (
+        source if (resolved=='windows')==bool(re.match(r'^[A-Za-z]:/',source)) else
+        'C:/' if resolved=='windows' else '/Volumes/DJ')
+    if resolved=='windows':
+        if not re.fullmatch(r'[A-Za-z]:/',target):raise ValueError('Windows target must be a drive root such as C:/')
+        target=target[0].upper()+':/'
+    else:
+        path=PurePosixPath(target)
+        if not (target=='/' or (len(path.parts)==3 and path.parts[1]=='Volumes' and path.parts[2] not in ('.','..'))):
+            raise ValueError('macOS target must be / or /Volumes/<drive>')
+        if '\\' in target or '/../' in target or '/./' in target:raise ValueError('Invalid macOS target volume')
+    simulated=native!=resolved
+    if resolved=='macos':
+        destination=(str(PurePosixPath(target)/'_Serato_') if target!='/' else '~/Music/_Serato_')
+        library='~/Library/Application Support/Serato/Library'
+    else:
+        destination=target+'_Serato_' if target.upper()!='C:/' else r'%USERPROFILE%\Music\_Serato_'
+        library=r'%LOCALAPPDATA%\Serato\Library'
+    return {'platform':resolved,'requested_platform':platform,'source_volume_root':source,
+            'target_volume_root':target,'simulated':simulated,'serato_folder':destination,
+            'serato_library_folder':library,'legacy_database_only':True}
+
+
+def serato_mapped_path(relative,profile):
+    relative=relative_path(relative)
+    root=profile['target_volume_root']
+    return root.rstrip('/')+'/'+relative
+
+
+def build_plan(snapshot,volume,target_platform='auto',target_volume=''):
+
     volume=local_audio_path(volume)
+    profile=serato_target_profile(volume,target_platform,target_volume)
     if re.match(r'^[A-Za-z]:',volume) and len(PureWindowsPath(volume).parts)!=1:
         raise ValueError('For Windows, select a drive root such as C:/')
     if len(snapshot['tracks'])>100000:raise ValueError('This draft is limited to 100000 captured tracks')
@@ -69,7 +116,7 @@ def build_plan(snapshot,volume):
             # Keep diagnostics fixed: parser exceptions may contain internal details.
             omitted.append({'track_id':identity,'code':'unusable_path',
                             'reason':'Track path is invalid, unsupported, or outside the selected volume'});continue
-        key=relative.casefold() if re.match(r'^[A-Za-z]:',volume) else relative
+        key=relative.casefold() if (profile['platform']=='windows' or re.match(r'^[A-Za-z]:',volume)) else relative
         if key in canonical:
             paths[identity]=canonical[key]
             omitted.append({'track_id':identity,'code':'duplicate_path','reason':'Duplicate recorded path; first record retained in database'})
@@ -134,6 +181,7 @@ def build_plan(snapshot,volume):
               'omitted_playlist_entries':omitted_entries,'warnings':warnings,'metadata_fields':dict(field_counts),
               'omission_counts':dict(Counter(row['code'] for row in omitted)),
               'source_writes':False,'audio_writes':False,'serato_import_verified':False,'paths_verified_on_disk':False,
+              'target_profile':profile,'sample_mapped_paths':[serato_mapped_path(record['pfil'],profile) for record in records[:5]],
               'not_transferred':['ratings','hot cues','memory cues','loops','beatgrids','waveforms','play history','smart-playlist rules'],
               'notes':'Basic metadata and captured playlist membership only. Crates become static. This is a detached draft, not a complete or certified migration.'}
     return records,crates,manifest
@@ -147,8 +195,8 @@ def encode_plan(records,crates,manifest):
     return database,encoded
 
 
-def preview_package(snapshot,volume):
-    records,crates,manifest=build_plan(snapshot,volume)
+def preview_package(snapshot,volume,target_platform='auto',target_volume=''):
+    records,crates,manifest=build_plan(snapshot,volume,target_platform,target_volume)
     encode_plan(records,crates,manifest)
     # The complete details are retained in the downloadable manifest.
     for key in ('crates','omitted','omitted_playlist_entries','warnings'):
@@ -157,8 +205,8 @@ def preview_package(snapshot,volume):
     return manifest
 
 
-def draft_package(snapshot,volume):
-    records,crates,manifest=build_plan(snapshot,volume)
+def draft_package(snapshot,volume,target_platform='auto',target_volume=''):
+    records,crates,manifest=build_plan(snapshot,volume,target_platform,target_volume)
     if not records:raise ValueError('No tracks have local paths on the selected volume')
     database,encoded=encode_plan(records,crates,manifest)
     output=BytesIO()
@@ -171,7 +219,10 @@ def draft_package(snapshot,volume):
             'The encoded database and crates passed independent strict readback checks.\n'
             'Not yet validated in a real Serato installation. Use an isolated test library first.\n'
             'This archive contains no music and has not verified that paths still exist.\n'
-            'Paths are relative to the volume root you selected: '+volume+'\n\n'
+            'Source file root: '+volume+'\n'
+            'Target profile: '+manifest['target_profile']['platform']+(' (simulated)' if manifest['target_profile']['simulated'] else ' (native)')+'\n'
+            'Target volume root: '+manifest['target_profile']['target_volume_root']+'\n'
+            'Paths in the legacy database remain relative to the selected volume.\n\n'
             'Extract to a staging folder. Do not overwrite an existing _Serato_ database.\n'
             'Test with Serato closed and a backed-up, disposable _Serato_ folder.\n'
             'Check tracks, Unicode names, crate hierarchy, order and paths before relying on it.\n'

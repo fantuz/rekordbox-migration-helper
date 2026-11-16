@@ -116,6 +116,19 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.screenshot(path=str(output/'serato-preview.png'))
     page.locator('#serato-volume').fill('/Volumes/Changed')
     assert page.locator('#serato-report').inner_text()==''
+    page.locator('#serato-target-platform').select_option('macos')
+    assert page.locator('#serato-target-volume').input_value()=='/Volumes/DJ'
+    page.locator('#serato-volume').fill('/')
+    page.locator('#serato-preview').click()
+    page.wait_for_function('document.querySelector("#serato-target-note").textContent.includes("macos")')
+    assert page.locator('#serato-report').inner_text()
+    page.locator('#serato-target-platform').select_option('windows')
+    assert page.locator('#serato-target-volume').input_value()=='C:/'
+    assert page.locator('#serato-report').inner_text()==''
+    page.locator('#serato-preview').click()
+    page.wait_for_function('document.querySelector("#serato-target-note").textContent.includes("windows")')
+    assert page.locator('#serato-export').is_disabled()
+
     assert page.locator('#serato-export').is_disabled() and not page.locator('#serato-ack').is_checked()
 
     batch=create_batch(store,before,sample_size=1000)
@@ -168,6 +181,32 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     assert page.locator('#lab-pilot-start').is_disabled()
     page.unroute('**/api/lab/musicbrainz/'+batch['id']+'/start')
     page.unroute('**/api/lab/musicbrainz/context')
+
+    # Sorting must apply to the complete 125-track saved batch, not just the
+    # 50 rows currently mounted. A background refresh must retain that order.
+    sorted_tracks=[track({'id':'sort-'+str(i),'title':f'Title {124-i:03}',
+                         'artist':'Synthetic artist','genre':'House','duration':200})
+                   for i in range(125)]
+    sorted_snapshot=store.save_snapshot({'schema':1,'scope_key':'synthetic:sorting',
+                                         'tracks':sorted_tracks,'playlists':[]},
+                                        'Synthetic MusicBrainz sorting')['id']
+    sorted_batch=create_batch(store,store.snapshot(sorted_snapshot),
+                              target='random',sample_size=125,seed='stable-sort')
+    page.evaluate('(id)=>{labBatch=id;labPilotOffset=0;return labLoadPilot();}',sorted_batch['id'])
+    page.wait_for_selector('#lab-pilot-results [data-mb-sort="title"]')
+    assert page.locator('#lab-pilot-results [data-sort-column]').count()==0
+    page.locator('#lab-pilot-results [data-mb-sort="title"]').click()
+    page.wait_for_function('document.querySelector("#lab-pilot-results th[aria-sort=ascending] [data-mb-sort=title]")!==null')
+    assert page.locator('#lab-pilot-results tbody tr td:first-child').first.inner_text().find('Title 000')>=0
+    page.locator('#lab-pilot-next').click()
+    page.wait_for_function('document.querySelector("#lab-pilot-count").textContent.includes("51")')
+    assert page.locator('#lab-pilot-results tbody tr td:first-child').first.inner_text().find('Title 050')>=0
+    page.evaluate('()=>labLoadPilot(false)')
+    assert page.locator('#lab-pilot-results tbody tr td:first-child').first.inner_text().find('Title 050')>=0
+    page.locator('#lab-pilot-results [data-mb-sort="title"]').click()
+    page.wait_for_function('document.querySelector("#lab-pilot-results th[aria-sort=descending] [data-mb-sort=title]")!==null')
+    assert page.locator('#lab-pilot-results tbody tr td:first-child').first.inner_text().find('Title 124')>=0
+    page.evaluate('(id)=>{labBatch=id;labPilotOffset=0;return labLoadPilot();}',batch['id'])
     assert store.snapshot(sid)==before
     page.select_option('#theme',previous_theme);page.set_viewport_size(previous_viewport)
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',original_id)

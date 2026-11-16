@@ -1,6 +1,25 @@
 /* All library-derived strings are escaped; mutations use the local action token. */
 let labInfo=null,labReport=null,labReportOffset=0,labTrackOffset=0,labTrackRows=[],labEdited=null,labUnlocked=false,labTracksRevision=0;
 let labBatch=null,labPilotOffset=0,labPilotTimer=null,labPilotStatus=null,labPilotRevision=0,labPilotSnapshot=null,labPilotPreviewDirty=false;
+let labPilotSort='original',labPilotDirection='asc';
+function labPilotHeading(field,label){
+  const order=labPilotSort===field?(labPilotDirection==='asc'?'ascending':'descending'):'none';
+  return '<th scope="col" aria-sort="'+order+'"><button type="button" class="result-sort-button" data-mb-sort="'+field+'" aria-label="'+esc(I18n.t('Sort all results by')+' '+I18n.t(label))+'">'+esc(I18n.t(label))+'</button></th>';
+}
+function pilotStatusBadge(status){
+  const known=['playable','missing','inaccessible','unverified','unchecked'];
+  const code=known.includes(status)?status:'unchecked';
+  const names={playable:'Playable',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified',unchecked:'Unchecked'};
+  return '<span class="file-status file-status-'+code+'" data-mb-file-status="'+code+'">'+esc(I18n.t(names[code]))+'</span>';
+}
+document.addEventListener('workbench-file-status',event=>{
+  const row=event.target.closest('#lab-pilot-results tr[data-mb-track]');
+  if(!row)return;
+  const badge=row.querySelector('[data-mb-file-status]');if(!badge)return;
+  const status=['playable','missing','inaccessible','unverified'].includes(event.detail?.status)?event.detail.status:'unverified';
+  badge.dataset.mbFileStatus=status;badge.className='file-status file-status-'+status;
+  badge.textContent=I18n.t(({playable:'Playable',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'})[status]);
+});
 const labPost=(url,data)=>api('/api/lab/'+url,{method:'POST',body:JSON.stringify(data)});
 const labSnapshot=()=>$('#lab-snapshot').value;
 const labSummary=data=>'<div class="lab-summary">'+Object.entries(data || {}).filter(([,v])=>v===null || typeof v!=='object').map(([k,v])=>'<div><span>'+esc(I18n.t(k.replaceAll('_',' ')))+'</span><b>'+esc(v===null?I18n.t("Unknown"):v===true?I18n.t("Yes"):v===false?I18n.t("No"):v)+'</b></div>').join('')+'</div>';
@@ -134,7 +153,7 @@ $('#lab-pilot-preview').onclick=wrap(async()=>{
 async function labLoadPilot(feedback=true,signal) {
   if(!labBatch)return;
   const revision=++labPilotRevision,batch=labBatch;
-  const r=await api('/api/lab/musicbrainz/'+encodeURIComponent(labBatch)+'?offset='+labPilotOffset,{feedback,signal});
+  const r=await api('/api/lab/musicbrainz/'+encodeURIComponent(labBatch)+'?'+new URLSearchParams({offset:String(labPilotOffset),sort:labPilotSort,direction:labPilotDirection}),{feedback,signal});
   if(revision!==labPilotRevision || batch!==labBatch)return;
   labPilotSnapshot=r.snapshot_id;labPilotStatus=r.status;labPilotButtons();
   $('#musicbrainz-availability-summary').textContent=I18n.t(r.summary.playable_only?'Playable tracks only':'Include tracks with unavailable or unverified audio')+' · '+I18n.t('Excluded unavailable tracks')+': '+num(r.summary.excluded_unplayable||0)+' · '+I18n.t('Skipped unavailable tracks')+': '+num(r.summary.skipped_unplayable||0);
@@ -142,10 +161,22 @@ async function labLoadPilot(feedback=true,signal) {
   $('#musicbrainz-batch-source').textContent=I18n.t('Source snapshot')+' · '+(batchSource?.label || r.snapshot_id)+(r.summary.target && r.summary.target!=='balanced'?' · '+I18n.t('Quick enrichment target')+': '+I18n.t(({balanced:'Balanced genres',random:'Random selection',genre:'Genre',album:'Album',year:'Year',playlist:'Playlist',missing_genre:'Missing genre',missing_album:'Missing album',missing_year:'Missing year'})[r.summary.target]||r.summary.target)+(r.summary.target_value?' · '+r.summary.target_value:''):'');$('#lab-pilot-cancel').disabled=!['queued','running'].includes(r.status);
   $('#lab-pilot-progress').textContent=I18n.t(r.status)+' · '+num(r.summary.done)+' / '+num(r.total)+' '+I18n.t('tracks')+' · '+num(r.summary.requests)+' '+I18n.t('requests')+' · '+num(r.summary.cache_hits)+' '+I18n.t('cached')+(r.summary.message?' · '+r.summary.message:'');
   $('#lab-pilot-summary').innerHTML=labSummary(Object.fromEntries(['tracks','done','candidate_matches','rating_available','genre_available','tags_available','year_available','service_errors'].filter(k=>r.summary[k]!=null).map(k=>[k,r.summary[k]])))+'<p class="subtle">'+r.summary.groups.map(g=>esc(g.genre)+': '+num(g.sampled)+(g.requested==null?'':' / '+num(g.requested))).join(' · ')+'</p>';
-  $('#lab-pilot-results').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Local tags"))+"</th><th>"+esc(I18n.t("Best candidate · review required"))+"</th><th>"+esc(I18n.t("Community evidence"))+"</th></tr></thead><tbody>")+r.rows.map(t=>{
+  $('#lab-pilot-results').innerHTML='<table data-sort-scope="server"><thead><tr>'+
+    labPilotHeading('title','Local tags')+labPilotHeading('candidate','Best candidate · review required')+
+    labPilotHeading('community','Community evidence')+labPilotHeading('file_status','File status')+
+    '</tr></thead><tbody>'+r.rows.map(t=>{
     const c=t.candidates?.[0],p=t.proposal;
-    return '<tr><td>'+TrackPlayback.button(r.snapshot_id,t.id)+esc(t.title)+'<br><span class="subtle">'+esc(t.artist)+' · '+esc(t.genre || I18n.t("Unknown genre"))+'</span></td><td>'+(c?'<a href="https://musicbrainz.org/recording/'+encodeURIComponent(c.mbid)+'" target="_blank" rel="noopener noreferrer">'+esc(c.title)+' · '+esc(c.artist)+("</a><br><span class=\"subtle\">"+esc(I18n.t("Similarity"))+" ")+esc(c.confidence)+" "+I18n.t("· duration Δ")+" "+esc(c.duration_delta ?? I18n.t('Unknown'))+'s'+(c.version_needs_review?" "+I18n.t("· version mismatch"):'')+'</span><br><button class="button secondary" data-lab-approve="'+esc(t.id)+'" data-approved="'+(t.match_approved?'false':'true')+'">'+(t.match_approved?I18n.t("Undo identity approval"):I18n.t("Approve this identity"))+'</button>':esc(t.error || I18n.t(t.status)))+'</td><td>'+(p?'<strong>'+esc(p.community_score ?? I18n.t("No rating returned"))+'</strong> / 5 · '+num(p.votes)+(" "+I18n.t('votes')+"<br>"+esc(I18n.t("Year"))+" ")+esc(p.year ?? I18n.t('Unknown'))+' · '+esc(p.genre || I18n.t("No genre"))+'<br><span class="subtle">'+esc(I18n.t(p.year_basis))+'</span>'+(p.tags?.length?'<p class="community-tags">'+p.tags.map(tag=>esc(tag.name)+' ('+num(tag.count)+')').join(' · ')+'</p>':'')+(t.match_approved?'<div class="lab-actions">'+(['year','genre'].filter(f=>p[f]!=null).map(f=>'<button class="text-button" data-lab-proposal="'+esc(t.id)+'" data-field="'+f+("\">"+esc(I18n.t("Stage"))+" "+"")+f+': '+esc(p[f])+'</button>').join(''))+'</div>':''):'—')+'</td></tr>';
+    return '<tr data-mb-track="'+esc(t.id)+'"><td>'+TrackPlayback.button(r.snapshot_id,t.id)+esc(t.title)+'<br><span class="subtle">'+esc(t.artist)+' · '+esc(t.genre || I18n.t("Unknown genre"))+'</span></td><td>'+(c?'<a href="https://musicbrainz.org/recording/'+encodeURIComponent(c.mbid)+'" target="_blank" rel="noopener noreferrer">'+esc(c.title)+' · '+esc(c.artist)+("</a><br><span class=\"subtle\">"+esc(I18n.t("Similarity"))+" ")+esc(c.confidence)+" "+I18n.t("· duration Δ")+" "+esc(c.duration_delta ?? I18n.t('Unknown'))+'s'+(c.version_needs_review?" "+I18n.t("· version mismatch"):'')+'</span><br><button class="button secondary" data-lab-approve="'+esc(t.id)+'" data-approved="'+(t.match_approved?'false':'true')+'">'+(t.match_approved?I18n.t("Undo identity approval"):I18n.t("Approve this identity"))+'</button>':esc(t.error || I18n.t(t.status)))+'</td><td>'+(p?'<strong>'+esc(p.community_score ?? I18n.t("No rating returned"))+'</strong> / 5 · '+num(p.votes)+(" "+I18n.t('votes')+"<br>"+esc(I18n.t("Year"))+" ")+esc(p.year ?? I18n.t('Unknown'))+' · '+esc(p.genre || I18n.t("No genre"))+'<br><span class="subtle">'+esc(I18n.t(p.year_basis))+'</span>'+(p.tags?.length?'<p class="community-tags">'+p.tags.map(tag=>esc(tag.name)+' ('+num(tag.count)+')').join(' · ')+'</p>':'')+(t.match_approved?'<div class="lab-actions">'+(['year','genre'].filter(f=>p[f]!=null).map(f=>'<button class="text-button" data-lab-proposal="'+esc(t.id)+'" data-field="'+f+("\">"+esc(I18n.t("Stage"))+" "+"")+f+': '+esc(p[f])+'</button>').join(''))+'</div>':''):'—')+'</td><td>'+pilotStatusBadge(t.file_status)+'</td></tr>';
   }).join('')+'</tbody></table>';
+  for(const button of $('#lab-pilot-results').querySelectorAll('[data-mb-sort]')){
+    button.onclick=wrap(async()=>{
+      const column=button.dataset.mbSort;
+      labPilotDirection=labPilotSort===column&&labPilotDirection==='asc'?'desc':'asc';
+      labPilotSort=column;labPilotOffset=0;
+      await labLoadPilot();
+      $('#lab-pilot-results [data-mb-sort="'+column+'"]')?.focus({preventScroll:true});
+    });
+  }
   $('#lab-pilot-count').textContent=num(r.total)+" "+I18n.t("selected tracks ·")+" "+num(labPilotOffset+1)+'–'+num(Math.min(labPilotOffset+50,r.total));$('#lab-pilot-prev').disabled=!labPilotOffset;$('#lab-pilot-next').disabled=labPilotOffset+50>=r.total;
   $$('[data-lab-approve]').forEach(b=>b.onclick=wrap(async()=>{await labPost('musicbrainz/'+labBatch+'/review',{track_id:b.dataset.labApprove,approved:b.dataset.approved==='true'});await labLoadPilot();}));
   $$('[data-lab-proposal]').forEach(b=>b.onclick=wrap(async()=>{

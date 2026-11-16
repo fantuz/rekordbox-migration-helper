@@ -27,6 +27,33 @@ A future **read-only 4.x discovery phase** should identify which stores exist, c
 
 
 
+## Source and target path profiles
+
+The draft exporter now keeps the **source library music-volume root** separate
+from its **target Serato platform** (Windows or macOS) and **target music-volume root**.
+For example, a source `C:/` can be previewed as `/Volumes/DJ`,
+or a captured `/Volumes/DJ` source can target `D:/`.
+The generated legacy database continues to encode paths *relative to the selected
+music volume*; a profile records intended path mappings in the JSON manifest
+without accessing either filesystem. The target root is a drive root such as
+`C:/` on Windows, or `/` / `/Volumes/DJ` on macOS. The export
+remains detached and does **not** write into a running Serato installation.
+
+On **Linux**, Serato is not installed or run by the helper: both Windows and
+macOS profile options are clearly marked **simulated** in the preview and
+manifest. Auto mode infers a target path style from the recorded source when
+there is no native Serato platform. Windows paths compare case-insensitively to
+avoid path collisions; macOS profiles preserve case-sensitive spelling for
+comparison (actual filesystem behavior can differ). Never treat path simulation
+or independent binary validation as proof of a successful Serato import.
+
+Serato's official support documentation identifies `~/Music/_Serato_` and
+`%USERPROFILE%\\Music\\_Serato_` as standard folder locations, with the
+separate 4.x **Library** folder in `~/Library/Application Support/Serato/Library`
+or `%LOCALAPPDATA%\\Serato\\Library`.
+This draft still targets the **legacy database V2**, not the Serato 4.x
+SQLite library and never attempts to replace either database.
+
 ## Included and omitted
 
 - Basic recorded paths, title, artist, album, genre, BPM, key, year, label, composer, comment and duration when captured.

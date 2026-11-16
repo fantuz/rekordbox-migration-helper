@@ -17,7 +17,7 @@ from analysis_audit import audit_assets
 from library_checks import compare_snapshots,metadata_consistency,collection_coverage
 from metadata_export import track,payload
 from metadata_overrides import validate,plan,apply_xml,apply_native
-from musicbrainz_pilot import sample_genres,public_query,proposals,MusicBrainzClient,RateGate,create_batch,run_batch
+from musicbrainz_pilot import sample_genres,public_query,proposals,MusicBrainzClient,RateGate,create_batch,run_batch,batch_record
 from workbench_store import Store
 
 
@@ -88,6 +88,38 @@ class StoreAndOverrideTests(unittest.TestCase):
         self.assertEqual(self.store.effective(original)['tracks'][0]['genre'],'Deep House')
         self.assertEqual(self.store.snapshot(identity),original)
         self.store.clear_override('scope','one','genre');self.assertEqual(self.store.effective(original)['metadata_overrides_applied'],0)
+
+    def test_musicbrainz_global_sort_is_stable_across_50_row_pages_and_refresh(self):
+        tracks=[song(str(i),title=f'Title {124-i:03}',artist=f'Artist {i % 7}',
+                     genre='House') for i in range(125)]
+        saved=self.store.save_snapshot(snapshot(tracks),'Sort test')
+        batch=create_batch(self.store,self.store.snapshot(saved['id']),target='random',
+                           sample_size=125,seed='sort')
+        with self.store.connection() as db:
+            for i in range(125):
+                db.execute('INSERT INTO mb_results (batch_id,track_id,status,payload) VALUES (?,?,?,?)',
+                           (batch['id'],str(i),'candidate_needs_review',
+                            json.dumps({'status':'candidate_needs_review',
+                                        'candidates':[{'title':f'Candidate {124-i:03}'}],
+                                        'proposal':{'community_score':i / 100}})))
+            for i,state in [(0,'missing'),(1,'playable'),(2,'inaccessible')]:
+                db.execute('INSERT INTO file_health_records VALUES (?,?,?,?,?,?,?,?)',
+                           ('snapshot:'+saved['id'],str(i),f'Title {124-i:03}','Artist','House',
+                            state,0,''))
+        ordered=[batch_record(self.store,batch['id'],page,'title','asc') for page in (0,50,100)]
+        names=[row['title'] for batch_page in ordered for row in batch_page['rows']]
+        self.assertEqual(names,[f'Title {i:03}' for i in range(125)])
+        self.assertEqual([len(batch_page['rows']) for batch_page in ordered],[50,50,25])
+        self.assertEqual(batch_record(self.store,batch['id'],50,'title','asc')['rows'][0]['title'],'Title 050')
+        self.assertEqual(batch_record(self.store,batch['id'],0,'title','desc')['rows'][0]['title'],'Title 124')
+        community=batch_record(self.store,batch['id'],0,'community','desc')
+        self.assertEqual(community['rows'][0]['id'],'124')
+        by_status=batch_record(self.store,batch['id'],0,'file_status','asc')
+        self.assertEqual([row['id'] for row in by_status['rows'][:3]],['1','0','2'])
+        self.assertEqual(by_status['rows'][3]['file_status'],'unchecked')
+        self.assertEqual(batch_record(self.store,batch['id'],50,'title','asc')['sort'],'title')
+        for field,direction in [('bad','asc'),('title','sideways')]:
+            with self.assertRaises(ValueError):batch_record(self.store,batch['id'],0,field,direction)
 
     def test_whole_stars_plausible_year_and_merge_conflicts(self):
         for field,value in [('rating',2.5),('rating',6),('year',42),('genre','bad\0tag')]:

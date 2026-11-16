@@ -60,7 +60,19 @@ Track details keeps listening, comments, colour choices and working edits togeth
 
 ![Playlist explorer with captured track order and per-track playback controls](docs/screenshots/readme-playlist-explorer.png)
 
-Library intelligence explores saved playlist membership and order. See [screenshot provenance and regeneration](docs/SCREENSHOTS.md).
+Library intelligence explores saved playlist membership and order.
+
+### User-provided library examples
+
+These two additional captures were provided by a user and show a real library, rather than the 12-record synthetic fixture used above. File and category names visible in the images are intentionally retained with permission. They are compressed to keep the source repository small.
+
+![MusicBrainz enrichment with batch progress, candidate matches and file status](docs/screenshots/musicbrainz-enrichment-real.webp)
+
+MusicBrainz enrichment displays batch outcomes, metadata proposals, file status and evidence that requires review.
+
+![Library bubbles visualization showing genre families, category counts and selection details](docs/screenshots/library-bubbles-real.webp)
+
+Library bubbles compares the relative sizes of saved genre families, including uncategorized and mixed-family tracks. See [screenshot provenance and regeneration](docs/SCREENSHOTS.md).
 
 ## Feature inventory
 

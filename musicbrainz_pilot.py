@@ -267,14 +267,59 @@ def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None,
     return {'id':identity,'summary':summary,'sample':sample,'status':'preview'}
 
 
-def batch_record(store,identity,offset=0):
+PILOT_SORT_FIELDS=('original','title','artist','genre','candidate','community','file_status')
+PILOT_FILE_STATUS_ORDER={'playable':0,'missing':1,'inaccessible':2,'unverified':3,'unchecked':4}
+
+
+def batch_record(store,identity,offset=0,sort='original',direction='asc'):
+    """Order the complete saved batch before selecting a page.
+
+    File status uses last explicit File Health evidence, not a newly inferred
+    playable state. Unscanned tracks remain unchecked.
+    """
+    if sort not in PILOT_SORT_FIELDS or direction not in ('asc','desc'):
+        raise ValueError('Choose a supported MusicBrainz sort column and direction')
+    try:offset=int(offset)
+    except (TypeError,ValueError):raise ValueError('Choose a valid MusicBrainz page offset') from None
+    if not 0<=offset<=1000000:raise ValueError('Choose a valid MusicBrainz page offset')
     with store.connection() as db:
-        r=db.execute('SELECT * FROM mb_batches WHERE id=?',(identity,)).fetchone()
-        if not r:raise ValueError('Pilot batch not found')
-        results={x['track_id']:json.loads(x['payload']) for x in db.execute('SELECT * FROM mb_results WHERE batch_id=?',(identity,))}
-    sample=json.loads(r['sample'])
-    return {'id':identity,'snapshot_id':r['snapshot_id'],'created':r['created'],'status':r['status'],'summary':json.loads(r['summary']),
-            'total':len(sample),'offset':int(offset),'rows':[{**t,**results.get(t['id'],{'status':'not_requested'})} for t in sample[int(offset):int(offset)+50]]}
+        batch=db.execute('SELECT * FROM mb_batches WHERE id=?',(identity,)).fetchone()
+        if not batch:raise ValueError('Pilot batch not found')
+        results={row['track_id']:json.loads(row['payload']) for row in db.execute(
+            'SELECT track_id,payload FROM mb_results WHERE batch_id=?',(identity,))}
+        source='snapshot:'+batch['snapshot_id']
+        scanned={row['track_id']:row['status'] for row in db.execute(
+            'SELECT track_id,status FROM file_health_records WHERE source=?',(source,))}
+    sample=json.loads(batch['sample'])
+    rows=[{**track,**results.get(track['id'],{'status':'not_requested'}),
+           'file_status':scanned.get(track['id'],'unchecked')} for track in sample]
+    if sort!='original':
+        def key(row):
+            if sort in ('title','artist','genre'):
+                value=row.get(sort)
+                return None if value is None or not str(value).strip() else str(value).casefold()
+            if sort=='candidate':
+                candidate=(row.get('candidates') or [{}])[0]
+                value=candidate.get('title')
+                return None if value is None or not str(value).strip() else str(value).casefold()
+            if sort=='community':
+                proposal=row.get('proposal') or {}
+                try:
+                    value=float(proposal.get('community_score'))
+                    return value if isfinite(value) else None
+                except (ValueError,TypeError):return None
+            if sort=='file_status':return PILOT_FILE_STATUS_ORDER.get(row['file_status'],4)
+        # Python's sort is stable: equal keys retain their captured order, even
+        # when sorting descending. Unknown values always remain at the end.
+        indexed=[(i,row,key(row)) for i,row in enumerate(rows)]
+        populated=[entry for entry in indexed if entry[2] is not None]
+        unknown=[entry for entry in indexed if entry[2] is None]
+        populated.sort(key=lambda entry:entry[2],reverse=direction=='desc')
+        rows=[entry[1] for entry in populated+unknown]
+    return {'id':identity,'snapshot_id':batch['snapshot_id'],'created':batch['created'],
+            'status':batch['status'],'summary':json.loads(batch['summary']),
+            'total':len(rows),'offset':offset,'sort':sort,'direction':direction,
+            'rows':rows[offset:offset+50]}
 
 
 def run_batch(store,identity,client,progress):

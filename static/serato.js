@@ -2,11 +2,16 @@
 window.SeratoDraft=(()=>{
   const node=id=>document.getElementById(id),t=key=>I18n.t(key);
   let revision=0,report=null;
-  const selection=()=>({snapshot:node('intelligence-source').value,volume_root:node('serato-volume').value});
-  function reset(){revision++;report=null;node('serato-report').replaceChildren();node('serato-ack').checked=false;node('serato-export').disabled=true;}
+  const selection=()=>({snapshot:node('intelligence-source').value,volume_root:node('serato-volume').value,
+    target_platform:node('serato-target-platform').value,target_volume_root:node('serato-target-volume').value});
+  function reset(){revision++;report=null;node('serato-report').replaceChildren();node('serato-ack').checked=false;node('serato-export').disabled=true;node('serato-target-note').textContent=I18n.t('Preview Serato export')+' · '+I18n.t('Serato import remains unverified');}
   function buttons(){node('serato-export').disabled=!report?.export_ready || !node('serato-ack').checked;}
   function render(){
     if(!report)return;
+    const target=report.target_profile||{};
+    node('serato-target-note').textContent=(target.simulated?t('Simulated Serato target'):t('Native Serato target'))+
+      ' · '+(target.platform||'')+' · '+(target.target_volume_root||'')+' · '+t('Serato import remains unverified');
+
     const rows=(labels,values)=>'<div class="lab-table"><table><thead><tr>'+labels.map(label=>'<th>'+esc(t(label))+'</th>').join('')+'</tr></thead><tbody>'+values.map(row=>'<tr>'+row.map(value=>'<td>'+esc(value)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
     const section=(label,count,html)=>'<details><summary>'+esc(t(label))+' · '+num(count)+'</summary>'+html+'</details>';
     node('serato-report').innerHTML='<p class="callout">'+esc(t('Readback passed; Serato import remains unverified.'))+'</p>'+labSummary({[t('Tracks')]:report.tracks_written,[t('Crates')]:report.crates_total,[t('Omitted records')]:report.omitted_total,[t('Omitted playlist entries')]:report.omitted_playlist_entries_total})+
@@ -20,6 +25,12 @@ window.SeratoDraft=(()=>{
       (!report.export_ready?'<p class="callout">'+esc(t('No tracks can be exported for this volume.'))+'</p>':'');
   }
   node('serato-volume').addEventListener('input',reset);
+  node('serato-target-platform').addEventListener('change',()=>{
+    const platform=node('serato-target-platform').value;
+    node('serato-target-volume').value=platform==='windows'?'C:/':platform==='macos'?'/Volumes/DJ':'';
+    reset();
+  });
+  node('serato-target-volume').addEventListener('input',reset);
   node('intelligence-source').addEventListener('change',reset);
   window.addEventListener('workbench-context',reset);
   window.addEventListener('workbench-language',render);
