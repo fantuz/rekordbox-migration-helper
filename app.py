@@ -8,6 +8,7 @@ from hashlib import sha256
 from threading import RLock
 from functools import wraps
 from uuid import uuid4
+from time import monotonic
 import argparse
 import json
 import os
@@ -50,6 +51,19 @@ lock = RLock()
 sessions, tasks = {}, {}
 task_controls = {}
 active = None
+MAX_COMPLETED_TASKS=256
+TASK_RETENTION_SECONDS=3600
+
+
+def prune_tasks():
+    """Bound terminal results; active jobs and persisted reports stay available."""
+    now=monotonic()
+    with lock:
+        completed=sorted((task.setdefault('_completed_at',now),identity)
+                         for identity,task in tasks.items() if task['status']!='running' and identity not in task_controls)
+        for index,(finished,identity) in enumerate(completed):
+            if now-finished>TASK_RETENTION_SECONDS or index<len(completed)-MAX_COMPLETED_TASKS:
+                tasks.pop(identity,None)
 
 
 def clean_provider_cache():
@@ -108,11 +122,13 @@ def task_progress(job, amount, text):
 
 
 def launch(work, message, pool=None, on_finished=None, cancel_event=None):
-    if shutdown.requested.is_set():raise ValueError('The application is stopping')
     job = uuid4().hex
-    tasks[job] = {"id":job,"status":"running","progress":0,"message":message}
-    task_controls[job] = TaskControl()
-    if cancel_event is not None:task_controls[job].event=cancel_event
+    with lock:
+        if shutdown.requested.is_set():raise ValueError('The application is stopping')
+        prune_tasks()
+        tasks[job] = {"id":job,"status":"running","progress":0,"message":message}
+        task_controls[job] = TaskControl()
+        if cancel_event is not None:task_controls[job].event=cancel_event
     def run():
         try:
             task_controls[job].checkpoint()
@@ -130,7 +146,10 @@ def launch(work, message, pool=None, on_finished=None, cancel_event=None):
                 # Also notify owners when cancellation happens before work starts.
                 if on_finished:on_finished(tasks[job]['status'])
             finally:
-                with lock:task_controls.pop(job,None)
+                with lock:
+                    task_controls.pop(job,None)
+                    tasks[job]['_completed_at']=monotonic()
+                    prune_tasks()
     try:(pool or executor).submit(run)
     except Exception:
         with lock:tasks.pop(job,None);task_controls.pop(job,None)
@@ -141,7 +160,7 @@ def launch(work, message, pool=None, on_finished=None, cancel_event=None):
 def load_session(metadata, sid, progress):
     global active
     metadata=deepcopy(metadata)
-    metadata["input_fingerprints"]=check_inputs(metadata)
+    metadata["input_fingerprints"]=check_inputs(metadata,content=True,progress=progress)
     catalog=Catalog(metadata["source"],metadata)
     session_dir=DATA/sid
     session_dir.mkdir(parents=True,exist_ok=True)
@@ -536,14 +555,17 @@ def example():
 
 @app.get("/api/tasks/<job>")
 def task(job):
-    if job not in tasks:
-        return jsonify(error="Task not found"),404
-    return jsonify(tasks[job])
+    with lock:
+        prune_tasks()
+        if job not in tasks:
+            return jsonify(error="Task not found or expired; completed reports and exports remain saved"),404
+        return jsonify({k:v for k,v in tasks[job].items() if not k.startswith('_')})
 
 
 @app.post('/api/tasks/<job>/cancel')
 def cancel_task(job):
     with lock:
+        prune_tasks()
         if job not in tasks:return jsonify(error='Task not found'),404
         control=task_controls.get(job)
         if control and tasks[job]['status']=='running':
@@ -903,6 +925,7 @@ def import_local():
     def work(progress):
         check_inputs(inputs)
         if target:return reattach_inputs(target,paths,progress,'linked')
+        inputs['input_fingerprints']=fingerprint_inputs(inputs,content=True,progress=progress)
         metadata=analyze(paths["zip"],paths["xml"],folder,progress,scratch=TEMPORARY.folder(sid))
         metadata.update(inputs,import_mode="linked")
         check_inputs(metadata)
@@ -948,7 +971,7 @@ def run_import(sid):
         raise ValueError("Finish uploading both files first")
     def work(progress):
         if info.get('resume_session'):return reattach_inputs(info['resume_session'],{'zip':backup,'xml':xml},progress,'uploaded')
-        stamps=fingerprint_inputs({"zip_path":str(backup),"xml_path":str(xml)})
+        stamps=fingerprint_inputs({"zip_path":str(backup),"xml_path":str(xml)},content=True,progress=progress)
         saved=DATA/sid;saved.mkdir(parents=True,exist_ok=True)
         metadata=analyze(backup,xml,saved,progress,scratch=TEMPORARY.folder(sid))
         metadata.update(input_fingerprints=stamps,import_mode="uploaded")
@@ -976,11 +999,14 @@ def reattach_inputs(sid,paths,progress,mode):
     saved=resume_state(sid);metadata=deepcopy(saved['metadata'])
     if not metadata.get('pair_signature'):raise ValueError('This older workspace has no input identity. Restore its recorded paths once to upgrade it, or start a new workspace.')
     if not Path(metadata['source']).is_file():raise ValueError('Saved review metadata is unavailable; import as a new workspace')
-    inputs={'zip_path':str(paths['zip']),'xml_path':str(paths['xml'])};inputs['input_fingerprints']=fingerprint_inputs(inputs)
+    inputs={'zip_path':str(paths['zip']),'xml_path':str(paths['xml'])};inputs['input_fingerprints']=fingerprint_inputs(inputs,content=True,progress=progress)
     progress(5,'Verifying the selected originals before restoring saved decisions')
     identity=pair_signature(paths['zip'],paths['xml'])
     check_inputs(inputs)
     if identity!=metadata['pair_signature']:raise ValueError('These files differ from the saved workspace. Select the matching original XML/ZIP pair; saved decisions were kept unchanged.')
+    for kind,stamp in metadata.get('input_fingerprints',{}).items():
+        if stamp.get('sha256') and stamp['sha256']!=inputs['input_fingerprints'][kind]['sha256']:
+            raise ValueError('These original file bytes differ from the saved workspace. Saved decisions were kept unchanged.')
     metadata.update(inputs,import_mode=mode)
     return load_session(metadata,sid,progress)
 

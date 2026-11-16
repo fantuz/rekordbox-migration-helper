@@ -13,6 +13,8 @@ from workbench_store import Store,encoded,now
 from research_capture import capture_private_database,capture_workspace,open_capture
 from library_checks import compare_snapshots,metadata_consistency,collection_coverage
 from analysis_audit import audit_assets
+from backup_manifest import backup_manifest
+from migration_readiness import export_readiness,tempo_key_review
 from result_order import ordered,page_result,scan_statuses,with_status,TRACK_FIELDS
 from history_browser import list_history,history_session
 from metadata_overrides import FIELDS,FREE_FIELDS,comparable,baseline,validate
@@ -130,7 +132,10 @@ def register(owner):
             if kind=='consistency':summary,rows=metadata_consistency(working)
             elif kind=='coverage':summary,rows=collection_coverage(working,b.get('min_cues',1),b.get('min_manual',0),b.get('require_analysis',True) is True)
             elif kind=='assets':summary,rows=audit_assets(s,b.get('paths') or b.get('path',''),progress,b.get('verify') is True)
-            else:raise ValueError('Choose metadata consistency, collection coverage or analysis asset audit')
+            elif kind=='backup':summary,rows=backup_manifest(s,b.get('path',''),progress,b.get('verify') is True)
+            elif kind=='readiness':summary,rows=export_readiness(working,b.get('profile','generic'),b.get('filesystem','not_checked'))
+            elif kind=='tempo':summary,rows=tempo_key_review(working)
+            else:raise ValueError('Choose a Library lab check')
             summary['working_metadata_applied']=working.get('metadata_overrides_applied',0)
             summary['edit_revision']=edit_revision
             return store().save_report(kind,[s['id']],summary,rows)

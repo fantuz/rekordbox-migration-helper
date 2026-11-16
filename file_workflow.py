@@ -46,7 +46,7 @@ def select_inputs(values):
     return paths
 
 
-def fingerprint_inputs(metadata):
+def fingerprint_inputs(metadata, *, content=False, progress=None):
     result={}
     for kind in ("zip","xml"):
         path=Path(metadata[kind+"_path"])
@@ -56,14 +56,37 @@ def fingerprint_inputs(metadata):
         except OSError:
             raise ValueError("The source "+kind.upper()+" file has moved or is unavailable. Restore its recorded location.") from None
         result[kind]={"path":str(path.resolve()),"bytes":stat.st_size,"mtime_ns":stat.st_mtime_ns}
+        if content:
+            value=sha256()
+            with path.open('rb') as stream:
+                while chunk:=stream.read(2*1024**2):
+                    value.update(chunk)
+                    if progress:progress(5,'Verifying original '+kind.upper()+' content')
+            after=path.stat()
+            if (after.st_size,after.st_mtime_ns,after.st_ino,after.st_dev)!=(stat.st_size,stat.st_mtime_ns,stat.st_ino,stat.st_dev):
+                raise ValueError('An input file changed during content verification. Import the pair again.')
+            result[kind]['sha256']=value.hexdigest()
     return result
 
 
-def check_inputs(metadata):
-    actual=fingerprint_inputs(metadata)
+def check_inputs(metadata, *, content=False, progress=None):
+    actual=fingerprint_inputs(metadata,content=content,progress=progress)
     expected=metadata.get("input_fingerprints")
-    if expected and actual!=expected:
+    if expected and any(actual[k].get(f)!=v for k,fields in expected.items() for f,v in fields.items()
+                        if f!='sha256' or content):
         raise ValueError("An input file has changed since this workspace was analyzed. Import the pair as a new workspace.")
+    if content:
+        # Older saved workspaces have an XML digest and a native pair identity.
+        # Verify those before upgrading them to full-file SHA-256 fingerprints.
+        xml_hash=metadata.get('xml_sha256') or (metadata.get('pair_signature') or {}).get('xml_sha256')
+        if xml_hash and xml_hash!=actual['xml']['sha256']:
+            raise ValueError('The original XML content changed. Import the pair as a new workspace.')
+        if expected and not all(fields.get('sha256') for fields in expected.values()) and metadata.get('pair_signature'):
+            if pair_signature(metadata['zip_path'],metadata['xml_path'])!=metadata['pair_signature']:
+                raise ValueError('The original backup content changed. Import the pair as a new workspace.')
+    elif expected:
+        for kind in actual:
+            if expected.get(kind,{}).get('sha256'):actual[kind]['sha256']=expected[kind]['sha256']
     return actual
 
 
@@ -81,7 +104,7 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
     from export_references import validate_relocations,target_info
     validate_relocations(catalog,relocations)
     reference_target=target_info(catalog,catalog.metadata.get('export_target','auto'))
-    expected=check_inputs(catalog.metadata)
+    expected=check_inputs(catalog.metadata,content=True,progress=progress)
     metadata={**catalog.metadata,"input_fingerprints":expected}
     root=Path(root)
     root.mkdir(parents=True,exist_ok=True)
@@ -106,6 +129,7 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
             check_inputs(metadata)
         if kind=="pair" and validations["xml"]["merges"]!=validations["zip"]["merges"]:
             raise ValueError("The XML and ZIP writers reported different merge plans")
+        check_inputs(metadata,content=True,progress=lambda _,message:progress(99,message))
         for name in ("export-master.db","native-master.db"):
             (pending/name).unlink(missing_ok=True)
         created=datetime.now(timezone.utc).isoformat()
