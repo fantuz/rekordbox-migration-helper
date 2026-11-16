@@ -6,10 +6,13 @@ import wave
 
 from audio_paths import validate
 
+CAPTURED_TITLE='<img src=x onerror="window.bridgeInjected=true"> & DJ'
+TAGGED_TITLE='<svg onload="window.bridgeInjected=true">Retagged</svg>'
+
 
 def add_tags(path):
     fields=[]
-    for key,value in ((b'INAM',b'Retagged title\0'),(b'IGNR',b'Techno\0')):
+    for key,value in ((b'INAM',TAGGED_TITLE.encode()+b'\0'),(b'IGNR',b'Techno\0')):
         fields.append(key+struct.pack('<I',len(value))+value+(b'\0' if len(value)%2 else b''))
     info=b'INFO'+b''.join(fields);chunk=b'LIST'+struct.pack('<I',len(info))+info
     original=path.read_bytes();path.write_bytes(original[:4]+struct.pack('<I',len(original)-8+len(chunk))+original[8:]+chunk)
@@ -20,7 +23,7 @@ def check_onetagger_ui(browser,base,store,root,output):
     with wave.open(str(audio),'wb') as stream:
         stream.setnchannels(1);stream.setsampwidth(2);stream.setframerate(8000);stream.writeframes(b'\0\0'*800)
     scope='synthetic:onetagger'
-    source={'scope_key':scope,'tracks':[{'id':'bridge-one','title':'Original title','artist':'DJ','genre':'House','rating':5,
+    source={'scope_key':scope,'tracks':[{'id':'bridge-one','title':CAPTURED_TITLE,'artist':'A < B & "Producer"','genre':'House','rating':5,
             'current_path':'D:/Music/'+audio.name,'xml_location':'file://localhost/D:/Music/100%2520%20Synthetic.wav'}]}
     sid=store.save_snapshot(source,'OneTagger synthetic selection')['id'];before=store.snapshot(sid)
     store.set_setting('audio_paths:'+scope,validate([{'recorded_root':'D:/Music','local_root':str(folder)}],[root]))
@@ -31,6 +34,9 @@ def check_onetagger_ui(browser,base,store,root,output):
         page.goto(base,wait_until='networkidle');page.locator('.nav[data-view="musicbrainz"]').click()
         page.wait_for_selector('#onetagger-snapshot option[value="'+sid+'"]',state='attached')
         page.select_option('#onetagger-snapshot',sid)
+        page.wait_for_selector('[data-onetagger-track="bridge-one"]')
+        assert CAPTURED_TITLE in page.locator('#onetagger-tracks').inner_text()
+        assert page.locator('#onetagger-tracks img, #onetagger-tracks svg').count()==0
         page.locator('[data-onetagger-track="bridge-one"]').check();page.locator('#onetagger-create').click()
         page.wait_for_function('document.querySelector("#onetagger-selections").value.length===32')
         identity=page.locator('#onetagger-selections').input_value()
@@ -42,6 +48,10 @@ def check_onetagger_ui(browser,base,store,root,output):
         add_tags(audio);retagged=audio.read_bytes()
         page.locator('#onetagger-rescan').click()
         page.wait_for_selector('[data-onetagger-field="genre"]')
+        assert TAGGED_TITLE in page.locator('#onetagger-review').inner_text()
+        assert CAPTURED_TITLE in page.locator('#onetagger-review').inner_text()
+        assert page.locator('#onetagger-review img, #onetagger-review svg').count()==0
+        assert page.evaluate('window.bridgeInjected') is None
         assert not page.locator('[data-onetagger-field="genre"]').is_checked()
         assert page.locator('#onetagger-stage').is_disabled()
         page.locator('[data-onetagger-field="genre"]').check();page.locator('#onetagger-reviewed').check()
@@ -52,5 +62,6 @@ def check_onetagger_ui(browser,base,store,root,output):
         assert edits['genre']['value']=='Techno';assert store.snapshot(sid)==before
         assert audio.read_bytes()==retagged;assert not errors,errors
         return {'m3u_roundtrip':True,'original_references_preserved':True,'tag_rescan':True,
-                'explicit_field_selection':True,'snapshot_unchanged':True,'no_audio_writes':True,'no_page_errors':True}
+                'explicit_field_selection':True,'snapshot_unchanged':True,'no_audio_writes':True,
+                'metadata_rendered_as_text':True,'no_page_errors':True}
     finally:context.close()

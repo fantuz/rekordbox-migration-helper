@@ -39,7 +39,7 @@ def check_delivery_ui(browser,base,store,root,output):
         panel.locator('[data-audio-recorded]').fill('D:/')
         panel.locator('[data-audio-local]').fill(str(mount))
         panel.locator('[data-audio-preview]').click()
-        page.wait_for_function('document.querySelector("#file-health-audio-paths [data-audio-examples]").textContent.includes("Playable")')
+        page.wait_for_function('document.querySelector("#file-health-audio-paths [data-audio-examples]").textContent.includes("Accessible")')
         panel.locator('[data-audio-save]').click()
         page.wait_for_function('document.querySelector("#file-health-audio-paths [data-audio-note]").textContent.includes("Audio folders saved")')
         page.locator('#file-health-scan').click()

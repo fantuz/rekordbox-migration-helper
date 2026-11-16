@@ -7,7 +7,7 @@ Before either writer runs, expectations are frozen from the original XML and enc
 | Output | Comparisons |
 | --- | --- |
 | XML | Exact surviving IDs, track attributes and references, cue labels/positions/colours, saved tempo/grid entries, collection count, playlist hierarchy and ordered references, including repeated entries |
-| Native ZIP | Database schema, active content metadata and references, native cue rows and serialized cue summaries, playlist hierarchy and order columns, active content relations and backup contents count |
+| Native ZIP | Database schema, active content metadata and references, resolved artist/album/genre/key/colour values, native cue rows and serialized cue summaries, playlist hierarchy and order columns, active content relations and backup contents count |
 | Other ZIP members | Member names, original CRC and uncompressed size; existing writer checks also preserve compressed members |
 
 Native bookkeeping timestamps, synchronization flags and update counters are excluded from semantic equality. Generated lookup IDs are resolved to the reviewed field values. Existing personal metadata is preserved unless covered by the frozen decisions. Native-only tracks required by XML playlists are checked against the original database and saved grids.

@@ -29,11 +29,13 @@ class MountedAudioTests(unittest.TestCase):
     def test_directory_index_is_reused_and_invalidated_when_entries_change(self):
         from audio_paths import _directory_index
         _directory_index.cache_clear()
-        self.assertIsNotNone(mapped_path(self.track['current_path'],self.maps))
-        initial=_directory_index.cache_info()
-        self.assertIsNotNone(mapped_path(self.track['current_path'],self.maps))
-        self.assertGreater(_directory_index.cache_info().hits,initial.hits)
+        # A missing entry exercises the fallback index on case-insensitive
+        # Windows/macOS volumes too; existing differently cased names may
+        # resolve directly there, without needing the fallback cache.
         self.assertIsNotNone(mapped_path('D:/NEW.wav',self.maps))
+        initial=_directory_index.cache_info()
+        self.assertIsNotNone(mapped_path('D:/NEW.wav',self.maps))
+        self.assertGreater(_directory_index.cache_info().hits,initial.hits)
         new=self.volume/'new.wav';new.write_bytes(b'fixture')
         self.assertTrue(mapped_path('D:/NEW.wav',self.maps).samefile(new))
 

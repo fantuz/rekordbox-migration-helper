@@ -122,6 +122,10 @@ class IndependentExportTests(TestCase):
                     "UPDATE djmdContent SET FolderPath='Z:/wrong.wav' WHERE ID='a'",
                     "UPDATE djmdCue SET Comment='Wrong label' WHERE ID='cue-a'",
                     "UPDATE djmdContent SET Title='Wrong title' WHERE ID='a'",
+                    "UPDATE djmdArtist SET Name='Wrong artist'",
+                    "UPDATE djmdAlbum SET Name='Wrong album'",
+                    "UPDATE djmdGenre SET Name='Wrong genre'",
+                    "UPDATE djmdKey SET ScaleName='Wrong key'",
                     "UPDATE contentCue SET Cues='[]' WHERE ContentID='a'"):
             with self.subTest(sql=sql):
                 def writer(c,d,r,path,p):

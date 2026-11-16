@@ -107,6 +107,7 @@ def native_state(db, mapping=None, results=None, edits=None, relocations=None):
     tables=schema(db)
     names={table:{str(r['ID']):r.get('Name') for r in rows(db,table)}
            for _,table in NAMED.values() if table in tables}
+    keys={str(r['ID']):r.get('ScaleName') for r in rows(db,'djmdKey')} if 'djmdKey' in tables else {}
     colors={str(r['ID']):r for r in rows(db,'djmdColor')} if 'djmdColor' in tables else {}
     uuids={str(r['ID']):r.get('UUID') for r in rows(db,'djmdContent')}
     cue_rows={str(r['ID']):r for r in rows(db,'djmdCue',active=False)} if expected and results and 'djmdCue' in tables else {}
@@ -149,12 +150,11 @@ def native_state(db, mapping=None, results=None, edits=None, relocations=None):
                     for field,column in CONTENT_FIELDS.items():
                         if field in fields:row[column]=0 if field=='year' and fields[field] is None else fields[field]
                 for field,(column,lookup) in NAMED.items():
-                    if field in fields:
-                        row['@'+field]=(fields[field] or None) if expected else names.get(lookup,{}).get(str(row.get(column)))
-                        row.pop(column,None)
-                if 'colour' in fields:
-                    row['@colour']=fields['colour'] if expected else editable_colour(native_colour(row.get('ColorID'),colors.get(str(row.get('ColorID')))))
-                    row.pop('ColorID',None)
+                    row['@'+field]=(fields[field] or None) if expected and field in fields else names.get(lookup,{}).get(str(row.get(column)))
+                    if field in fields:row.pop(column,None)
+                row['@key']=keys.get(str(row.get('KeyID')))
+                row['@colour']=fields['colour'] if expected and 'colour' in fields else editable_colour(native_colour(row.get('ColorID'),colors.get(str(row.get('ColorID')))))
+                if 'colour' in fields:row.pop('ColorID',None)
             elif table=='contentCue':
                 row={'ContentID':str(row.get('ContentID')),'rb_cue_count':row.get('rb_cue_count'),
                      'cues':sorted(digest(cue_value(c)) for c in json.loads(row.get('Cues') or '[]'))}

@@ -227,9 +227,9 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.select_option('#lab-pilot-direction','asc')
     page.wait_for_function('document.querySelector("#lab-pilot-results tbody tr").dataset.mbTrack==="sort-1"')
     cell=page.locator('#lab-pilot-results tr[data-mb-track="sort-1"] .lab-pilot-file-status')
-    assert cell.inner_text()=='Playable'
+    assert cell.inner_text()=='Accessible'
     page.evaluate('()=>document.querySelector(\'#lab-pilot-results [data-play-track="sort-1"]\').dispatchEvent(new CustomEvent("workbench-file-status",{bubbles:true,detail:{status:"missing"}}))')
-    assert cell.inner_text()=='Playable'
+    assert cell.inner_text()=='Accessible'
     page.evaluate('()=>labLoadPilot(false)')
     assert page.locator('#lab-pilot-sort').input_value()=='file_status'
     assert page.locator('#lab-pilot-direction').input_value()=='asc'

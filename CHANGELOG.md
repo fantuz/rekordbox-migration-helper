@@ -7,6 +7,7 @@
 - Preserve original tags, search cleanup steps, every MusicBrainz query attempt and candidate disagreements, with version checks in both directions.
 - Add a local OneTagger M3U/manifest handoff, tag rescan and explicit field-level review with stale-edit checks, atomic sidecar staging and provenance.
 - Independently read XML/native ZIP outputs against original-input expectations and frozen decisions before publication, covering metadata, references, cues and playlist order. Add encrypted mutation regressions and browser coverage for the handoff workflow.
+- Verify resolved native metadata lookup values as well as track references. Render OneTagger selection and review values as text, with browser regressions for HTML-like tags; exercise mounted-path caching on case-insensitive volumes too.
 
 ## 1.1.3 — 2026-11-16
 

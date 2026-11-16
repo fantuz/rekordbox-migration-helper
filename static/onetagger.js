@@ -4,7 +4,68 @@ window.OneTaggerBridge=(()=>{
   let snapshot='',selection='',offset=0,total=0,rows=[],scan=null,sequence=0,reviewSequence=0,busy=false;
   const selected=new Set();
   const post=(path,body)=>api('/api/onetagger'+path,{method:'POST',body:JSON.stringify(body)});
+  function element(tag,text){
+    const node=document.createElement(tag);
+    if(text!==undefined)node.textContent=String(text);
+    return node;
+  }
+  function table(headers){
+    const node=element('table'),head=element('thead'),row=element('tr'),body=element('tbody');
+    node.dataset.sortScope='server';
+    for(const header of headers){
+      const cell=element('th');
+      if(typeof header==='string')cell.textContent=t(header);else cell.append(header);
+      row.append(cell);
+    }
+    head.append(row);node.append(head,body);return {node,body};
+  }
+  function trackRows(){
+    const page=element('input');page.type='checkbox';page.id='onetagger-page';
+    page.setAttribute('aria-label',t('Select this page'));
+    const result=table([page,'Track','Artist']);
+    for(const track of rows){
+      const row=element('tr'),choice=element('td'),title=element('td'),box=element('input');
+      box.type='checkbox';box.dataset.onetaggerTrack=track.id;box.checked=selected.has(track.id);
+      box.setAttribute('aria-label',t('Select track')+' · '+(track.title||track.id));
+      box.onchange=()=>{
+        if(box.checked && selected.size>=500){box.checked=false;return;}
+        box.checked?selected.add(track.id):selected.delete(track.id);controls();
+      };
+      choice.append(box);title.textContent=track.title||track.id;
+      title.append(element('br'),element('small',track.id));
+      row.append(choice,title,element('td',track.artist||'—'));result.body.append(row);
+    }
+    page.onchange=()=>{
+      for(const box of result.body.querySelectorAll('input')){box.checked=page.checked;box.onchange();}
+    };
+    $('tracks').replaceChildren(result.node);
+  }
+  function reviewRows(){
+    const result=table(['Stage','Track','Field','Current value','Proposed value']);
+    function message(row,text){
+      const node=element('tr'),value=element('td',text);value.colSpan=3;
+      node.append(element('td','—'),element('td',row.title||row.track_id),value);result.body.append(node);
+    }
+    for(const row of scan.rows){
+      if(row.status==='unreadable'){message(row,row.error);continue;}
+      if(row.warnings?.length)message(row,t('Tag warnings')+': '+row.warnings.map(w=>w.field+': '+w.reason).join(' · '));
+      if(!row.changes.length){message(row,t('No tag changes'));continue;}
+      for(const change of row.changes){
+        const node=element('tr'),choice=element('td'),box=element('input');
+        box.type='checkbox';box.dataset.onetaggerField=change.field;box.dataset.track=row.track_id;
+        box.setAttribute('aria-label',t('Stage')+' · '+change.field+' · '+(row.title||row.track_id));
+        box.onchange=controls;choice.append(box);
+        const current=String(change.working_value??'—')+(change.replaces_staged_edit?' · '+t('Staged'):'');
+        node.append(choice,element('td',row.title||row.track_id),element('td',t(change.field)),element('td',current),element('td',change.value??'—'));
+        result.body.append(node);
+      }
+    }
+    $('review').replaceChildren(result.node);
+  }
   function controls(){
+    for(const id of ['snapshot','selections','search','find','unlock','reviewed'])$(id).disabled=busy;
+    for(const box of $('tracks').querySelectorAll('input'))box.disabled=busy;
+    for(const box of $('review').querySelectorAll('input'))box.disabled=busy;
     $('create').disabled=busy || !selected.size;$('selected').textContent=num(selected.size)+' / 500';
     $('prev').disabled=busy || !offset;$('next').disabled=busy || offset+50>=total;
     $('rescan').disabled=busy || !selection;
@@ -17,9 +78,7 @@ window.OneTaggerBridge=(()=>{
     $('snapshot').replaceChildren(new Option(t('Choose a saved collection snapshot'),''),...data.snapshots.map(s=>new Option(s.label+' · '+snapshotMoment(s.created),s.id)));
     $('snapshot').value=data.snapshots.some(s=>s.id===chosen)?chosen:'';
     snapshot=$('snapshot').value;rows=data.tracks;total=data.total;
-    $('tracks').innerHTML='<table data-sort-scope="server"><thead><tr><th><input type="checkbox" id="onetagger-page" aria-label="'+esc(t('Select this page'))+'"></th><th>'+esc(t('Track'))+'</th><th>'+esc(t('Artist'))+'</th></tr></thead><tbody>'+rows.map(r=>'<tr><td><input type="checkbox" data-onetagger-track="'+esc(r.id)+'" aria-label="'+esc(t('Select track'))+' · '+esc(r.title||r.id)+'"'+(selected.has(r.id)?' checked':'')+'></td><td>'+esc(r.title||r.id)+'<br><small>'+esc(r.id)+'</small></td><td>'+esc(r.artist||'—')+'</td></tr>').join('')+'</tbody></table>';
-    for(const box of $('tracks').querySelectorAll('[data-onetagger-track]'))box.onchange=()=>{if(box.checked && selected.size>=500){box.checked=false;return;}box.checked?selected.add(box.dataset.onetaggerTrack):selected.delete(box.dataset.onetaggerTrack);controls();};
-    $('page').onchange=()=>{for(const box of $('tracks').querySelectorAll('[data-onetagger-track]')){box.checked=$('page').checked;box.onchange();}};
+    trackRows();
     $('selections').replaceChildren(new Option(t('Choose a selection'),''),...data.selections.map(s=>new Option(snapshotMoment(s.created)+' · '+num(s.tracks),s.id)));
     $('selections').value=data.selections.some(s=>s.id===selection)?selection:'';selection=$('selections').value;
     $('playlist').hidden=$('manifest').hidden=!selection;
@@ -31,8 +90,7 @@ window.OneTaggerBridge=(()=>{
     const data=await api('/api/onetagger/'+id+'/review',{feedback:false});
     if(generation!==reviewSequence || id!==selection)return;
     scan=data.scan;if(!scan){controls();return;}
-    $('review').innerHTML='<table data-sort-scope="server"><thead><tr><th>'+esc(t('Stage'))+'</th><th>'+esc(t('Track'))+'</th><th>'+esc(t('Field'))+'</th><th>'+esc(t('Current value'))+'</th><th>'+esc(t('Proposed value'))+'</th></tr></thead><tbody>'+scan.rows.map(row=>row.status==='unreadable'?'<tr><td>—</td><td>'+esc(row.title||row.track_id)+'</td><td colspan="3">'+esc(row.error)+'</td></tr>':(row.warnings?.length?'<tr><td>—</td><td>'+esc(row.title||row.track_id)+'</td><td colspan="3">'+esc(t('Tag warnings'))+': '+esc(row.warnings.map(w=>w.field+': '+w.reason).join(' · '))+'</td></tr>':'')+(row.changes.length?row.changes.map(c=>'<tr><td><input type="checkbox" data-onetagger-field="'+esc(c.field)+'" data-track="'+esc(row.track_id)+'" aria-label="'+esc(t('Stage'))+' · '+esc(c.field)+' · '+esc(row.title||row.track_id)+'"></td><td>'+esc(row.title||row.track_id)+'</td><td>'+esc(t(c.field))+'</td><td>'+esc(c.working_value??'—')+(c.replaces_staged_edit?' · '+esc(t('Staged')):'')+'</td><td>'+esc(c.value??'—')+'</td></tr>').join(''):'<tr><td>—</td><td>'+esc(row.title||row.track_id)+'</td><td colspan="3">'+esc(t('No tag changes'))+'</td></tr>')).join('')+'</tbody></table>';
-    for(const box of $('review').querySelectorAll('input'))box.onchange=controls;
+    reviewRows();
     controls();
   }
   async function action(work){busy=true;controls();try{await work();}finally{busy=false;controls();}}

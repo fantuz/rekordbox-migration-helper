@@ -57,7 +57,7 @@ def main():
                 # displayed in Chromium, Firefox or WebKit.
                 # New captures show time-of-day, unlike old date-only values.
                 assert re.search(r'\d{1,2}:\d{2}',page.locator('#dj-snapshot option[value="'+sid+'"]').text_content())
-                assert page.evaluate('''() => !/\d{1,2}:\d{2}/.test(snapshotMoment('2024-02-10'))''')
+                assert page.evaluate(r'''() => !/\d{1,2}:\d{2}/.test(snapshotMoment('2024-02-10'))''')
                 for code in LANGUAGES:
                     page.select_option('#language',code)
                     page.wait_for_function('(code)=>document.documentElement.lang===code && document.documentElement.dataset.languageBusy!=="true"',arg=code)
@@ -82,7 +82,8 @@ def main():
                         assert page.locator('#lab-pilot-target option[value="random"]').inner_text()==messages[code]['Random selection']
                         assert page.locator('#lab-pilot-target option[value="missing_genre"]').inner_text()==messages[code]['Missing genre']
                         page.locator('.nav[data-view="file-health"]').click()
-                        assert page.locator('#file-health-status option[value="not_playable"]').inner_text()==messages[code]['Not playable']
+                        assert page.locator('#file-health-status option[value="not_playable"]').inner_text()==messages[code]['Unavailable']
+                        assert page.locator('#file-health-status option[value="playable"]').inner_text()==messages[code]['Accessible']
                         page.locator('.nav[data-view="analyzer"]').click()
                         assert page.locator('#analyzer-journal-monitor label span').inner_text()==messages[code]['Monitor source journal changes']
                         page.locator('.nav[data-view="insights"]').click()
