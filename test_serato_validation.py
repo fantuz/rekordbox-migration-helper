@@ -11,6 +11,7 @@ import zipfile
 
 from serato_bridge import draft_package,preview_package,volume_relative
 from serato_reader import read_database,read_crate,validate_export
+from serato_paths import resolve_serato_profile
 
 
 def source():
@@ -26,6 +27,29 @@ def source():
 
 
 class SeratoValidationTests(unittest.TestCase):
+
+    def test_target_path_profiles_are_explicit_and_linux_safe(self):
+        win=resolve_serato_profile('C:/','D:/','windows',host='linux')
+        self.assertEqual(win['target'],'windows')
+        self.assertTrue(win['simulated'])
+        self.assertEqual(win['paths']['library'],'%LOCALAPPDATA%/Serato/Library')
+        mac=resolve_serato_profile('C:/','/Volumes/DJ','macos',host='linux')
+        self.assertTrue(mac['simulated'])
+        self.assertEqual(mac['paths']['music'],'~/Music/_Serato_')
+        self.assertIn('Application Support/Serato/Library',mac['paths']['library'])
+        self.assertFalse(resolve_serato_profile('/Volumes/DJ',profile='macos',host='darwin')['simulated'])
+        for root,profile in [('C:/','macos'),('/Volumes/DJ','windows'),('../foo','macos')]:
+            with self.assertRaises(ValueError):resolve_serato_profile('C:/',root,profile,host='linux')
+        report=preview_package(source(),'C:/','macos','/Volumes/DJ')
+        self.assertEqual(report['target_profile']['simulated'],__import__('sys').platform!='darwin')
+        self.assertEqual(report['target_profile']['target_volume_root'],'/Volumes/DJ')
+        self.assertEqual(report['tracks_written'],2)
+        packed,manifest=draft_package(source(),'C:/','macos','/Volumes/DJ')
+        with zipfile.ZipFile(BytesIO(packed)) as archive:
+            self.assertIn('_Serato_/database V2',archive.namelist())
+            self.assertIn('Serato/Library',archive.read('READ-ME.txt').decode('utf-8'))
+        self.assertEqual(manifest['validation']['status'],'passed')
+
     def test_case_aliases_reference_the_exact_database_spelling_and_keep_repetitions(self):
         original=source();before=deepcopy(original);payload,manifest=draft_package(original,'C:/')
         with zipfile.ZipFile(BytesIO(payload)) as archive:

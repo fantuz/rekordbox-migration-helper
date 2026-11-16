@@ -267,14 +267,48 @@ def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None,
     return {'id':identity,'summary':summary,'sample':sample,'status':'preview'}
 
 
-def batch_record(store,identity,offset=0):
+BATCH_SORT_FIELDS=('sample','title','artist','genre','status','confidence','year')
+
+
+def batch_record(store,identity,offset=0,sort='sample',direction='asc'):
+    """Order the entire saved batch before returning its 50-row page.
+
+    The provider never receives sorting parameters; persisted sample order and
+    review decisions remain untouched. Missing keys sort last in both directions.
+    """
+    if sort not in BATCH_SORT_FIELDS or direction not in ('asc','desc'):
+        raise ValueError('Choose a supported MusicBrainz column and direction')
+    try:offset=int(offset)
+    except (ValueError,TypeError):raise ValueError('Choose a valid results page offset') from None
+    if not 0<=offset<=1000000:raise ValueError('Choose a valid results page offset')
     with store.connection() as db:
         r=db.execute('SELECT * FROM mb_batches WHERE id=?',(identity,)).fetchone()
         if not r:raise ValueError('Pilot batch not found')
         results={x['track_id']:json.loads(x['payload']) for x in db.execute('SELECT * FROM mb_results WHERE batch_id=?',(identity,))}
     sample=json.loads(r['sample'])
+    rows=[{**t,**results.get(t['id'],{'status':'not_requested'})} for t in sample]
+    if sort!='sample':
+        def value(row):
+            if sort=='confidence':
+                candidates=row.get('candidates') or []
+                raw=candidates[0].get('confidence') if candidates else None
+            elif sort=='year':
+                raw=(row.get('proposal') or {}).get('year') or row.get('year')
+            else:
+                raw=row.get(sort)
+            if raw is None or isinstance(raw,str) and not raw.strip():return None
+            if sort in ('confidence','year'):
+                try:return float(raw)
+                except (TypeError,ValueError):return None
+            return str(raw).casefold()
+        # Python's stable sort retains original sample order for ties.
+        known=[(value(row),row) for row in rows]
+        present=[(key,row) for key,row in known if key is not None]
+        absent=[row for key,row in known if key is None]
+        present.sort(key=lambda item:item[0],reverse=direction=='desc')
+        rows=[row for _,row in present]+absent
     return {'id':identity,'snapshot_id':r['snapshot_id'],'created':r['created'],'status':r['status'],'summary':json.loads(r['summary']),
-            'total':len(sample),'offset':int(offset),'rows':[{**t,**results.get(t['id'],{'status':'not_requested'})} for t in sample[int(offset):int(offset)+50]]}
+            'total':len(rows),'offset':offset,'sort':sort,'direction':direction,'rows':rows[offset:offset+50]}
 
 
 def run_batch(store,identity,client,progress):

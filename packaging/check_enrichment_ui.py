@@ -134,6 +134,13 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     assert page.locator('#view-lab #lab-panel-pilot').count()==0
     assert page.locator('.nav[data-view="musicbrainz"]').evaluate('e=>e.closest(".nav-group").dataset.navSection==="enrich"')
     page.evaluate('(id)=>{labBatch=id;return labLoadPilot();}',batch['id'])
+    page.locator('[data-lab-pilot-sort="title"]').click()
+    page.wait_for_function('document.querySelector("#lab-pilot-results th[aria-sort=ascending] [data-lab-pilot-sort=title]")!==null')
+    page.evaluate('() => BackgroundPilot.refresh()')
+    page.wait_for_function('document.querySelector("#lab-pilot-results th[aria-sort=ascending] [data-lab-pilot-sort=title]")!==null')
+    page.locator('[data-lab-pilot-sort="title"]').click()
+    page.wait_for_function('document.querySelector("#lab-pilot-results th[aria-sort=descending] [data-lab-pilot-sort=title]")!==null')
+    assert page.locator('#lab-pilot-results table[data-sort-scope="server"]').count()==1
     page.locator('#lab-pilot-enabled').check();page.locator('#lab-pilot-consent').check();page.locator('#lab-pilot-start').click()
     page.wait_for_function('document.querySelector("#pilot-background-text").textContent.includes("complete")')
     # A finished, persisted batch must relabel its status and counters when

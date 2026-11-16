@@ -18,6 +18,12 @@ Third-party research describes `master.sqlite` and `root.sqlite` inside the 4.x 
 
 A future **read-only 4.x discovery phase** should identify which stores exist, capture file and journal metadata, inventory tables and relationships from a stable private copy, and compare results against application counts. It must not merge, checkpoint or replace an active Serato database. Cue, loop and grid migration additionally needs explicit source/audio-tag handling and independent test fixtures.
 
+### Cross-platform target path profiles
+
+The detached legacy draft now accepts an explicit target path profile: **Auto**, **Windows** or **macOS**. On Linux, both targets are explicitly treated as **simulated path conventions**, not evidence of an installed/running Serato application. An optional target music volume root can differ from the source volume: for example source `C:/`, target `/Volumes/DJ`. Only volume-relative track paths are encoded; they retain their internal folder hierarchy, which must actually be copied to the chosen destination before testing. This does not invent file existence or translate drive letters automatically. Preview and ZIP manifest identify the source and target roots, target OS profile and whether it was simulated. The generated ZIP remains an **unverified legacy database V2 and static crate draft**, not a Serato 4.x SQLite database.
+
+Official Serato paths: on Windows, `%USERPROFILE%/Music/_Serato_` and `%LOCALAPPDATA%/Serato/Library`; on macOS, `~/Music/_Serato_` and `~/Library/Application Support/Serato/Library`. External volumes typically carry `_Serato_` at their root. The newer `Serato/Library` folder is shown as a *location hint only*: our ZIP does not write its modern SQLite content.
+
 ### Suggested compatibility milestones
 
 1. **Real-application acceptance:** import the existing synthetic three-track fixture into isolated installations of Serato 3.x and 4.x, recording application version, OS, library layout, errors and what Serato actually displays.

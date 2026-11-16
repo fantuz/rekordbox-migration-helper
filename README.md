@@ -62,6 +62,18 @@ Track details keeps listening, comments, colour choices and working edits togeth
 
 Library intelligence explores saved playlist membership and order. See [screenshot provenance and regeneration](docs/SCREENSHOTS.md).
 
+### More views from a real library
+
+The next two screenshots were provided by a user from their own music collection (unlike the synthetic CI examples above). They contain visible track titles, genre labels and aggregate counts, but **no audio files or databases**. They are included with explicit permission.
+
+![MusicBrainz enrichment with candidate review, provider evidence and batch counters](docs/screenshots/musicbrainz-enrichment-real.webp)
+
+MusicBrainz enrichment compares local tags with public recording candidates; all identity approvals remain reviewable and provider lookups are opt-in.
+
+![Interactive library bubbles showing the distribution of saved genres](docs/screenshots/library-bubbles-real.webp)
+
+Library bubbles explores metadata categories visually, including unknown genres and mixed families. The current category breakdown and navigation are generated locally.
+
 ## Feature inventory
 
 A factual overview of the current source tree. Release downloads may lag behind `main`; the draft items below retain their stated limits.

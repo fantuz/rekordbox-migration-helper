@@ -110,13 +110,13 @@ def register(owner):
     @owner.app.post('/api/intelligence/serato/preview')
     def intelligence_serato_preview():
         values=body()
-        return jsonify(preview_package(captured(store(),values.get('snapshot','')),values.get('volume_root','')))
+        return jsonify(preview_package(captured(store(),values.get('snapshot','')),values.get('volume_root',''),values.get('target_profile','auto'),values.get('target_volume_root','')))
 
     @owner.app.post('/api/intelligence/serato')
     def intelligence_serato():
         values=body()
         if values.get('draft_acknowledged') is not True:raise ValueError('Confirm that this is an unverified Serato interoperability draft')
         s=captured(store(),values.get('snapshot',''))
-        payload,_=draft_package(s,values.get('volume_root',''))
+        payload,_=draft_package(s,values.get('volume_root',''),values.get('target_profile','auto'),values.get('target_volume_root',''))
         return owner.app.response_class(payload,mimetype='application/zip',
             headers={'Content-Disposition':'attachment; filename="serato-draft.zip"'})
