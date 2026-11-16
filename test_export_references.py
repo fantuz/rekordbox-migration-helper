@@ -63,6 +63,10 @@ class ExportReferenceTests(unittest.TestCase):
                 validate_reference(uri,'windows',aliases)
         self.assertEqual(validate_reference('file:///C:/MountedWindows/Music2/A.wav','windows',aliases),
                          'file:///C:/MountedWindows/Music2/A.wav')
+        # A mapping to the same logical Windows folder is not a new destination.
+        uri='file:///D:/Music/A.wav'
+        self.assertEqual(validate_reference(uri,'windows',
+            [{'recorded_root':'d:/music','local_root':'D:/Music'}]),uri)
 
     def test_platform_change_requires_remaining_references_to_be_reviewed(self):
         c=catalog(target='macos')

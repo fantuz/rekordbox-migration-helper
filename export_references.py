@@ -91,7 +91,8 @@ def validate_reference(uri, target, audio_mappings=()):
     for mapping in audio_mappings:
         local = str(mapping.get('local_root', '')).replace('\\', '/')
         recorded = mapping.get('recorded_root', '')
-        if local and local != recorded and at_root(path, local):
+        same_destination = bool(local and recorded and at_root(local, recorded) and at_root(recorded, local))
+        if local and not same_destination and at_root(path, local):
             raise ValueError('This is a local playback mapping. Enter the recorded destination path for export.')
     kind = platform(uri)
     if target == 'windows':
