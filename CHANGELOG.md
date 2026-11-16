@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Bind active-workspace actions to the reviewed workspace and revision, reject stale tabs, and retain the previous workspace when import publication fails.
+- Recover interrupted uploads, reuse completed files when retrying the same selection, and deduplicate analysis submissions.
+- Add source-scoped Audio folders mappings for Windows libraries on Linux/macOS mounts, shared by playback, File health and MusicBrainz eligibility. Keep original and exported references unchanged.
+- Sort full filtered collections before pagination across metadata, history, insights and intelligence results; retain per-tab sources, filters and sort choices through navigation and reload.
+- Review alternative MusicBrainz recordings and select an explicit release for album or release-year staging. Retain provenance and invalidate stale approvals without changing personal stars.
+- Add failure regressions and browser acceptance for mapped playback, navigation and reviewed enrichment. See [delivery report](docs/DELIVERY-REPORT-2026-11-16.md).
+
 ## 1.1.1 — 2026-11-15
 
 This update adds advanced relocation and makes current-library enrichment, queued batches and workflow results easier to use.

@@ -29,12 +29,13 @@ Mappings support access on this computer. They do not rewrite the destination pa
 
 ## Validation and limits
 
-All execution, tests, benchmarks, browser automation and package builds are performed on GitHub Actions. Unit/API checks cover Linux, Windows and both macOS architectures. Browser checks cover Chromium, Firefox and WebKit with invented metadata and generated silence; MusicBrainz tests use mocked responses or a seeded client cache and make no provider requests.
+All execution, tests, benchmarks, browser automation and package builds are performed on GitHub Actions. The 381 unit/API tests cover Linux, Windows and both macOS architectures. Browser checks cover Chromium, Firefox and WebKit with invented metadata and generated silence; MusicBrainz tests use mocked responses or a seeded client cache and make no provider requests.
 
 The release gate still requires all source checks, browser checks, five package artifacts, native startup checks and package/source consistency. Final CI results are recorded in PR #53.
 
 - The user's actual NTFS mount and default media player require a local smoke check after installation. Synthetic mapped-folder tests do not establish behavior for every NTFS driver or mount configuration.
 - “Playable” means a readable regular file with a supported audio suffix. It is not a codec/decode guarantee; launching always rechecks the file.
+- Case-insensitive fallback searches at most 4,096 entries per directory; exact path matches do not have that limit. An oversized ambiguous lookup remains unverified.
 - Mapping a disconnected/replaced mount requires review; reconnect it and save the mapping again if its device identity changes.
 - Provider release lists are bounded. No automatic selection claims an exact album edition, and personal stars remain manual.
 - Actual Rekordbox/Serato restore acceptance, OS code signing and live provider availability remain outside this change.
