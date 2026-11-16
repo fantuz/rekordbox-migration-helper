@@ -105,7 +105,9 @@ class MountedAudioTests(unittest.TestCase):
         nested=allowed/'Music';nested.mkdir()
         outside=self.root/'allowed-other';outside.mkdir()
         def check(path):return validate([{'recorded_root':'E:/','local_root':str(path)}],[allowed])
+        self.assertEqual(Path(check(allowed)[0]['local_root']),allowed.resolve())
         self.assertEqual(Path(check(nested)[0]['local_root']),nested.resolve())
+        self.assertEqual(Path(check(str(allowed)+os.sep)[0]['local_root']),allowed.resolve())
         for path in (outside,allowed/'..'/'allowed-other',self.root):
             with self.subTest(path=path),self.assertRaises(ValueError):check(path)
         try:(allowed/'escape').symlink_to(outside,target_is_directory=True)

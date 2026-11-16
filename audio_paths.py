@@ -71,7 +71,11 @@ def confined_folder(raw, roots):
     canonical=os.path.normcase(os.path.realpath(expanded))
     for root in roots:
         boundary=os.path.normcase(os.path.realpath(str(root)))
-        if canonical==boundary or canonical.startswith(boundary.rstrip(os.sep)+os.sep):
+        # Exact-root selection returns the server's own canonical root. Only
+        # descendants return a request-derived path, after the separator check.
+        if canonical==boundary:
+            return Path(boundary)
+        if canonical.startswith(boundary.rstrip(os.sep)+os.sep):
             return Path(canonical)
     raise ValueError('Choose an audio folder inside your home directory, a detected mounted volume, or a configured audio root.')
 
