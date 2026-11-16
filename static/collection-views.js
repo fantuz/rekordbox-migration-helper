@@ -4,7 +4,7 @@ window.NativeCollection=(()=>{
   const state={review:{offset:0,basis:'path',q:'',sort:'count',direction:'desc',flag:window.BrowseState?.value('native-zero-filter')||''},reference:{offset:0,mode:'all',q:'',sort:'title',direction:'asc'}};
   const labels={unreviewed:'Unreviewed',keep_separate:'Keep separate',candidate:'Candidate for later cleanup'};
   const fileStates=['playable','missing','inaccessible','unverified'];
-  const fileStateLabels={playable:'Playable',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'};
+  const fileStateLabels={playable:'Accessible',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'};
   const fileBadge=status=>'<span class="file-status file-status-'+esc(status)+'">'+text(fileStateLabels[status] || 'Unverified')+'</span>';
   const source=()=>window.Journeys?.context()?.source || '';
   const active=()=>source().startsWith('capture:') || source().startsWith('snapshot:');

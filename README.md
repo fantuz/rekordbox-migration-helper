@@ -116,7 +116,8 @@ A factual overview of the current source tree. Release downloads may lag behind 
 
 The objective is long-term library maintainability: distinguish redundant records, unavailable tracks, metadata inconsistencies, excess physical copies, and migration readiness. Duplicate detection is only one diagnostic; unavailable audio is not a deletion recommendation.
 
-- Cache local file-access evidence in the private SQLite sidecar and display **Playable**, **Missing**, **Inaccessible**, or **Unverified** in native duplicate comparisons, with manual refresh and advisory status filtering. Playback still verifies its path live; no media is automatically deleted.
+- Cache local file-access evidence in the private SQLite sidecar and display **Accessible**, **Missing**, **Inaccessible**, or **Unverified** in native duplicate comparisons. Accessible requires a nonempty readable file; decoding and playback remain unverified. Playback checks its path live, and the existing `playable` API key remains compatible.
+- Reuse bounded case/Unicode directory lookups for mounted Windows libraries, invalidating indexes when entries change and holding replaced volumes or ambiguous names.
 - Explore **File health** across a saved snapshot with an explicit, cancellable scan, counts and global SQLite search, status filtering and sorting. Unchecked records remain distinct from inconclusive Unverified scans.
 - Click result table headings to sort the currently displayed rows. Tables with local playback controls also show a sortable file-status column; server-paged tables do not silently reorder their entire library.
 - Review connected duplicate groups with keeper selection, donor exclusions and cue/rating conflict evidence.
@@ -140,6 +141,8 @@ The objective is long-term library maintainability: distinguish redundant record
 - See shared loading feedback after 200 ms, a “Waiting…” message after one second without a response or progress change, and elapsed time during longer operations. These notices do not cancel work; existing cancellation controls remain available.
 - Read compact, contextual guidance between the page title and language controls rather than repeated full-width notices; expand Details to view full history, statistics and lab explanations and documentation links.
 - Review recording matches, separate community ratings and vote counts, genres, tags and release-year suggestions.
+- Retain original titles/artists, every search cleanup and attempted query, and candidate disagreements including version differences in both directions. Search cleanup never replaces captured tags automatically.
+- Use the [OneTagger bridge](docs/AUDIO-MATCHING-AND-ONETAGGER.md) to hand off up to 500 selected local files through M3U, rescan their tags, review changes and stage only approved title, artist, album, genre or year fields. Original references, personal stars and cues remain unchanged by the bridge.
 - Preserve unknown ratings and personal stars; identity approval is required before staging supported suggestions.
 - Retrieve public ListenBrainz weekly, monthly or yearly listening charts and match them locally to the selected snapshot.
 - Review ambiguous versions and duplicate matches before exporting a chart-ordered M3U8 playlist.
@@ -148,7 +151,7 @@ The objective is long-term library maintainability: distinguish redundant record
 
 **Outputs and interface**
 
-- Prepare XML and native backup ZIP copies from one frozen decision set, with validation and export reports.
+- Prepare XML and native backup ZIP copies from one frozen decision set, with [independent read-back verification](docs/EXPORT-VERIFICATION.md) of metadata, references, cues and playlist order before publication. A mismatch blocks the complete export set and is reported as an error.
 - Keep native backup preparation limited to supported v7 inputs and an explicit backup acknowledgement.
 - Export standalone HTML explorers and offline minisites, including filtered CSV downloads.
 - Choose public aggregates, a selected track list or a private explorer; file paths are optional and audio is excluded.

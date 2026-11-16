@@ -264,7 +264,7 @@ def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None,
     selected,groups=sample_genres(snapshot,top,seed,sample_size,target,target_value)
     identity=uuid4().hex
     sample=[{k:t.get(k) for k in ('id','title','artist','album','genre','year','rating','duration','isrc','metadata_origin')} for t in selected]
-    summary={'groups':groups,'target':target,'target_value':target_value,'requested_tracks':sample_size,'estimated_uncached_seconds':round(2*len(sample)*delay),'tracks':len(sample),'seconds_per_request':float(delay),'requests':0,'cache_hits':0,'done':0,
+    summary={'groups':groups,'target':target,'target_value':target_value,'requested_tracks':sample_size,'estimated_uncached_seconds':round(5*len(sample)*delay),'tracks':len(sample),'seconds_per_request':float(delay),'requests':0,'cache_hits':0,'done':0,
              'rating_available':0,'genre_available':0,'year_available':0,'experimental':True,'queries_include_audio':False,'queries_include_paths':False,
              'playable_only':playable_only,'excluded_unplayable':excluded_unplayable,
              'audio_mapping_revision':snapshot.get('audio_mapping_revision')}

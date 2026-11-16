@@ -153,6 +153,18 @@ def mapped_path(value, mappings):
     return None
 
 
+def mapping_applies(value,mappings):
+    value=recorded(value)
+    if value is None:return False
+    windows=bool(re.match('^[A-Za-z]:',value))
+    if windows:value=value.casefold()
+    for row in mappings or []:
+        prefix=row['recorded_root'].rstrip('/')
+        if windows:prefix=prefix.casefold()
+        if value==prefix or value.startswith(prefix+'/'):return True
+    return False
+
+
 def inherit(store, old_scope, new_scope):
     rows=store.setting('audio_paths:'+old_scope,[])
     if rows:store.set_setting('audio_paths:'+new_scope,rows)

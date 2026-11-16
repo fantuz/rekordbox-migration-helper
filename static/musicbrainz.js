@@ -81,6 +81,7 @@ async function loadMusicBrainz(sync=false){
   $('#lab-pilot-enabled').disabled=info.musicbrainz_forced_off || !source;
   await musicBrainzTargetOptions();
   labPilotButtons();await BackgroundPilot.refresh();
+  if(window.OneTaggerBridge)await OneTaggerBridge.load();
   if(labBatch && revision===musicBrainzRevision)await labLoadPilot();
 }
 function musicBrainzSelectPrepared(){

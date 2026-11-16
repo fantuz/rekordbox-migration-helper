@@ -32,12 +32,13 @@ def recorded_path(value):
 
 
 def candidate_paths(track, mappings=None):
-    from audio_paths import mapped_path
+    from audio_paths import mapped_path,mapping_applies
     for key in ('current_path','xml_location','original_path'):
         value=track.get(key)
         if not value:continue
-        mapped=mapped_path(value,mappings) if mappings else None
-        yield mapped if mapped is not None else recorded_path(value)
+        # A replaced/disconnected mapped volume must not fall back to another
+        # file at the recorded POSIX location and bypass the volume identity.
+        yield mapped_path(value,mappings) if mapping_applies(value,mappings) else recorded_path(value)
 
 
 def available_audio(track, mappings=None):

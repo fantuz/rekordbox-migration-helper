@@ -91,6 +91,8 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
     requested=("xml","zip") if kind=="pair" else (kind,)
     validations={}
     try:
+        from export_verification import freeze
+        expectations=freeze(catalog,decisions,relocations,kind,pending)
         for index,format_name in enumerate(requested):
             check_inputs(metadata)
             destination=pending/("edited-collection.xml" if format_name=="xml" else "edited-library.zip")
@@ -100,6 +102,7 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
             validations[format_name]=writer(catalog,deepcopy(decisions),dict(relocations),destination,update)
             if not destination.is_file() or not destination.stat().st_size:
                 raise ValueError(format_name.upper()+" export did not produce a file")
+            validations[format_name]['independent_verification']=expectations.check(format_name,destination,update)
             check_inputs(metadata)
         if kind=="pair" and validations["xml"]["merges"]!=validations["zip"]["merges"]:
             raise ValueError("The XML and ZIP writers reported different merge plans")

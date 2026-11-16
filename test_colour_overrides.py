@@ -161,7 +161,8 @@ class ColourSidecarAPITests(unittest.TestCase):
         catalog=SimpleNamespace(metadata={'xml_path':str(xml),'zip_path':str(backup),'field_overrides':edits,'export_target':'windows'},tracks={})
         state={'id':'synthetic','metadata_override_evidence':evidence,'metadata_edit_history':self.store.override_history('session:synthetic')}
         def writer(c,d,r,path,p):path.write_bytes(b'output');return {'merges':0,'metadata_fields':1,'metadata_changes_by_field':{'comment':1},'metadata_tracks_outside_xml':1}
-        result=prepare_export(catalog,{}, {},state,self.root/'exports','a'*32,'xml',lambda *_:None,xml_writer=writer)
+        with patch('export_verification.freeze',return_value=SimpleNamespace(check=lambda *_:{'status':'passed'})):
+            result=prepare_export(catalog,{}, {},state,self.root/'exports','a'*32,'xml',lambda *_:None,xml_writer=writer)
         report=json.loads((Path(result['directory'])/'report.json').read_text())
         self.assertEqual(report['metadata_change_recap']['by_field'],{'comment':1,'colour':1})
         self.assertEqual(report['metadata_change_recap']['count_scope'],'staged')
