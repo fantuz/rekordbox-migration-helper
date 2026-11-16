@@ -44,7 +44,7 @@ def check_review_workspace_ui(browser,base,source,output):
         assert page.locator('.native-review-note').get_attribute('open') is None
         page.locator('[data-native-group="g0"]').click();page.wait_for_selector('.native-compare-record')
         assert page.locator('.native-compare-record').count()==50
-        assert page.locator('.native-compare-record').first.locator('dd').all_text_contents()==['240','4','1','2','1']
+        assert page.locator('.native-compare-record').first.locator('dd').all_text_contents()==['240','Unknown','4','1','2','1']
         assert '/Synthetic/Music/' in page.locator('.native-record-path code').first.inner_text()
         assert page.locator('.native-save').bounding_box()['y']<page.locator('.native-compare-record').first.bounding_box()['y']
         page.screenshot(path=str(output/'native-duplicate-review-dense.png'))

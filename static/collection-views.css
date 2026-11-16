@@ -62,3 +62,6 @@
 [data-theme="dark"] .metadata-flag-zero_duration{color:#ffd080}
 [data-theme="dark"] .metadata-flag-zero_size{color:#ffafcb}
 @media(forced-colors:active){.metadata-flag,.metadata-flag-filter{color:CanvasText;border-color:CanvasText}.metadata-flag-filter[aria-pressed="true"]{outline-color:Highlight}}
+
+.native-metadata-filters{margin:0 12px 6px}
+.native-metadata-filters .metadata-quick-filters{margin:4px 0;gap:8px}

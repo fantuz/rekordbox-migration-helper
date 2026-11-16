@@ -21,10 +21,15 @@ def main():
         {'id':'folder','name':'Synthetic tests','folder':True},
         {'id':'set','name':'Order and repetitions','parent':'folder','tracks':['2','0','1','0']}],
         'capabilities':{'playlist_order':True}}
-    payload,manifest=draft_package(snapshot,root.anchor)
+    # This fixture chooses a destination explicitly; Linux is a generator host,
+    # never a Serato target. Linux output is a simulated macOS volume layout.
+    target_profile='windows' if sys.platform.startswith('win') else 'macos'
+    target_root=root.anchor if sys.platform.startswith('win') or sys.platform=='darwin' else '/Volumes/DJSmoke'
+    payload,manifest=draft_package(snapshot,root.anchor,target_profile,target_root)
     (root/'serato-draft.zip').write_bytes(payload)
     (root/'README.txt').write_text('SYNTHETIC SERATO TEST\n\nThree invented tracks; each contains one second of generated silence.\n'
-        'The ZIP references the exact generated music paths on this computer.\n'
+        'On Windows/macOS the ZIP references the generated music paths on this computer.\n'
+        'On Linux it simulates /Volumes/DJSmoke on macOS; inspect manifest target paths and copy the generated audio before testing there.\n'
         'If you move the files to another computer, run this generator there again.\n'
         'Use only a separate, backed-up test library. Never replace your working _Serato_ folder.\n'
         'Follow docs/SERATO-BRIDGE.md and check 3 tracks, Unicode, nesting and crate order 2,0,1,0.\n'
