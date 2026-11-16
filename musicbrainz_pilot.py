@@ -294,7 +294,7 @@ def batch_record(store,identity,offset=0,sort='sample',direction='asc'):
         if not r:raise ValueError('Pilot batch not found')
         from metadata_concurrency import revision as edit_stamp
         source=db.execute('SELECT scope_key FROM snapshots WHERE id=?',(r['snapshot_id'],)).fetchone()
-        edit_revision=edit_stamp(db,source[0])
+        edit_revision=edit_stamp(db,source[0]) if source else None
         results={x['track_id']:json.loads(x['payload']) for x in db.execute('SELECT track_id,payload FROM mb_results WHERE batch_id=?',(identity,))}
         scanned={x['track_id']:x for x in db.execute(
             'SELECT track_id,status,checked_at FROM file_health_records WHERE source=?',
