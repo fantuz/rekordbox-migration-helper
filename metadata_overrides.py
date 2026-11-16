@@ -6,6 +6,11 @@ FREE_FIELDS=('comment','colour','rating')
 XML_FIELDS={'title':'Name','artist':'Artist','year':'Year','rating':'Rating','album':'Album','genre':'Genre','comment':'Comments','colour':'Colour'}
 
 
+def xml_text(value, *, multiline=False):
+    return all((ord(c)>=32 or (multiline and c in '\t\n\r')) and
+               not (0xD800<=ord(c)<=0xDFFF or ord(c) in (0xFFFE,0xFFFF)) for c in value)
+
+
 def validate(field,value):
     if field not in FIELDS:raise ValueError('Choose title, artist, year, rating, album, genre, comment or colour')
     if field=='colour':
@@ -16,7 +21,7 @@ def validate(field,value):
         return code
     if field=='comment':
         value='' if value is None else str(value)
-        if len(value)>4096 or any((ord(c)<32 and c not in '\t\n\r') or 0xD800<=ord(c)<=0xDFFF or ord(c) in (0xFFFE,0xFFFF) for c in value):
+        if len(value)>4096 or not xml_text(value,multiline=True):
             raise ValueError('Comments support up to 4,096 characters, including line breaks and tabs, without invalid XML/control characters')
         return value
     if field in ('year','rating'):
@@ -29,7 +34,7 @@ def validate(field,value):
         if field=='year' and not 1000<=number<=datetime.now(timezone.utc).year+1:raise ValueError('Enter a plausible four-digit year, or clear it')
         return number
     value='' if value is None else str(value).strip()
-    if len(value)>255 or any(ord(c)<32 for c in value):raise ValueError('Use at most 255 characters without control characters')
+    if len(value)>255 or not xml_text(value):raise ValueError('Use at most 255 XML-compatible characters without control characters')
     return value
 
 

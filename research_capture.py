@@ -87,6 +87,7 @@ def capture_workspace(catalog,scope_key):
     for track in snapshot['tracks']:
         raw=catalog.tracks[track['id']]
         track.update(size=raw.get('size_bytes'),uuid=raw.get('uuid'),isrc=raw.get('isrc') or '',analysis_path=raw.get('analysis_path'),
+                     xml_bpm=raw.get('xml_bpm'),grid_bpms=json.loads(raw.get('grid_bpms_json') or '[]'),
                      raw_tags={field:raw.get(field) for field in ('year','bpm','rating')},
                      cues=[{'id':c.get('ID'),'uuid':c.get('UUID'),'kind':c['Kind'],'in_ms':c['InMsec'],'out_ms':c.get('OutMsec'),
                             'label':c.get('Comment') or '', 'color':c.get('Color'),'auto':is_auto(c)} for c in catalog.cues[track['id']]])

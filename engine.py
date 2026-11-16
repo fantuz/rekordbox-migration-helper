@@ -14,6 +14,7 @@ import sqlite3
 import struct
 import zipfile
 from tempfile import TemporaryDirectory
+from migration_readiness import finite
 
 AUTO_LABELS = {"cue(auto)", "1.1bars"}
 HOT_NUMBERS = dict(zip((1, 2, 3, 5, *range(6, 18)), range(16)))
@@ -295,13 +296,16 @@ def parse_xml(path, progress):
                 current = attrs["TrackID"]
                 if current in tracks:
                     raise ValueError("XML contains repeated TrackID values")
-                tracks[current] = {"attrs": attrs, "marks": [], "tempo": 0}
+                tracks[current] = {"attrs": attrs, "marks": [], "tempo": 0, "grid_bpms": []}
             elif name == "POSITION_MARK":
                 if current is None:raise ValueError('A cue must belong to a collection track')
                 tracks[current]["marks"].append(attrs)
             elif name == "TEMPO":
                 if current is None:raise ValueError('A tempo marker must belong to a collection track')
                 tracks[current]["tempo"] += 1
+                bpm=finite(attrs.get('Bpm'))
+                if bpm and bpm not in tracks[current]['grid_bpms'] and len(tracks[current]['grid_bpms'])<32:
+                    tracks[current]['grid_bpms'].append(bpm)
         elif section == "PLAYLISTS" and name == "TRACK":
             if not attrs.get('Key'):raise ValueError('Every playlist track reference needs a Key')
             playlists.append(attrs["Key"])
@@ -396,7 +400,8 @@ def _analyze(backup, xml, folder, progress, scratch=None):
                     CREATE TABLE source_track(track_id TEXT PRIMARY KEY,title TEXT,artist TEXT,october_xml INTEGER,
                         size_bytes INTEGER,duration_seconds INTEGER,rating INTEGER,comment TEXT,device_id TEXT,service_id INTEGER,
                         current_path TEXT,original_path TEXT,xml_location TEXT,analysis_path TEXT,image_path TEXT,
-                        preview_sha256 TEXT,grid_sha256 TEXT,xml_tempo_entries INTEGER,xml_marks_json TEXT,play_count INTEGER);
+                        preview_sha256 TEXT,grid_sha256 TEXT,xml_tempo_entries INTEGER,xml_marks_json TEXT,play_count INTEGER,
+                        xml_bpm REAL,grid_bpms_json TEXT);
                     CREATE TABLE source_cue(cue_id TEXT PRIMARY KEY,source_track_id TEXT,source_representation TEXT,cue_json TEXT);
                     CREATE TABLE match_candidate(donor_id TEXT,candidate_id TEXT,evidence_rank INTEGER,
                         PRIMARY KEY(donor_id,candidate_id));
@@ -405,11 +410,12 @@ def _analyze(backup, xml, folder, progress, scratch=None):
                 for r in rows:
                     x = xml_tracks.get(r["ID"])
                     signal, grid = assets.get(asset_key(r["AnalysisDataPath"]), (None, None))
-                    db.execute("INSERT INTO source_track VALUES (" + ",".join("?"*20) + ")", (
+                    db.execute("INSERT INTO source_track VALUES (" + ",".join("?"*22) + ")", (
                         r["ID"],r["Title"] or "",r["artist_name"] or "",bool(x),r["FileSize"],r["Length"],
                         r["Rating"] or 0,r["Commnt"] or "",r["DeviceID"],r["ServiceID"],r["FolderPath"],r["OrgFolderPath"],
                         x["attrs"]["Location"] if x else None,r["AnalysisDataPath"],r["ImagePath"],signal,grid,
-                        x["tempo"] if x else None,json.dumps(x["marks"] if x else []),r["DJPlayCount"]))
+                        x["tempo"] if x else None,json.dumps(x["marks"] if x else []),r["DJPlayCount"],
+                        finite(x['attrs'].get('AverageBpm')) if x else None,json.dumps(x['grid_bpms'] if x else [])))
                 seen = set()
                 for r in native.execute("SELECT * FROM djmdCue WHERE rb_local_deleted=0"):
                     c = dict(r)

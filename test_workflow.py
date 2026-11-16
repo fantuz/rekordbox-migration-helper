@@ -81,6 +81,22 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"changed"):self.export(write_xml,None)
         self.assertEqual(list((self.root/"exports").iterdir()),[])
 
+    def test_stat_preserving_change_during_writer_stops_publication(self):
+        import os
+        self.meta['input_fingerprints']=fingerprint_inputs(self.meta,content=True)
+        stamp=self.xml.stat()
+        def write_xml(c,d,r,path,p):
+            path.write_text('<collection/>')
+            self.xml.write_bytes(b'edited collection')
+            self.assertEqual(self.xml.stat().st_size,stamp.st_size)
+            os.utime(self.xml,ns=(stamp.st_atime_ns,stamp.st_mtime_ns))
+            return {'merges':1}
+        def write_zip(c,d,r,path,p):
+            path.write_bytes(b'synthetic ZIP writer output')
+            return {'merges':1}
+        with self.assertRaisesRegex(ValueError,'changed'):self.export(write_xml,write_zip)
+        self.assertEqual(list_exports(self.root/'exports'),[])
+
     def test_writer_plan_disagreement_stops_publication(self):
         def writer(count):
             def write(c,d,r,path,p):path.write_bytes(b"output");return {"merges":count}

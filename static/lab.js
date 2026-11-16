@@ -37,6 +37,7 @@ async function loadLab() {
 async function labSnapshotChanged(clear=true) {
   const s=labInfo.snapshots.find(r=>r.id===labSnapshot());
   $('#lab-unlock').disabled=!s;
+  for(const kind of ['backup','readiness','tempo'])$('#lab-'+kind).disabled=!s;
   if(!s){labEdited=null;labUnlocked=false;$('#lab-unlock').checked=false;$('#lab-tracks').replaceChildren();$('#lab-tracks-count').textContent='';$('#lab-edit-form').hidden=true;$('#lab-edit-state').textContent=I18n.t('Read-only');}
   $('#lab-snapshot-info').textContent=s?I18n.t("Scope:")+" "+s.scope_key+" "+I18n.t("· Original snapshots remain immutable.")+" "+(s.scope_key.startsWith('session:')?I18n.t("Staged edits apply to copy exports from this same workspace."):I18n.t("Edits apply to offline HTML; they do not attach to a different XML/ZIP workspace.")):I18n.t("Save a snapshot from a loaded workspace or Source analyzer capture.");
   if(clear){labTrackOffset=0;labEdited=null;$('#lab-edit-form').hidden=true;}
@@ -54,6 +55,11 @@ $$('[data-lab-tab]').forEach(b=>b.onclick=()=>{
 $('#lab-capture-form').onsubmit=wrap(async e=>{e.preventDefault();const r=await labRun('snapshots',{source:$('#lab-source').value,label:$('#lab-label').value});if(window.Journeys){await Journeys.load();await Journeys.selectContext('snapshot:'+r.id);}$('#lab-snapshot').value=r.id;await labSnapshotChanged();notify(I18n.t("Immutable snapshot saved locally"));});
 $('#lab-snapshot').onchange=wrap(()=>labSnapshotChanged());
 for(const kind of ['consistency','coverage','assets'])$('#lab-'+kind).onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind,working:$('#lab-working').checked,min_cues:$('#lab-min-cues').value,min_manual:$('#lab-min-manual').value,require_analysis:$('#lab-analysis-required').checked,paths:pathLines($('#lab-assets-path').value),verify:$('#lab-assets-verify').checked}));
+for(const kind of ['backup','readiness','tempo'])$('#lab-'+kind).onclick=wrap(()=>labRun('check',{
+  snapshot:labSnapshot(),kind,working:$('#lab-working').checked,
+  path:$('#lab-backup-path').value,verify:$('#lab-backup-verify').checked,
+  profile:$('#lab-readiness-profile').value,filesystem:$('#lab-readiness-filesystem').value
+}));
 $('#lab-compare-form').onsubmit=wrap(async e=>{e.preventDefault();await labRun('compare',{before:$('#lab-before').value,after:$('#lab-after').value,tolerance_ms:$('#lab-tolerance').value});});
 
 async function labLoadReport() {

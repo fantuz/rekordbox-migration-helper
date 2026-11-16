@@ -91,6 +91,9 @@ A factual overview of the current source tree. Release downloads may lag behind 
 
 **Library exploration and preparation**
 
+- Inspect backup ZIP coverage and optional bounded SHA-256/CRC verification in Library lab; missing components and captured analysis references stay explicit.
+- Run read-only export-readiness checks with a versioned CDJ-2000NXS2 format profile, FAT32 size limits and destination naming advisories; firmware and physical playback remain unverified.
+- Review saved BPM versus captured XML/grid tempo, half/double-tempo candidates and saved keys in musical wheel order without changing audio or beatgrids. See [Migration readiness](docs/LIBRARY-LAB.md#migration-readiness).
 - Keep immutable metadata snapshots in a separate local SQLite store. Saved editions record a timezone-aware creation time, displayed with local date, time of day and zone in snapshot selectors; older date-only evidence stays date-only.
 - Compare snapshots using recorded identity evidence and inspect changes in tags and collection distributions.
 - Browse playlists, captured order, repeated entries and missing track metadata.
