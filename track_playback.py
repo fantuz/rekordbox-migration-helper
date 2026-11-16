@@ -47,7 +47,7 @@ def available_audio(track, mappings=None):
         try:
             resolved=path.resolve(strict=True)
             if resolved.suffix.lower() not in AUDIO_EXTENSIONS:continue
-            if resolved.is_file() and os.access(resolved,os.R_OK):return resolved
+            if resolved.is_file() and resolved.stat().st_size>0 and os.access(resolved,os.R_OK):return resolved
         except (OSError,ValueError,RuntimeError):continue
     return None
 
@@ -56,7 +56,8 @@ def available_audio(track, mappings=None):
 def inspect_audio(track, mappings=None):
     """Classify recorded locations without attempting to decode or play audio.
 
-    'playable' means a readable, regular audio-suffixed file was found, not
+    The legacy API state 'playable' means a nonempty, readable, regular
+    audio-suffixed file was found (shown as Accessible in the UI), not
     that the OS association or decoder is guaranteed to work. Missing means
     the parent directory is reachable and that particular file is absent.
     """
@@ -74,7 +75,7 @@ def inspect_audio(track, mappings=None):
         seen.add(normalized)
         try:
             target=path.resolve(strict=True)
-            if target.suffix.lower() not in AUDIO_EXTENSIONS or not target.is_file():
+            if target.suffix.lower() not in AUDIO_EXTENSIONS or not target.is_file() or target.stat().st_size==0:
                 evidence.append('unverified')
             elif os.access(target,os.R_OK):
                 return 'playable', target

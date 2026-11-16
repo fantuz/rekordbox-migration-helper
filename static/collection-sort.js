@@ -22,7 +22,7 @@ window.CollectionSort=(()=>{
     const headers=[...table.tHead.rows[0].cells];
     if(choices.includes('file_status')){
       const head=document.createElement('th');head.textContent=I18n.t('File health');table.tHead.rows[0].append(head);
-      [...table.tBodies[0].rows].forEach((tr,index)=>{const cell=tr.insertCell();cell.textContent=I18n.t(({playable:'Playable',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'})[rows[index]?.file_status] || 'Unchecked');});
+      [...table.tBodies[0].rows].forEach((tr,index)=>{const cell=tr.insertCell();cell.textContent=I18n.t(({playable:'Accessible',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'})[rows[index]?.file_status] || 'Unchecked');});
       headers.push(head);
       controls.title=I18n.t('Last saved File health scan; unchecked tracks sort last');
     }

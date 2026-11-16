@@ -24802,6 +24802,20 @@
       "ar": "مواقع الصوت المسموح بها",
       "pt-PT": "Localizações de áudio permitidas",
       "pt-BR": "Locais de áudio permitidos"
+    },
+    "Accessible": {
+      "de": "Zugänglich",
+      "fr": "Accessible",
+      "it": "Accessibile",
+      "es": "Accesible",
+      "el": "Προσβάσιμο",
+      "pl": "Dostępny",
+      "cs": "Přístupné",
+      "ru": "Доступен",
+      "ja": "アクセス可能",
+      "ar": "يمكن الوصول إليه",
+      "pt-PT": "Acessível",
+      "pt-BR": "Acessível"
     }
   }
 }

@@ -11,7 +11,7 @@ import time
 from workbench_store import Store
 from track_playback import inspect_audio
 
-SCHEMA = 'file-status-v1'
+SCHEMA = 'file-status-v2-nonempty'
 MAX_ENTRIES = 20000
 TTL = {
     'playable': 3600,

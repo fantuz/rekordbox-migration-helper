@@ -1,13 +1,20 @@
 /* User-selected identities/releases, never automatic album inference. */
+function musicBrainzEvidenceMarkup(row){
+  const chosen=(row.candidates||[]).find(c=>c.mbid===row.selected_mbid)||row.candidates?.[0];
+  const evidence={original:row.original_tags||{title:row.title,artist:row.artist},cleanup:row.cleanup,
+    search_history:row.search_history||[],candidate:chosen?{title:chosen.title,artist:chosen.artist,
+      cleanup:chosen.candidate_cleanup,disagreements:chosen.disagreements||[]}:null};
+  return '<details><summary>'+esc(I18n.t('Search and match evidence'))+'</summary><pre>'+esc(JSON.stringify(evidence,null,2))+'</pre></details>';
+}
 function musicBrainzCandidateMarkup(row){
   const t=key=>I18n.t(key),candidates=row.candidates||[];
-  if(candidates.length<2)return '';
+  if(candidates.length<2)return musicBrainzEvidenceMarkup(row);
   return '<details><summary>'+esc(t('Alternative recordings'))+' · '+num(candidates.length)+'</summary>'+
     '<p class="subtle">'+esc(t('Retrieve another candidate from MusicBrainz. Changing identity removes this batch’s staged suggestions and requires approval again.'))+'</p>'+
     '<select data-mb-candidate-choice="'+esc(row.id)+'" aria-label="'+esc(t('Alternative recordings'))+'">'+
     candidates.map(c=>'<option value="'+esc(c.mbid)+'"'+(c.mbid===row.selected_mbid?' selected':'')+'>'+esc(c.title)+' · '+esc(c.artist)+' · '+esc(c.confidence)+' · '+esc(c.mbid)+'</option>').join('')+'</select>'+
     '<label><input type="checkbox" data-mb-candidate-consent="'+esc(row.id)+'"> '+esc(t('I agree to retrieve this recording from MusicBrainz.'))+'</label>'+
-    '<button class="button secondary" data-mb-candidate="'+esc(row.id)+'">'+esc(t('Retrieve selected recording'))+'</button></details>';
+    '<button class="button secondary" data-mb-candidate="'+esc(row.id)+'">'+esc(t('Retrieve selected recording'))+'</button></details>'+musicBrainzEvidenceMarkup(row);
 }
 function musicBrainzReleaseMarkup(row){
   const t=key=>I18n.t(key),releases=row.proposal?.possible_albums||[],selected=row.selected_release;

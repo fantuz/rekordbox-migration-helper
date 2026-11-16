@@ -1,10 +1,12 @@
 """Explicit, source-scoped local audio mappings. Never rewrite captured/export paths."""
 from hashlib import sha256
+from functools import lru_cache
 from itertools import islice
 from pathlib import Path
 import json
 import os
 import re
+from unicodedata import normalize
 from urllib.parse import unquote, urlsplit
 
 from flask import jsonify, request
@@ -105,6 +107,18 @@ def validate(mappings, roots):
     return sorted(result,key=lambda row:(-len(row['recorded_root']),row['recorded_root']))
 
 
+@lru_cache(maxsize=128)
+def _directory_index(directory, device, inode, modified, changed):
+    """Reuse bounded case/Unicode lookups until the directory itself changes."""
+    entries=list(islice(Path(directory).iterdir(),4097))
+    if len(entries)>4096:return None
+    index={}
+    for entry in entries:
+        key=normalize('NFC',entry.name).casefold()
+        index.setdefault(key,[]).append(entry.name)
+    return index
+
+
 def mapped_path(value, mappings):
     value=recorded(value)
     if value is None:return None
@@ -124,11 +138,12 @@ def mapped_path(value, mappings):
                 if not part:continue
                 candidate=path/part
                 if not candidate.exists() and windows and path.is_dir():
-                    entries=list(islice(path.iterdir(),4097))
-                    if len(entries)>4096:return None
-                    matches=[p for p in entries if p.name.casefold()==part.casefold()]
+                    parent=path.stat()
+                    index=_directory_index(str(path),parent.st_dev,parent.st_ino,parent.st_mtime_ns,parent.st_ctime_ns)
+                    if index is None:return None
+                    matches=index.get(normalize('NFC',part).casefold(),[])
                     if len(matches)>1:return None
-                    if matches:candidate=matches[0]
+                    if matches:candidate=path/matches[0]
                 if candidate.is_symlink() or candidate.is_junction():return None
                 path=candidate
             if not path.resolve().is_relative_to(root):return None

@@ -14,6 +14,12 @@ from workbench_store import Store
 
 
 class PlaybackTests(TestCase):
+    def test_empty_file_is_unverified_and_cannot_be_launched(self):
+        with TemporaryDirectory() as temp:
+            path=Path(temp)/'empty.mp3';path.touch();track={'current_path':str(path)}
+            self.assertEqual(inspect_audio(track),('unverified',None))
+            self.assertIsNone(available_audio(track))
+
     def test_only_recorded_existing_audio_is_resolved_without_writes(self):
         with TemporaryDirectory() as temp:
             root=Path(temp);audio=root/'Café & remix.mp3';audio.write_bytes(b'synthetic')
