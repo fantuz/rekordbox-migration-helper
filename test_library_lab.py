@@ -17,7 +17,7 @@ from analysis_audit import audit_assets
 from library_checks import compare_snapshots,metadata_consistency,collection_coverage
 from metadata_export import track,payload
 from metadata_overrides import validate,plan,apply_xml,apply_native
-from musicbrainz_pilot import sample_genres,public_query,proposals,MusicBrainzClient,RateGate,create_batch,run_batch
+from musicbrainz_pilot import sample_genres,public_query,proposals,MusicBrainzClient,RateGate,create_batch,run_batch,batch_record
 from workbench_store import Store
 
 
@@ -213,6 +213,38 @@ class AssetAndOrphanTests(unittest.TestCase):
 class MusicBrainzTests(unittest.TestCase):
     def setUp(self):
         temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup);self.store=Store(Path(temporary.name)/'pilot.sqlite3')
+
+
+    def test_full_batch_sort_survives_paging_and_updates(self):
+        tracks=[song(str(i),title=f'Track {119-i:03}',artist=f'Artist {i%4}',year=2000+i%10)
+                for i in range(120)]
+        record=create_batch(self.store,snapshot(tracks),sample_size=120,target='random',seed='ordered')
+        identity=record['id']
+        default=batch_record(self.store,identity)
+        first=batch_record(self.store,identity,0,'title','asc')
+        second=batch_record(self.store,identity,50,'title','asc')
+        third=batch_record(self.store,identity,100,'title','asc')
+        expected=sorted([t['title'] for t in record['sample']],key=str.casefold)
+        self.assertEqual([r['title'] for part in (first,second,third) for r in part['rows']],expected)
+        self.assertEqual(first['sort'],'title')
+        self.assertEqual(second['direction'],'asc')
+        self.assertEqual(len(second['rows']),50)
+        self.assertEqual(default['rows'][0]['id'],record['sample'][0]['id'])
+        desc=batch_record(self.store,identity,50,'title','desc')
+        self.assertEqual([r['title'] for r in desc['rows']],list(reversed(expected))[50:100])
+        # Late provider results must not reset the active sort, and missing
+        # numeric evidence remains at the end in both sort directions.
+        with self.store.connection() as db:
+            db.execute('INSERT INTO mb_results VALUES (?,?,?,?)',
+                       (identity,record['sample'][0]['id'],'candidate_needs_review',
+                        json.dumps({'status':'candidate_needs_review','candidates':[{'confidence':.98}],
+                                    'proposal':{'year':2022}})))
+        ranked=batch_record(self.store,identity,0,'confidence','desc')
+        self.assertEqual(ranked['rows'][0]['id'],record['sample'][0]['id'])
+        self.assertEqual(batch_record(self.store,identity,0,'confidence','asc')['rows'][0]['id'],record['sample'][0]['id'])
+        self.assertEqual(batch_record(self.store,identity,50,'title','asc')['rows'][0]['title'],expected[50])
+        for kwargs in ({'sort':'sql injection'}, {'direction':'sideways'}, {'offset':'n/a'}, {'offset':-1}):
+            with self.assertRaises(ValueError):batch_record(self.store,identity,**kwargs)
 
     def test_sample_twenty_per_top_genre_plus_fifty_unknown_unique_and_stable(self):
         tracks=[song(str(n),genre='Genre '+str(n//30)) for n in range(180)]+[song('unknown'+str(n),genre='') for n in range(70)]
