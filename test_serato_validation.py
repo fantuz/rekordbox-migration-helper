@@ -50,6 +50,49 @@ class SeratoValidationTests(unittest.TestCase):
             self.assertIn('Serato/Library',archive.read('READ-ME.txt').decode('utf-8'))
         self.assertEqual(manifest['validation']['status'],'passed')
 
+
+    def test_target_auto_defaults_validation_and_mapped_paths(self):
+        cases=[('C:/','/Volumes/Stage','auto','macos','/Volumes/Stage'),
+               ('/Volumes/Source','d:\\','auto','windows','D:/'),
+               ('C:/','','macos','macos','/Volumes/DJ'),
+               ('/Volumes/Source','','windows','windows','C:/'),
+               ('D:/','','windows','windows','D:/'),
+               ('/Volumes/Source/','','macos','macos','/Volumes/Source')]
+        for source_root,target_root,mode,target,root in cases:
+            with self.subTest(source=source_root,target=target_root,mode=mode):
+                p=resolve_serato_profile(source_root,target_root,mode,host='linux')
+                self.assertEqual((p['target'],p['target_volume_root']),(target,root))
+                self.assertTrue(p['simulated']);self.assertTrue(p['legacy_database_only'])
+        for target,profile in [('C:/Music','windows'),('C:','auto'),('//server/share','auto'),
+                               ('/Users/DJ','macos'),('/Volumes/../DJ','macos'),('/Volumes/.','macos'),
+                               ('/Volumes/DJ/sub','macos'),('/Volumes/DJ\x00','macos'),('/Volumes/DJ\n','macos')]:
+            with self.subTest(target=target):
+                with self.assertRaises(ValueError):resolve_serato_profile('C:/',target,profile,host='linux')
+        self.assertFalse(resolve_serato_profile('C:/',profile='windows',host='win32')['simulated'])
+        self.assertFalse(resolve_serato_profile('/Volumes/DJ',profile='macos',host='darwin')['simulated'])
+        packed,manifest=draft_package(source(),'C:/','macos','/Volumes/DJ')
+        self.assertEqual(manifest['sample_mapped_paths'],['/Volumes/DJ/Music/Écho.wav','/Volumes/DJ/Music/B.wav'])
+        with zipfile.ZipFile(BytesIO(packed)) as archive:
+            self.assertEqual(read_database(archive.read('_Serato_/database V2'))[0]['pfil'],'Music/Écho.wav')
+
+    def test_windows_target_collisions_do_not_relink_distinct_posix_files(self):
+        data={'id':'synthetic','tracks':[
+            {'id':'a','current_path':'/Volumes/Source/Music/Track.wav'},
+            {'id':'b','current_path':'/Volumes/Source/music/track.wav'},
+            {'id':'alias','current_path':'/Volumes/Source/Music/Track.wav'}],
+              'playlists':[{'id':'set','name':'Set','tracks':['a','b','alias','a']}],
+              'capabilities':{'playlist_order':True}}
+        before=deepcopy(data)
+        packed,manifest=draft_package(data,'/Volumes/Source','windows','D:/')
+        self.assertEqual(manifest['tracks_written'],1)
+        self.assertEqual(manifest['omission_counts'],{'target_path_collision':1,'duplicate_path':1})
+        self.assertEqual(manifest['omitted_playlist_entries'][0]['track_id'],'b')
+        with zipfile.ZipFile(BytesIO(packed)) as archive:
+            crate=manifest['crates'][0]
+            self.assertEqual(read_crate(archive.read('_Serato_/Subcrates/'+crate['file'])),['Music/Track.wav']*3)
+        self.assertEqual(preview_package(data,'/Volumes/Source','macos','/Volumes/DJ')['tracks_written'],2)
+        self.assertEqual(data,before)
+
     def test_case_aliases_reference_the_exact_database_spelling_and_keep_repetitions(self):
         original=source();before=deepcopy(original);payload,manifest=draft_package(original,'C:/')
         with zipfile.ZipFile(BytesIO(payload)) as archive:

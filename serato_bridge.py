@@ -16,7 +16,7 @@ from chart_playlists import local_audio_path
 from library_intelligence import playlists
 from workbench_store import now
 from serato_reader import validate_export,relative_path
-from serato_paths import resolve_serato_profile
+from serato_paths import resolve_serato_profile,mapped_serato_path
 
 
 def field(tag,value):
@@ -58,7 +58,7 @@ def build_plan(snapshot,volume,target_profile='auto',target_volume_root=''):
     if re.match(r'^[A-Za-z]:',volume) and len(PureWindowsPath(volume).parts)!=1:
         raise ValueError('For Windows, select a drive root such as C:/')
     if len(snapshot['tracks'])>100000:raise ValueError('This draft is limited to 100000 captured tracks')
-    records=[];paths={};canonical={};omitted=[];identities=set();field_counts=Counter()
+    records=[];paths={};canonical={};destination_paths=set();omitted=[];identities=set();field_counts=Counter()
     mapping={'tsng':'title','tart':'artist','talb':'album','tgen':'genre','tbpm':'bpm','tkey':'tonality','ttyr':'year','tlbl':'label','tcmp':'composer','tcom':'comment'}
     size=0
     for track in snapshot['tracks']:
@@ -76,6 +76,13 @@ def build_plan(snapshot,volume,target_profile='auto',target_volume_root=''):
             paths[identity]=canonical[key]
             omitted.append({'track_id':identity,'code':'duplicate_path','reason':'Duplicate recorded path; first record retained in database'})
             continue
+        destination_key=relative.casefold() if selected['target']=='windows' else relative
+        if destination_key in destination_paths:
+            # Distinct POSIX files can collide on a Windows target. Do not
+            # relink the second track or its playlist entries to the first.
+            omitted.append({'track_id':identity,'code':'target_path_collision',
+                            'reason':'Distinct source path collides on the target volume; resolve the filenames before export'})
+            continue
         row={'pfil':relative}
         suffix=PurePosixPath(relative).suffix.lstrip('.').lower()
         if suffix:row['ttyp']=suffix
@@ -91,7 +98,7 @@ def build_plan(snapshot,volume,target_profile='auto',target_volume_root=''):
                             'reason':'Track metadata contains invalid Unicode or exceeds the Serato field size limit'});continue
         size+=len(encoded)
         if size>64*1024**2:raise ValueError('Serato draft exceeds 64 MB')
-        paths[identity]=relative;canonical[key]=relative;records.append(row)
+        paths[identity]=relative;canonical[key]=relative;destination_paths.add(destination_key);records.append(row)
         field_counts.update(name for tag,name in mapping.items() if tag in row)
         if 'tlen' in row:field_counts['duration']+=1
     nodes={str(p['id']):p for p in snapshot.get('playlists',[])}
@@ -136,7 +143,7 @@ def build_plan(snapshot,volume,target_profile='auto',target_volume_root=''):
               'omitted_playlist_entries':omitted_entries,'warnings':warnings,'metadata_fields':dict(field_counts),
               'omission_counts':dict(Counter(row['code'] for row in omitted)),
               'source_writes':False,'audio_writes':False,'serato_import_verified':False,'paths_verified_on_disk':False,
-              'target_profile':selected,
+              'target_profile':selected,'sample_mapped_paths':[mapped_serato_path(row['pfil'],selected) for row in records[:5]],
               'not_transferred':['ratings','hot cues','memory cues','loops','beatgrids','waveforms','play history','smart-playlist rules'],
               'notes':'Basic metadata and captured playlist membership only. Crates become static. This is a detached draft, not a complete or certified migration.'}
     return records,crates,manifest

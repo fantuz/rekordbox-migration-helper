@@ -118,6 +118,29 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     assert page.locator('#serato-report').inner_text()==''
     assert page.locator('#serato-export').is_disabled() and not page.locator('#serato-ack').is_checked()
 
+
+    page.locator('#serato-volume').fill('C:/')
+    page.locator('#serato-platform').select_option('macos')
+    assert page.locator('#serato-target-root').input_value()=='/Volumes/DJ'
+    page.locator('#serato-volume').fill('/')
+    page.locator('#serato-preview').click()
+    page.wait_for_function('document.querySelector("#serato-report").textContent.includes("/Volumes/DJ")')
+    assert 'Target path examples' in page.locator('#serato-report').inner_text()
+    page.locator('#serato-platform').select_option('windows')
+    assert page.locator('#serato-target-root').input_value()=='C:/'
+    assert page.locator('#serato-report').inner_text()==''
+    page.locator('#serato-target-root').fill('D:/')
+    page.locator('#serato-platform').select_option('auto')
+    page.locator('#serato-preview').click()
+    page.wait_for_function('document.querySelector("#serato-report").textContent.includes("D:/")')
+    assert 'Windows paths' in page.locator('#serato-report').inner_text()
+    assert page.locator('#serato-export').is_disabled()
+    page.locator('#serato-ack').check()
+    page.locator('#serato-target-root').fill('E:/')
+    assert page.locator('#serato-export').is_disabled() and not page.locator('#serato-ack').is_checked()
+    page.locator('#serato-platform').select_option('auto')
+    page.locator('#serato-target-root').fill('')
+
     batch=create_batch(store,before,sample_size=1000)
     def start(route):
         with store.connection() as db:db.execute("UPDATE mb_batches SET status='complete' WHERE id=?",(batch['id'],))
@@ -175,6 +198,46 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     assert page.locator('#lab-pilot-start').is_disabled()
     page.unroute('**/api/lab/musicbrainz/'+batch['id']+'/start')
     page.unroute('**/api/lab/musicbrainz/context')
+
+    # Exercise the union of both PRs against real saved rows, with no provider calls.
+    previous_sort=page.evaluate('()=>[labBatch,labPilotOffset,labPilotSort,labPilotDirection]')
+    sorted_tracks=[track({'id':'sort-'+str(i),'title':f'Title {124-i:03}',
+                         'artist':'Synthetic artist','genre':'House','duration':200}) for i in range(125)]
+    sort_sid=store.save_snapshot({'schema':1,'scope_key':'synthetic:combined-sort',
+                                 'tracks':sorted_tracks,'playlists':[]},'Combined sorting')['id']
+    sorted_batch=create_batch(store,store.snapshot(sort_sid),target='random',sample_size=150,seed='stable-sort')
+    with store.connection() as db:
+        for identity,status in [('sort-0','missing'),('sort-1','playable'),('sort-2','inaccessible')]:
+            db.execute('INSERT INTO file_health_records VALUES (?,?,?,?,?,?,?,?)',
+                       ('snapshot:'+sort_sid,identity,'Title','Artist','House',status,123.0,''))
+    page.evaluate('(id)=>{labBatch=id;labPilotOffset=0;labPilotSort="sample";labPilotDirection="asc";return labLoadPilot();}',sorted_batch['id'])
+    assert page.locator('#lab-pilot-sort option').count()==10
+    assert page.locator('#lab-pilot-results [data-sort-column]').count()==0
+    page.locator('#lab-pilot-results [data-lab-pilot-sort="title"]').click()
+    page.wait_for_function('document.querySelector("#lab-pilot-results tbody tr td:first-child").textContent.includes("Title 000")')
+    page.locator('#lab-pilot-next').click()
+    page.wait_for_function('document.querySelector("#lab-pilot-count").textContent.includes("51")')
+    assert 'Title 050' in page.locator('#lab-pilot-results tbody tr td:first-child').first.inner_text()
+    page.evaluate('()=>labLoadPilot(false)')
+    assert 'Title 050' in page.locator('#lab-pilot-results tbody tr td:first-child').first.inner_text()
+    page.locator('#lab-pilot-results [data-lab-pilot-sort="title"]').click()
+    page.wait_for_function('document.querySelector("#lab-pilot-results tbody tr td:first-child").textContent.includes("Title 124")')
+    page.select_option('#lab-pilot-sort','file_status')
+    page.select_option('#lab-pilot-direction','asc')
+    page.wait_for_function('document.querySelector("#lab-pilot-results tbody tr").dataset.mbTrack==="sort-1"')
+    cell=page.locator('#lab-pilot-results tr[data-mb-track="sort-1"] .lab-pilot-file-status')
+    assert cell.inner_text()=='Playable'
+    page.evaluate('()=>document.querySelector(\'#lab-pilot-results [data-play-track="sort-1"]\').dispatchEvent(new CustomEvent("workbench-file-status",{bubbles:true,detail:{status:"missing"}}))')
+    assert cell.inner_text()=='Playable'
+    page.evaluate('()=>labLoadPilot(false)')
+    assert page.locator('#lab-pilot-sort').input_value()=='file_status'
+    assert page.locator('#lab-pilot-direction').input_value()=='asc'
+    assert page.evaluate('()=>preferences.get("workbench-mb-sort")')=='file_status'
+    page.select_option('#lab-pilot-direction','desc')
+    page.wait_for_function('document.querySelector("#lab-pilot-results tbody tr").dataset.mbTrack==="sort-2"')
+    assert page.locator('#lab-pilot-results tbody tr').nth(3).locator('.lab-pilot-file-status').inner_text()=='Unchecked'
+    page.evaluate('(s)=>{[labBatch,labPilotOffset,labPilotSort,labPilotDirection]=s;rememberPilotSort();return labLoadPilot();}',previous_sort)
+
     assert store.snapshot(sid)==before
     page.select_option('#theme',previous_theme);page.set_viewport_size(previous_viewport)
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',original_id)

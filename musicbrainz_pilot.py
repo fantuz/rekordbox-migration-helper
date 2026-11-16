@@ -267,15 +267,19 @@ def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None,
     return {'id':identity,'summary':summary,'sample':sample,'status':'preview'}
 
 
-BATCH_SORT_FIELDS=('sample','title','artist','genre','status','confidence','year')
+BATCH_SORT_FIELDS=('sample','title','artist','genre','status','confidence','year',
+                   'candidate','community','file_status')
+BATCH_FILE_STATUS_ORDER={'playable':0,'missing':1,'inaccessible':2,'unverified':3}
 
 
 def batch_record(store,identity,offset=0,sort='sample',direction='asc'):
-    """Order the entire saved batch before returning its 50-row page.
+    """Sort saved evidence across the full batch, then return a 50-row page.
 
-    The provider never receives sorting parameters; persisted sample order and
-    review decisions remain untouched. Missing keys sort last in both directions.
+    File status is the last explicit File Health scan for this snapshot.
+    Playback probes do not alter this evidence or the resulting order.
+    Missing values and unscanned files stay last in either direction.
     """
+    if sort=='original':sort='sample'  # Accept the original PR #52 API spelling.
     if sort not in BATCH_SORT_FIELDS or direction not in ('asc','desc'):
         raise ValueError('Choose a supported MusicBrainz column and direction')
     try:offset=int(offset)
@@ -284,31 +288,48 @@ def batch_record(store,identity,offset=0,sort='sample',direction='asc'):
     with store.connection() as db:
         r=db.execute('SELECT * FROM mb_batches WHERE id=?',(identity,)).fetchone()
         if not r:raise ValueError('Pilot batch not found')
-        results={x['track_id']:json.loads(x['payload']) for x in db.execute('SELECT * FROM mb_results WHERE batch_id=?',(identity,))}
+        results={x['track_id']:json.loads(x['payload']) for x in db.execute('SELECT track_id,payload FROM mb_results WHERE batch_id=?',(identity,))}
+        scanned={x['track_id']:x for x in db.execute(
+            'SELECT track_id,status,checked_at FROM file_health_records WHERE source=?',
+            ('snapshot:'+r['snapshot_id'],))}
     sample=json.loads(r['sample'])
-    rows=[{**t,**results.get(t['id'],{'status':'not_requested'})} for t in sample]
+    rows=[]
+    for track in sample:
+        evidence=scanned.get(track['id'])
+        status=evidence['status'] if evidence and evidence['status'] in BATCH_FILE_STATUS_ORDER else 'unchecked'
+        rows.append({**track,**results.get(track['id'],{'status':'not_requested'}),
+                     'file_status':status,
+                     'file_status_checked_at':evidence['checked_at'] if evidence and status!='unchecked' else None})
     if sort!='sample':
         def value(row):
-            if sort=='confidence':
-                candidates=row.get('candidates') or []
-                raw=candidates[0].get('confidence') if candidates else None
+            if sort in ('confidence','candidate'):
+                candidate=(row.get('candidates') or [{}])[0]
+                raw=candidate.get('confidence' if sort=='confidence' else 'title')
             elif sort=='year':
                 raw=(row.get('proposal') or {}).get('year') or row.get('year')
+            elif sort=='community':
+                raw=(row.get('proposal') or {}).get('community_score')
+            elif sort=='file_status':
+                return BATCH_FILE_STATUS_ORDER.get(row['file_status'])
             else:
                 raw=row.get(sort)
             if raw is None or isinstance(raw,str) and not raw.strip():return None
-            if sort in ('confidence','year'):
-                try:return float(raw)
+            if sort in ('confidence','year','community'):
+                if isinstance(raw,bool):return None
+                try:
+                    number=float(raw)
+                    return number if isfinite(number) else None
                 except (TypeError,ValueError):return None
             return str(raw).casefold()
-        # Python's stable sort retains original sample order for ties.
+        # Stable ties retain original captured order, including descending sorts.
         known=[(value(row),row) for row in rows]
         present=[(key,row) for key,row in known if key is not None]
         absent=[row for key,row in known if key is None]
         present.sort(key=lambda item:item[0],reverse=direction=='desc')
         rows=[row for _,row in present]+absent
     return {'id':identity,'snapshot_id':r['snapshot_id'],'created':r['created'],'status':r['status'],'summary':json.loads(r['summary']),
-            'total':len(rows),'offset':offset,'sort':sort,'direction':direction,'rows':rows[offset:offset+50]}
+            'total':len(rows),'offset':offset,'sort':sort,'direction':direction,
+            'file_status_basis':'last_explicit_scan','rows':rows[offset:offset+50]}
 
 
 def run_batch(store,identity,client,progress):

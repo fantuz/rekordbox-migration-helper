@@ -11,6 +11,7 @@ window.SeratoDraft=(()=>{
     const section=(label,count,html)=>'<details><summary>'+esc(t(label))+' · '+num(count)+'</summary>'+html+'</details>';
     node('serato-report').innerHTML='<p class="callout">'+esc(t('Readback passed; Serato import remains unverified.'))+'</p>'+labSummary({[t('Tracks')]:report.tracks_written,[t('Crates')]:report.crates_total,[t('Omitted records')]:report.omitted_total,[t('Omitted playlist entries')]:report.omitted_playlist_entries_total})+
       '<p><strong>'+esc(t('Target Serato path profile'))+':</strong> '+esc(t(report.target_profile.target==='windows'?'Windows paths':'macOS paths'))+(report.target_profile.simulated?' · '+esc(t('Simulated path profile')):' · '+esc(t('Native path convention')))+' · '+esc(report.target_profile.target_volume_root)+'</p>'+      '<p>'+esc(t('Preview shows up to 100 rows per section. The ZIP manifest contains every detail.'))+'</p>'+
+      section('Target path examples',(report.sample_mapped_paths||[]).length,rows(['File paths'],(report.sample_mapped_paths||[]).map(path=>[path])))+
       section('Crates',report.crates_total,rows(['Name','Tracks'],report.crates.map(c=>[c.name,num(c.entries)+(c.folder?' · '+t('Folder'):'')])) )+
       section('Omitted records',report.omitted_total,rows(['Track ID','Reason'],report.omitted.map(r=>[r.track_id,r.reason])))+
       section('Omitted playlist entries',report.omitted_playlist_entries_total,rows(['Name','Track ID','Reason'],report.omitted_playlist_entries.map(r=>[r.playlist,r.track_id,r.reason])))+
@@ -21,7 +22,16 @@ window.SeratoDraft=(()=>{
   }
   node('serato-volume').addEventListener('input',reset);
   node('serato-target-root').addEventListener('input',reset);
-  node('serato-platform').addEventListener('change',reset);
+  node('serato-platform').addEventListener('change',()=>{
+    const platform=node('serato-platform').value,root=node('serato-target-root');
+    const value=root.value.trim().replaceAll('\\','/'),source=node('serato-volume').value.trim().replaceAll('\\','/');
+    const windows=value=>/^[A-Za-z]:\/$/.test(value);
+    const macos=value=>value==='/' || /^\/Volumes\/(?!\.{1,2}$)[^/]+$/.test(value);
+    // Preserve compatible custom roots; otherwise offer a source root or a conventional default.
+    if(platform==='windows' && !windows(value))root.value=windows(source)?source:'C:/';
+    if(platform==='macos' && !macos(value))root.value=macos(source)?source:'/Volumes/DJ';
+    reset();
+  });
   node('intelligence-source').addEventListener('change',reset);
   window.addEventListener('workbench-context',reset);
   window.addEventListener('workbench-language',render);
