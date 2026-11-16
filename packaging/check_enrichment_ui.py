@@ -99,7 +99,7 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.locator('#serato-volume').fill('Z:/');page.locator('#serato-preview').click()
     page.wait_for_function('document.querySelector("#serato-report").textContent.includes("No tracks can be exported")')
     assert page.locator('#serato-export').is_disabled()
-    page.locator('#serato-volume').fill('/');page.locator('#serato-preview').click()
+    page.locator('#serato-volume').fill('/');page.select_option('#serato-platform','macos');page.locator('#serato-target-root').fill('/');page.locator('#serato-preview').click()
     page.wait_for_function('document.querySelector("#serato-report").textContent.includes("Readback passed")')
     assert page.locator('#serato-export').is_disabled()
     page.locator('#serato-ack').check()
@@ -119,6 +119,7 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     assert page.locator('#serato-export').is_disabled() and not page.locator('#serato-ack').is_checked()
 
 
+    page.select_option('#serato-platform','auto');page.locator('#serato-target-root').fill('')
     page.locator('#serato-volume').fill('C:/')
     page.locator('#serato-platform').select_option('macos')
     assert page.locator('#serato-target-root').input_value()=='/Volumes/DJ'

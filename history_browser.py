@@ -14,7 +14,7 @@ def added_years(tracks):
             'unknown':counts.get(None,0),'tracks':sum(counts.values()),'basis':'Recorded date added to the library, separate from release year'}
 
 
-def list_history(snapshot,query='',year='',offset=0):
+def list_history(snapshot,query='',year='',offset=0,all_rows=False):
     available=snapshot.get('capabilities',{}).get('history_details',False)
     histories=[h for h in snapshot.get('histories',[]) if not h.get('folder')]
     query=str(query).casefold().strip();counts=Counter(year_of(h.get('date')) for h in histories)
@@ -24,7 +24,7 @@ def list_history(snapshot,query='',year='',offset=0):
     return {'available':available,'order_available':snapshot.get('capabilities',{}).get('history_order',False),
             'sessions_total':len(histories),'entries_total':sum(len(h['entries']) for h in histories),
             'years':[{'year':key,'sessions':value} for key,value in sorted(((k,v) for k,v in counts.items() if k),reverse=True)],
-            'unknown_dates':counts.get(None,0),'rows':[{k:h.get(k) for k in ('id','name','date','parent')}|{'tracks':len(h['entries'])} for h in selected[offset:offset+30]],
+            'unknown_dates':counts.get(None,0),'rows':[{k:h.get(k) for k in ('id','name','date','parent')}|{'tracks':len(h['entries'])} for h in (selected if all_rows else selected[offset:offset+30])],
             'total':len(selected),'offset':offset,'addition_dates':added_years(snapshot['tracks']),
             'note':'Saved membership and order, with tags from the captured collection. Individual play timestamps, actual performance duration and session purpose are not inferred.'}
 

@@ -198,7 +198,9 @@ def proposals(detail):
     tags=sorted([{'name':str(g['name'])[:200],'count':g.get('count',0)} for g in detail.get('tags',[])
                  if isinstance(g,dict) and g.get('name') and isinstance(g.get('count'),(int,float))
                  and isfinite(g['count']) and g['count']>0],key=lambda g:(-g['count'],g['name']))[:20]
-    releases=[{'title':r.get('title'),'date':r.get('date'),'mbid':r.get('id')} for r in detail.get('releases',[])[:20]]
+    releases=[{'title':r.get('title'),'date':r.get('date'),'mbid':r.get('id'),
+               'country':r.get('country'),'status':r.get('status'),'disambiguation':r.get('disambiguation')}
+              for r in detail.get('releases',[])[:100] if isinstance(r,dict) and r.get('id') and r.get('title')]
     return {'community_score':score,'votes':int(votes),'scale_max':5,'year':min(years) if years else None,
             'year_basis':'First known release year for this recording; may differ from this file release',
             'genre':genres[0]['name'] if genres else None,'genre_votes':genres,'tags':tags,'possible_albums':releases,
@@ -262,7 +264,8 @@ def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None,
     sample=[{k:t.get(k) for k in ('id','title','artist','album','genre','year','rating','duration','isrc','metadata_origin')} for t in selected]
     summary={'groups':groups,'target':target,'target_value':target_value,'requested_tracks':sample_size,'estimated_uncached_seconds':round(2*len(sample)*delay),'tracks':len(sample),'seconds_per_request':float(delay),'requests':0,'cache_hits':0,'done':0,
              'rating_available':0,'genre_available':0,'year_available':0,'experimental':True,'queries_include_audio':False,'queries_include_paths':False,
-             'playable_only':playable_only,'excluded_unplayable':excluded_unplayable}
+             'playable_only':playable_only,'excluded_unplayable':excluded_unplayable,
+             'audio_mapping_revision':snapshot.get('audio_mapping_revision')}
     with store.connection() as db:db.execute('INSERT INTO mb_batches VALUES (?,?,?,?,?,?)',(identity,snapshot['id'],now(),'preview',encoded(summary),encoded(sample)))
     return {'id':identity,'summary':summary,'sample':sample,'status':'preview'}
 
@@ -292,18 +295,21 @@ def batch_record(store,identity,offset=0,sort='sample',direction='asc'):
         scanned={x['track_id']:x for x in db.execute(
             'SELECT track_id,status,checked_at FROM file_health_records WHERE source=?',
             ('snapshot:'+r['snapshot_id'],))}
+    from musicbrainz_review import revision,selected_candidate
     sample=json.loads(r['sample'])
     rows=[]
     for track in sample:
         evidence=scanned.get(track['id'])
         status=evidence['status'] if evidence and evidence['status'] in BATCH_FILE_STATUS_ORDER else 'unchecked'
         rows.append({**track,**results.get(track['id'],{'status':'not_requested'}),
+                     'review_revision':revision(results.get(track['id'],{})),
+                     'selected_mbid':selected_candidate(results.get(track['id'],{})).get('mbid'),
                      'file_status':status,
                      'file_status_checked_at':evidence['checked_at'] if evidence and status!='unchecked' else None})
     if sort!='sample':
         def value(row):
             if sort in ('confidence','candidate'):
-                candidate=(row.get('candidates') or [{}])[0]
+                candidate=selected_candidate(row)
                 raw=candidate.get('confidence' if sort=='confidence' else 'title')
             elif sort=='year':
                 raw=(row.get('proposal') or {}).get('year') or row.get('year')
@@ -340,16 +346,21 @@ def run_batch(store,identity,client,progress):
         previous={r['track_id']:json.loads(r['payload']) for r in db.execute('SELECT track_id,payload FROM mb_results WHERE batch_id=?',(identity,))}
         db.execute('UPDATE mb_batches SET status=? WHERE id=?',('running',identity))
     prior_requests=summary.get('requests',0);prior_hits=summary.get('cache_hits',0)
-    local_tracks={t['id']:t for t in store.snapshot(r['snapshot_id'])['tracks']} if summary.get('playable_only') else {}
+    from audio_paths import mappings_for,signature
+    source_snapshot=store.snapshot(r['snapshot_id']) if summary.get('playable_only') or summary.get('audio_mapping_revision') else {}
+    mappings=mappings_for(store,source_snapshot)
+    local_tracks={t['id']:t for t in source_snapshot['tracks']} if summary.get('playable_only') else {}
     consecutive_errors=0;status='complete';totals=Counter(rating_available=0,genre_available=0,tags_available=0,year_available=0,service_errors=0,needs_local_tags=0,candidate_matches=0,no_match=0,skipped_unplayable=0)
     summary.update(done=0,**totals);summary.pop('message',None)
     for n,t in enumerate(sample):
         reused=False
         try:
             if getattr(client,'cancel',None) and client.cancel.is_set():raise InterruptedError('Pilot cancelled')
+            if summary.get('audio_mapping_revision') and summary['audio_mapping_revision']!=signature(mappings_for(store,source_snapshot)):
+                raise InterruptedError('Audio folder mappings changed. Preview a new batch before continuing.')
             from track_playback import inspect_audio
             if t['id'] in previous and previous[t['id']]['status'] not in ('service_error','not_playable'):result=previous[t['id']];reused=True
-            elif summary.get('playable_only') and inspect_audio(local_tracks.get(t['id'],{}))[0]!='playable':
+            elif summary.get('playable_only') and inspect_audio(local_tracks.get(t['id'],{}),mappings)[0]!='playable':
                 result={'status':'not_playable','error':'Audio unavailable at lookup time; no provider request sent'}
             else:
                 try:query=public_query(t)
@@ -369,7 +380,7 @@ def run_batch(store,identity,client,progress):
                         if detail.get('id')!=candidates[0]['mbid']:raise ValueError('Candidate details do not match the requested recording; retry later')
                         proposal=proposals(detail)
                     result={'status':'candidate_needs_review' if candidates else 'no_match','query':query,'candidates':candidates,'proposal':proposal,
-                            'search_strategy':strategy if candidates else 'exhausted','search_attempts':attempts,'match_approved':False}
+                            'selected_mbid':candidates[0]['mbid'] if candidates else None,'search_strategy':strategy if candidates else 'exhausted','search_attempts':attempts,'match_approved':False}
             consecutive_errors=0
         except InterruptedError as error:status='cancelled';summary['message']=str(error);break
         except Exception as error:

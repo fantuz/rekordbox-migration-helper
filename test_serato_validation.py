@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic Serato export contracts and independent malformed-input checks."""
 from copy import deepcopy
 from io import BytesIO
@@ -123,7 +124,7 @@ class SeratoValidationTests(unittest.TestCase):
     def test_posix_paths_remain_case_sensitive_and_uri_unicode_is_decoded(self):
         self.assertEqual(volume_relative('file://localhost/Volumes/DJ/Music/%C3%A9.wav','/Volumes/DJ'),'Music/é.wav')
         data=source();data['tracks']=[{'id':'a','current_path':'/Music/A.wav'},{'id':'b','current_path':'/Music/a.wav'}]
-        self.assertEqual(draft_package(data,'/')[1]['tracks_written'],2)
+        self.assertEqual(draft_package(data,'/',target_profile='macos')[1]['tracks_written'],2)
         for path in ('//server/share/a.wav','C:/Music/../a.wav','C:/Music/a.wav:stream','C:/Music/\x00.wav'):
             with self.assertRaises(ValueError):volume_relative(path,'C:/')
 
@@ -168,7 +169,7 @@ class SeratoValidationTests(unittest.TestCase):
         from workbench_store import Store
         with tempfile.TemporaryDirectory() as tmp,patch.object(app,'DATA',Path(tmp)):
             store=Store(Path(tmp)/'workbench-sidecar.sqlite3');sid=store.save_snapshot(source(),'Synthetic')['id'];before=store.snapshot(sid)
-            client=app.app.test_client();body={'snapshot':sid,'volume_root':'C:/'}
+            client=workspace_client(app);body={'snapshot':sid,'volume_root':'C:/'}
             self.assertEqual(client.post('/api/intelligence/serato/preview',json=body).status_code,403)
             response=client.post('/api/intelligence/serato/preview',json=body,headers={'X-Workbench-Token':app.TOKEN})
             self.assertEqual(response.status_code,200);self.assertTrue(response.json['export_ready'])
@@ -189,7 +190,7 @@ class SeratoValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp,patch.object(app,'DATA',Path(tmp)):
             store=Store(Path(tmp)/'workbench-sidecar.sqlite3')
             sid=store.save_snapshot(data,'Synthetic')['id'];before=store.snapshot(sid)
-            client=app.app.test_client();headers={'X-Workbench-Token':app.TOKEN}
+            client=workspace_client(app);headers={'X-Workbench-Token':app.TOKEN}
             body={'snapshot':sid,'volume_root':'C:/','draft_acknowledged':True}
             for helper,code,rejected in cases:
                 with self.subTest(helper=helper):

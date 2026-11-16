@@ -84,6 +84,8 @@ def prepare(owner, store, source, progress):
                               snapshot_root=owner.TEMPORARY.folder('analyzers',identity))
         if report.get('read_status') not in ('checked','needs_review'):
             raise ValueError('The connected source has no readable collection metadata')
+        from audio_paths import inherit
+        inherit(store,source,'capture:'+identity)
         source='capture:'+identity
         payload=resolve(owner,source)
     payload.update(scope_key=source,captured=now(),source_kind='Current library enrichment',
@@ -93,7 +95,7 @@ def prepare(owner, store, source, progress):
     return {**store.save_snapshot(payload,details['label']), 'source':source}
 
 
-def playable_collection(snapshot, include_unavailable, progress):
+def playable_collection(snapshot, include_unavailable, progress, mappings=None):
     if not isinstance(include_unavailable,bool):raise ValueError('Choose whether to include unavailable audio')
     if include_unavailable:return snapshot,0
     from track_playback import inspect_audio
@@ -102,7 +104,7 @@ def playable_collection(snapshot, include_unavailable, progress):
     playable=[]
     for n,track in enumerate(tracks):
         if n%100==0:progress(90*n/max(1,len(tracks)),f'Checking playable audio: {n:,} / {len(tracks):,}')
-        if inspect_audio(track)[0]=='playable':playable.append(track)
+        if inspect_audio(track,mappings)[0]=='playable':playable.append(track)
     if not playable:
-        raise ValueError('No playable tracks were found. Connect your music storage or explicitly include unavailable audio.')
+        raise ValueError('No readable audio files were found. If this library came from Windows or another computer, map its recorded folder to your local mount in Audio folders, then preview again. You can also explicitly include unavailable audio.')
     return {**snapshot,'tracks':playable},len(tracks)-len(playable)

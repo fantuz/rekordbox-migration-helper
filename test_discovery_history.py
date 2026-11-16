@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic fixtures only; formal execution belongs to GitHub CI."""
 from hashlib import sha256
 from datetime import datetime
@@ -111,7 +112,7 @@ class HistoryTests(unittest.TestCase):
         with native_fixture(self.root/'private.db') as db:s=capture_private_database(db,'synthetic')
         db.close();record=Store(self.root/'workbench-sidecar.sqlite3').save_snapshot(s,'Test')
         with patch.object(application,'DATA',self.root):
-            client=application.app.test_client()
+            client=workspace_client(application)
             response=client.get('/api/lab/history',query_string={'snapshot':record['id']})
             self.assertEqual(response.status_code,200);self.assertEqual(response.json['sessions_total'],2)
             response=client.get('/api/lab/history/h/download',query_string={'snapshot':record['id']})
@@ -134,7 +135,7 @@ class DiscoveryAndMultiScopeTests(unittest.TestCase):
         def discover():
             return suggestions('linux',{},self.root/'home',volumes=[{'path':str(p),'kind':'synthetic mounted volume'} for p in (denied,readable)])
         with patch.object(Path,'exists',exists),patch.object(application,'discover_locations',side_effect=discover),patch.object(application,'DATA',self.root/'workspace'):
-            response=application.app.test_client().get('/api/analyzer')
+            response=workspace_client(application).get('/api/analyzer')
         self.assertEqual(response.status_code,200)
         self.assertEqual(response.json['suggestions'],[str(readable)])
         self.assertEqual(database.read_bytes(),original)
@@ -204,7 +205,7 @@ class DiscoveryAndMultiScopeTests(unittest.TestCase):
         (self.root/'master.db').write_bytes(b'discovery only');outputs=[]
         def launch(work,_):outputs.append(work(lambda *_:None));return 'job'
         with patch.object(application,'DATA',self.root),patch.object(application,'launch',launch):
-            client=application.app.test_client();r=client.post('/api/discovery/scan',json={'roots':[str(self.root)]},headers={'X-Workbench-Token':application.TOKEN})
+            client=workspace_client(application);r=client.post('/api/discovery/scan',json={'roots':[str(self.root)]},headers={'X-Workbench-Token':application.TOKEN})
             self.assertEqual(r.status_code,200);report=outputs[0]
             self.assertFalse(report['database_queries']);self.assertEqual(len(report['libraries']),1)
             self.assertEqual(client.get(report['download']).status_code,200)

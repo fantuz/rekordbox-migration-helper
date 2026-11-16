@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic cache freshness, reversible reset and permanent-delete boundaries."""
 from contextlib import ExitStack
 from copy import deepcopy
@@ -19,7 +20,7 @@ class WorkspaceMaintenanceTests(unittest.TestCase):
         self.app=app;self.stack=ExitStack();self.addCleanup(self.stack.close)
         self.root=Path(self.stack.enter_context(tempfile.TemporaryDirectory()))
         for name,value in [('DATA',self.root),('active',None),('sessions',{}),('tasks',{})]:self.stack.enter_context(patch.object(app,name,value))
-        self.store=Store(self.root/'workbench-sidecar.sqlite3');self.client=app.app.test_client();self.headers={'X-Workbench-Token':app.TOKEN}
+        self.store=Store(self.root/'workbench-sidecar.sqlite3');self.client=workspace_client(app);self.headers={'X-Workbench-Token':app.TOKEN}
         self.data={'scope_key':'synthetic:maintenance','tracks':[track({'id':'a','title':'Synthetic A','artist':'Test artist','current_path':'C:/Synthetic/A.wav','duration':120}),track({'id':'b','title':'Synthetic B','artist':'Test artist','current_path':'C:/Synthetic/A.wav','duration':120})],'capabilities':{},'playlists':[]}
         self.sid=self.store.save_snapshot(self.data,'Synthetic maintenance')['id'];self.source='snapshot:'+self.sid
         self.original=self.root/'original.db';self.original.write_bytes(b'original source must remain')

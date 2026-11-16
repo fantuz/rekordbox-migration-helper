@@ -23,7 +23,7 @@ window.Journeys=(()=>{
     syncing=true;
     try{
       for(const id of ['lab-snapshot','dj-snapshot','bubble-snapshot','tonal-snapshot','history-snapshot','intelligence-source','quick-source']){
-        const select=$('#'+id);if(!select)continue;
+        const select=$('#'+id);if(!select || (!activate && window.BrowseState?.value(id)))continue;
         const wanted=['history-snapshot','intelligence-source'].includes(id) && source.startsWith('capture:')?source:id==='quick-source'?(identity?'lab:'+identity:source==='workspace'?'session':source.startsWith('capture:')?source.slice(8):''):identity;
         const supported=[...select.options].some(o=>o.value===wanted),next=supported?wanted:'';
         const changed=select.value!==next;select.value=next;

@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic multi-donor regressions: preview must agree with reversible staging."""
 from copy import deepcopy
 import unittest
@@ -20,7 +21,7 @@ class RecordingGroupTests(unittest.TestCase):
         self.cat.pairs['e~f']={'a':'e','b':'f'}
         self.session={'catalog':self.cat,'decisions':{},'held_pairs':{},'batches':[],'last_batch':[]}
         self.body={'track_ids':list('abcdef'),'keeper':'a','excluded':['e']}
-        self.client=application.app.test_client();self.headers={'X-Workbench-Token':application.TOKEN}
+        self.client=workspace_client(application);self.headers={'X-Workbench-Token':application.TOKEN}
         for patcher in (patch.object(application,'current',return_value=self.session),
                         patch.object(application,'summary',return_value={'synthetic':True}),
                         patch.object(application,'log')):

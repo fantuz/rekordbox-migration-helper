@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic insight contracts; no private data, network lookups or audio reads."""
 from copy import deepcopy
 import csv
@@ -197,7 +198,7 @@ class InsightAPITests(unittest.TestCase):
         temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup);self.root=Path(temporary.name).resolve()
         self.store=Store(self.root/'workbench-sidecar.sqlite3');self.record=self.store.save_snapshot(snapshot(),'Synthetic')
         p=patch.object(application,'DATA',self.root);p.start();self.addCleanup(p.stop)
-        self.client=application.app.test_client();self.headers={'X-Workbench-Token':application.TOKEN}
+        self.client=workspace_client(application);self.headers={'X-Workbench-Token':application.TOKEN}
 
     def test_read_only_endpoints_and_branch_requests_need_no_unlock_or_network(self):
         options=self.client.get('/api/insights/options',query_string={'snapshot':self.record['id']})

@@ -1,3 +1,4 @@
+from test_support import workspace_client
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
@@ -146,13 +147,13 @@ class QuickExportAPITests(unittest.TestCase):
     def setUp(self):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name)
         self.catalog=example_catalog()
-        self.session={'catalog':self.catalog,'backup_acknowledged':None,'decisions':{'sample':{'action':'merge'}},'relocations':{'a':'file:///new/location.mp3'}}
+        self.session={'id':'test','catalog':self.catalog,'backup_acknowledged':None,'decisions':{'sample':{'action':'merge'}},'relocations':{'a':'file:///new/location.mp3'}}
         self.outputs=[]
         def launch(work,message):
             self.outputs.append(work(lambda *_:None));return 'job'
         for name,value in (('DATA',self.root),('sessions',{'test':self.session}),('active','test'),('launch',launch)):
             p=patch.object(application,name,value);p.start();self.addCleanup(p.stop)
-        self.client=application.app.test_client();self.headers={'X-Workbench-Token':application.TOKEN}
+        self.client=workspace_client(application);self.headers={'X-Workbench-Token':application.TOKEN}
 
     def test_read_only_export_needs_no_backup_ack_and_does_not_apply_staged_edits(self):
         before=deepcopy(self.session['decisions'])

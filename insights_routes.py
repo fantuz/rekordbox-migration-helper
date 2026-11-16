@@ -8,6 +8,7 @@ from threading import RLock
 
 from flask import jsonify,request
 
+from result_order import ordered,scan_statuses
 from dj_insights import InsightIndex,ranking,bubbles,tonalities
 from workbench_store import Store
 
@@ -36,11 +37,16 @@ def register(owner):
         if len(str(args.get('q','')))>1000:raise ValueError('Keep insight searches within 1,000 characters')
         return args
 
+    def rank_args(values):
+        args=filters(values)
+        args['_file_statuses']=scan_statuses(store(),{'id':args.get('snapshot','')})
+        return args
+
     @app.get('/api/insights/options')
     def options():return jsonify(**index_for(request.args.get('snapshot','')).options(),colour_meanings=store().setting('colour_meanings',{}))
 
     @app.get('/api/insights/tracks')
-    def tracks():return jsonify(ranking(index_for(request.args.get('snapshot','')),filters(request.args)))
+    def tracks():return jsonify(ranking(index_for(request.args.get('snapshot','')),rank_args(request.args)))
 
     @app.get('/api/insights/bubbles')
     def bubble_groups():return jsonify(bubbles(index_for(request.args.get('snapshot','')),filters(request.args)))
@@ -62,8 +68,8 @@ def register(owner):
 
     @app.get('/api/insights/tracks.csv')
     def download_csv():
-        args=filters(request.args);result=ranking(index_for(args.get('snapshot','')),args,all_rows=True)
-        columns=('id','title','artist','album','genre','family','year','tonality','color_name','color_hex','color_status','bpm','rating','duration','format',
+        args=rank_args(request.args);result=ranking(index_for(args.get('snapshot','')),args,all_rows=True)
+        columns=('id','title','artist','album','genre','family','year','tonality','color_name','color_hex','color_status','bpm','rating','duration','size','format',
                  'plays','play_count','manual_cues','auto_cues','analysed','date_added','evidence_last_date','reason')
         stream=StringIO(newline='');writer=csv.writer(stream);writer.writerow((*columns,'usage_evidence'))
         def safe(value):
@@ -80,10 +86,10 @@ def register(owner):
     def save_report():
         body=request.get_json(silent=True) or {};args=body.get('filters',{})
         if not isinstance(args,dict):raise ValueError('Choose valid insight filters')
-        args=filters(args);args.pop('offset',None);identity=body.get('snapshot','')
+        identity=body.get('snapshot','');args=rank_args({**args,'snapshot':identity});args.pop('offset',None)
         result=ranking(index_for(identity),args,limit=200)
         summary={**result['result_stats'],'perspective':result['title'],'scope':result['scope_stats'],
-                 'evidence':result['context'],'filters':args,'eligible_entries':result['eligible'],
+                 'evidence':result['context'],'filters':{k:v for k,v in args.items() if not k.startswith('_')},'eligible_entries':result['eligible'],
                  'retained_track_rows':len(result['rows']),'row_limit':200,
                  'note':'Retains the first 200 ranked/sample rows, plus full view counts and filters. CSV downloads can include the complete matching view.'}
         rows=[{**r,'section':'track_insight','track_id':r['id'],'detail':r['reason'] or result['context']['basis_label']} for r in result['rows']]

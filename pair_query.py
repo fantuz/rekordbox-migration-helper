@@ -73,6 +73,10 @@ def build_query(session,values,in_scope,media_evidence):
                            'category':'review' if any(row['category']=='review' for row in options) else
                                       'auto' if any(row['category']=='auto' for row in options) else 'ready'})
     group_rows.sort(key=lambda row:(row['category']=='review',row['title'].casefold(),row['id']))
+    from result_order import ordered
+    allowed=('title','artist','category','track_count','pair_count')
+    rows=ordered(rows,values.get('sort',''),values.get('direction','asc'),allowed)
+    group_rows=ordered(group_rows,values.get('sort',''),values.get('direction','asc'),allowed)
     return {'rows':rows,'group_rows':group_rows,'groups':len(groups),'tracks':len(parent),
             'potential_reduction':len(parent)-len(groups),
             'review_groups':len({root(review_parent,identity) for identity in review_parent}),

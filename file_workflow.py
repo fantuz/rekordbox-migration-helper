@@ -78,6 +78,9 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
         from native_export import export_native
         native_writer=export_native
     decisions,relocations,snapshot=deepcopy((decisions,relocations,snapshot))
+    from export_references import validate_relocations,target_info
+    validate_relocations(catalog,relocations)
+    reference_target=target_info(catalog,catalog.metadata.get('export_target','auto'))
     expected=check_inputs(catalog.metadata)
     metadata={**catalog.metadata,"input_fingerprints":expected}
     root=Path(root)
@@ -109,7 +112,7 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
                'count_scope':'staged',
                'scope_note':'Staged working edits frozen for this export. See applied_by_format for fields applied after merging and XML scope limits.',
                'applied_by_format':applied_by_format}
-        review={"metadata_change_recap":recap,"session":snapshot,"decisions":decisions,"reference_edits":relocations,"inputs":expected,
+        review={"export_reference":reference_target,"metadata_change_recap":recap,"session":snapshot,"decisions":decisions,"reference_edits":relocations,"inputs":expected,
                 "metadata_overrides":deepcopy(catalog.metadata.get('field_overrides',{}))}
         digest=sha256(json.dumps(review,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
         report={**review,"review_sha256":digest,"export_id":export_id,"created":created,"format":kind,"validation":validations}
@@ -119,7 +122,7 @@ def prepare_export(catalog,decisions,relocations,snapshot,root,export_id,kind,pr
             filename={"xml":"edited-collection.xml","zip":"edited-library.zip","report":"report.json"}[name]
             files.append({"kind":name,"name":filename,"bytes":(pending/filename).stat().st_size,
                           "download":"/api/download/"+export_id+"/"+name})
-        record={"id":export_id,"status":"complete","format":kind,"created":created,"session_id":snapshot["id"],
+        record={"export_reference":reference_target,"id":export_id,"status":"complete","format":kind,"created":created,"session_id":snapshot["id"],
                 "session_name":snapshot.get("name",snapshot["id"]),"directory":str(final.resolve()),
                 "review_sha256":digest,"merges":next(iter(validations.values()))["merges"],
                 "metadata_fields":recap["fields"],"metadata_tracks":recap["tracks"],"metadata_changes_by_field":recap["by_field"],

@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Colour edits stay in private sidecars and resolve real configured native IDs."""
 from copy import deepcopy
 from contextlib import closing
@@ -109,7 +110,7 @@ class ColourSidecarAPITests(unittest.TestCase):
                 'scope_key':'session:synthetic','source_kind':'Synthetic','colour_edit_support':xml_colour_support()}
         self.identity=self.store.save_snapshot(self.s,'Test')['id']
         p=patch.object(application,'DATA',self.root);p.start();self.addCleanup(p.stop)
-        self.client=application.app.test_client();self.headers={'X-Workbench-Token':application.TOKEN}
+        self.client=workspace_client(application);self.headers={'X-Workbench-Token':application.TOKEN}
         # The app keeps unlocks in memory; each synthetic test starts locked.
         self.client.post('/api/lab/unlock',json={'snapshot':self.identity,'unlocked':False},headers=self.headers)
 
@@ -157,7 +158,7 @@ class ColourSidecarAPITests(unittest.TestCase):
         evidence=self.store.overrides('session:synthetic')
         edits={identity:{f:e['value'] for f,e in fields.items()} for identity,fields in evidence.items()}
         xml=self.root/'source.xml';xml.write_text('<TRACK/>');backup=self.root/'source.zip';backup.write_bytes(b'fixture')
-        catalog=SimpleNamespace(metadata={'xml_path':str(xml),'zip_path':str(backup),'field_overrides':edits})
+        catalog=SimpleNamespace(metadata={'xml_path':str(xml),'zip_path':str(backup),'field_overrides':edits,'export_target':'windows'},tracks={})
         state={'id':'synthetic','metadata_override_evidence':evidence,'metadata_edit_history':self.store.override_history('session:synthetic')}
         def writer(c,d,r,path,p):path.write_bytes(b'output');return {'merges':0,'metadata_fields':1,'metadata_changes_by_field':{'comment':1},'metadata_tracks_outside_xml':1}
         result=prepare_export(catalog,{}, {},state,self.root/'exports','a'*32,'xml',lambda *_:None,xml_writer=writer)

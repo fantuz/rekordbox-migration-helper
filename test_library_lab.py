@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic regression cases only. Never load a user's library or call a service."""
 from copy import deepcopy
 from io import BytesIO
@@ -147,7 +148,7 @@ class StoreAndOverrideTests(unittest.TestCase):
         xml.write_text('<DJ_PLAYLISTS><PRODUCT Version="7.0.0"/><COLLECTION Entries="1"><TRACK TrackID="one" Name="Original" Artist="" Year="2000" Rating="51"><TEMPO Inizio="0" Bpm="120" Metro="4/4" Battito="1"/><POSITION_MARK Name="Drop" Num="0" Type="0" Start="1.000"/></TRACK></COLLECTION><PLAYLISTS><NODE><TRACK Key="one"/></NODE></PLAYLISTS></DJ_PLAYLISTS>',encoding='utf-8')
         original=[sha256(p.read_bytes()).hexdigest() for p in (backup,xml)]
         edits={'one':{'title':'Łódź · Ελληνικά · Česky · Русский · 🎧','artist':'Grüße & Français','album':'Città più · Español ñ','genre':'House · Δοκιμή','year':2024,'rating':4,'comment':'First line\nGrüße Français Città Español Ελληνικά Łódź Český Русский 🎧 & <mix>','colour':'#FF0000'}}
-        c=SimpleNamespace(tracks={'one':{'october_xml':True}},metadata={'xml_path':str(xml),'zip_path':str(backup),'version':'7.0.0','field_overrides':edits})
+        c=SimpleNamespace(tracks={'one':{'october_xml':True}},metadata={'xml_path':str(xml),'zip_path':str(backup),'version':'7.0.0','field_overrides':edits,'export_target':'windows'})
         outxml=self.root/'edited.xml';outzip=self.root/'edited.zip'
         x=export_xml(c,{}, {},outxml,lambda *_:None);n=export_native(c,{}, {},outzip,lambda *_:None)
         self.assertEqual((x['metadata_fields'],n['metadata_fields']),(8,8))
@@ -394,7 +395,7 @@ class LabApiTests(unittest.TestCase):
         self.store=Store(self.root/'workbench-sidecar.sqlite3');self.sid=self.store.save_snapshot(snapshot(),'Synthetic')['id']
         for name,value in [('DATA',self.root),('sessions',{}),('active',None)]:
             p=patch.object(application,name,value);p.start();self.addCleanup(p.stop)
-        self.client=application.app.test_client();self.headers={'X-Workbench-Token':application.TOKEN}
+        self.client=workspace_client(application);self.headers={'X-Workbench-Token':application.TOKEN}
 
     def test_metadata_locked_token_and_host_guards(self):
         data={'snapshot':self.sid,'track_id':'one','field':'genre','value':'Deep House'}
@@ -422,11 +423,12 @@ class LabApiTests(unittest.TestCase):
         result={'status':'candidate_needs_review','match_approved':False,'candidates':[{'mbid':'01234567-89ab-cdef-0123-456789abcdef'}],
                 'proposal':{'year':2001,'genre':'deep house','retrieved_at':'2026-01-01'}}
         with self.store.connection() as db:db.execute('INSERT INTO mb_results VALUES (?,?,?,?)',(record['id'],'one',result['status'],encoded(result)))
-        endpoint='/api/lab/musicbrainz/'+record['id'];data={'track_id':'one','field':'year'}
+        endpoint='/api/lab/musicbrainz/'+record['id'];data={'track_id':'one','field':'year','review_revision':__import__('musicbrainz_review').revision(result)}
         self.assertEqual(self.client.post(endpoint+'/stage',json=data,headers=self.headers).status_code,400)
         self.client.post('/api/lab/unlock',json={'snapshot':self.sid,'unlocked':True},headers=self.headers)
         self.assertEqual(self.client.post(endpoint+'/stage',json=data,headers=self.headers).status_code,400)
-        self.client.post(endpoint+'/review',json={'track_id':'one','approved':True},headers=self.headers)
+        review=self.client.post(endpoint+'/review',json={'track_id':'one','approved':True,'review_revision':data['review_revision']},headers=self.headers)
+        data['review_revision']=review.json['review_revision']
         response=self.client.post(endpoint+'/stage',json=data,headers=self.headers)
         self.assertEqual(response.json['value'],2001);self.assertIn('MusicBrainz',response.json['origin'])
         self.assertEqual(self.client.post(endpoint+'/stage',json={'track_id':'one','field':'rating'},headers=self.headers).status_code,400)

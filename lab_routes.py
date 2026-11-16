@@ -13,6 +13,7 @@ from workbench_store import Store,encoded,now
 from research_capture import capture_private_database,capture_workspace,open_capture
 from library_checks import compare_snapshots,metadata_consistency,collection_coverage
 from analysis_audit import audit_assets
+from result_order import ordered,page_result,scan_statuses,with_status,TRACK_FIELDS
 from history_browser import list_history,history_session
 from metadata_overrides import FIELDS,FREE_FIELDS,comparable,baseline,validate
 from track_tags import editable_colour,snapshot_colour_support
@@ -135,7 +136,8 @@ def register(owner):
     @app.get('/api/lab/reports/<identity>')
     @app.get('/api/lab/reports/<identity>/download')
     def lab_report(identity):
-        result=store().report(identity,request.args.get('offset',0),request.args.get('section',''),request.args.get('q',''),request.path.endswith('/download'))
+        result=store().report(identity,request.args.get('offset',0),request.args.get('section',''),request.args.get('q',''),True)
+        result=page_result(result,request.args,('section','severity','title','artist','detail','track_id'),full=request.path.endswith('/download'))
         if request.path.endswith('/download'):return download(result,'library-lab-report.json')
         return jsonify(result)
 
@@ -143,22 +145,28 @@ def register(owner):
     def lab_tracks():
         s=store().snapshot(request.args.get('snapshot',''));edits=store().overrides(s['scope_key']);query=request.args.get('q','').casefold()
         tracks=[t for t in s['tracks'] if not query or query in (' '.join(str(t.get(f) or '') for f in ('id','title','artist','album','genre'))).casefold()]
+        statuses=scan_statuses(store(),s)
+        effective=[{**t,**{f:v['value'] for f,v in edits.get(t['id'],{}).items()},'file_status':statuses.get(t['id'])} for t in tracks]
+        order=ordered(effective,request.args.get('sort',''),request.args.get('direction','asc'),TRACK_FIELDS)
+        by_id={t['id']:t for t in tracks};tracks=[by_id[t['id']] for t in order]
         offset=max(0,int(request.args.get('offset',0)))
-        return jsonify(rows=[{'original':{f:t.get(f) for f in ('id',*FIELDS)},'overrides':edits.get(t['id'],{})} for t in tracks[offset:offset+30]],
+        return jsonify(sort_scope='collection',rows=[{'file_status':statuses.get(t['id']),'original':{f:t.get(f) for f in ('id',*FIELDS)},'overrides':edits.get(t['id'],{})} for t in tracks[offset:offset+30]],
                        total=len(tracks),offset=offset,unlocked=s['scope_key'] in edit_unlocked,scope=s['scope_key'],override_fields=sum(len(v) for v in edits.values()))
 
     @app.get('/api/lab/history')
     def lab_history():
         from collection_sources import history_source
         s=history_source(owner, request.args)
-        return jsonify(list_history(s,request.args.get('q',''),request.args.get('year',''),request.args.get('offset',0)))
+        return jsonify(page_result(list_history(s,request.args.get('q',''),request.args.get('year',''),all_rows=True),
+                                   request.args,('name','date','tracks'),page_size=30))
 
     @app.get('/api/lab/history/<identity>')
     @app.get('/api/lab/history/<identity>/download')
     def lab_history_session(identity):
         from collection_sources import history_source
         s=history_source(owner, request.args);full=request.path.endswith('/download')
-        result=history_session(s,identity,request.args.get('q',''),request.args.get('offset',0),full)
+        result=page_result(history_session(s,identity,request.args.get('q',''),all_rows=True),
+                           request.args,('position',*TRACK_FIELDS),statuses=scan_statuses(store(),s),full=full)
         if full:return download(result,'saved-play-history.json')
         return jsonify(result)
 
@@ -265,7 +273,10 @@ def register(owner):
             from musicbrainz_pilot import target_selection
             target=b.get('target','balanced');value=b.get('target_value','')
             selected={**s,'tracks':target_selection(s,target,value)}
-            eligible,excluded=playable_collection(selected,include,progress)
+            from audio_paths import mappings_for,signature
+            mappings=mappings_for(store(),s)
+            eligible,excluded=playable_collection(selected,include,progress,mappings)
+            eligible['audio_mapping_revision']=signature(mappings)
             progress(95,'Preparing the local batch preview')
             return create_batch(store(),eligible,b.get('top_genres',5),b.get('seed','preview'),
                                 SPEEDS[speed],b.get('sample_size'),target,value,
@@ -299,6 +310,9 @@ def register(owner):
             saved=store();recover_batches(saved);record=batch_record(saved,identity)
             from enrichment_context import require_snapshot
             require_snapshot(owner,saved.snapshot(record['snapshot_id']))
+            from audio_paths import mappings_for,signature
+            if record['summary'].get('audio_mapping_revision') and record['summary']['audio_mapping_revision']!=signature(mappings_for(saved,saved.snapshot(record['snapshot_id']))):
+                raise ValueError('Audio folder mappings changed. Preview a new batch before starting.')
             if 'playable_only' not in record['summary']:
                 raise ValueError('Preview a new batch to choose whether unavailable audio is included')
             if record['status']=='complete':raise ValueError('This batch is complete. Preview a new sample to run another batch.')
@@ -340,32 +354,9 @@ def register(owner):
             if identity in cancellations:cancellations[identity].set()
         return jsonify(cancel_requested=True)
 
-    @app.post('/api/lab/musicbrainz/<identity>/review')
-    def lab_pilot_review(identity):
-        b=body();track_id=str(b.get('track_id',''))
-        with store().connection() as db:
-            r=db.execute('SELECT payload FROM mb_results WHERE batch_id=? AND track_id=?',(identity,track_id)).fetchone()
-            if not r:raise ValueError('No retrieved match exists for this track')
-            result=json.loads(r[0])
-            if not result.get('candidates') or not result.get('proposal'):raise ValueError('No candidate with metadata is available')
-            result['match_approved']=b.get('approved') is True
-            result['reviewed_at']=now()
-            db.execute('UPDATE mb_results SET payload=? WHERE batch_id=? AND track_id=?',(encoded(result),identity,track_id))
-        return jsonify(match_approved=result['match_approved'],note='Approval records identity only. Stage each metadata field separately in the editor.')
-
-    @app.post('/api/lab/musicbrainz/<identity>/stage')
-    def lab_pilot_stage(identity):
-        b=body();field=b.get('field');track_id=str(b.get('track_id',''))
-        if field not in ('year','genre'):raise ValueError('Stage a proposed year or genre; personal stars remain a manual choice')
-        record=batch_record(store(),identity);s=store().snapshot(record['snapshot_id']);unlocked(s)
-        with store().connection() as db:r=db.execute('SELECT payload FROM mb_results WHERE batch_id=? AND track_id=?',(identity,track_id)).fetchone()
-        result=json.loads(r[0]) if r else {}
-        if not result.get('match_approved') or result.get('proposal',{}).get(field) is None:raise ValueError('Approve this retrieved identity before staging its available metadata')
-        t=next((t for t in s['tracks'] if t['id']==track_id),None)
-        if not t:raise ValueError('The retrieved track is outside the selected snapshot')
-        origin='MusicBrainz '+result['candidates'][0]['mbid']+' '+result['proposal']['retrieved_at']
-        value=store().save_override(s['scope_key'],track_id,field,result['proposal'][field],t.get(field),origin)
-        return jsonify(value=value,origin=origin)
+    from musicbrainz_review import register as register_review
+    register_review(owner,store,enabled,unlocked,gate,network_pool,cancellations,network_lock,
+                    lambda *args:MusicBrainzClient(*args))
 
     @app.post('/api/lab/offline-export')
     def lab_offline_export():

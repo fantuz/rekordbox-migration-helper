@@ -1,3 +1,4 @@
+from test_support import workspace_client
 import unittest
 from unittest.mock import patch
 from task_control import TaskControl, OperationCancelled
@@ -13,7 +14,7 @@ class CancellationTests(unittest.TestCase):
     def test_cancel_requires_local_token_and_preserves_other_tasks(self):
         first,second=TaskControl(),TaskControl()
         with patch.object(application,'tasks',{'one':{'status':'running'},'two':{'status':'running'}}),patch.object(application,'task_controls',{'one':first,'two':second}):
-            client=application.app.test_client()
+            client=workspace_client(application)
             self.assertEqual(client.post('/api/tasks/one/cancel').status_code,403)
             response=client.post('/api/tasks/one/cancel',json={},headers={'X-Workbench-Token':application.TOKEN})
             self.assertTrue(response.json['cancel_requested']);self.assertTrue(first.event.is_set())
@@ -22,7 +23,7 @@ class CancellationTests(unittest.TestCase):
 
     def test_late_cancel_reports_completion(self):
         with patch.object(application,'tasks',{'done':{'status':'complete','result':{'id':'kept'}}}),patch.object(application,'task_controls',{}):
-            response=application.app.test_client().post('/api/tasks/done/cancel',json={},headers={'X-Workbench-Token':application.TOKEN})
+            response=workspace_client(application).post('/api/tasks/done/cancel',json={},headers={'X-Workbench-Token':application.TOKEN})
             self.assertEqual(response.json['status'],'complete');self.assertFalse(response.json['cancel_requested'])
             self.assertEqual(application.tasks['done']['result'],{'id':'kept'})
 

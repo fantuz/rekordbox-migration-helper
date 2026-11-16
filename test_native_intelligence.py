@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Direct native captures and named snapshots must expose the same intelligence."""
 from contextlib import ExitStack,closing
 from pathlib import Path
@@ -25,7 +26,7 @@ class NativeIntelligenceTests(unittest.TestCase):
         self.before=self.original.read_bytes();self.capture='c'*32;self.source='capture:'+self.capture
         analyze_folder(self.original,self.data/'analyzers'/self.capture,lambda *_:None)
         for name,value in [('DATA',self.data),('active',None),('sessions',{}),('tasks',{})]:stack.enter_context(patch.object(app,name,value))
-        self.client=app.app.test_client();self.headers={'X-Workbench-Token':app.TOKEN}
+        self.client=workspace_client(app);self.headers={'X-Workbench-Token':app.TOKEN}
         self.store=Store(self.data/'workbench-sidecar.sqlite3');self.sid=self.store.save_snapshot(resolve(app,self.source),'Synthetic saved native')['id']
 
     def test_native_capture_and_saved_snapshot_match(self):
@@ -43,7 +44,7 @@ class NativeIntelligenceTests(unittest.TestCase):
     def test_evolution_and_exports_keep_capture_source(self):
         response=self.client.get('/api/intelligence/evolution',query_string={'before':self.source,'after':self.sid})
         self.assertEqual(response.status_code,200,response.json);self.assertEqual(response.json['matched_records'],2)
-        response=self.client.post('/api/intelligence/serato/preview',json={'snapshot':self.source,'volume_root':'/'},headers=self.headers)
+        response=self.client.post('/api/intelligence/serato/preview',json={'snapshot':self.source,'volume_root':'/','target_profile':'macos'},headers=self.headers)
         self.assertEqual(response.status_code,200,response.json);self.assertEqual(response.json['tracks_written'],2)
         with patch('chart_playlists.ChartClient.fetch',return_value={'period':'week','from_ts':0,'to_ts':1,'rows':[]}):
             response=self.client.post('/api/intelligence/chart',json={'snapshot':self.source,'network_consent':True,'period':'week'},headers=self.headers)

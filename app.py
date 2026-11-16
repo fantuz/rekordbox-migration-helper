@@ -92,11 +92,12 @@ def task_progress(job, amount, text):
         tasks[job].update(progress=amount,message=text)
 
 
-def launch(work, message, pool=None, on_finished=None):
+def launch(work, message, pool=None, on_finished=None, cancel_event=None):
     if shutdown.requested.is_set():raise ValueError('The application is stopping')
     job = uuid4().hex
     tasks[job] = {"id":job,"status":"running","progress":0,"message":message}
     task_controls[job] = TaskControl()
+    if cancel_event is not None:task_controls[job].event=cancel_event
     def run():
         try:
             task_controls[job].checkpoint()
@@ -115,7 +116,10 @@ def launch(work, message, pool=None, on_finished=None):
                 if on_finished:on_finished(tasks[job]['status'])
             finally:
                 with lock:task_controls.pop(job,None)
-    (pool or executor).submit(run)
+    try:(pool or executor).submit(run)
+    except Exception:
+        with lock:tasks.pop(job,None);task_controls.pop(job,None)
+        raise
     return job
 
 
@@ -135,26 +139,31 @@ def load_session(metadata, sid, progress):
         inventory=json.loads(Path(saved["inventory_path"]).read_text(encoding="utf-8"))
     catalog.policy=saved.get("policy","newest")
     catalog.refresh_counts()
-    session={"id":sid,"metadata":metadata,"catalog":catalog,"decisions":saved.get("decisions",{}),
-             "relocations":saved.get("relocations",{}),"events":saved.get("events",[]),"policy":catalog.policy,"last_batch":saved.get("last_batch",[]),"batches":saved.get("batches",[]),"held_pairs":saved.get("held_pairs",{}),"inventory":inventory,"inventory_path":saved.get("inventory_path"),"name":saved.get("name",metadata["name"]),"media_verifications":saved.get("media_verifications",{}),"backup_acknowledged":saved.get("backup_acknowledged")}
+    session={"id":sid,"_workspace_generation":uuid4().hex,"metadata":metadata,"catalog":catalog,"decisions":saved.get("decisions",{}),
+             "export_target":saved.get("export_target","auto"),"relocations":saved.get("relocations",{}),"events":saved.get("events",[]),"policy":catalog.policy,"last_batch":saved.get("last_batch",[]),"batches":saved.get("batches",[]),"held_pairs":saved.get("held_pairs",{}),"inventory":inventory,"inventory_path":saved.get("inventory_path"),"name":saved.get("name",metadata["name"]),"media_verifications":saved.get("media_verifications",{}),"backup_acknowledged":saved.get("backup_acknowledged")}
     with lock:
+        log(session,f"Loaded {len(catalog.tracks):,} tracks and {len(catalog.pairs):,} candidate pairs")
         sessions[sid]=session
         active=sid
-        log(session,f"Loaded {len(catalog.tracks):,} tracks and {len(catalog.pairs):,} candidate pairs")
     return {"session":sid}
 
 
 def current():
-    if not active or active not in sessions:
-        raise ValueError("Load a backup and XML first")
-    return sessions[active]
+    with lock:
+        if not active or active not in sessions:
+            raise ValueError("Load a backup and XML first")
+        from workspace_safety import require
+        return require(sys.modules[__name__], sessions[active])
 
 
 def summary(session):
     decisions=session["decisions"]
     from workbench_store import Store
     fields=Store(DATA/'workbench-sidecar.sqlite3').overrides('session:'+session['id']) if (DATA/'workbench-sidecar.sqlite3').is_file() else {}
-    return {"id":session["id"],"name":session.get("name",session["metadata"]["name"]),"metadata":session["metadata"],"counts":session["catalog"].counts,
+    from workspace_safety import revision
+    from export_references import target_info
+    return {"id":session["id"],"revision":revision(session),"name":session.get("name",session["metadata"]["name"]),"metadata":session["metadata"],"counts":session["catalog"].counts,
+            "export_reference":target_info(session["catalog"],session.get("export_target","auto")),
             "metadata_override_fields":sum(len(v) for v in fields.values()),
             "metadata_override_tracks":len(fields),"metadata_override_by_field":{f:sum(f in v for v in fields.values()) for f in {f for v in fields.values() for f in v}},
             "policy":session["policy"],"backup_acknowledged":session.get("backup_acknowledged"),"staged":sum(d["action"]=="merge" for d in decisions.values()),
@@ -176,8 +185,19 @@ def configured_example():
 def protect():
     if shutdown.requested.is_set() and request.path not in ('/api/cleanup','/api/desktop/stop','/api/status') and not request.path.startswith('/api/tasks/'):
         return jsonify(error='The app is stopping and cleaning its temporary copies'),503
-    if request.method in ("POST","PUT","DELETE") and request.headers.get("X-Workbench-Token")!=TOKEN:
+    if request.method in ("POST","PUT","PATCH","DELETE") and request.headers.get("X-Workbench-Token")!=TOKEN:
         return jsonify(error="Reload the local page to authorize this action"),403
+
+
+from workspace_safety import register as register_workspace_safety
+register_workspace_safety(sys.modules[__name__])
+
+
+from werkzeug.exceptions import HTTPException
+@app.errorhandler(HTTPException)
+def http_error(error):
+    from workspace_safety import WorkspaceConflict
+    return jsonify(error=error.description,conflict='workspace' if isinstance(error,WorkspaceConflict) else 'resource'),error.code
 
 
 @app.errorhandler(ValueError)
@@ -461,7 +481,9 @@ def storage_details(audit_id):
     rows=audit["groups"]
     if request.args.get("scope")=="cloud_local":rows=[row for row in rows if row["cloud_local"]]
     offset=max(0,int(request.args.get("offset",0)))
-    return jsonify(**{key:value for key,value in audit.items() if key!="groups"},groups=rows[offset:offset+30],group_total=len(rows),offset=offset)
+    from result_order import ordered
+    rows=ordered(rows,request.args.get('sort',''),request.args.get('direction','asc'),('physical_files','id'))
+    return jsonify(sort_scope='collection',**{key:value for key,value in audit.items() if key!="groups"},groups=rows[offset:offset+30],group_total=len(rows),offset=offset)
 
 
 @app.get("/api/storage/<audit_id>/report")
@@ -699,6 +721,33 @@ def policy():
     return jsonify(job=launch(change,"Updating keeper suggestions"))
 
 
+
+def reference_catalog(session):
+    from workbench_store import Store
+    catalog=copy(session["catalog"])
+    catalog.metadata=deepcopy(catalog.metadata)
+    catalog.metadata['export_target']=session.get('export_target','auto')
+    catalog.metadata['_audio_access_mappings']=Store(DATA/'workbench-sidecar.sqlite3').setting('audio_paths:session:'+session['id'],[])
+    return catalog
+
+
+@app.post("/api/export-target")
+def export_target():
+    from export_references import target_info
+    session=current()
+    body=request.get_json(silent=True)
+    if not isinstance(body,dict):raise ValueError('Choose an export target.')
+    selected=body.get('target')
+    target_info(session['catalog'],selected)
+    previous=session.get('export_target','auto')
+    session['export_target']=selected
+    try:log(session,'Export reference target: '+selected)
+    except Exception:
+        session['export_target']=previous
+        raise
+    return jsonify(session=summary(session))
+
+
 @app.post("/api/relocation")
 def relocation():
     from urllib.parse import urlsplit
@@ -711,6 +760,8 @@ def relocation():
     if uri and (urlsplit(uri).scheme!="file" or not urlsplit(uri).path):
         raise ValueError("Enter a file URI such as file://localhost/D:/Music/track.mp3")
     if uri:
+        from export_references import validate_relocations
+        validate_relocations(reference_catalog(session),{i:uri})
         session["relocations"][i]=uri
     else:
         session["relocations"].pop(i,None)
@@ -724,7 +775,7 @@ def report():
     mapping,results=decision_map(session["catalog"],session["decisions"])
     payload={**summary(session),"decisions":session["decisions"],"reference_edits":session["relocations"],
              "merge_map":mapping,"cue_changes":{i:r["changes"] for i,r in results.items()},
-             "format":"Offline review plan v1","native_backup_writer":"Experimental ZIP export; isolated Windows restore test required"}
+             "format":"Offline review plan v1","native_backup_writer":"Native ZIP export requires an isolated restore test on the selected Windows/macOS target"}
     return app.response_class(json.dumps(payload,ensure_ascii=False,indent=2),mimetype="application/json",
                               headers={"Content-Disposition":'attachment; filename="library-review-report.json"'})
 
@@ -738,8 +789,7 @@ def export():
         session=current()
         if not session.get("backup_acknowledged"):
             raise ValueError("Keep a separate, untouched rekordbox Backup Library backup before transforming files, then acknowledge it on Prepare export.")
-        catalog=copy(session["catalog"])
-        catalog.metadata=deepcopy(catalog.metadata)
+        catalog=reference_catalog(session)
         if kind in ("zip","pair") and str(catalog.metadata.get("version","")).split(".")[0]!="7":
             raise ValueError("Native ZIP generation is currently available for v7 inputs only. Older libraries can be inspected with Source analyzer; native round-trip validation for v6 is pending.")
         check_inputs(catalog.metadata)
@@ -747,6 +797,9 @@ def export():
         catalog.metadata['field_overrides']=workspace_overrides(DATA,session)
         decisions=deepcopy(session["decisions"])
         relocations=dict(session["relocations"])
+        from export_references import validate_export
+        retired,_=decision_map(catalog,decisions)
+        validate_export(catalog,relocations,kind,retired)
         snapshot=deepcopy(summary(session))
         snapshot['metadata_overrides']=deepcopy(catalog.metadata['field_overrides'])
         from workbench_store import Store
@@ -829,30 +882,34 @@ def import_local():
 def upload(sid,kind):
     if not re_uuid(sid) or kind not in ("zip","xml"):
         raise ValueError("Unknown upload")
-    folder=TEMPORARY.folder(sid)
-    info=json.loads((folder/"upload.json").read_text(encoding="utf-8"))
-    final=folder/info[kind]
-    if final.exists():
-        raise ValueError("File has already been uploaded")
-    temp=folder/(kind+".part")
-    done=0
-    with TEMPORARY.operation(),temp.open("xb") as stream:
-        while chunk:=request.stream.read(2*1024*1024):
-            if shutdown.requested.is_set():raise InterruptedError('Upload cancelled for temporary-file cleanup')
-            done+=len(chunk)
-            stream.write(chunk)
-    if done==0:
-        temp.unlink()
-        raise ValueError("File is empty")
-    os.replace(temp,final)
+    from upload_recovery import receive
+    done=receive(TEMPORARY,sid,kind,request.stream,request.content_length,shutdown.requested.is_set)
     return jsonify(bytes=done)
 
+
+@app.get('/api/import/<sid>')
+def upload_status(sid):
+    if not re_uuid(sid):raise ValueError('Unknown import')
+    folder=TEMPORARY.path/sid;path=folder/'upload.json'
+    if folder.is_symlink() or folder.is_junction() or not path.is_file():
+        raise ValueError('This upload session is unavailable. Start a new import.')
+    info=json.loads(path.read_text(encoding='utf-8'))
+    files={}
+    for kind in ('zip','xml'):
+        name=info.get(kind,'')
+        if not name or '/' in name or '\\' in name:raise ValueError('Invalid upload session')
+        candidate=folder/name
+        files[kind]={'complete':candidate.is_file() and not candidate.is_symlink(),
+                     'bytes':candidate.stat().st_size if candidate.is_file() else 0}
+    return jsonify(session=sid,files=files)
 
 @app.post("/api/import/<sid>/analyze")
 def run_import(sid):
     if not re_uuid(sid):
         raise ValueError("Unknown import")
-    folder=TEMPORARY.folder(sid)
+    folder=TEMPORARY.path/sid
+    if folder.is_symlink() or folder.is_junction() or not (folder/'upload.json').is_file():
+        raise ValueError('This upload session is unavailable. Start a new import.')
     info=json.loads((folder/"upload.json").read_text(encoding="utf-8"))
     backup,xml=folder/info["zip"],folder/info["xml"]
     if not backup.exists() or not xml.exists():
@@ -865,7 +922,15 @@ def run_import(sid):
         metadata.update(input_fingerprints=stamps,import_mode="uploaded")
         check_inputs(metadata)
         return load_session(metadata,sid,progress)
-    return jsonify(job=launch(work,"Analyzing the imported pair"))
+    with lock:
+        for task in tasks.values():
+            if task.get('import_session')==sid and task['status'] in ('running','complete'):
+                if task['status']=='complete' and active!=(task.get('result') or {}).get('session'):
+                    raise ValueError('This import already completed. Resume it from Saved workspaces to make it active again.')
+                return jsonify(job=task['id'])
+        job=launch(work,"Analyzing the imported pair")
+        tasks[job]['import_session']=sid
+    return jsonify(job=job)
 
 
 def resume_state(sid):
@@ -1005,7 +1070,9 @@ def inventory_items():
         if query and query not in (track["title"]+" "+track["artist"]+" "+i).casefold():continue
         rows.append({"track_id":i,"title":track["title"],"artist":track["artist"],
                      'staged_uri':session['relocations'].get(i),**match})
-    return jsonify(counts=inventory["counts"],file_count=inventory["file_count"],roots=inventory["roots"],
+    from result_order import ordered
+    rows=ordered(rows,request.args.get('sort',''),request.args.get('direction','asc'),('title','artist','status','candidate_count'))
+    return jsonify(sort_scope='collection',counts=inventory["counts"],file_count=inventory["file_count"],roots=inventory["roots"],
                    scan_id=inventory.get('scan_id'),advanced=inventory.get('advanced',False),
                    complete=inventory.get('complete'),note=inventory.get('note'),
                    warnings=inventory["warnings"],total=len(rows),rows=rows[offset:offset+50])
@@ -1057,6 +1124,8 @@ def stage_inventory_reference():
             log(session,'Cleared inventory reference for '+session['catalog'].tracks[i]['title'])
             return jsonify(session=summary(session))
         uri=stage_candidate(inventory,match)
+        from export_references import validate_relocations
+        validate_relocations(reference_catalog(session),{i:uri})
         session['relocations'][i]=uri
         log(session,'Staged inventory reference for '+session['catalog'].tracks[i]['title'])
         return jsonify(session=summary(session))
@@ -1198,6 +1267,8 @@ from investigations import register as register_investigations
 register_investigations(sys.modules[__name__])
 from journeys_routes import register as register_journeys
 register_journeys(sys.modules[__name__])
+from audio_paths import register as register_audio_paths
+register_audio_paths(sys.modules[__name__])
 from file_health import register as register_file_health
 register_file_health(sys.modules[__name__])
 

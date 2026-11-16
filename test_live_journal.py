@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Journal activity monitoring never reads or alters the active database."""
 from contextlib import closing
 from pathlib import Path
@@ -21,7 +22,7 @@ class JournalActivityTests(unittest.TestCase):
             captured=analyze_folder(root,data/'analyzers'/('f'*32),lambda *_:None)
             original=(root/'master.db').read_bytes()
             with patch.object(application,'DATA',data):
-                client=application.app.test_client()
+                client=workspace_client(application)
                 uri='/api/analyzer/'+('f'*32)+'/journal-status'
                 initial=client.get(uri);self.assertEqual(initial.status_code,200,initial.json)
                 self.assertTrue(initial.json['supported']);self.assertFalse(initial.json['changed'])

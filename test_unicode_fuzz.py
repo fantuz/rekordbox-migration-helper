@@ -47,7 +47,7 @@ class UnicodePropertyTests(unittest.TestCase):
             source.write_bytes(ET.tostring(tree,encoding='utf-8',xml_declaration=True))
             with zipfile.ZipFile(backup,'w') as archive:archive.writestr('master.db',self.master)
             before=[sha256(p.read_bytes()).hexdigest() for p in (source,backup)]
-            catalog=SimpleNamespace(tracks={'one':{'october_xml':True}},metadata={'xml_path':str(source),'zip_path':str(backup),'version':version})
+            catalog=SimpleNamespace(tracks={'one':{'october_xml':True,'xml_location':attrs['Location']}},metadata={'xml_path':str(source),'zip_path':str(backup),'version':version})
             export_xml(catalog,{}, {},output,lambda *_:None)
             checked,refs,read_version,_=parse_xml(output,lambda *_:None)
             self.assertEqual(checked['one']['attrs'],attrs);self.assertEqual(refs,['one']);self.assertEqual(read_version,version)

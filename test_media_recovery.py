@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic recovery evidence, stale-candidate guards and reversible staging."""
 from io import BytesIO
 import json
@@ -34,19 +35,19 @@ class RecoveryTests(unittest.TestCase):
         self.root=Path(temporary.name).resolve();self.music=self.root/'music';self.music.mkdir()
         self.audio=self.music/'Renamed.wav';tagged_wave(self.audio)
         self.track={'track_id':'a','title':'Test song','artist':'Test artist',
-                    'current_path':str(self.root/'Lost.wav'),'size_bytes':10,
+                    'current_path':'D:/Music/Lost.wav','size_bytes':10,
                     'duration_seconds':3,'playlist_ids':['saved-playlist']}
 
     def scan(self,**extra):
-        return scan({'a':self.track},[{'root':str(self.music),**extra}],lambda *_:None)
+        return scan({'a':self.track},[{'root':str(self.music),'export_uri':'file://localhost/D:/Music',**extra}],lambda *_:None)
 
     def test_renamed_file_uses_real_tags_and_duration_without_size_agreement(self):
         before=self.audio.read_bytes();result=self.scan();match=result['matches']['a']
         self.assertTrue(result['complete']);self.assertEqual(match['status'],'found')
         self.assertEqual(match['evidence'],'tags_and_duration')
-        self.assertEqual(stage_candidate(result,match),self.audio.as_uri())
+        self.assertEqual(stage_candidate(result,match),'file://localhost/D:/Music/Renamed.wav')
         self.assertEqual(before,self.audio.read_bytes())
-        self.assertEqual(self.track['current_path'],str(self.root/'Lost.wav'))
+        self.assertEqual(self.track['current_path'],'D:/Music/Lost.wav')
 
     def test_version_words_and_duration_remain_distinct(self):
         self.track['title']='Test song (Dub)'
@@ -113,9 +114,9 @@ class RecoveryTests(unittest.TestCase):
 
     def test_api_stages_undoes_reports_and_rejects_stale_or_remote_requests(self):
         inventory=self.scan()
-        session={'id':'test','catalog':SimpleNamespace(tracks={'a':self.track}),
+        session={'id':'test','catalog':SimpleNamespace(tracks={'a':self.track},metadata={}),
                  'inventory':inventory,'relocations':{},'metadata':{}}
-        client=application.app.test_client();headers={'X-Workbench-Token':application.TOKEN}
+        client=workspace_client(application);headers={'X-Workbench-Token':application.TOKEN}
         body={'track_id':'a','workspace':'test','scan_id':inventory['scan_id']}
         with patch.object(application,'current',return_value=session),patch.object(application,'log'),patch.object(application,'summary',return_value={'id':'test'}):
             endpoint='/api/inventory/stage'
@@ -123,7 +124,7 @@ class RecoveryTests(unittest.TestCase):
                 self.assertEqual(client.post(endpoint,json=invalid,headers=headers).status_code,400)
             self.assertEqual(client.post(endpoint,json=body,headers=headers,environ_overrides={'REMOTE_ADDR':'8.8.8.8'}).status_code,400)
             self.assertEqual(client.post(endpoint,json=body,headers=headers).status_code,200)
-            self.assertEqual(session['relocations'],{'a':self.audio.as_uri()})
+            self.assertEqual(session['relocations'],{'a':'file://localhost/D:/Music/Renamed.wav'})
             payload=client.get('/api/inventory/report').json
             self.assertEqual(payload['tracks'][0]['metadata']['playlist_ids'],['saved-playlist'])
             self.assertEqual(payload['library_entries_removed'],0)
@@ -131,6 +132,13 @@ class RecoveryTests(unittest.TestCase):
             self.assertEqual(client.post(endpoint,json={**body,'undo':True},headers=headers).status_code,200)
             self.assertEqual(session['relocations'],{})
         self.assertFalse(recovery_report(session)['audio_files_modified'])
+
+    def test_missing_destination_never_falls_back_to_the_host_mount(self):
+        result=self.scan(export_uri='')
+        match=result['matches']['a']
+        self.assertEqual(match['status'],'found')
+        self.assertIsNone(match['candidates'][0]['export_uri'])
+        with self.assertRaisesRegex(ValueError,'export root'):stage_candidate(result,match)
 
 
 if __name__=='__main__':unittest.main()

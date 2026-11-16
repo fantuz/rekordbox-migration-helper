@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Local intelligence API contracts using synthetic immutable sidecar captures."""
 from copy import deepcopy
 from pathlib import Path
@@ -25,7 +26,7 @@ class IntelligenceApiTests(unittest.TestCase):
         self.first=self.store.save_snapshot(self.source,'Before')['id']
         later=deepcopy(self.source);later['tracks'][0]['genre']='Techno'
         self.second=self.store.save_snapshot(later,'After')['id']
-        self.client=application.app.test_client();self.headers={'X-Workbench-Token':application.TOKEN}
+        self.client=workspace_client(application);self.headers={'X-Workbench-Token':application.TOKEN}
 
     def test_options_and_overlap_are_read_only_and_pages_have_exact_totals(self):
         before=self.store.snapshot(self.first)

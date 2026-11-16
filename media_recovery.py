@@ -115,7 +115,7 @@ def scan(tracks, mappings, progress):
                     continue
                 try:
                     record = file_record(path)
-                    record['export_uri'] = export_uri(mapping, path.relative_to(root)) or path.as_uri()
+                    record['export_uri'] = export_uri(mapping, path.relative_to(root))
                     record['mapped_paths'] = []
                     if mapping.get('recorded_prefix'):
                         record['mapped_paths'].append(path_key(mapping['recorded_prefix'].rstrip('/\\') + '/' + path.relative_to(root).as_posix()))
@@ -238,7 +238,7 @@ def stage_candidate(inventory, match):
     record = match['candidates'][0]
     uri = record.get('export_uri')
     if not uri or not valid_export_uri(uri):
-        raise ValueError('Set a local export root URI in the mapping and scan again')
+        raise ValueError('Set the Windows or macOS export root URI in the mapping and scan again')
     path = Path(record['path'])
     try:
         if not ordinary_path(path) or not os.access(path, os.R_OK):

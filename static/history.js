@@ -1,27 +1,29 @@
 /* Histories are immutable native snapshot data; never reconstructed from counts. */
-let historyOffset=0,historyEntryOffset=0,historySelected=null,historyListRevision=0,historySessionRevision=0;
+let historySourceSeen='',historyOffset=0,historyEntryOffset=0,historySelected=null,historyListRevision=0,historySessionRevision=0;
 async function loadHistory(){
   const info=await api('/api/lab');
   const choices=[...info.snapshots,...info.sources.map(s=>({...s,id:'capture:'+s.id}))];
   labSelect('#history-snapshot',choices,r=>r.label+' · '+snapshotMoment(r.created),I18n.t("Choose a saved snapshot"));
   const shared=window.Journeys?.context();
-  if(shared){const selected=shared.snapshot || (shared.source?.startsWith('capture:')?shared.source:'');$('#history-snapshot').value=choices.some(s=>s.id===selected)?selected:'';}
+  if(shared && !$('#history-snapshot').value){const selected=shared.snapshot || (shared.source?.startsWith('capture:')?shared.source:'');$('#history-snapshot').value=choices.some(s=>s.id===selected)?selected:'';}
   else if(!$('#history-snapshot').value && choices.length)$('#history-snapshot').value=choices[0].id;
   const sources=[...(info.workspace?[{id:'session',get label(){return I18n.t("Loaded XML + ZIP workspace");}}]:[]),...info.sources.map(r=>({id:r.id,label:I18n.t("Source capture ·")+" "+snapshotMoment(r.created)+' · '+r.label}))];
   labSelect('#history-source',sources,r=>r.label,I18n.t("Choose a native input capture"));$('#history-capture').disabled=!sources.length;
-  historyOffset=0;historySelected=null;$('#history-session').hidden=true;await loadHistoryList();
+  await loadHistoryList();if(historySelected)await loadHistorySession();else $('#history-session').hidden=true;
 }
 async function loadHistoryList(){
   const revision=++historyListRevision,snapshot=$('#history-snapshot').value;
+  if(historySourceSeen!==snapshot){historyOffset=0;historyEntryOffset=0;historySelected=null;$('#history-session').hidden=true;historySourceSeen=snapshot;}
   if(!snapshot){$('#history-status').textContent=I18n.t("Load a native ZIP workspace or capture a source folder, then save a history snapshot. XML alone does not contain the native History tab.");$('#history-list').innerHTML='';$('#history-summary').innerHTML='';return;}
-  const r=await api('/api/lab/history?'+new URLSearchParams({snapshot,year:$('#history-year').value,q:$('#history-search').value,offset:historyOffset}));
+  const r=await api('/api/lab/history?'+new URLSearchParams({snapshot,year:$('#history-year').value || window.BrowseState?.value('history-year') || '',q:$('#history-search').value,offset:historyOffset,...CollectionSort.args('history-list')}));
   if(revision!==historyListRevision || snapshot!==$('#history-snapshot').value)return;
-  const oldYear=$('#history-year').value;
+  const oldYear=$('#history-year').value || window.BrowseState?.value('history-year') || '';
   $('#history-year').innerHTML=("<option value=\"\">"+esc(I18n.t("All session years"))+"</option>")+r.years.map(y=>'<option value="'+esc(y.year)+'">'+esc(y.year)+' · '+num(y.sessions)+(" "+esc(I18n.t("sessions"))+"</option>")).join('')+(r.unknown_dates?("<option value=\"unknown\">"+esc(I18n.t("Date not captured ·"))+" ")+num(r.unknown_dates)+'</option>':'');$('#history-year').value=oldYear;
   $('#history-status').textContent=r.available?r.note:I18n.t("History was not decoded in this snapshot. XML-only and legacy .edb inputs do not supply native session history. For older native captures, capture the original ZIP workspace or source folder again.");
   $('#history-summary').innerHTML=labSummary({saved_sessions:r.available?r.sessions_total:null,saved_entries:r.available?r.entries_total:null,track_order_captured:r.available?r.order_available:null});
   $('#history-added').innerHTML=renderAddedYears(r.addition_dates);
   $('#history-list').innerHTML=r.available?("<table><thead><tr><th>"+esc(I18n.t("Saved session"))+"</th><th>"+esc(I18n.t("Recorded date"))+"</th><th>"+esc(I18n.t("Entries"))+"</th><th></th></tr></thead><tbody>")+r.rows.map(h=>'<tr><td>'+esc(h.name)+'</td><td>'+esc(h.date || I18n.t("Unknown"))+'</td><td>'+num(h.tracks)+'</td><td><button class="button secondary small" data-history-id="'+esc(h.id)+("\">"+esc(I18n.t("Browse tracks →"))+"</button></td></tr>")).join('')+'</tbody></table>':'';
+  CollectionSort.bind('#history-list','history-list',['name','date','tracks'],r.rows,async()=>{historyOffset=0;await loadHistoryList();});
   $('#history-count').textContent=num(r.total)+(" "+I18n.t("sessions")+" \u00b7 ")+(r.total?num(historyOffset+1)+'–'+num(Math.min(historyOffset+30,r.total)):'0');
   $('#history-prev').disabled=!historyOffset;$('#history-next').disabled=historyOffset+30>=r.total;
   $$('[data-history-id]').forEach(b=>b.onclick=wrap(async()=>{historySelected=b.dataset.historyId;historyEntryOffset=0;$('#history-track-search').value='';await loadHistorySession();$('#history-session').scrollIntoView({behavior:'smooth',block:'start'});}));
@@ -29,16 +31,17 @@ async function loadHistoryList(){
 async function loadHistorySession(){
   if(!historySelected)return;
   const revision=++historySessionRevision,identity=historySelected,snapshot=$('#history-snapshot').value;
-  const params=new URLSearchParams({snapshot:$('#history-snapshot').value,offset:historyEntryOffset,q:$('#history-track-search').value});
+  const params=new URLSearchParams({snapshot:$('#history-snapshot').value,offset:historyEntryOffset,q:$('#history-track-search').value,...CollectionSort.args('history-tracks')});
   const r=await api('/api/lab/history/'+encodeURIComponent(historySelected)+'?'+params);
   if(revision!==historySessionRevision || identity!==historySelected || snapshot!==$('#history-snapshot').value)return;
   $('#history-session').hidden=false;
   $('#history-session-title').textContent=r.session.name;
   $('#history-session-note').textContent=(r.session.date || I18n.t("Date unavailable"))+' · '+num(r.recorded_entries)+" "+I18n.t("recorded entries ·")+" "+num(r.missing_track_metadata)+" "+I18n.t("outside the active collection.")+" "+r.note+(r.order_available?'':" "+I18n.t("Saved track order is unavailable."));
   $('#history-tracks').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Saved order"))+"</th><th>"+esc(I18n.t("Title / artist"))+"</th><th>"+esc(I18n.t("Genre"))+"</th><th>BPM</th><th>"+esc(I18n.t("Duration"))+"</th><th>"+esc(I18n.t("Collection"))+"</th></tr></thead><tbody>")+r.rows.map(t=>'<tr><td>'+esc(t.position ?? I18n.t("Unknown"))+'</td><td>'+TrackPlayback.button($('#history-snapshot').value,t.track_id)+'<strong>'+esc(t.title)+'</strong>'+'<br>'+esc(t.artist || I18n.t("Artist unavailable"))+'</td><td>'+esc(t.genre || I18n.t("Unknown"))+'</td><td>'+esc(t.bpm ?? I18n.t("Unknown"))+'</td><td>'+esc(t.duration==null?I18n.t("Unknown"):Math.floor(t.duration/60)+':'+String(Math.round(t.duration)%60).padStart(2,'0'))+'</td><td>'+esc(t.missing_from_active_collection?I18n.t("Absent from active collection"):I18n.t("In captured collection"))+'</td></tr>').join('')+'</tbody></table>';
+  CollectionSort.bind('#history-tracks','history-tracks',['position',['title','artist'],'genre','bpm','duration',null,'file_status'],r.rows,async()=>{historyEntryOffset=0;await loadHistorySession();});
   $('#history-track-count').textContent=num(r.total)+(" "+I18n.t("entries")+" \u00b7 ")+(r.total?num(historyEntryOffset+1)+'–'+num(Math.min(historyEntryOffset+50,r.total)):'0');
   $('#history-tracks-prev').disabled=!historyEntryOffset;$('#history-tracks-next').disabled=historyEntryOffset+50>=r.total;
-  $('#history-download').href='/api/lab/history/'+encodeURIComponent(historySelected)+'/download?'+new URLSearchParams({snapshot:$('#history-snapshot').value});
+  $('#history-download').href='/api/lab/history/'+encodeURIComponent(historySelected)+'/download?'+new URLSearchParams({snapshot:$('#history-snapshot').value,q:$('#history-track-search').value,...CollectionSort.args('history-tracks')});
 }
 function renderAddedYears(data){
   const max=Math.max(1,...data.years.map(y=>y.tracks));

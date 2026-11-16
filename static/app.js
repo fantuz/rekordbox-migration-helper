@@ -21,7 +21,7 @@ let token = "", session = null, filter = "all", offset = 0, total = 0, selected 
 let searchTimer;
 let currentGroup=null, groupMode=false;
 let workspace=null,analyzerInfo=null,storageAudit=null,storageOffset=0;
-let resumeTarget=null;
+let resumeTarget=null,uploadAttempt=null;
 const activeUploads=new Set();
 let mutatingRequests=0;
 const metadataFields=["album","artist","genre","label","format","bpm_min","bpm_max","bitrate_min","playlist","availability"];
@@ -63,9 +63,17 @@ async function api(url, options = {}) {
   const finish=feedback?Activity.begin():()=>{};
   const mutation=options.method && options.method!=='GET';if(mutation)mutatingRequests++;
   try{
-    const res = await fetch(url, { ...requestOptions, headers: {"Content-Type":"application/json","X-Workbench-Token":token,...(options.headers || {})}});
+    const workspace=session?{id:session.id,revision:session.revision}:null;
+    const res = await fetch(url, { ...requestOptions, headers: {"Content-Type":"application/json","X-Workbench-Token":token,
+      ...(workspace?{"X-Workbench-Workspace":workspace.id,"X-Workbench-Revision":workspace.revision||''}:{}),...(options.headers || {})}});
+    if(res.ok && mutation && session?.id===workspace?.id && session?.revision===workspace?.revision &&
+       res.headers.get('X-Workbench-Workspace')===workspace?.id)
+      session.revision=res.headers.get('X-Workbench-Revision');
     const body = await res.json();
-    if (!res.ok) throw new Error(body.error ? I18n.error(body.error) : I18n.t("The action could not be completed"));
+    if (!res.ok) {
+      if(res.status===409 && body.conflict==='workspace')window.dispatchEvent(new CustomEvent('workbench-stale',{detail:{url}}));
+      throw new Error(body.error ? I18n.error(body.error) : I18n.t("The action could not be completed"));
+    }
     return body;
   }finally{if(mutation)mutatingRequests--;finish();}
 }
@@ -114,6 +122,7 @@ async function poll(job) {
   } finally { busy=wasBusy;finishProgress(); }
 }
 function renderSession() {
+  $('#report-download').href='/api/report?'+new URLSearchParams({workspace:session?.id||''});
   if (!session) return;
   const c=session.counts;
   $("#dataset-name").textContent=session.name || session.metadata.name;
@@ -182,6 +191,10 @@ $("#quick-export-form").onsubmit=wrap(async event=>{
 });
 
 function renderWorkflow() {
+  const reference=session?.export_reference;
+  $('#export-reference-target').disabled=!session || busy;
+  $('#export-reference-target').value=reference?.requested || 'auto';
+  $('#export-reference-target-state').textContent=!session?I18n.t('Load a library pair to begin.'):reference?.target?I18n.t('Export target: {target}. Recorded references are preserved unless explicitly edited.',{target:reference.target==='windows'?'Windows':'macOS'}):I18n.t('Source paths are mixed or unknown. Choose Windows or macOS before staging references or exporting.');
   $("#continue-review").disabled=!session;
   const acknowledged=!!session?.backup_acknowledged;
   const nativeVersion=String(session?.metadata?.version || "").split(".")[0]==="7";
@@ -223,8 +236,9 @@ async function loadWorkspace() {
 }
 async function loadPairs() {
   if (!session || window.NativeCollection?.active()) return;
-  const scope=new URLSearchParams({...scopeValues(),filter,offset,view:groupMode?"groups":"pairs"});
+  const scope=new URLSearchParams({...scopeValues(),filter,offset,view:groupMode?"groups":"pairs",...CollectionSort.args("pairs")});
   const result=await api("/api/pairs?"+scope);
+  CollectionSort.list("#pair-list","pairs",["title","artist","category"],async()=>{offset=0;await loadPairs();});
   total=result.total;
   renderEvidence(result.facets);
   $("#workload").innerHTML=[
@@ -299,6 +313,7 @@ async function saveDecision(action) {
   notify(action==="undo"?I18n.t("Decision undone"):I18n.t("Decision saved to this workspace"));
 }
 function showView(view) {
+  window.BrowseState?.enter(view);
   if(view!=="review")ReviewWorkspace.closeAll();
   if(view!=="bubbles" && $("#bubble-expanded").open)$("#bubble-expanded").close();
   $$(".view").forEach(v=>v.hidden=v.id!=="view-"+view);
@@ -393,11 +408,22 @@ $("#import-form").onsubmit=wrap(async e=>{
   if (!zip || !xml) return;
   busy=true;$("#import-dialog").close();progress(null,I18n.t("Working"));
   try {
-    const started=await api("/api/import",{method:"POST",body:JSON.stringify({zip:zip.name,xml:xml.name,resume_session:resumeTarget})});
-    await uploadFile(zip,"/api/upload/"+started.session+"/zip");
-    await uploadFile(xml,"/api/upload/"+started.session+"/xml");
-    const result=await api("/api/import/"+started.session+"/analyze",{method:"POST",body:"{}"});
-    await poll(result.job);selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Input pair checked and loaded"));
+    if(!uploadAttempt || uploadAttempt.zip!==zip || uploadAttempt.xml!==xml || uploadAttempt.resume!==resumeTarget){
+      const started=await api("/api/import",{method:"POST",body:JSON.stringify({zip:zip.name,xml:xml.name,resume_session:resumeTarget})});
+      uploadAttempt={zip,xml,resume:resumeTarget,sid:started.session};
+    }
+    let uploaded;
+    try{uploaded=await api('/api/import/'+uploadAttempt.sid);}
+    catch(error){uploadAttempt=null;throw error;}
+    for(const [kind,file] of [['zip',zip],['xml',xml]]){
+      if(uploaded.files[kind].complete && uploaded.files[kind].bytes===file.size)continue;
+      if(uploaded.files[kind].complete){uploadAttempt=null;throw new Error(I18n.t('Upload interrupted'));}
+      await uploadFile(file,'/api/upload/'+uploadAttempt.sid+'/'+kind);
+    }
+    const result=await api("/api/import/"+uploadAttempt.sid+"/analyze",{method:"POST",body:"{}"});
+    await poll(result.job);uploadAttempt=null;selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Input pair checked and loaded"));
+  } catch(error){
+    finishProgress();$("#import-dialog").showModal();throw error;
   } finally {busy=false;finishProgress();}
 });
 $("#local-import-form").onsubmit=wrap(async e=>{
@@ -431,6 +457,13 @@ $("#confirm-batch").onclick=wrap(async()=>{
     const result=await api("/api/bulk",{method:"POST",body:JSON.stringify({...scopeValues(),mode:batchMode})});
     session=result.session;renderSession();await loadPairs();notify(num(result.count)+" "+I18n.t("merges staged ·")+" "+num(result.covered)+" "+I18n.t("comparisons already covered ·")+" "+num(result.blocked)+" "+I18n.t("group choices held"));
   } finally {finishProgress();}
+});
+$('#export-reference-target').onchange=wrap(async event=>{
+  const target=event.target.value;event.target.disabled=true;
+  try{
+    const response=await api('/api/export-target',{method:'POST',body:JSON.stringify({target})});
+    session=response.session;
+  }finally{renderWorkflow();}
 });
 $("#reference-form").onsubmit=wrap(async e=>{
   e.preventDefault();
@@ -609,7 +642,7 @@ function renderGroupControls() {
 let inventoryOffset=0,inventoryRevision=0;
 function addMediaRoot(root={}) {
   const row=document.createElement("div");row.className="media-root";
-  row.innerHTML=("<label>"+esc(I18n.t("Folder on this computer"))+"<input class=\"media-folder\" placeholder=\"/home/you/Music or D:\\Music\" value=\"")+esc(root.root || "")+("\"></label><label>"+esc(I18n.t("Recorded prefix · optional"))+"<input class=\"media-prefix\" placeholder=\"C:/Users/you/Music\" value=\"")+esc(root.recorded_prefix || "")+("\"></label><label>"+esc(I18n.t("Export root URI · optional"))+"<input class=\"media-export\" placeholder=\"file://localhost/D:/Music\" value=\"")+esc(root.export_uri || "")+'"></label>';
+  row.innerHTML=("<label>"+esc(I18n.t("Folder on this computer"))+"<input class=\"media-folder\" placeholder=\"/home/you/Music or D:\\Music\" value=\"")+esc(root.root || "")+("\"></label><label>"+esc(I18n.t("Recorded prefix · optional"))+"<input class=\"media-prefix\" placeholder=\"C:/Users/you/Music\" value=\"")+esc(root.recorded_prefix || "")+("\"></label><label>"+esc(I18n.t("Exported reference prefix · required for staging"))+"<input class=\"media-export\" placeholder=\"file://localhost/D:/Music\" value=\"")+esc(root.export_uri || "")+'"></label>';
   $("#media-roots").append(row);
 }
 addMediaRoot();
@@ -627,7 +660,7 @@ $("#scan-media").onclick=wrap(async()=>{
 async function loadInventory() {
   if (!session) return;
   const revision=++inventoryRevision,workspace=session.id;
-  const result=await api("/api/inventory?"+new URLSearchParams({offset:inventoryOffset,status:$("#inventory-status").value,q:$("#inventory-search").value}));
+  const result=await api("/api/inventory?"+new URLSearchParams({offset:inventoryOffset,status:$("#inventory-status").value,q:$("#inventory-search").value,...CollectionSort.args("inventory")}));
   if(revision!==inventoryRevision || session?.id!==workspace)return;
   const labels={found:'Found',available:'Playable',review:'Needs review',ambiguous:'Several candidates',not_found:'Absent from scanned roots',cloud_only:'Cloud placeholder',unverified:'Unverified'};
   const evidence={mapped_path_and_size:'Mapped path and size',filename_and_size:'Filename and size',tags_and_duration:'Tags and duration'};
@@ -646,6 +679,8 @@ async function loadInventory() {
     if(session?.id!==workspace)return;
     session=done.session;renderSession();await loadInventory();
   }));
+  CollectionSort.list('#inventory-list','inventory',['title','artist','status','candidate_count'],async()=>{inventoryOffset=0;await loadInventory();});
+  $('#inventory-report').href='/api/inventory/report?'+new URLSearchParams({workspace});
   $("#inventory-range").textContent=result.total?num(inventoryOffset+1)+"–"+num(Math.min(inventoryOffset+50,result.total))+" "+I18n.t("of")+" "+num(result.total)+(" "+I18n.t("References")+""):I18n.t("No matching references");
   $("#inventory-more").disabled=inventoryOffset+50>=result.total;
   $('#inventory-prev').disabled=!inventoryOffset;
@@ -783,7 +818,7 @@ function storageBar(locations,key) {
 }
 async function loadStorageAudit(id) {
   const scope=$("#storage-scope")?.value || "all";
-  storageAudit=await api("/api/storage/"+id+"?"+new URLSearchParams({offset:storageOffset,scope}));
+  storageAudit=await api("/api/storage/"+id+"?"+new URLSearchParams({offset:storageOffset,scope,...CollectionSort.args("storage")}));
   const audit=storageAudit,t=audit.totals,target=$("#storage-result");target.hidden=false;
   const cloudBytes=audit.locations.filter(row=>row.kind!=="local").reduce((sum,row)=>sum+row.logical_bytes,0);
   const allocated=audit.locations.reduce((sum,row)=>sum+row.known_allocated_bytes,0);
@@ -793,6 +828,7 @@ async function loadStorageAudit(id) {
     const held=group.files.some(file=>file.cloud_only);
     return '<article class="wide-card storage-group"><div class="storage-group-header"><strong>'+esc(label)+'</strong><span>'+num(group.physical_files)+" "+I18n.t("physical files ·")+" "+num(group.track_ids.length)+(" "+esc(I18n.t("matched DB records"))+"</span></div><p class=\"subtle\">")+esc(group.evidence.join(" + ").replaceAll("_"," ") || I18n.t("Multiple database references to one scanned path"))+'</p>'+group.files.map(file=>'<div class="storage-file"><span>'+esc(file.kind==="local"?I18n.t("Local"):file.kind==="dropbox"?"Dropbox":"Google Drive")+'</span><code>'+esc(file.path)+'</code><span>'+esc(bytes(file.size))+(file.cloud_only?" "+I18n.t("· placeholder"):'')+'</span></div>').join("")+'<div class="storage-group-actions"><button class="button secondary small" data-storage-verify="'+esc(group.id)+'" '+(held || group.physical_files<2?'disabled':'')+(">"+esc(I18n.t("Verify this group’s file bytes"))+"</button><span class=\"subtle\">")+(held?I18n.t("Download cloud-only files outside this tool first."):verified?I18n.t("Last checked")+" "+esc(new Date(verified.created).toLocaleString(I18n.language))+'. '+I18n.t('Re-scan after file changes.'):I18n.t("Filename/size and path evidence remain unverified until hashing."))+'</span></div></article>';
   }).join("")+'</div><div class="pagination"><span>'+num(audit.group_total?storageOffset+1:0)+'–'+num(Math.min(storageOffset+30,audit.group_total))+" "+I18n.t("of")+" "+num(audit.group_total)+(" "+esc("groups")+"</span><div><button class=\"button secondary small\" id=\"storage-prev\" ")+(storageOffset?'':'disabled')+(">"+esc(I18n.t("← Previous"))+"</button><button class=\"button secondary small\" id=\"storage-next\" ")+(storageOffset+30<audit.group_total?'':'disabled')+(">"+esc(I18n.t("Next →"))+"</button></div></div>");
+  CollectionSort.list(".storage-groups","storage",["physical_files"],async()=>{storageOffset=0;await loadStorageAudit(id);});
   $("#storage-scope").value=scope;
   $("#storage-scope").onchange=wrap(async()=>{storageOffset=0;await loadStorageAudit(id);});
   $("#storage-prev").onclick=wrap(async()=>{storageOffset=Math.max(0,storageOffset-30);await loadStorageAudit(id);});
@@ -809,4 +845,11 @@ $("#storage-form").onsubmit=wrap(async event=>{
   const started=await api("/api/storage/scan",{method:"POST",body:JSON.stringify({roots,policy:$("#storage-policy").value,source_report:$("#storage-source-report").value})});
   const result=await poll(started.job);storageOffset=0;await loadStorageAudit(result.id);await loadStorageInfo();$("#storage-result").scrollIntoView({behavior:"smooth",block:"start"});notify(I18n.t("Folder comparison saved · no media content read"));
 });
-wrap(refresh)();
+document.addEventListener('DOMContentLoaded',wrap(async()=>{await refresh();window.BrowseState?.start();}),{once:true});
+
+window.addEventListener('workbench-stale',()=>{
+  let banner=document.getElementById('workspace-stale');
+  if(!banner){banner=document.createElement('div');banner.id='workspace-stale';banner.className='callout';banner.setAttribute('role','alert');document.getElementById('page-title').after(banner);}
+  banner.innerHTML='<p>'+esc(I18n.t('Workspace changed. Reload it before reviewing or staging more changes.'))+'</p><button class="button" type="button">'+esc(I18n.t('Reload workspace'))+'</button>';
+  banner.querySelector('button').onclick=wrap(async()=>{selected=null;chosen=null;currentGroup=null;ReviewWorkspace.closeAll();await refresh();banner.remove();showView('files');});
+});

@@ -1,4 +1,5 @@
 """Local read-only intelligence; deliberate report exports live in the sidecar."""
+from result_order import page_result,scan_statuses
 from flask import jsonify, request
 from workbench_store import Store
 from collection_sources import resolve
@@ -38,17 +39,30 @@ def register(owner):
                        playlist_membership='playlists' in s or bool(s['tracks']) and all('playlists' in t for t in s['tracks']),
                        history_order=s.get('capabilities',{}).get('history_order',False),history_details=s.get('capabilities',{}).get('history_details',False))
 
+    def sorted_view(kind,values):
+        s=captured(store(),values.get('snapshot',''))
+        operations={'playlists':lambda:playlist_overlap(s,values.get('playlist',''),values.get('minimum',.5),all_rows=True),
+                    'contents':lambda:playlist_contents(s,values.get('playlist',''),values.get('q',''),all_rows=True),
+                    'lenses':lambda:collection_lenses(s,values.get('lens','unfiled'),values.get('q',''),all_rows=True),
+                    'session':lambda:session_progression(s,values.get('history',''),all_rows=True)}
+        fields={'playlists':('name','common_tracks','tracks','jaccard','same_saved_order'),
+                'contents':('sequence','title','artist','genre','bpm','rating','file_status'),
+                'lenses':('title','artist','genre','bpm','rating','playlists','saved_sessions','saved_entries','file_status'),
+                'session':('sequence','title','artist','bpm','bpm_delta','tonality','color_name','file_status')}
+        return page_result(operations[kind](),values,fields[kind],
+                           statuses=None if kind=='playlists' else scan_statuses(store(),s))
+
     @owner.app.get('/api/intelligence/playlists')
-    def intelligence_overlap():return jsonify(playlist_overlap(snapshot(),request.args.get('playlist',''),request.args.get('minimum',.5),request.args.get('offset',0)))
+    def intelligence_overlap():return jsonify(sorted_view('playlists',request.args))
 
     @owner.app.get('/api/intelligence/contents')
-    def intelligence_contents():return jsonify(playlist_contents(snapshot(),request.args.get('playlist',''),request.args.get('q',''),request.args.get('offset',0)))
+    def intelligence_contents():return jsonify(sorted_view('contents',request.args))
 
     @owner.app.get('/api/intelligence/lenses')
-    def intelligence_lenses():return jsonify(collection_lenses(snapshot(),request.args.get('lens','unfiled'),request.args.get('q',''),request.args.get('offset',0)))
+    def intelligence_lenses():return jsonify(sorted_view('lenses',request.args))
 
     @owner.app.get('/api/intelligence/session')
-    def intelligence_progression():return jsonify(session_progression(snapshot(),request.args.get('history',''),request.args.get('offset',0)))
+    def intelligence_progression():return jsonify(sorted_view('session',request.args))
 
     @owner.app.get('/api/intelligence/evolution')
     def intelligence_changed():
@@ -69,17 +83,9 @@ def register(owner):
         if kind=='evolution':
             sources=[values.get('before',''),values.get('after','')]
             result=evolution(*(captured(saved,i) for i in sources))
-        elif kind=='playlists':
+        elif kind in ('playlists','contents','lenses','session'):
             sources=[values.get('snapshot','')]
-            result=playlist_overlap(captured(saved,sources[0]),values.get('playlist',''),values.get('minimum',.5),values.get('offset',0))
-        elif kind in ('contents','lenses'):
-            sources=[values.get('snapshot','')]
-            operation=playlist_contents if kind=='contents' else collection_lenses
-            selector=values.get('playlist','') if kind=='contents' else values.get('lens','unfiled')
-            result=operation(captured(saved,sources[0]),selector,values.get('q',''),values.get('offset',0))
-        elif kind=='session':
-            sources=[values.get('snapshot','')]
-            result=session_progression(captured(saved,sources[0]),values.get('history',''),values.get('offset',0))
+            result=sorted_view(kind,values)
         else:raise ValueError('Choose an intelligence report')
         result['retained_page_only']=kind in ('playlists','session','contents','lenses')
         record=saved.save_report('Library intelligence: '+kind,sources,{k:v for k,v in result.items() if k!='rows'},

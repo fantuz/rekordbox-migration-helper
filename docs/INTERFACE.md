@@ -8,7 +8,7 @@ Create an untouched rekordbox Backup Library backup before preparing transformed
 
 Source analyzer can instead inspect a database folder or collection XML. Close rekordbox and pause Cloud Library Sync for capture. Windows and Mac suggestions are optional; manual paths also work on Linux for a user-mounted filesystem. Read [migration](MIGRATION.md), [compatibility](COMPATIBILITY.md) and [capture/asset/history procedures](DISCOVERY-ASSETS-HISTORY.md) for details.
 
-File health includes a **Playable?** column and full-index filters. **Yes** indicates a successful local file inspection; **No** groups Missing and Inaccessible. **Unknown** represents Unverified; records never inspected remain Unchecked and must not be treated as No. The filter and column sort run against the complete indexed scan, before the 50-record page is selected. Playback still independently verifies whether a file can actually be decoded.
+File health includes a **Playable?** column and full-index filters. **Yes** indicates a successful local file inspection; **No** groups Missing and Inaccessible. **Unknown** represents Unverified; records never inspected remain Unchecked and must not be treated as No. The filter and column sort run against the complete indexed scan, before the 50-record page is selected. Playback independently rechecks the local path and readability before opening the default media player. This is not a decoding or audio-integrity test.
 
 In saved native snapshot **Duplicate review** and **File references**, click a sortable column heading to order the entire filtered collection, not only the visible 50 rows. Click again to reverse direction; changing the column resets to page one, and Previous/Next retain the chosen sort. The arrows indicate direction, while the Review action column is not sortable. Large requests use the shared Loading / Waiting feedback without locking the page. File health independently sorts its full scanned SQLite index before paging.
 
@@ -50,14 +50,64 @@ Duplicate review keeps the candidate list and comparison in separate scrolling p
 
 Chart match confirmation/export and Library intelligence report saving appear before their result tables and remain visible while scrolling. Saved-investigation cleanup previews appear next to the preview control, before the selection list. Track metadata editing already uses the File view dialog; row-level MusicBrainz and file-reference actions remain next to their records.
 
-## Result-table sorting
+## Result-table sorting and navigation
 
-Click a column heading to sort its **currently displayed rows** ascending or descending. Sorting never changes the underlying snapshot, review classifications, audio files or metadata. Saved native Duplicate review and File references use server-side sorting across the complete filtered collection before pagination. Other paginated tables using the generic client-side sorter sort only their displayed rows; use their search and filters to narrow results. Tables with a local Play button include a sortable status column, distinguishing **Playable**, **Missing**, **Inaccessible**, **Unverified** and **Unchecked** (not yet probed). As playback checks finish, status cells update without unexpectedly moving the user's current selection.
+Column headings in Library lab tracks and reports, saved history, DJ insights, bubble and tonality track lists, Library intelligence, MusicBrainz, File health and native collection tables sort the complete filtered result before pagination. Combined headings also offer a **Sort all results by** selector for individual fields such as artist, year, stars or duration. Duplicate candidate lists, Media inventory and storage groups offer sorting selectors. Original order restores the tool's normal ranking or saved sequence.
 
-The **File health** page is different: its sorting and filters apply to the **entire saved scan index** using SQLite before 50-row pagination. The scan is a deliberate local operation, cancellable at progress checkpoints and read-only with respect to original libraries. No scan is launched just by entering the page. Its status counts distinguish unscanned items from inconclusive checks.
+Numeric values are compared as numbers; missing values stay last in both directions. Sorting a saved session does not change its recorded sequence or the basis of BPM differences. Library lab sorts effective staged metadata; analytical views continue to describe captured metadata. Report downloads and insight CSV use the requested filters and order. Small, fully rendered summary tables retain the generic local sorter.
+
+File-health ordering uses the last explicit saved scan. **Unchecked** is separate from **Unverified**. Live playback probes update the Play button without moving rows or replacing the saved evidence. File health scans run only when explicitly requested; the SQLite index supports collection-wide filtering and sorting.
+
+Browser Back and Forward restore the selected page. Source and filter choices, and collection sort choices, are retained per tab through navigation and reload. A reload starts at the first result page; an ordinary return to an already loaded view retains its page where supported. Consent, staged editor drafts, local filesystem paths and upload files are not restored from browsing preferences.
 
 ## Opt-in journal activity monitoring
 
 Source analyzer can now monitor filesystem metadata for `master.db`, `master.db-wal` and `master.db-journal` from an existing saved modern source capture. Monitoring is **off by default**. When enabled on the Source analyzer page, the application checks for changes every four seconds; after two unchanged samples it can launch a new, independent read-only snapshot. It preserves the earlier report and never rewrites the source. Failed or changing captures are not presented as updated library state; reattempts are throttled. The normal progress dialog appears during a recapture. Metadata requests never overlap; disabling monitoring, leaving the page or selecting another report prevents an older response from replacing the selection.
 
 This feature detects journal/file activity, **not necessarily committed database transactions**. It is not a raw WAL decoder, does not read uncommitted edits, and is not a guarantee of an immediately consistent view of an actively edited SQLCipher database. A WAL checkpoint can produce a stamp change without a logical library change. SQLite WAL transactions need a valid commit frame and snapshot-consistent access (see [SQLite WAL overview](https://www.sqlite.org/wal.html)). For a reliable migration snapshot, the normal recommendation remains to close Rekordbox and pause Cloud Library Sync.
+
+## Audio folders on another operating system
+
+Discovering a database on a mounted Windows volume does not translate its saved audio locations. In **MusicBrainz** or **File health**, expand **Audio folders**. Map the recorded drive or folder (for example `D:/Music`) to the corresponding directory on this computer (for example `/media/music/Music`). Choose **Check example paths**, review the actual mappings, then **Save audio folders**. Multiple drives can have separate mappings. Run File health again or create a new MusicBrainz preview.
+
+Mappings belong to the selected source and are reused by its saved snapshots and freshly prepared MusicBrainz captures. They affect local availability, playback and enrichment eligibility only; original metadata, audio files and export references are unchanged. Windows paths are matched at folder boundaries, including file URIs, Unicode and case differences. Ambiguous case matches, traversal, network paths, symlinks and replaced/disconnected mount identities are held rather than guessed. A readable audio-suffixed file is not proof that its media content can be decoded.
+
+## Workspace changes and import recovery
+
+Workspace actions carry the workspace identity and revision that the tab reviewed. If another tab loads a different workspace or changes its working state, stale actions are rejected with a reload message. Use **Reload workspace**, then review the action again. Explicitly selected immutable snapshots remain separate from this active-workspace guard.
+
+Interrupted uploads remove incomplete files and support retrying the same import. While the page stays open and the selected files are unchanged, resubmitting retains completed uploads, including a file whose success response was lost. Selecting different files creates a new import. Disk capacity, permissions, cancellation and interrupted streams produce actionable failures. Duplicate analysis submissions share the existing task. An import is made active only after its initial saved state is successfully published; a failed import keeps the previously active workspace.
+
+Closing the application still removes temporary uploaded copies according to the existing cleanup policy. Saved decisions can be resumed by reattaching the matching original XML/ZIP pair; retries never bypass input-identity checks.
+
+## MusicBrainz recording and release review
+
+The first retrieved recording is a proposal. Expand **Alternative recordings**, select another retrieved candidate, explicitly consent to that retrieval, then choose **Retrieve selected recording**. Provider calls use the existing cache, pacing, cancellation and bounded queue. Finish or cancel queued lookups before changing a candidate. A failed retrieval keeps the previous result. A successful change resets identity approval, release selection and this batch's still-staged suggestions; later manual edits are preserved.
+
+Approve the selected recording before choosing **Album / release**. Review its title, date, country, status, disambiguation and MusicBrainz ID, then choose **Use this release**. The choices are the bounded release list returned with that recording, not a complete discography. **Stage album** uses that explicit edition. **Stage release year** is separate from the existing first-known recording year. Unlock metadata staging for the selected snapshot before staging fields.
+
+Each new MusicBrainz override retains structured provenance: batch, recording, optional release, source URL, field basis, retrieval, approval and staging times. Inspect it in the track editor's staged edits. Identity/release changes and revoked approvals clear only this batch's matching suggestions and record resets in the private override history. Review revisions reject stale selections from other tabs. Personal star ratings are never populated from provider similarity or community ratings.
+
+Provider reference: [MusicBrainz API](https://musicbrainz.org/doc/MusicBrainz_API). The integration retrieves metadata; it does not submit changes to MusicBrainz.
+
+## Exported references and destination platform
+
+**Prepare export → Exported references** shows the target inferred from recorded current/XML paths. Windows drive-letter or UNC paths identify Windows; conventional macOS paths identify macOS. The helper's operating system and Audio folders mappings do not choose the target. For mixed or unknown source paths, choose Windows or macOS explicitly.
+
+Selecting a target does not convert paths. Use **File references** to deliberately stage destination changes, then review them before export. An export is held if surviving references still belong to the other platform. New destination references and saved relocation edits are checked again before XML/ZIP output; Linux access paths and known playback aliases cannot silently enter the exported library. Destination and source-path evidence are included in the export manifest.
+
+In advanced Media inventory, **Exported reference prefix · required for staging** is distinct from the local search folder. For example, search `/media/disk/Music` while exporting under `file://localhost/D:/Music`. A scan without a destination prefix can help investigate matches, but cannot stage them. Supply the prefix and repeat the scan before staging.
+
+Windows libraries remain Windows libraries when inspected from Linux or macOS. Accessing a Windows filesystem from a Mac does not imply a change of library destination.
+
+## Zero metadata flags and DJ preparation filters
+
+Captured duplicate review and DJ insights have colored **Zero-duration** and **Zero-size** quick filters. They select records whose saved duration or size is exactly zero; unknown values are not counted as zero. They do not scan audio or prove that a physical file is empty. Playability is independent, so a flagged record can still play. Duplicate filters count matching groups across the complete collection and keep every member of a matching group for comparison. Playback refreshes also update the comparison's availability badges.
+
+DJ insights adds **Missing BPM or key**, **Played but unprepared**, **Favourites needing cues**, and **Long tracks / mixes**. Their rules are missing BPM/key, positive selected usage with zero manual cues, at least four stars with zero manual cues, and duration of at least ten minutes respectively. These filters describe captured metadata; they do not infer forgotten cues or identify mixes with certainty. The zero flags can be combined with a perspective. Source, perspective and metadata filter choices survive navigation/reload; CSV/report output uses the chosen filters.
+
+## Allowed audio locations
+
+Audio folders are checked against locations selected by the application: your home folder, the application's data folder, and detected mounted/local volumes. The panel lists these allowed locations. The check resolves links and requires a full directory boundary, so a similarly named sibling or a link outside those locations cannot broaden access.
+
+Mounted NTFS audio remains supported. If a custom audio folder is outside all displayed locations, configure it on the helper host before starting the application, using the `LIBRARY_WORKBENCH_AUDIO_ROOTS` environment variable as a JSON list of absolute folders. For example, on Linux: `export LIBRARY_WORKBENCH_AUDIO_ROOTS='["/srv/music"]'`. This is host configuration; a browser request cannot add trusted locations. Use narrow music folders. These access boundaries never change recorded/exported paths.

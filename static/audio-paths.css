@@ -1,0 +1,5 @@
+.audio-path-panel{margin:1rem 0;padding:1rem;border:1px solid var(--border,#bec9c8);border-radius:.7rem}
+.audio-path-panel summary{font-weight:700;cursor:pointer}.audio-path-row{display:grid;grid-template-columns:1fr 1fr auto;gap:.7rem;align-items:end;margin:.7rem 0}
+.audio-path-row label{display:flex;flex-direction:column;gap:.35rem;min-width:0}.audio-path-row input{width:100%;min-width:0;direction:ltr}
+.audio-path-panel code{overflow-wrap:anywhere;white-space:normal}.audio-path-panel .native-table{max-width:100%;overflow:auto}
+@media(max-width:700px){.audio-path-row{grid-template-columns:1fr}.audio-path-panel .lab-actions{flex-wrap:wrap}}

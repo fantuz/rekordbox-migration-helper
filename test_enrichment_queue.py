@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Use the real launch wrapper and serial worker; never call a provider."""
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -25,7 +26,7 @@ class EnrichmentQueueTests(unittest.TestCase):
             'playlists':[],'capabilities':{}},'Queue test')['id']
         self.store.set_setting('musicbrainz_enabled',True)
         self.batches=[create_batch(self.store,self.store.snapshot(sid),sample_size=150) for _ in range(3)]
-        self.client=app.app.test_client();self.headers={'X-Workbench-Token':app.TOKEN}
+        self.client=workspace_client(app);self.headers={'X-Workbench-Token':app.TOKEN}
 
     def start(self,index):
         r=self.client.post('/api/lab/musicbrainz/'+self.batches[index]['id']+'/start',json={'query_consent':True},headers=self.headers)

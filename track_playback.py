@@ -31,10 +31,18 @@ def recorded_path(value):
     return path
 
 
-def available_audio(track):
-    """Current recorded location wins; only recorded alternatives are considered."""
+def candidate_paths(track, mappings=None):
+    from audio_paths import mapped_path
     for key in ('current_path','xml_location','original_path'):
-        path=recorded_path(track.get(key))
+        value=track.get(key)
+        if not value:continue
+        mapped=mapped_path(value,mappings) if mappings else None
+        yield mapped if mapped is not None else recorded_path(value)
+
+
+def available_audio(track, mappings=None):
+    """Current recorded location wins; only recorded alternatives are considered."""
+    for path in candidate_paths(track,mappings):
         if path is None:continue
         try:
             resolved=path.resolve(strict=True)
@@ -45,7 +53,7 @@ def available_audio(track):
 
 
 
-def inspect_audio(track):
+def inspect_audio(track, mappings=None):
     """Classify recorded locations without attempting to decode or play audio.
 
     'playable' means a readable, regular audio-suffixed file was found, not
@@ -56,11 +64,7 @@ def inspect_audio(track):
         return 'unverified', None
     seen=set()
     evidence=[]
-    for field in ('current_path','xml_location','original_path'):
-        value=track.get(field)
-        if not value:
-            continue
-        path=recorded_path(value)
+    for path in candidate_paths(track,mappings):
         if path is None:
             evidence.append('unverified')
             continue
@@ -131,28 +135,31 @@ def register(owner):
         if value.get('workspace'):
             session=owner.sessions.get(owner.active)
             if not session or session['id']!=value['workspace']:raise ValueError('This workspace is no longer loaded')
-            return session['catalog'].tracks
+            return session['catalog'].tracks, 'session:'+session['id']
         from collection_sources import history_source
         saved=history_source(owner, value)
-        return {str(t['id']):t for t in saved['tracks']}
+        return {str(t['id']):t for t in saved['tracks']}, saved['scope_key']
     @app.post('/api/playback/availability')
     def availability():
         value=body();ids=value.get('track_ids')
         if not isinstance(ids,list) or not 1<=len(ids)<=100 or any(not isinstance(i,str) or len(i)>200 for i in ids):
             raise ValueError('Choose up to 100 captured tracks')
-        source=tracks(value)
+        source,scope=tracks(value)
+        mappings=Store(owner.DATA/'workbench-sidecar.sqlite3').setting('audio_paths:'+scope,[])
         from file_status_cache import inspect
         statuses,hits=inspect(owner,{i:source.get(i,{}) for i in ids},
-                              refresh=value.get('refresh') is True)
+                              refresh=value.get('refresh') is True,mappings=mappings)
         return jsonify(tracks={i:statuses[i]=='playable' for i in ids},
                        statuses=statuses,cached=hits)
     @app.post('/api/playback/open')
     def launch():
         value=body();identity=value.get('track_id')
         if not isinstance(identity,str):raise ValueError('Choose a captured track')
-        track=tracks(value).get(identity)
+        source,scope=tracks(value)
+        track=source.get(identity)
         if track is None:raise ValueError('This track is not in the selected library')
-        path=available_audio(track)
+        mappings=Store(owner.DATA/'workbench-sidecar.sqlite3').setting('audio_paths:'+scope,[])
+        path=available_audio(track,mappings)
         if path is None:raise ValueError('Audio file unavailable at the recorded library paths')
         open_audio(path)
         return jsonify(opened=True)

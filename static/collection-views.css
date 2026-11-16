@@ -49,3 +49,19 @@
 .native-compare-record[hidden]{display:none!important}
 .native-compare-record .native-file-status{margin-inline-start:8px}
 @media(max-width:700px){.native-file-evidence{align-items:stretch}.native-file-evidence>label,.native-file-evidence>button{width:100%}}
+
+/* Metadata flags never replace the independent availability state. */
+.metadata-flag,.metadata-flag-filter{display:inline-flex;align-items:center;gap:.4rem;border:2px solid var(--line);border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;font-weight:700;color:var(--text);background:var(--panel2)}
+.metadata-flag{margin:.2rem .3rem;font-size:11px}
+.metadata-quick-filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.metadata-flag-filter{cursor:pointer}
+.metadata-flag-zero_duration{border-color:#ad7415;color:#825100;background:#e5a73320}
+.metadata-flag-zero_size{border-color:#b63766;color:#9b234f;background:#d4508220}
+.metadata-flag-filter[aria-pressed="true"]{outline:3px solid var(--text);outline-offset:2px}
+.metadata-flag-filter:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+[data-theme="dark"] .metadata-flag-zero_duration{color:#ffd080}
+[data-theme="dark"] .metadata-flag-zero_size{color:#ffafcb}
+@media(forced-colors:active){.metadata-flag,.metadata-flag-filter{color:CanvasText;border-color:CanvasText}.metadata-flag-filter[aria-pressed="true"]{outline-color:Highlight}}
+
+.native-metadata-filters{margin:0 12px 6px}
+.native-metadata-filters .metadata-quick-filters{margin:4px 0;gap:8px}
