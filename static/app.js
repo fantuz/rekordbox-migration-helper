@@ -63,9 +63,17 @@ async function api(url, options = {}) {
   const finish=feedback?Activity.begin():()=>{};
   const mutation=options.method && options.method!=='GET';if(mutation)mutatingRequests++;
   try{
-    const res = await fetch(url, { ...requestOptions, headers: {"Content-Type":"application/json","X-Workbench-Token":token,...(options.headers || {})}});
+    const workspace=session?{id:session.id,revision:session.revision}:null;
+    const res = await fetch(url, { ...requestOptions, headers: {"Content-Type":"application/json","X-Workbench-Token":token,
+      ...(workspace?{"X-Workbench-Workspace":workspace.id,"X-Workbench-Revision":workspace.revision||''}:{}),...(options.headers || {})}});
+    if(res.ok && mutation && session?.id===workspace?.id && session?.revision===workspace?.revision &&
+       res.headers.get('X-Workbench-Workspace')===workspace?.id)
+      session.revision=res.headers.get('X-Workbench-Revision');
     const body = await res.json();
-    if (!res.ok) throw new Error(body.error ? I18n.error(body.error) : I18n.t("The action could not be completed"));
+    if (!res.ok) {
+      if(res.status===409)window.dispatchEvent(new CustomEvent('workbench-stale',{detail:{url}}));
+      throw new Error(body.error ? I18n.error(body.error) : I18n.t("The action could not be completed"));
+    }
     return body;
   }finally{if(mutation)mutatingRequests--;finish();}
 }

@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Sharing integration: exact disclosure, metadata state and private XML copies."""
 from copy import deepcopy
 from hashlib import sha256
@@ -39,7 +40,7 @@ class SharingApiTests(unittest.TestCase):
         for name,value in (('DATA',self.data),('TEMPORARY',self.temporary),('launch',launch),('tasks',self.jobs),
                            ('sessions',{'session1':self.session}),('active','session1')):
             patcher=patch.object(application,name,value);patcher.start();self.addCleanup(patcher.stop)
-        self.client=application.app.test_client();self.headers={'X-Workbench-Token':application.TOKEN}
+        self.client=workspace_client(application);self.headers={'X-Workbench-Token':application.TOKEN}
 
     def generate(self,values):
         response=self.client.post('/api/quick-export',json=values,headers=self.headers)

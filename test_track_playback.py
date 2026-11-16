@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Playback boundaries are tested with synthetic files and mocked OS dispatch."""
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -87,7 +88,7 @@ class PlaybackTests(TestCase):
             audio=Path(temp)/'synthetic.mp3';audio.write_bytes(b'fixture')
             saved=Store(Path(temp)/'workbench-sidecar.sqlite3')
             sid=saved.save_snapshot({'scope_key':'synthetic','tracks':[{'id':'a','current_path':str(audio)}]},'Synthetic')['id']
-            before=saved.snapshot(sid);client=app.app.test_client();headers={'X-Workbench-Token':app.TOKEN}
+            before=saved.snapshot(sid);client=workspace_client(app);headers={'X-Workbench-Token':app.TOKEN}
             data={'snapshot':sid,'track_id':'a'}
             self.assertEqual(client.post('/api/playback/open',json=data).status_code,403)
             with patch('track_playback.open_audio') as launch:

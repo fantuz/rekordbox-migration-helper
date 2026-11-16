@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Direct native captures and named snapshots must expose the same intelligence."""
 from contextlib import ExitStack,closing
 from pathlib import Path
@@ -25,7 +26,7 @@ class NativeIntelligenceTests(unittest.TestCase):
         self.before=self.original.read_bytes();self.capture='c'*32;self.source='capture:'+self.capture
         analyze_folder(self.original,self.data/'analyzers'/self.capture,lambda *_:None)
         for name,value in [('DATA',self.data),('active',None),('sessions',{}),('tasks',{})]:stack.enter_context(patch.object(app,name,value))
-        self.client=app.app.test_client();self.headers={'X-Workbench-Token':app.TOKEN}
+        self.client=workspace_client(app);self.headers={'X-Workbench-Token':app.TOKEN}
         self.store=Store(self.data/'workbench-sidecar.sqlite3');self.sid=self.store.save_snapshot(resolve(app,self.source),'Synthetic saved native')['id']
 
     def test_native_capture_and_saved_snapshot_match(self):

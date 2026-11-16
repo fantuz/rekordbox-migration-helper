@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Private file-health index: scoped, opt-in, bounded, read-only and sortable."""
 from pathlib import Path
 import tempfile
@@ -29,7 +30,7 @@ class FileHealthTests(unittest.TestCase):
             self.result=work(lambda *_:None)
             return 'synthetic-health-job'
         p=patch.object(application,'launch',execute);p.start();self.addCleanup(p.stop)
-        self.client=application.app.test_client()
+        self.client=workspace_client(application)
         self.headers={'X-Workbench-Token':application.TOKEN}
 
     def query(self,**kwargs):

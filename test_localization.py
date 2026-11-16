@@ -1,3 +1,4 @@
+from test_support import workspace_client
 from collections import Counter
 from contextlib import ExitStack
 from html.parser import HTMLParser
@@ -115,7 +116,7 @@ class LocalizationTests(unittest.TestCase):
         self.assertNotIn('source_track',available)
         script=browser_catalogues(ASSETS)
         self.assertNotIn('</script>',script.lower());self.assertNotIn('\u2028',script)
-        client=application.app.test_client();response=client.get('/api/i18n.js')
+        client=workspace_client(application);response=client.get('/api/i18n.js')
         self.assertEqual(response.status_code,200);self.assertIn('text/javascript',response.content_type)
 
     def test_interface_attributes_and_native_language_selectors_are_prepared(self):
@@ -175,7 +176,7 @@ class LocalizationTests(unittest.TestCase):
             with self.assertRaises(ValueError):documentation.render_document('../outside',root)
 
     def test_bundled_documentation_and_downloads_are_readable(self):
-        client=application.app.test_client();index=client.get('/api/docs').json
+        client=workspace_client(application);index=client.get('/api/docs').json
         self.assertEqual(index['language'],'en');self.assertTrue(index['chapters'])
         self.assertIn('interface',{r['id'] for r in index['chapters']})
         for chapter in index['chapters']:
@@ -185,7 +186,7 @@ class LocalizationTests(unittest.TestCase):
         self.assertEqual(client.get('/api/docs/not-a-chapter').status_code,400)
 
     def test_unicode_upload_names_are_display_metadata_not_paths(self):
-        client=application.app.test_client();headers={'X-Workbench-Token':application.TOKEN}
+        client=workspace_client(application);headers={'X-Workbench-Token':application.TOKEN}
         with tempfile.TemporaryDirectory() as tmp:
             from temporary_files import TemporaryWorkspace
             workspace=TemporaryWorkspace(Path(tmp))

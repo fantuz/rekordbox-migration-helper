@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic recovery evidence, stale-candidate guards and reversible staging."""
 from io import BytesIO
 import json
@@ -115,7 +116,7 @@ class RecoveryTests(unittest.TestCase):
         inventory=self.scan()
         session={'id':'test','catalog':SimpleNamespace(tracks={'a':self.track}),
                  'inventory':inventory,'relocations':{},'metadata':{}}
-        client=application.app.test_client();headers={'X-Workbench-Token':application.TOKEN}
+        client=workspace_client(application);headers={'X-Workbench-Token':application.TOKEN}
         body={'track_id':'a','workspace':'test','scan_id':inventory['scan_id']}
         with patch.object(application,'current',return_value=session),patch.object(application,'log'),patch.object(application,'summary',return_value={'id':'test'}):
             endpoint='/api/inventory/stage'

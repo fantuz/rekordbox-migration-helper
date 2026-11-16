@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Colour edits stay in private sidecars and resolve real configured native IDs."""
 from copy import deepcopy
 from contextlib import closing
@@ -109,7 +110,7 @@ class ColourSidecarAPITests(unittest.TestCase):
                 'scope_key':'session:synthetic','source_kind':'Synthetic','colour_edit_support':xml_colour_support()}
         self.identity=self.store.save_snapshot(self.s,'Test')['id']
         p=patch.object(application,'DATA',self.root);p.start();self.addCleanup(p.stop)
-        self.client=application.app.test_client();self.headers={'X-Workbench-Token':application.TOKEN}
+        self.client=workspace_client(application);self.headers={'X-Workbench-Token':application.TOKEN}
         # The app keeps unlocks in memory; each synthetic test starts locked.
         self.client.post('/api/lab/unlock',json={'snapshot':self.identity,'unlocked':False},headers=self.headers)
 

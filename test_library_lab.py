@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic regression cases only. Never load a user's library or call a service."""
 from copy import deepcopy
 from io import BytesIO
@@ -394,7 +395,7 @@ class LabApiTests(unittest.TestCase):
         self.store=Store(self.root/'workbench-sidecar.sqlite3');self.sid=self.store.save_snapshot(snapshot(),'Synthetic')['id']
         for name,value in [('DATA',self.root),('sessions',{}),('active',None)]:
             p=patch.object(application,name,value);p.start();self.addCleanup(p.stop)
-        self.client=application.app.test_client();self.headers={'X-Workbench-Token':application.TOKEN}
+        self.client=workspace_client(application);self.headers={'X-Workbench-Token':application.TOKEN}
 
     def test_metadata_locked_token_and_host_guards(self):
         data={'snapshot':self.sid,'track_id':'one','field':'genre','value':'Deep House'}

@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic regressions for native contexts and reversible investigation cleanup."""
 from hashlib import sha256
 import json
@@ -36,7 +37,7 @@ class NativeViewsTests(unittest.TestCase):
             p.start(); self.addCleanup(p.stop)
         p = patch.object(application, 'lab_jobs_active', lambda: False)
         p.start(); self.addCleanup(p.stop)
-        self.client = application.app.test_client()
+        self.client = workspace_client(application)
         self.headers = {'X-Workbench-Token': application.TOKEN}
         self.store = Store(self.data / 'workbench-sidecar.sqlite3')
 

@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """No current collection means no new provider batch, even through the API."""
 import json
 from pathlib import Path
@@ -26,7 +27,7 @@ class CurrentLibraryTests(unittest.TestCase):
             p.start();self.addCleanup(p.stop)
         self.sid=self.store.save_snapshot(self.payload,'Current')['id']
         self.store.set_setting('musicbrainz_enabled',True)
-        self.client=app.app.test_client();self.headers={'X-Workbench-Token':app.TOKEN}
+        self.client=workspace_client(app);self.headers={'X-Workbench-Token':app.TOKEN}
 
     def test_loaded_pair_is_default_and_metadata_preparation_stays_local(self):
         info=self.client.get('/api/lab/musicbrainz/context').json

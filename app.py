@@ -135,7 +135,7 @@ def load_session(metadata, sid, progress):
         inventory=json.loads(Path(saved["inventory_path"]).read_text(encoding="utf-8"))
     catalog.policy=saved.get("policy","newest")
     catalog.refresh_counts()
-    session={"id":sid,"metadata":metadata,"catalog":catalog,"decisions":saved.get("decisions",{}),
+    session={"id":sid,"_workspace_generation":uuid4().hex,"metadata":metadata,"catalog":catalog,"decisions":saved.get("decisions",{}),
              "relocations":saved.get("relocations",{}),"events":saved.get("events",[]),"policy":catalog.policy,"last_batch":saved.get("last_batch",[]),"batches":saved.get("batches",[]),"held_pairs":saved.get("held_pairs",{}),"inventory":inventory,"inventory_path":saved.get("inventory_path"),"name":saved.get("name",metadata["name"]),"media_verifications":saved.get("media_verifications",{}),"backup_acknowledged":saved.get("backup_acknowledged")}
     with lock:
         sessions[sid]=session
@@ -147,14 +147,16 @@ def load_session(metadata, sid, progress):
 def current():
     if not active or active not in sessions:
         raise ValueError("Load a backup and XML first")
-    return sessions[active]
+    from workspace_safety import require
+    return require(sys.modules[__name__], sessions[active])
 
 
 def summary(session):
     decisions=session["decisions"]
     from workbench_store import Store
     fields=Store(DATA/'workbench-sidecar.sqlite3').overrides('session:'+session['id']) if (DATA/'workbench-sidecar.sqlite3').is_file() else {}
-    return {"id":session["id"],"name":session.get("name",session["metadata"]["name"]),"metadata":session["metadata"],"counts":session["catalog"].counts,
+    from workspace_safety import revision
+    return {"id":session["id"],"revision":revision(session),"name":session.get("name",session["metadata"]["name"]),"metadata":session["metadata"],"counts":session["catalog"].counts,
             "metadata_override_fields":sum(len(v) for v in fields.values()),
             "metadata_override_tracks":len(fields),"metadata_override_by_field":{f:sum(f in v for v in fields.values()) for f in {f for v in fields.values() for f in v}},
             "policy":session["policy"],"backup_acknowledged":session.get("backup_acknowledged"),"staged":sum(d["action"]=="merge" for d in decisions.values()),
@@ -178,6 +180,16 @@ def protect():
         return jsonify(error='The app is stopping and cleaning its temporary copies'),503
     if request.method in ("POST","PUT","DELETE") and request.headers.get("X-Workbench-Token")!=TOKEN:
         return jsonify(error="Reload the local page to authorize this action"),403
+
+
+from workspace_safety import register as register_workspace_safety
+register_workspace_safety(sys.modules[__name__])
+
+
+from werkzeug.exceptions import HTTPException
+@app.errorhandler(HTTPException)
+def http_error(error):
+    return jsonify(error=error.description),error.code
 
 
 @app.errorhandler(ValueError)
@@ -829,22 +841,8 @@ def import_local():
 def upload(sid,kind):
     if not re_uuid(sid) or kind not in ("zip","xml"):
         raise ValueError("Unknown upload")
-    folder=TEMPORARY.folder(sid)
-    info=json.loads((folder/"upload.json").read_text(encoding="utf-8"))
-    final=folder/info[kind]
-    if final.exists():
-        raise ValueError("File has already been uploaded")
-    temp=folder/(kind+".part")
-    done=0
-    with TEMPORARY.operation(),temp.open("xb") as stream:
-        while chunk:=request.stream.read(2*1024*1024):
-            if shutdown.requested.is_set():raise InterruptedError('Upload cancelled for temporary-file cleanup')
-            done+=len(chunk)
-            stream.write(chunk)
-    if done==0:
-        temp.unlink()
-        raise ValueError("File is empty")
-    os.replace(temp,final)
+    from upload_recovery import receive
+    done=receive(TEMPORARY,sid,kind,request.stream,request.content_length,shutdown.requested.is_set)
     return jsonify(bytes=done)
 
 

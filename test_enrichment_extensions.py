@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic integration regressions; execution is delegated to GitHub Actions."""
 from contextlib import closing
 from copy import deepcopy
@@ -60,7 +61,7 @@ class LargerPilotTests(unittest.TestCase):
             saved=Store(Path(temp)/'workbench-sidecar.sqlite3');s=saved.save_snapshot(snapshot(),'Synthetic')
             batch=create_batch(saved,saved.snapshot(s['id']),sample_size=300)
             with saved.connection() as db:db.execute("UPDATE mb_batches SET status='running' WHERE id=?",(batch['id'],))
-            client=app.app.test_client();headers={'X-Workbench-Token':app.TOKEN}
+            client=workspace_client(app);headers={'X-Workbench-Token':app.TOKEN}
             rows=client.get('/api/lab/musicbrainz/batches').json['batches']
             self.assertEqual(rows[0]['status'],'interrupted')
             saved.set_setting('musicbrainz_enabled',True)
@@ -77,7 +78,7 @@ class LargerPilotTests(unittest.TestCase):
             saved=Store(Path(temp)/'workbench-sidecar.sqlite3')
             sid=saved.save_snapshot(snapshot(),'Queue fixture')['id']
             saved.set_setting('musicbrainz_enabled',True)
-            client=app.app.test_client();headers={'X-Workbench-Token':app.TOKEN}
+            client=workspace_client(app);headers={'X-Workbench-Token':app.TOKEN}
             work=[]
             def launch(function,*args,**kwargs):
                 work.append((function,kwargs))
@@ -108,7 +109,7 @@ class LargerPilotTests(unittest.TestCase):
             saved=Store(Path(temp)/'workbench-sidecar.sqlite3');s=saved.save_snapshot(snapshot(),'Synthetic')
             batch=create_batch(saved,saved.snapshot(s['id']),sample_size=300)
             saved.set_setting('musicbrainz_enabled',True)
-            client=app.app.test_client();headers={'X-Workbench-Token':app.TOKEN}
+            client=workspace_client(app);headers={'X-Workbench-Token':app.TOKEN}
             endpoint='/api/lab/musicbrainz/'+batch['id'];work=[]
             def launch(function,*args,**kwargs):work.append(function);return 'synthetic'
             with patch.object(app,'launch',side_effect=launch):
@@ -248,7 +249,7 @@ class ChartsAndSeratoTests(unittest.TestCase):
         import app
         with tempfile.TemporaryDirectory() as temp,patch.object(app,'DATA',Path(temp)):
             saved=Store(Path(temp)/'workbench-sidecar.sqlite3');sid=saved.save_snapshot(self.source(),'Synthetic')['id']
-            client=app.app.test_client();headers={'X-Workbench-Token':app.TOKEN}
+            client=workspace_client(app);headers={'X-Workbench-Token':app.TOKEN}
             self.assertEqual(client.post('/api/intelligence/serato',json={'snapshot':sid,'volume_root':'C:/'},headers=headers).status_code,400)
             result=client.post('/api/intelligence/serato',json={'snapshot':sid,'volume_root':'C:/','draft_acknowledged':True},headers=headers)
             self.assertEqual(result.status_code,200);self.assertEqual(result.mimetype,'application/zip')

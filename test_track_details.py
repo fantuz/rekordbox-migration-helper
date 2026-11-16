@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Track-comment staging and saved colour/key evidence; synthetic data only."""
 from contextlib import closing
 from copy import deepcopy
@@ -86,7 +87,7 @@ class FreeCommentAPITests(unittest.TestCase):
                 'scope_key':'comments-test','source_kind':'Synthetic','captured':'2026-11-13','capabilities':{}}
         self.saved=self.store.save_snapshot(self.s,'Test');self.identity=self.saved['id']
         p=patch.object(application,'DATA',self.root);p.start();self.addCleanup(p.stop)
-        self.client=application.app.test_client();self.headers={'X-Workbench-Token':application.TOKEN}
+        self.client=workspace_client(application);self.headers={'X-Workbench-Token':application.TOKEN}
 
     def test_comment_staging_and_reset_are_free_while_other_fields_remain_locked(self):
         url='/api/lab/overrides';body={'snapshot':self.identity,'track_id':'t','field':'comment','value':'Working\ncomment'}

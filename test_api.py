@@ -1,3 +1,4 @@
+from test_support import workspace_client
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,7 +18,7 @@ class ExportProtectionTests(unittest.TestCase):
                       "decisions":{},"relocations":{},"events":[],"policy":"newest","backup_acknowledged":None}
         for name,value in (("DATA",self.root),("sessions",{self.session['id']:self.session}),("active",self.session['id'])):
             patcher=patch.object(application,name,value);patcher.start();self.addCleanup(patcher.stop)
-        self.client=application.app.test_client()
+        self.client=workspace_client(application)
         self.headers={'X-Workbench-Token':application.TOKEN}
 
     def test_transform_export_requires_backup_acknowledgement(self):

@@ -1,3 +1,4 @@
+from test_support import workspace_client
 """Synthetic local-only MusicBrainz quick-target selection contracts."""
 import tempfile
 from pathlib import Path
@@ -68,19 +69,19 @@ class EnrichmentTargetTests(unittest.TestCase):
             with patch.object(application,'DATA',Path(tmp)):
                 store=Store(Path(tmp)/'workbench-sidecar.sqlite3')
                 saved=store.save_snapshot(self.snapshot,'Target source')
-                result=application.app.test_client().get('/api/lab/musicbrainz/targets',
+                result=workspace_client(application).get('/api/lab/musicbrainz/targets',
                                                             query_string={'snapshot':saved['id']})
                 self.assertEqual(result.status_code,200,result.json)
                 self.assertEqual(result.json['total_tracks'],240)
                 self.assertNotIn('current_path',str(result.json))
-                self.assertEqual(application.app.test_client().get('/api/lab/musicbrainz/targets',
+                self.assertEqual(workspace_client(application).get('/api/lab/musicbrainz/targets',
                                         query_string={'snapshot':'../../etc'}).status_code,400)
 
     def test_immutable_target_lists_are_cached_without_reloading_the_collection(self):
         with tempfile.TemporaryDirectory() as tmp,patch.object(application,'DATA',Path(tmp)):
             saved=Store(Path(tmp)/'workbench-sidecar.sqlite3').save_snapshot(self.snapshot,'Cached target source')
             with patch('lab_routes.target_options',wraps=target_options) as build:
-                client=application.app.test_client()
+                client=workspace_client(application)
                 for _ in range(3):
                     self.assertEqual(client.get('/api/lab/musicbrainz/targets',query_string={'snapshot':saved['id']}).status_code,200)
                 build.assert_called_once()
