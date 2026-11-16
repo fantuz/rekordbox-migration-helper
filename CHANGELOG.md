@@ -2,18 +2,24 @@
 
 ## Unreleased
 
-- Constrain new local audio mappings to server-selected home/data folders, detected volumes or explicitly configured audio roots; reject sibling-prefix and symlink escapes. Verify CodeQL findings separately from successful analysis uploads.
+## 1.1.2 — 2026-11-16
 
-- Separate exported Windows/macOS references from local playback aliases; infer the target from recorded paths, validate deliberate destination edits at staging and in both writers, and require an explicit recovery export prefix.
-- Add colored zero-duration and zero-size metadata filters to captured duplicate review and DJ insights, preserving unknown values and comparison siblings. Refresh duplicate availability badges after local mapping changes.
-- Add DJ insight perspectives for missing BPM/key, played tracks without manual cues, four-star favourites without manual cues, and tracks at least ten minutes long.
+This update improves editing libraries through Linux mounts while preserving Windows/macOS export destinations, and makes workspace recovery and library review more reliable.
 
 - Bind active-workspace actions to the reviewed workspace and revision, reject stale tabs, and retain the previous workspace when import publication fails.
 - Recover interrupted uploads, reuse completed files when retrying the same selection, and deduplicate analysis submissions.
-- Add source-scoped Audio folders mappings for Windows libraries on Linux/macOS mounts, shared by playback, File health and MusicBrainz eligibility. Keep original and exported references unchanged.
+- Add source-scoped Audio folders mappings for Windows libraries on Linux/macOS mounts, shared by playback, File health and MusicBrainz eligibility. Local access mappings never rewrite original metadata or exported references.
+- Separate exported Windows/macOS references from local playback aliases. Infer the target from recorded paths, validate deliberate destination edits at staging and in both writers, and require an explicit recovery export prefix. Mixed or unknown sources require a target choice.
+- Constrain new local audio mappings to server-selected home/data folders, detected volumes or explicitly configured audio roots; reject sibling-prefix and symlink escapes. Resolve the CodeQL path findings and replace the browser test's URL-prefix assertion with exact parsed-origin checks.
 - Sort full filtered collections before pagination across metadata, history, insights and intelligence results; retain per-tab sources, filters and sort choices through navigation and reload.
+- Complete MusicBrainz batch sorting, including candidate, confidence, year, community rating and saved file-status criteria. Preserve sort choices through previews and refreshes; keep saved File health evidence distinct from current playback availability.
 - Review alternative MusicBrainz recordings and select an explicit release for album or release-year staging. Retain provenance and invalidate stale approvals without changing personal stars.
-- Add failure regressions and browser acceptance for mapped playback, navigation and reviewed enrichment. See [delivery report](docs/DELIVERY-REPORT-2026-11-16.md).
+- Add colored zero-duration and zero-size metadata filters to captured duplicate review and DJ insights, preserving unknown values and comparison siblings. Refresh duplicate availability badges after local mapping changes.
+- Add DJ insight perspectives for missing BPM/key, played tracks without manual cues, four-star favourites without manual cues, and tracks at least ten minutes long.
+- Add Windows/macOS target profiles to the detached Serato legacy-format draft, including source-aware defaults, validated roots and mapped path examples. Report destination collisions and omit affected records and playlist references instead of linking them to another file. Serato application acceptance remains unverified.
+- Complete translations and dynamic language switching for the new MusicBrainz, File health, journal, offline sharing and target-path controls across the supported interface languages.
+- Include the user-provided MusicBrainz and library-bubble README screenshots in the verified source package, with their documented provenance.
+- Extend failure regressions and browser acceptance for mapped playback, export references, navigation, filters and reviewed enrichment. Document repository safeguards and the separate CodeQL findings check. See the [delivery report](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.1.2/docs/DELIVERY-REPORT-2026-11-16.md).
 
 ## 1.1.1 — 2026-11-15
 
