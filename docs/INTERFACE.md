@@ -89,3 +89,19 @@ Approve the selected recording before choosing **Album / release**. Review its t
 Each new MusicBrainz override retains structured provenance: batch, recording, optional release, source URL, field basis, retrieval, approval and staging times. Inspect it in the track editor's staged edits. Identity/release changes and revoked approvals clear only this batch's matching suggestions and record resets in the private override history. Review revisions reject stale selections from other tabs. Personal star ratings are never populated from provider similarity or community ratings.
 
 Provider reference: [MusicBrainz API](https://musicbrainz.org/doc/MusicBrainz_API). The integration retrieves metadata; it does not submit changes to MusicBrainz.
+
+## Exported references and destination platform
+
+**Prepare export → Exported references** shows the target inferred from recorded current/XML paths. Windows drive-letter or UNC paths identify Windows; conventional macOS paths identify macOS. The helper's operating system and Audio folders mappings do not choose the target. For mixed or unknown source paths, choose Windows or macOS explicitly.
+
+Selecting a target does not convert paths. Use **File references** to deliberately stage destination changes, then review them before export. An export is held if surviving references still belong to the other platform. New destination references and saved relocation edits are checked again before XML/ZIP output; Linux access paths and known playback aliases cannot silently enter the exported library. Destination and source-path evidence are included in the export manifest.
+
+In advanced Media inventory, **Exported reference prefix · required for staging** is distinct from the local search folder. For example, search `/media/disk/Music` while exporting under `file://localhost/D:/Music`. A scan without a destination prefix can help investigate matches, but cannot stage them. Supply the prefix and repeat the scan before staging.
+
+Windows libraries remain Windows libraries when inspected from Linux or macOS. Accessing a Windows filesystem from a Mac does not imply a change of library destination.
+
+## Zero metadata flags and DJ preparation filters
+
+Captured duplicate review and DJ insights have colored **Zero-duration** and **Zero-size** quick filters. They select records whose saved duration or size is exactly zero; unknown values are not counted as zero. They do not scan audio or prove that a physical file is empty. Playability is independent, so a flagged record can still play. Duplicate filters count matching groups across the complete collection and keep every member of a matching group for comparison. Playback refreshes also update the comparison's availability badges.
+
+DJ insights adds **Missing BPM or key**, **Played but unprepared**, **Favourites needing cues**, and **Long tracks / mixes**. Their rules are missing BPM/key, positive selected usage with zero manual cues, at least four stars with zero manual cues, and duration of at least ten minutes respectively. These filters describe captured metadata; they do not infer forgotten cues or identify mixes with certainty. The zero flags can be combined with a perspective. Source, perspective and metadata filter choices survive navigation/reload; CSV/report output uses the chosen filters.

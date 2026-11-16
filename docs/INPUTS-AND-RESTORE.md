@@ -30,7 +30,7 @@ For Cloud Library Sync with **Dropbox or Google Drive**, export from the compute
 1. Open **Files & workflow → Import XML + ZIP**.
 2. Under **Choose files**, select your ZIP and XML, then choose **Copy files and analyze**. Copies stay on this computer; the original files are unchanged. Large backups need space for these copies and a new output ZIP.
 3. Alternatively, **Use existing files** reads the two originals at their full paths without another large input copy. Leave them unchanged and available while you work.
-4. Review duplicates, references and the proposed changes. In **Prepare export**, confirm that your separate untouched backup exists, then choose **Generate XML + ZIP together**.
+4. Review duplicates, references and the proposed changes. In **Prepare export**, review **Exported references**: the target follows the recorded source paths, or your explicit Windows/macOS selection for an ambiguous source. This selection does not convert paths; review deliberate reference changes separately. Confirm that your separate untouched backup exists, then choose **Generate XML + ZIP together**.
 5. Keep the generated files and **report.json**. Read the report before attempting a restore. The output is a working copy; file validation does not prove every rekordbox feature will restore correctly.
 
 ## 4. Restore the generated ZIP — test first

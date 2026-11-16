@@ -23,7 +23,7 @@ from workbench_store import Store
 
 def catalog(path='D:/Music/Café.wav',target='auto'):
     uri='file://localhost/'+quote(path.lstrip('/'),safe='/:')
-    return SimpleNamespace(tracks={'one':{'current_path':path,'xml_location':uri,'october_xml':True}},
+    return SimpleNamespace(tracks={'one':{'title':'Synthetic track','current_path':path,'xml_location':uri,'october_xml':True}},
                            metadata={'export_target':target})
 
 
@@ -55,6 +55,14 @@ class ExportReferenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'playback mapping'):
             validate_reference('file:///Volumes/MountedWindows/A.wav','macos',
                 [{'local_root':'/Volumes/MountedWindows','recorded_root':'D:/'}])
+
+    def test_playback_alias_detection_uses_logical_windows_paths(self):
+        aliases=[{'recorded_root':'E:/Music','local_root':'C:/MountedWindows/Music'}]
+        for uri in ('file:///c:/mountedwindows/music/A.wav','file:///C:/MountedWindows/./Music/A.wav'):
+            with self.subTest(uri=uri),self.assertRaisesRegex(ValueError,'playback mapping'):
+                validate_reference(uri,'windows',aliases)
+        self.assertEqual(validate_reference('file:///C:/MountedWindows/Music2/A.wav','windows',aliases),
+                         'file:///C:/MountedWindows/Music2/A.wav')
 
     def test_platform_change_requires_remaining_references_to_be_reviewed(self):
         c=catalog(target='macos')
@@ -119,7 +127,7 @@ class ExportReferenceTests(unittest.TestCase):
                 self.assertEqual(c.tracks,before_tracks);self.assertEqual((backup.read_bytes(),xml.read_bytes()),originals)
                 # Saved edits from older versions fail before either writer opens an output.
                 for writer in (export_xml,export_native):
-                    with self.assertRaises(ValueError):writer(c,{}, {'one':audio.as_uri()},root/'unsafe',lambda *_:None)
+                    with self.assertRaises(ValueError):writer(c,{}, {'one':audio.resolve().as_uri()},root/'unsafe',lambda *_:None)
                 self.assertFalse((root/'unsafe').exists())
                 self.assertNotIn(str(root),parse_xml(folder/'edited-collection.xml',lambda *_:None)[0]['one']['attrs']['Location'])
 

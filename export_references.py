@@ -4,6 +4,7 @@ Local audio mappings are access aliases only. No filesystem probe belongs here.
 """
 from collections import Counter
 import re
+import posixpath
 from urllib.parse import unquote, urlsplit
 
 TARGETS = ('auto', 'windows', 'macos')
@@ -77,6 +78,9 @@ def target_for(catalog):
 
 
 def at_root(path, root):
+    path, root = posixpath.normpath(path), posixpath.normpath(root)
+    if re.match(r'^[A-Za-z]:/', root) or root.startswith('//'):
+        path, root = path.casefold(), root.casefold()
     return path == root.rstrip('/') or path.startswith(root.rstrip('/') + '/')
 
 

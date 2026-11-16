@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Separate exported Windows/macOS references from local playback aliases; infer the target from recorded paths, validate deliberate destination edits at staging and in both writers, and require an explicit recovery export prefix.
+- Add colored zero-duration and zero-size metadata filters to captured duplicate review and DJ insights, preserving unknown values and comparison siblings. Refresh duplicate availability badges after local mapping changes.
+- Add DJ insight perspectives for missing BPM/key, played tracks without manual cues, four-star favourites without manual cues, and tracks at least ten minutes long.
+
 - Bind active-workspace actions to the reviewed workspace and revision, reject stale tabs, and retain the previous workspace when import publication fails.
 - Recover interrupted uploads, reuse completed files when retrying the same selection, and deduplicate analysis submissions.
 - Add source-scoped Audio folders mappings for Windows libraries on Linux/macOS mounts, shared by playback, File health and MusicBrainz eligibility. Keep original and exported references unchanged.
