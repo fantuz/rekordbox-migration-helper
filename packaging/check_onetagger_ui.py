@@ -1,7 +1,7 @@
 """Exercise the OneTagger handoff/review using invented tags and silent WAV."""
 import json
 import struct
-from urllib.parse import unquote
+from urllib.parse import quote,unquote
 import wave
 
 from audio_paths import validate
@@ -61,7 +61,21 @@ def check_onetagger_ui(browser,base,store,root,output):
         edits=store.overrides(scope)['bridge-one'];assert set(edits)=={'genre'},edits
         assert edits['genre']['value']=='Techno';assert store.snapshot(sid)==before
         assert audio.read_bytes()==retagged;assert not errors,errors
+        # Selection IDs read from the DOM stay a single URL component, even
+        # if a compromised response supplies quotes, markup or separators.
+        hostile='"><img src=x onerror="window.bridgeInjected=true">/../other'
+        choices=page.request.get(base+'/api/onetagger?snapshot='+sid).json()
+        choices['selections'].append({'id':hostile,'created':'2026-01-01T12:00:00Z','tracks':1})
+        page.route('**/api/onetagger?*',lambda route:route.fulfill(json=choices))
+        page.route('**/api/onetagger/*/review',lambda route:route.fulfill(json={'scan':None}))
+        page.evaluate('()=>OneTaggerBridge.load()')
+        with page.expect_response(lambda response:response.url.endswith('/review')):
+            page.select_option('#onetagger-selections',hostile)
+        for kind,suffix in (('playlist','playlist'),('manifest','manifest')):
+            assert page.locator('#onetagger-'+kind).get_attribute('href')=='/api/onetagger/'+quote(hostile,safe='')+'/'+suffix
+        assert page.evaluate('window.bridgeInjected') is None
+        assert not errors,errors
         return {'m3u_roundtrip':True,'original_references_preserved':True,'tag_rescan':True,
                 'explicit_field_selection':True,'snapshot_unchanged':True,'no_audio_writes':True,
-                'metadata_rendered_as_text':True,'no_page_errors':True}
+                'metadata_rendered_as_text':True,'selection_urls_encoded':True,'no_page_errors':True}
     finally:context.close()

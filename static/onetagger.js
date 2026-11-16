@@ -82,12 +82,12 @@ window.OneTaggerBridge=(()=>{
     $('selections').replaceChildren(new Option(t('Choose a selection'),''),...data.selections.map(s=>new Option(snapshotMoment(s.created)+' · '+num(s.tracks),s.id)));
     $('selections').value=data.selections.some(s=>s.id===selection)?selection:'';selection=$('selections').value;
     $('playlist').hidden=$('manifest').hidden=!selection;
-    $('playlist').href='/api/onetagger/'+selection+'/playlist';$('manifest').href='/api/onetagger/'+selection+'/manifest';controls();
+    $('playlist').href='/api/onetagger/'+encodeURIComponent(selection)+'/playlist';$('manifest').href='/api/onetagger/'+encodeURIComponent(selection)+'/manifest';controls();
   }
   async function review(){
     const generation=++reviewSequence,id=selection;
     scan=null;$('review').replaceChildren();$('reviewed').checked=false;controls();if(!id)return;
-    const data=await api('/api/onetagger/'+id+'/review',{feedback:false});
+    const data=await api('/api/onetagger/'+encodeURIComponent(id)+'/review',{feedback:false});
     if(generation!==reviewSequence || id!==selection)return;
     scan=data.scan;if(!scan){controls();return;}
     reviewRows();
@@ -104,14 +104,14 @@ window.OneTaggerBridge=(()=>{
     const result=await post('/export',{snapshot,track_ids:[...selected]});selection=result.id;
     await load();await review();notify(t('Selection ready for OneTagger'));
   }));
-  $('rescan').onclick=wrap(()=>action(async()=>{const result=await post('/'+selection+'/rescan',{});await poll(result.job);await review();}));
+  $('rescan').onclick=wrap(()=>action(async()=>{const result=await post('/'+encodeURIComponent(selection)+'/rescan',{});await poll(result.job);await review();}));
   $('unlock').onclick=wrap(async()=>{
     await api('/api/lab/unlock',{method:'POST',body:JSON.stringify({snapshot,unlocked:true})});notify(t('Staging unlocked'));
   });
   $('reviewed').onchange=controls;
   $('stage').onclick=wrap(()=>action(async()=>{
     const changes=[...$('review').querySelectorAll('input:checked')].map(b=>({track_id:b.dataset.track,field:b.dataset.onetaggerField}));
-    await post('/'+selection+'/stage',{changes,reviewed:$('reviewed').checked,review_revision:scan.review_revision,edit_revision:scan.edit_revision});
+    await post('/'+encodeURIComponent(selection)+'/stage',{changes,reviewed:$('reviewed').checked,review_revision:scan.review_revision,edit_revision:scan.edit_revision});
     notify(t('Metadata staged locally'));scan=null;$('review').replaceChildren();$('reviewed').checked=false;
   }));
   window.addEventListener('workbench-language',()=>{if(!$('bridge').closest('.view').hidden)void load().then(review);});
