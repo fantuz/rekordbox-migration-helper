@@ -109,6 +109,9 @@ def register(owner):
         force=value.get('force',True)
         if not isinstance(force,bool):raise ValueError('Choose a supported refresh mode')
         snapshot=resolve(owner,source)
+        from audio_paths import mappings_for, signature
+        mappings=mappings_for(store(),snapshot)
+        mapping_revision=signature(mappings)
         tracks=snapshot['tracks']
         if len(tracks)>250000:raise ValueError('This library exceeds the file-health scan limit')
         if len({str(t['id']) for t in tracks})!=len(tracks):
@@ -132,11 +135,13 @@ def register(owner):
             finished=False
             try:
                 for index in range(0,len(remaining),BATCH_SIZE):
+                    if signature(mappings_for(saved,snapshot))!=mapping_revision:
+                        raise ValueError('Audio folder mappings changed. Start a new File health scan.')
                     batch=remaining[index:index+BATCH_SIZE]
                     probes={str(t['id']):t for t in batch}
                     # A scan is an explicit request for current filesystem
                     # evidence, never merely a replay of the status TTL.
-                    states,_=cached_inspect(owner,probes,refresh=True)
+                    states,_=cached_inspect(owner,probes,refresh=True,mappings=mappings)
                     with saved.connection() as db:
                         db.executemany('INSERT OR REPLACE INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text) VALUES (?,?,?,?,?,?,?,?)',
                             [(source,identity,str(t.get('title') or ''),str(t.get('artist') or ''),
@@ -154,5 +159,7 @@ def register(owner):
                                ('complete' if finished else 'partial',time.time(),source))
         job=owner.launch(work,'Checking local file health')
         # Keep the existing task list useful for refresh and duplicate-click checks.
-        if job in jobs:jobs[job]['file_health_source']=source
+        if job in jobs:
+            jobs[job]['file_health_source']=source
+            jobs[job]['file_health_scope']=snapshot['scope_key']
         return jsonify(job=job,source=source,resumed=False)

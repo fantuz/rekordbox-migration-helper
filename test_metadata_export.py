@@ -147,7 +147,7 @@ class QuickExportAPITests(unittest.TestCase):
     def setUp(self):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name)
         self.catalog=example_catalog()
-        self.session={'catalog':self.catalog,'backup_acknowledged':None,'decisions':{'sample':{'action':'merge'}},'relocations':{'a':'file:///new/location.mp3'}}
+        self.session={'id':'test','catalog':self.catalog,'backup_acknowledged':None,'decisions':{'sample':{'action':'merge'}},'relocations':{'a':'file:///new/location.mp3'}}
         self.outputs=[]
         def launch(work,message):
             self.outputs.append(work(lambda *_:None));return 'job'

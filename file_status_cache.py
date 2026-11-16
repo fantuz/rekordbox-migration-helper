@@ -22,17 +22,17 @@ TTL = {
 PATH_FIELDS = ('current_path', 'xml_location', 'original_path')
 
 
-def fingerprint(track):
+def fingerprint(track, mappings=None):
     # Both the current and alternate recorded paths affect the result.
     # Include the host OS: a Windows path is not a POSIX local file.
     paths = [str(track.get(field)) if track.get(field) is not None else None
              for field in PATH_FIELDS]
-    payload = json.dumps([SCHEMA, sys.platform, paths], ensure_ascii=False,
+    payload = json.dumps([SCHEMA, sys.platform, paths, mappings or []], ensure_ascii=False,
                          separators=(',', ':'))
     return sha256(payload.encode('utf-8')).hexdigest()
 
 
-def inspect(owner, tracks, refresh=False):
+def inspect(owner, tracks, refresh=False, mappings=None):
     """Return (status, cache-hit) maps for server-resolved track IDs.
 
     A separate explicit refresh bypasses the cache, e.g. after reconnecting
@@ -44,7 +44,7 @@ def inspect(owner, tracks, refresh=False):
             statuses[identity] = 'unverified'
             hits[identity] = False
             continue
-        groups.setdefault(fingerprint(track), {'track': track, 'ids': []})['ids'].append(identity)
+        groups.setdefault(fingerprint(track,mappings), {'track': track, 'ids': []})['ids'].append(identity)
 
     if not groups:
         return statuses, hits
@@ -63,7 +63,7 @@ def inspect(owner, tracks, refresh=False):
         valid = (not refresh and cached is not None
                  and cached['status'] in TTL
                  and 0 <= now - cached['checked_at'] < TTL[cached['status']])
-        status = cached['status'] if valid else inspect_audio(group['track'])[0]
+        status = cached['status'] if valid else inspect_audio(group['track'],mappings)[0]
         if not valid:
             writes.append((key, status, now))
         for identity in group['ids']:

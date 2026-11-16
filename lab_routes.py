@@ -265,7 +265,10 @@ def register(owner):
             from musicbrainz_pilot import target_selection
             target=b.get('target','balanced');value=b.get('target_value','')
             selected={**s,'tracks':target_selection(s,target,value)}
-            eligible,excluded=playable_collection(selected,include,progress)
+            from audio_paths import mappings_for,signature
+            mappings=mappings_for(store(),s)
+            eligible,excluded=playable_collection(selected,include,progress,mappings)
+            eligible['audio_mapping_revision']=signature(mappings)
             progress(95,'Preparing the local batch preview')
             return create_batch(store(),eligible,b.get('top_genres',5),b.get('seed','preview'),
                                 SPEEDS[speed],b.get('sample_size'),target,value,
@@ -299,6 +302,9 @@ def register(owner):
             saved=store();recover_batches(saved);record=batch_record(saved,identity)
             from enrichment_context import require_snapshot
             require_snapshot(owner,saved.snapshot(record['snapshot_id']))
+            from audio_paths import mappings_for,signature
+            if record['summary'].get('audio_mapping_revision') and record['summary']['audio_mapping_revision']!=signature(mappings_for(saved,saved.snapshot(record['snapshot_id']))):
+                raise ValueError('Audio folder mappings changed. Preview a new batch before starting.')
             if 'playable_only' not in record['summary']:
                 raise ValueError('Preview a new batch to choose whether unavailable audio is included')
             if record['status']=='complete':raise ValueError('This batch is complete. Preview a new sample to run another batch.')

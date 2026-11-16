@@ -74,6 +74,7 @@ async function loadMusicBrainz(sync=false){
   const source=context.sources.find(s=>!sync&&s.id===oldSource)||context.sources.find(s=>s.kind==='workspace')||context.sources.find(s=>s.id===sharedScope)||context.sources[0];
   $('#musicbrainz-library').value=source?.id||'';
   musicBrainzSelectPrepared();
+  await AudioPaths.load($('#musicbrainz-audio-paths'),source?.id||'');
   $('#musicbrainz-source-note').hidden=Boolean(context.sources.length);
   $('#musicbrainz-prepare').disabled=!source;
   $('#lab-pilot-enabled').checked=info.musicbrainz_enabled;
@@ -89,7 +90,7 @@ function musicBrainzSelectPrepared(){
   $('#musicbrainz-snapshot').value=choices.some(s=>s.id===old)?old:choices[0]?.id||'';
 }
 $('#musicbrainz-library').onchange=wrap(async()=>{
-  musicBrainzSelectionChanged();musicBrainzSelectPrepared();$('#musicbrainz-prepare').disabled=!$('#musicbrainz-library').value;await musicBrainzTargetOptions();
+  musicBrainzSelectionChanged();musicBrainzSelectPrepared();await AudioPaths.load($('#musicbrainz-audio-paths'),$('#musicbrainz-library').value);$('#musicbrainz-prepare').disabled=!$('#musicbrainz-library').value;await musicBrainzTargetOptions();
 });
 $('#musicbrainz-prepare').onclick=wrap(async()=>{
   const source=$('#musicbrainz-library').value;if(!source)return;
@@ -122,3 +123,5 @@ window.addEventListener('workbench-context',()=>{
 window.addEventListener('workbench-language',()=>{
   if(!$('#view-musicbrainz').hidden)void musicBrainzTargetOptions();
 });
+
+window.addEventListener('workbench-audio-paths',()=>{musicBrainzSelectionChanged();});
