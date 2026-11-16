@@ -2,7 +2,7 @@
 from hashlib import sha256
 import json
 import time
-from urllib.parse import urlencode
+from urllib.parse import urlencode,urlsplit
 import wave
 from analyzer import analyze_folder
 from test_discovery_history import native_fixture
@@ -11,7 +11,7 @@ from musicbrainz_pilot import create_batch,BASE
 from workbench_store import encoded
 
 def check_delivery_ui(browser,base,store,root,output):
-    mount=root/'NTFS mount 日本';music=mount/'Music';music.mkdir(parents=True)
+    mount=store.path.parent/'NTFS mount 日本';music=mount/'Music';music.mkdir(parents=True)
     audio=music/'Café.wav'
     with wave.open(str(audio),'wb') as stream:
         stream.setnchannels(1);stream.setsampwidth(2);stream.setframerate(8000);stream.writeframes(b'\0\0'*800)
@@ -119,7 +119,9 @@ def check_delivery_ui(browser,base,store,root,output):
         page.screenshot(path=str(output/'musicbrainz-candidate-release-review.png'))
         assert store.snapshot(sid)==snapshot
         assert dbfile.read_bytes()==original
-        assert not any(url.startswith('https://musicbrainz.org') for url in network)
+        origin=urlsplit(base)
+        assert all((parsed.scheme,parsed.hostname,parsed.port)==(origin.scheme,origin.hostname,origin.port)
+                   for parsed in map(urlsplit,network)),network
         assert not errors,errors
         return {'mapped_playback':True,'full_collection_sort':True,'back_and_reload_filters':True,
                 'explicit_release_provenance':True,'alternative_resets_approval':True,'originals_unchanged':True}

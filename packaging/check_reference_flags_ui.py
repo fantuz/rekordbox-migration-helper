@@ -7,7 +7,7 @@ from test_dj_insights import song
 
 
 def check_reference_flags_ui(browser,base,store,root,output):
-    music=root/'Windows music volume';music.mkdir()
+    music=store.path.parent/'Windows music volume';music.mkdir()
     rows=[]
     for i in range(60):
         with wave.open(str(music/f'{i:03}.wav'),'wb') as audio:
@@ -21,7 +21,7 @@ def check_reference_flags_ui(browser,base,store,root,output):
     scope='synthetic:reference-flags'
     sid=store.save_snapshot({'scope_key':scope,'tracks':rows,'playlists':[],'capabilities':{}},'Reference flags')['id']
     before=deepcopy(store.snapshot(sid))
-    mapping=validate([{'recorded_root':'E:/Music','local_root':str(music)}])
+    mapping=validate([{'recorded_root':'E:/Music','local_root':str(music)}], [store.path.parent])
     store.set_setting('audio_paths:'+scope,mapping)
     context=browser.new_context(locale='en-US',viewport={'width':1550,'height':1050})
     context.add_init_script("localStorage.setItem('library-workbench.language.v1','en')")

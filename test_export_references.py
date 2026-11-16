@@ -105,7 +105,7 @@ class ExportReferenceTests(unittest.TestCase):
             with self.subTest(recorded=recorded),tempfile.TemporaryDirectory() as tmp:
                 root=Path(tmp);audio=root/'Café.wav';audio.write_bytes(b'synthetic audio')
                 prefix=recorded.rsplit('/',1)[0]
-                aliases=audio_mappings([{'recorded_root':prefix,'local_root':str(root)}])
+                aliases=audio_mappings([{'recorded_root':prefix,'local_root':str(root)}], [root])
                 c=catalog(recorded);before_tracks=deepcopy(c.tracks)
                 self.assertEqual(available_audio(c.tracks['one'],aliases),audio.resolve())
                 master=root/'source.db'

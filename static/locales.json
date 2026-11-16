@@ -24788,6 +24788,20 @@
       "ru": "Сохранённая длительность не менее десяти минут; это может быть длинный трек или микс",
       "ja": "記録された長さが10分以上。長いトラックまたはミックスの可能性があります",
       "ar": "المدة المسجلة عشر دقائق على الأقل؛ قد يكون مقطعًا طويلًا أو مزيجًا"
+    },
+    "Allowed audio locations": {
+      "de": "Erlaubte Audio-Speicherorte",
+      "fr": "Emplacements audio autorisés",
+      "it": "Percorsi audio consentiti",
+      "es": "Ubicaciones de audio permitidas",
+      "el": "Επιτρεπόμενες τοποθεσίες ήχου",
+      "pl": "Dozwolone lokalizacje plików audio",
+      "cs": "Povolená umístění zvukových souborů",
+      "ru": "Разрешённые расположения аудиофайлов",
+      "ja": "許可された音声ファイルの場所",
+      "ar": "مواقع الصوت المسموح بها",
+      "pt-PT": "Localizações de áudio permitidas",
+      "pt-BR": "Locais de áudio permitidos"
     }
   }
 }

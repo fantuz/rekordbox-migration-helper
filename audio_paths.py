@@ -43,7 +43,40 @@ def mappings_for(store, snapshot):
     return store.setting('audio_paths:'+str(snapshot.get('scope_key','')),[])
 
 
-def validate(mappings):
+def allowed_roots(owner):
+    """Server-selected boundaries, never values supplied by the mapping request."""
+    from discovery import mounted_roots
+    roots=[Path.home(),owner.DATA,*(Path(row['path']) for row in mounted_roots())]
+    configured=os.environ.get('LIBRARY_WORKBENCH_AUDIO_ROOTS','')
+    if configured:
+        try:extra=json.loads(configured)
+        except (TypeError,ValueError):
+            raise ValueError('LIBRARY_WORKBENCH_AUDIO_ROOTS must be a JSON list of absolute folders.') from None
+        if not isinstance(extra,list) or len(extra)>32 or any(not isinstance(p,str) for p in extra):
+            raise ValueError('LIBRARY_WORKBENCH_AUDIO_ROOTS must be a JSON list of absolute folders.')
+        for value in extra:
+            path=Path(value).expanduser()
+            if not path.is_absolute() or '..' in path.parts or value.replace('\\','/').startswith('//'):
+                raise ValueError('Configured audio roots must be absolute local folders.')
+            roots.append(path)
+    return list(dict.fromkeys(Path(root).resolve() for root in roots))
+
+
+def confined_folder(raw, roots):
+    """Resolve aliases, then require a complete folder-boundary match."""
+    expanded=os.path.expanduser(raw)
+    if not os.path.isabs(expanded) or '..' in expanded.replace('\\','/').split('/'):
+        raise ValueError('Choose an absolute local folder.')
+    # realpath removes link/parent aliases before any Path is constructed.
+    canonical=os.path.normcase(os.path.realpath(expanded))
+    for root in roots:
+        boundary=os.path.normcase(os.path.realpath(str(root)))
+        if canonical==boundary or canonical.startswith(boundary.rstrip(os.sep)+os.sep):
+            return Path(canonical)
+    raise ValueError('Choose an audio folder inside your home directory, a detected mounted volume, or a configured audio root.')
+
+
+def validate(mappings, roots):
     if not isinstance(mappings,list) or len(mappings)>16:
         raise ValueError('Choose at most 16 local audio folders.')
     result=[];seen=set()
@@ -56,11 +89,9 @@ def validate(mappings):
         raw=row.get('local_root')
         if not isinstance(raw,str) or not raw or any(ord(c)<32 for c in raw) or raw.startswith(('//','\\\\')):
             raise ValueError('Choose an existing local folder.')
-        path=Path(raw).expanduser()
-        if not path.is_absolute() or '..' in path.parts:
-            raise ValueError('Choose an absolute local folder.')
+        path=confined_folder(raw,roots)
         try:
-            path=path.resolve(strict=True);stat=path.stat()
+            stat=path.stat()
             if not path.is_dir():raise ValueError('The local audio folder must be a directory.')
         except OSError as error:raise ValueError('Connect the local audio folder before saving its mapping.') from error
         key=prefix.casefold() if re.match('^[A-Za-z]:',prefix) else prefix
@@ -151,18 +182,18 @@ def register(owner):
                     root=value[:2]+'/'
                     if root not in roots:roots.append(root)
         return jsonify(scope=s['scope_key'],mappings=rows,revision=signature(rows),
-                       recorded_roots=roots,mounted_roots=mounts)
+                       recorded_roots=roots,mounted_roots=mounts,allowed_roots=[str(p) for p in allowed_roots(owner)])
 
     @app.post('/api/audio-paths/preview')
     def preview_paths():
         local();b=body();s=snapshot(b.get('source',''))
-        rows=validate(b.get('mappings'))
+        rows=validate(b.get('mappings'),allowed_roots(owner))
         return jsonify(examples=examples(s,rows),mappings=rows)
 
     @app.post('/api/audio-paths')
     def save_paths():
         local();b=body();s=snapshot(b.get('source',''));saved=store()
-        rows=validate(b.get('mappings'))
+        rows=validate(b.get('mappings'),allowed_roots(owner))
         with owner.lock:
             if any(job.get('status')=='running' and job.get('file_health_scope')==s['scope_key'] for job in owner.tasks.values()):
                 raise Conflict('Cancel or finish the File health scan before changing audio folders.')

@@ -63,7 +63,7 @@ DJ insights offers these additional perspectives, which can be combined with the
 
 ## Validation and limits
 
-All execution, tests, browser automation and package builds run on GitHub Actions. The suite contains 391 unit/API tests covering Linux, Windows and both macOS architectures. Browser checks cover Chromium, Firefox and WebKit with invented metadata and generated silence. MusicBrainz tests use mocked responses or a seeded client cache and make no provider requests. See the final PR checks for execution results at the reviewed commit.
+All execution, tests, browser automation and package builds run on GitHub Actions. The suite contains 394 unit/API tests covering Linux, Windows and both macOS architectures. Browser checks cover Chromium, Firefox and WebKit with invented metadata and generated silence. MusicBrainz tests use mocked responses or a seeded client cache and make no provider requests. See the final PR checks for execution results at the reviewed commit.
 
 The PR gate requires source checks, browser checks, five package artifacts, native startup checks and package/source consistency. No release is published by this PR.
 
@@ -77,3 +77,13 @@ The PR gate requires source checks, browser checks, five package artifacts, nati
 ## Review map
 
 `workspace_safety.py` and `upload_recovery.py` contain the workspace boundaries; `audio_paths.py` centralizes local access; `export_references.py` validates logical destinations; `result_order.py` implements complete-result ordering; `musicbrainz_review.py` owns recording/release approval and provenance. `track_flags.py` defines the zero metadata criteria. Browser acceptance includes `packaging/check_delivery_ui.py` and `packaging/check_reference_flags_ui.py`. User-facing instructions are in [INTERFACE.md](INTERFACE.md).
+
+## CodeQL follow-up
+
+The initial validation summary missed GitHub Advanced Security's separate CodeQL findings check: its dynamic analysis jobs were not included by the pull-request workflow-run listing. The PR was returned to draft while both annotations were addressed.
+
+The audio-folder path check now resolves the requested folder and enforces a directory boundary within server-selected home/data locations, detected volumes or explicitly configured host audio roots. Regression cases cover prefix siblings, link escapes, request attempts to broaden the roots and the existing token/local-host gates. Mounted playback and export-preservation coverage remains in place.
+
+The second annotation was in the browser acceptance test, not production MusicBrainz URL handling. That assertion now parses request origins and requires the exact local test-server scheme, host and port, rejecting all external browser traffic.
+
+Final review must include the complete commit check-run list and the separate **CodeQL** findings result, in addition to source, browser, package and dependency jobs. An analysis job successfully uploading results does not mean its findings check passed.

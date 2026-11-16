@@ -25,7 +25,7 @@ window.AudioPaths=(()=>{
     if(!force && panels.get(host)?.source===source)return;
     const state={source,revision:null};panels.set(host,state);
     host.innerHTML='<details class="audio-path-panel"><summary>'+esc(t('Audio folders'))+'</summary><p>'+esc(t('Map recorded Windows folders to this computer to use playback, File health and MusicBrainz. Original and exported paths stay unchanged.'))+'</p><div data-audio-rows></div>'+
-      '<p data-audio-mounts class="subtle"></p><div class="lab-actions"><button type="button" class="button secondary" data-audio-add>'+esc(t('Add folder'))+'</button><button type="button" class="button secondary" data-audio-preview>'+esc(t('Check example paths'))+'</button><button type="button" class="button" data-audio-save>'+esc(t('Save audio folders'))+'</button></div><p data-audio-note role="status"></p><div class="native-table" data-audio-examples></div></details>';
+      '<p data-audio-mounts class="subtle"></p><p data-audio-roots class="subtle"></p><div class="lab-actions"><button type="button" class="button secondary" data-audio-add>'+esc(t('Add folder'))+'</button><button type="button" class="button secondary" data-audio-preview>'+esc(t('Check example paths'))+'</button><button type="button" class="button" data-audio-save>'+esc(t('Save audio folders'))+'</button></div><p data-audio-note role="status"></p><div class="native-table" data-audio-examples></div></details>';
     const note=host.querySelector('[data-audio-note]'),container=host.querySelector('[data-audio-rows]');
     host.querySelector('[data-audio-add]').onclick=()=>container.append(row());
     try{
@@ -35,6 +35,7 @@ window.AudioPaths=(()=>{
       for(const mapping of info.mappings)container.append(row(mapping));
       if(!info.mappings.length)container.append(row({recorded_root:info.recorded_roots[0]||''}));
       host.querySelector('[data-audio-mounts]').textContent=t('Mounted folders')+': '+(info.mounted_roots.map(r=>r.path).join(' · ')||t('None detected'));
+      host.querySelector('[data-audio-roots]').textContent=t('Allowed audio locations')+': '+(info.allowed_roots||[]).join(' · ');
       const act=save=>wrap(async()=>{
         const buttons=[...host.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);
         try{

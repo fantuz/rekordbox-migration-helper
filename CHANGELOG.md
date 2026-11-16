@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Constrain new local audio mappings to server-selected home/data folders, detected volumes or explicitly configured audio roots; reject sibling-prefix and symlink escapes. Verify CodeQL findings separately from successful analysis uploads.
+
 - Separate exported Windows/macOS references from local playback aliases; infer the target from recorded paths, validate deliberate destination edits at staging and in both writers, and require an explicit recovery export prefix.
 - Add colored zero-duration and zero-size metadata filters to captured duplicate review and DJ insights, preserving unknown values and comparison siblings. Refresh duplicate availability badges after local mapping changes.
 - Add DJ insight perspectives for missing BPM/key, played tracks without manual cues, four-star favourites without manual cues, and tracks at least ten minutes long.
