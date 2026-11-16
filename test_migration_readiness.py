@@ -77,6 +77,50 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(self.backup.read_bytes(),self.original)
         self.assertEqual(next(r for r in rows if r['title']=='music')['files'],0)
 
+    def test_ext_sibling_cannot_hide_a_missing_dat_reference(self):
+        dat='PIONEER/USBANLZ/P001/ABC/ANLZ0000.DAT'
+        ext='PIONEER/USBANLZ/P001/ABC/ANLZ0000.EXT'
+        with zipfile.ZipFile(self.backup,'w') as archive:
+            archive.writestr('master.db',b'synthetic database')
+            archive.writestr(ext,b'synthetic sibling')
+        original=self.backup.read_bytes()
+        source={'asset_references':[dat,ext,dat]}
+        summary,rows=backup_manifest(source,self.backup,lambda *_:None,True)
+        self.assertEqual(summary['missing_analysis_references'],1)
+        missing=[r for r in rows if r['section']=='missing_analysis']
+        self.assertEqual(len(missing),1);self.assertTrue(missing[0]['title'].endswith('anlz0000.dat'))
+        self.assertEqual(summary['checksum_status'],'verified')
+        self.assertEqual(self.backup.read_bytes(),original)
+
+    def test_references_are_individual_files_not_one_count_per_folder(self):
+        folder='PIONEER/USBANLZ/P001/ABC/'
+        source={'asset_references':[folder+'ANLZ0000.DAT',folder+'ANLZ0000.EXT',folder+'ANLZ0000.2EX']}
+        summary,rows=backup_manifest(source,self.backup,lambda *_:None)
+        self.assertEqual(summary['missing_analysis_references'],2)
+        self.assertEqual({r['title'].rsplit('.',1)[-1] for r in rows if r['section']=='missing_analysis'},{'ext','2ex'})
+
+    def test_exact_reference_matching_normalizes_prefix_case_and_separators(self):
+        source={'asset_references':[r'C:\Library\PIONEER\usbanlz\p001\abc\anlz0000.dat',
+                                    '/USBANLZ/P001/ABC/ANLZ0000.DAT']}
+        summary,rows=backup_manifest(source,self.backup,lambda *_:None)
+        self.assertEqual(summary['missing_analysis_references'],0)
+        self.assertEqual(summary['ambiguous_analysis_references'],0)
+        self.assertEqual(summary['unresolved_analysis_references'],0)
+
+    def test_folder_and_ambiguous_file_evidence_stay_unknown(self):
+        with zipfile.ZipFile(self.backup,'w') as archive:
+            archive.writestr('PIONEER/USBANLZ/P001/ABC/ANLZ0000.DAT',b'one')
+            archive.writestr('USBANLZ/P001/ABC/anlz0000.dat',b'two')
+        source={'asset_references':['/USBANLZ/P001/ABC/ANLZ0000.DAT','/USBANLZ/P001/ABC/',
+                                    '/USBANLZ/P001/ABC/../ANLZ0000.EXT']}
+        summary,rows=backup_manifest(source,self.backup,lambda *_:None,True)
+        self.assertEqual(summary['missing_analysis_references'],0)
+        self.assertEqual(summary['ambiguous_analysis_references'],1)
+        self.assertEqual(summary['unresolved_analysis_references'],2)
+        self.assertEqual(sum(r['section']=='ambiguous_analysis' for r in rows),1)
+        self.assertEqual(sum(r['section']=='unknown_analysis_reference' for r in rows),2)
+        self.assertEqual(summary['checksum_status'],'verified')
+
     def test_budget_never_claims_unread_members_are_verified(self):
         summary,rows=backup_manifest(self.source,self.backup,lambda *_:None,True,max_verify_bytes=1)
         self.assertEqual(summary['hashed_bytes'],0);self.assertEqual(summary['checksum_status'],'partial')

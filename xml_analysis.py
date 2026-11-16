@@ -1,14 +1,15 @@
 """Read metadata-only rekordbox XML from any supported export version."""
-from collections import Counter,defaultdict
+from collections import defaultdict
 from datetime import datetime,timezone
 from hashlib import sha256
 import json
 from pathlib import Path
 from xml.parsers import expat
 
-from engine import parse_xml,path_key,is_auto,HOT_NUMBERS
+from engine import parse_xml,path_key,is_auto
 from media import file_record
 from metadata_export import track
+from migration_readiness import finite
 from track_tags import xml_colour,xml_colour_support
 
 
@@ -17,7 +18,7 @@ def analyze_xml(source,output,progress):
     if before['cloud_only']:raise ValueError('Make this XML available locally before reading it')
     if before['size']>4*1024**3:raise ValueError('XML exceeds the 4 GB analysis limit')
     records,_,version,digest=parse_xml(source,progress)
-    tracks=[];by_location=defaultdict(list);hot={value:key for key,value in HOT_NUMBERS.items()}
+    tracks=[];by_location=defaultdict(list)
     for identity,record in records.items():
         a=record['attrs'];marks=record['marks'];rating=None
         try:
@@ -29,7 +30,8 @@ def analyze_xml(source,output,progress):
                  'composer':a.get('Composer'),'play_count':a.get('PlayCount'),'date_added':a.get('DateAdded'),'bitrate':a.get('BitRate'),
                  'size':a.get('Size'),'sample_rate':a.get('SampleRate'),'current_path':a.get('Location'),'manual_cues':len(marks)-auto,'auto_cues':auto,
                  'comment':a.get('Comments'),'tonality':a.get('Tonality'),**xml_colour(a.get('Colour'))})
-        t.update(cues=None,raw_tags={'year':a.get('Year'),'bpm':a.get('AverageBpm'),'duration':a.get('TotalTime'),'rating':rating},uuid=None,isrc=a.get('ISRC',''))
+        t.update(cues=None,raw_tags={'year':a.get('Year'),'bpm':a.get('AverageBpm'),'duration':a.get('TotalTime'),'rating':rating},uuid=None,isrc=a.get('ISRC',''),
+                 xml_bpm=finite(a.get('AverageBpm')),grid_bpms=list(record['grid_bpms']))
         tracks.append(t);by_location[path_key(a.get('Location'))].append(identity)
     lookup={t['id']:t for t in tracks};playlists=[];stack=[];scope='';unresolved=0;unsupported_keys=set()
     parser=expat.ParserCreate()

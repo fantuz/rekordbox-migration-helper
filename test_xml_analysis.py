@@ -4,9 +4,36 @@ import json
 import tempfile
 import unittest
 from analyzer import analyze_folder
+from migration_readiness import tempo_key_review
+from workbench_store import Store
 
 
 class XmlStatisticsTests(unittest.TestCase):
+    def test_xml_only_capture_and_saved_snapshot_preserve_tempo_disagreement(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);source=root/'collection.xml';output=root/'report'
+            tracks='''<TRACK TrackID="1" Name="Half time" AverageBpm="87"><TEMPO Bpm="174"/></TRACK>
+              <TRACK TrackID="2" Name="Agreement" AverageBpm="128"><TEMPO Bpm="128"/></TRACK>
+              <TRACK TrackID="3" Name="Variable" AverageBpm="128"><TEMPO Bpm="128"/><TEMPO Bpm="140"/></TRACK>
+              <TRACK TrackID="4" Name="Unknown"><TEMPO Bpm="NaN"/><TEMPO Bpm="-1"/></TRACK>'''
+            source.write_text('<DJ_PLAYLISTS><COLLECTION>'+tracks+'</COLLECTION></DJ_PLAYLISTS>')
+            original=source.read_bytes();analyze_folder(str(source),output,lambda *_:None)
+            for name in ('metadata.json','comparison.json'):
+                captured=json.loads((output/name).read_text())
+                self.assertEqual(captured['tracks'][0].get('grid_bpms'),[174])
+                self.assertEqual(captured['tracks'][0].get('xml_bpm'),87)
+                self.assertEqual(captured['tracks'][3].get('grid_bpms'),[])
+                self.assertIsNone(captured['tracks'][3].get('xml_bpm'))
+                store=Store(root/'sidecar.sqlite3');sid=store.save_snapshot(captured,name)['id']
+                summary,rows=tempo_key_review(store.snapshot(sid))
+                self.assertEqual(summary['tempo_disagreements'],2)
+                self.assertEqual(summary['tempo_agreements'],1)
+                self.assertEqual(summary['tempo_comparison_unknown'],1)
+                half=next(r for r in rows if r['section']=='tempo_disagreement' and r['track_id']=='1')
+                self.assertTrue(half['half_double']);self.assertEqual(half['saved_bpm'],87)
+                self.assertEqual(store.edit_state(captured['scope_key'])['overrides'],{})
+            self.assertEqual(source.read_bytes(),original)
+
     def test_v5_xml_counts_tags_and_playlists_without_conversion_or_source_writes(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);source=root/'v5-collection.xml';output=root/'report'
