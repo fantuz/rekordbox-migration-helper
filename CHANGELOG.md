@@ -2,11 +2,17 @@
 
 ## Unreleased
 
+## 1.1.3 — 2026-11-16
+
+This patch makes import retries and metadata editing safer, keeps failed saves from changing the working session, and distinguishes missing metadata from genuine zero values.
+
 - Retry failed or cancelled import analysis with a fresh catalog and publish it only after successful analysis, retaining uploaded inputs and the previous active workspace.
 - Reject stale manual metadata saves, resets, bulk normalization and MusicBrainz staging using persistent edit revisions. Bind export approval to those revisions and capture values, history and provenance consistently.
 - Restore working decisions, references, names, acknowledgements and derived policy state when saving fails. Preserve the prior inventory file when publication fails.
 - Preserve unknown duration and size values through XML/ZIP catalog import, snapshots, statistics and zero-value filters; keep explicit numeric zero distinct from missing metadata.
 - Align repository safeguard documentation and the main ruleset template with the verified active configuration, including required checks, native CodeQL protection and no bypass actors.
+
+Upgrade notes: reload open browser tabs after updating so they receive the current metadata edit revision. Older imported catalogs that already stored unknown duration or size as zero cannot recover that distinction automatically; reimport the original XML and ZIP to rebuild those values accurately.
 
 ## 1.1.2 — 2026-11-16
 
