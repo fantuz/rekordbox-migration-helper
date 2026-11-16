@@ -68,6 +68,12 @@ class WorkspaceSafetyTests(unittest.TestCase):
 
 
 class ImportPublicationTests(unittest.TestCase):
+    def test_worker_submission_failure_leaves_no_phantom_active_task(self):
+        pool=SimpleNamespace(submit=lambda *_:(_ for _ in ()).throw(RuntimeError('worker stopped')))
+        with patch.object(application,'tasks',{}),patch.object(application,'task_controls',{}):
+            with self.assertRaises(RuntimeError):application.launch(lambda *_:None,'Import',pool=pool)
+            self.assertEqual(application.tasks,{});self.assertEqual(application.task_controls,{})
+
     def test_failed_analysis_or_state_publication_keeps_previous_workspace(self):
         temp=TemporaryDirectory();self.addCleanup(temp.cleanup)
         old={'id':'old','decisions':{'p':{'action':'skip'}}}

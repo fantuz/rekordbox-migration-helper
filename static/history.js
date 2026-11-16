@@ -1,5 +1,5 @@
 /* Histories are immutable native snapshot data; never reconstructed from counts. */
-let historyOffset=0,historyEntryOffset=0,historySelected=null,historyListRevision=0,historySessionRevision=0;
+let historySourceSeen='',historyOffset=0,historyEntryOffset=0,historySelected=null,historyListRevision=0,historySessionRevision=0;
 async function loadHistory(){
   const info=await api('/api/lab');
   const choices=[...info.snapshots,...info.sources.map(s=>({...s,id:'capture:'+s.id}))];
@@ -13,6 +13,7 @@ async function loadHistory(){
 }
 async function loadHistoryList(){
   const revision=++historyListRevision,snapshot=$('#history-snapshot').value;
+  if(historySourceSeen!==snapshot){historyOffset=0;historyEntryOffset=0;historySelected=null;$('#history-session').hidden=true;historySourceSeen=snapshot;}
   if(!snapshot){$('#history-status').textContent=I18n.t("Load a native ZIP workspace or capture a source folder, then save a history snapshot. XML alone does not contain the native History tab.");$('#history-list').innerHTML='';$('#history-summary').innerHTML='';return;}
   const r=await api('/api/lab/history?'+new URLSearchParams({snapshot,year:$('#history-year').value || window.BrowseState?.value('history-year') || '',q:$('#history-search').value,offset:historyOffset,...CollectionSort.args('history-list')}));
   if(revision!==historyListRevision || snapshot!==$('#history-snapshot').value)return;

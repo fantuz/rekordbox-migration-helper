@@ -33,7 +33,7 @@ def check_delivery_ui(browser,base,store,root,output):
         page.locator('.nav[data-view="file-health"]').click()
         page.wait_for_selector('#file-health-source option[value="snapshot:'+sid+'"]',state='attached')
         page.select_option('#file-health-source','snapshot:'+sid)
-        page.wait_for_selector('#file-health-audio-paths [data-audio-recorded]')
+        page.wait_for_selector('#file-health-audio-paths [data-audio-recorded]',state='attached')
         panel=page.locator('#file-health-audio-paths')
         panel.locator('summary').click()
         panel.locator('[data-audio-recorded]').fill('D:/')
@@ -122,4 +122,9 @@ def check_delivery_ui(browser,base,store,root,output):
         assert not errors,errors
         return {'mapped_playback':True,'full_collection_sort':True,'back_and_reload_filters':True,
                 'explicit_release_provenance':True,'alternative_resets_approval':True,'originals_unchanged':True}
+    except Exception:
+        page.screenshot(path=str(output/'delivery-failure.png'),full_page=True)
+        (output/'delivery-failure.html').write_text(page.content(),encoding='utf-8')
+        print('DELIVERY_UI_STATE '+json.dumps({'url':page.url,'toast':page.locator('#toast').text_content(),'errors':errors}))
+        raise
     finally:context.close()

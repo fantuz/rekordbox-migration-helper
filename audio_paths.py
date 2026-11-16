@@ -9,7 +9,7 @@ from urllib.parse import unquote, urlsplit
 
 from flask import jsonify, request
 from werkzeug.exceptions import Conflict
-from workbench_store import Store
+from workbench_store import Store,encoded
 
 FIELDS = ('current_path', 'xml_location', 'original_path')
 
@@ -121,6 +121,10 @@ def register(owner):
     def local():
         from file_health import local_request
         if not local_request():raise ValueError('Local audio mapping requires the local application.')
+    def body():
+        b=request.get_json(silent=True)
+        if not isinstance(b,dict):raise ValueError('Choose an audio folder mapping')
+        return b
     def examples(s,rows):
         from track_playback import inspect_audio
         output=[]
@@ -151,21 +155,21 @@ def register(owner):
 
     @app.post('/api/audio-paths/preview')
     def preview_paths():
-        local();b=request.get_json(silent=True) or {};s=snapshot(b.get('source',''))
+        local();b=body();s=snapshot(b.get('source',''))
         rows=validate(b.get('mappings'))
         return jsonify(examples=examples(s,rows),mappings=rows)
 
     @app.post('/api/audio-paths')
     def save_paths():
-        local();b=request.get_json(silent=True) or {};s=snapshot(b.get('source',''));saved=store()
+        local();b=body();s=snapshot(b.get('source',''));saved=store()
         rows=validate(b.get('mappings'))
         with owner.lock:
             if any(job.get('status')=='running' and job.get('file_health_scope')==s['scope_key'] for job in owner.tasks.values()):
                 raise Conflict('Cancel or finish the File health scan before changing audio folders.')
             if b.get('revision')!=signature(mappings_for(saved,s)):
                 raise Conflict('Audio folder mappings changed. Reload them before saving.')
-            saved.set_setting('audio_paths:'+s['scope_key'],rows)
             with saved.connection() as db:
+                db.execute('INSERT OR REPLACE INTO settings VALUES (?,?)',('audio_paths:'+s['scope_key'],encoded(rows)))
                 sources=[s['scope_key'],*('snapshot:'+r[0] for r in db.execute('SELECT id FROM snapshots WHERE scope_key=?',(s['scope_key'],)))]
                 for source in sources:
                     db.execute('DELETE FROM file_health_records WHERE source=?',(source,))

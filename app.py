@@ -115,7 +115,10 @@ def launch(work, message, pool=None, on_finished=None):
                 if on_finished:on_finished(tasks[job]['status'])
             finally:
                 with lock:task_controls.pop(job,None)
-    (pool or executor).submit(run)
+    try:(pool or executor).submit(run)
+    except Exception:
+        with lock:tasks.pop(job,None);task_controls.pop(job,None)
+        raise
     return job
 
 
@@ -859,7 +862,7 @@ def upload_status(sid):
     files={}
     for kind in ('zip','xml'):
         name=info.get(kind,'')
-        if not name or '/' in name or '\\\\' in name:raise ValueError('Invalid upload session')
+        if not name or '/' in name or '\\' in name:raise ValueError('Invalid upload session')
         candidate=folder/name
         files[kind]={'complete':candidate.is_file() and not candidate.is_symlink(),
                      'bytes':candidate.stat().st_size if candidate.is_file() else 0}
@@ -887,6 +890,8 @@ def run_import(sid):
     with lock:
         for task in tasks.values():
             if task.get('import_session')==sid and task['status'] in ('running','complete'):
+                if task['status']=='complete' and active!=(task.get('result') or {}).get('session'):
+                    raise ValueError('This import already completed. Resume it from Saved workspaces to make it active again.')
                 return jsonify(job=task['id'])
         job=launch(work,"Analyzing the imported pair")
         tasks[job]['import_session']=sid

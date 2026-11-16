@@ -122,6 +122,7 @@ async function poll(job) {
   } finally { busy=wasBusy;finishProgress(); }
 }
 function renderSession() {
+  $('#report-download').href='/api/report?'+new URLSearchParams({workspace:session?.id||''});
   if (!session) return;
   const c=session.counts;
   $("#dataset-name").textContent=session.name || session.metadata.name;

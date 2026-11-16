@@ -60,6 +60,17 @@ class PairQueryTests(unittest.TestCase):
         self.assertEqual(page(session,{'q':'Track 5'},scope,evidence)['total'],1)
         self.assertEqual(page(session,{'evidence':'unknown-evidence'},scope,evidence)['total'],0)
 
+    def test_complete_sort_keeps_pages_and_groups_consistent(self):
+        session=fixture()
+        for view in ('pairs','groups'):
+            values={'view':view,'sort':'title','direction':'desc'}
+            first=page(session,values,scope,evidence)
+            second=page(session,{**values,'offset':40},scope,evidence)
+            expected=sorted((r['title'] for r in session['catalog'].descriptions.values()),key=str.casefold,reverse=True)
+            self.assertEqual([r['title'] for r in first['rows']+second['rows']],expected[:80])
+            self.assertEqual(first['total'],90)
+        with self.assertRaises(ValueError):page(session,{'sort':'unsafe'},scope,evidence)
+
     def test_connected_three_copy_group_uses_transitive_graph(self):
         session=fixture(2);session['catalog'].descriptions['1'].update(a='1',b='2')
         result=page(session,{'view':'groups'},scope,evidence)
