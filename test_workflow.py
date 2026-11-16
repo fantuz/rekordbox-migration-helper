@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
 
 from file_workflow import check_inputs, fingerprint_inputs, list_exports, prepare_export, select_inputs
 
@@ -22,6 +23,10 @@ class WorkflowTests(unittest.TestCase):
         self.catalog=SimpleNamespace(metadata=self.meta,tracks={})
         self.snapshot={"id":"session","name":"Test library","counts":{"tracks":2}}
         self.decisions={"a~b":{"action":"merge","keeper":"a"}}
+        # These orchestration-only tests inject byte stubs for both writers.
+        # Real encrypted/XML read-back and mutation rejection have separate tests.
+        verifier=patch('export_verification.freeze',return_value=SimpleNamespace(check=lambda *_:{'status':'passed'}))
+        verifier.start();self.addCleanup(verifier.stop)
 
     def export(self,xml_writer,native_writer):
         return prepare_export(self.catalog,self.decisions,{},self.snapshot,self.root/"exports","f"*32,"pair",lambda *_:None,

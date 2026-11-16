@@ -359,6 +359,8 @@ def register(owner):
         return jsonify(cancel_requested=True)
 
     from musicbrainz_review import register as register_review
+    from onetagger_bridge import register as register_onetagger
+    register_onetagger(owner,unlocked)
     register_review(owner,store,enabled,unlocked,gate,network_pool,cancellations,network_lock,
                     lambda *args:MusicBrainzClient(*args))
 

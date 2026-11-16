@@ -15,6 +15,7 @@ import urllib.error
 from uuid import UUID,uuid4
 
 from library_checks import normalized
+from matching_evidence import cleanup,disagreements,folded
 from workbench_store import encoded,now
 
 BASE='https://musicbrainz.org/ws/2/'
@@ -156,11 +157,14 @@ def search_strategies(track, prepared):
     queries=[('exact',prepared['query'])]
     if prepared.get('isrc'):return queries
     title=prepared['title'];artist=prepared.get('artist') or ''
+    cleaned=cleanup(title,artist)['cleaned']
+    if len(cleaned['title'])>=2 and (folded(cleaned['title']),folded(cleaned['artist']))!=(folded(title),folded(artist)):
+        queries.append(('cleaned_tags','recording:'+quote_query(cleaned['title'])+(' AND artist:'+quote_query(cleaned['artist']) if cleaned['artist'] else '')))
     base=re.sub(r'\s*[\[(][^\])]{0,100}\b(?:remix|mix|edit|version|extended|radio|live|feat|ft)\b[^\])]{0,100}[\])]\s*$', '', title, flags=re.I).strip()
     if len(base)>=2 and base!=title:
         queries.append(('base_title','recording:'+quote_query(base)+(' AND artist:'+quote_query(artist) if artist else '')))
     if artist:queries.append(('title_only','recording:'+quote_query(title)))
-    return queries[:3]
+    return list(dict.fromkeys(queries))[:4]
 
 def artist_credit(record):return ''.join(c.get('name') or c.get('artist',{}).get('name','') for c in record.get('artist-credit',[]) if isinstance(c,dict))
 
@@ -175,14 +179,12 @@ def candidates_for(track,records):
         artist_score=SequenceMatcher(None,normalized(track.get('artist')),normalized(artist)).ratio() if track.get('artist') else 0
         duration_delta=abs(track['duration']-record['length']/1000) if track.get('duration') is not None and record.get('length') else None
         isrc_exact=bool(track.get('isrc') and track['isrc'].upper() in record.get('isrcs',[]))
-        source_versions=set(re.findall(r'\b(?:remix|edit|live|instrumental|dub|extended|radio)\b',normalized(track.get('title'))))
-        version_text=normalized(title+' '+(record.get('disambiguation') or ''))
-        version_hold=bool(source_versions and not all(v in version_text.split() for v in source_versions))
+        evidence=disagreements(track,title,artist,record.get('disambiguation'),duration_delta,isrc_exact)
         score=round(.60*title_score+.30*artist_score+.10*(1 if duration_delta is not None and duration_delta<=2 else 0),3)
         if isrc_exact:score=max(score,.95)
         result.append({'mbid':identity,'title':title,'artist':artist,'disambiguation':record.get('disambiguation'),
                        'title_similarity':round(title_score,3),'artist_similarity':round(artist_score,3),'duration_delta':duration_delta,
-                       'isrc_exact':isrc_exact,'confidence':score,'version_needs_review':version_hold,'match_approved':False})
+                       'isrc_exact':isrc_exact,'confidence':score,**evidence,'match_approved':False})
     return sorted(result,key=lambda c:(not c['version_needs_review'],c['confidence']),reverse=True)
 
 
@@ -262,7 +264,7 @@ def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None,
     selected,groups=sample_genres(snapshot,top,seed,sample_size,target,target_value)
     identity=uuid4().hex
     sample=[{k:t.get(k) for k in ('id','title','artist','album','genre','year','rating','duration','isrc','metadata_origin')} for t in selected]
-    summary={'groups':groups,'target':target,'target_value':target_value,'requested_tracks':sample_size,'estimated_uncached_seconds':round(2*len(sample)*delay),'tracks':len(sample),'seconds_per_request':float(delay),'requests':0,'cache_hits':0,'done':0,
+    summary={'groups':groups,'target':target,'target_value':target_value,'requested_tracks':sample_size,'estimated_uncached_seconds':round(5*len(sample)*delay),'tracks':len(sample),'seconds_per_request':float(delay),'requests':0,'cache_hits':0,'done':0,
              'rating_available':0,'genre_available':0,'year_available':0,'experimental':True,'queries_include_audio':False,'queries_include_paths':False,
              'playable_only':playable_only,'excluded_unplayable':excluded_unplayable,
              'audio_mapping_revision':snapshot.get('audio_mapping_revision')}
@@ -357,7 +359,7 @@ def run_batch(store,identity,client,progress):
     consecutive_errors=0;status='complete';totals=Counter(rating_available=0,genre_available=0,tags_available=0,year_available=0,service_errors=0,needs_local_tags=0,candidate_matches=0,no_match=0,skipped_unplayable=0)
     summary.update(done=0,**totals);summary.pop('message',None)
     for n,t in enumerate(sample):
-        reused=False
+        reused=False;attempts=[]
         try:
             if getattr(client,'cancel',None) and client.cancel.is_set():raise InterruptedError('Pilot cancelled')
             if summary.get('audio_mapping_revision') and summary['audio_mapping_revision']!=signature(mappings_for(store,source_snapshot)):
@@ -370,11 +372,17 @@ def run_batch(store,identity,client,progress):
                 try:query=public_query(t)
                 except ValueError as error:query=None;result={'status':'needs_local_tags','error':str(error)}
                 if query is not None:
-                    candidates=[];strategy='exact';attempts=0
+                    candidates=[];strategy='exact';attempts=[]
                     for name,expression in search_strategies(t,query):
-                        search=client.get('recording/',{'query':expression,'limit':20})
-                        attempts+=1
-                        candidates=candidates_for(t,search.get('recordings',[]))
+                        attempt={'strategy':name,'query':expression,'candidate_ids':[]}
+                        attempts.append(attempt)
+                        try:
+                            search=client.get('recording/',{'query':expression,'limit':20})
+                            candidates=candidates_for(t,search.get('recordings',[]))
+                        except Exception as error:
+                            attempt['error']=type(error).__name__
+                            raise
+                        attempt['candidate_ids']=[c['mbid'] for c in candidates]
                         if candidates:
                             strategy=name
                             break
@@ -384,11 +392,15 @@ def run_batch(store,identity,client,progress):
                         if detail.get('id')!=candidates[0]['mbid']:raise ValueError('Candidate details do not match the requested recording; retry later')
                         proposal=proposals(detail)
                     result={'status':'candidate_needs_review' if candidates else 'no_match','query':query,'candidates':candidates,'proposal':proposal,
-                            'selected_mbid':candidates[0]['mbid'] if candidates else None,'search_strategy':strategy if candidates else 'exhausted','search_attempts':attempts,'match_approved':False}
+                            'selected_mbid':candidates[0]['mbid'] if candidates else None,'search_strategy':strategy if candidates else 'exhausted',
+                            'original_tags':{'title':t.get('title'),'artist':t.get('artist')},'cleanup':cleanup(t.get('title'),t.get('artist')),
+                            'search_attempts':len(attempts),'search_history':attempts,'match_approved':False}
             consecutive_errors=0
         except InterruptedError as error:status='cancelled';summary['message']=str(error);break
         except Exception as error:
-            consecutive_errors+=1;result={'status':'service_error','error':type(error).__name__+': '+str(error)[:200]}
+            consecutive_errors+=1;result={'status':'service_error','error':type(error).__name__+': '+str(error)[:200],
+                'original_tags':{'title':t.get('title'),'artist':t.get('artist')},
+                'cleanup':cleanup(t.get('title'),t.get('artist')),'search_attempts':len(attempts),'search_history':attempts}
         totals[{'service_error':'service_errors','candidate_needs_review':'candidate_matches','not_playable':'skipped_unplayable'}.get(result['status'],result['status'])]+=1
         proposal=result.get('proposal') or {}
         totals['rating_available']+=proposal.get('community_score') is not None

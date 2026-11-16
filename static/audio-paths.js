@@ -16,7 +16,7 @@ window.AudioPaths=(()=>{
   function showExamples(host,rows){
     host.querySelector('[data-audio-examples]').innerHTML='<table data-result-sort="off"><thead><tr>'+
       ['Recorded path','Local path','File status'].map(k=>'<th>'+esc(t(k))+'</th>').join('')+'</tr></thead><tbody>'+
-      rows.map(r=>'<tr><td><code>'+esc(r.recorded)+'</code></td><td><code>'+esc(r.local||t('Unverified'))+'</code></td><td>'+esc(t(({playable:'Playable',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'})[r.status]))+'</td></tr>').join('')+'</tbody></table>';
+      rows.map(r=>'<tr><td><code>'+esc(r.recorded)+'</code></td><td><code>'+esc(r.local||t('Unverified'))+'</code></td><td>'+esc(t(({playable:'Accessible',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'})[r.status]))+'</td></tr>').join('')+'</tbody></table>';
   }
   async function load(host,source,force=false){
     if(!host)return;

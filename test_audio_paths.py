@@ -19,6 +19,26 @@ from workbench_store import Store
 
 
 class MountedAudioTests(unittest.TestCase):
+    def test_replaced_posix_mapping_does_not_fall_back_to_recorded_file(self):
+        maps=validate([{'recorded_root':str(self.volume),'local_root':str(self.volume)}],[self.root])
+        maps[0]['inode']=-1
+        track={'current_path':str(self.audio)}
+        self.assertEqual(inspect_audio(track,maps),('unverified',None))
+        self.assertIsNone(available_audio(track,maps))
+
+    def test_directory_index_is_reused_and_invalidated_when_entries_change(self):
+        from audio_paths import _directory_index
+        _directory_index.cache_clear()
+        # A missing entry exercises the fallback index on case-insensitive
+        # Windows/macOS volumes too; existing differently cased names may
+        # resolve directly there, without needing the fallback cache.
+        self.assertIsNotNone(mapped_path('D:/NEW.wav',self.maps))
+        initial=_directory_index.cache_info()
+        self.assertIsNotNone(mapped_path('D:/NEW.wav',self.maps))
+        self.assertGreater(_directory_index.cache_info().hits,initial.hits)
+        new=self.volume/'new.wav';new.write_bytes(b'fixture')
+        self.assertTrue(mapped_path('D:/NEW.wav',self.maps).samefile(new))
+
     def setUp(self):
         temp=TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name)
         self.volume=self.root/'Mounted NTFS';self.volume.mkdir()

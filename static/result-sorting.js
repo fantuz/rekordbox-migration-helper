@@ -5,7 +5,7 @@
 window.ResultSorting=(()=>{
   let sorter=new Intl.Collator(I18n.language,{numeric:true,sensitivity:'base'});
   const statusRank={playable:0,missing:1,inaccessible:2,unverified:3,unchecked:4};
-  const statusLabels={playable:'Playable',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified',unchecked:'Unchecked'};
+  const statusLabels={playable:'Accessible',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified',unchecked:'Unchecked'};
   const original=new WeakMap(),state=new WeakMap();
   function textOf(cell){return (cell.dataset.sortValue ?? cell.innerText ?? cell.textContent ?? '').trim();}
   function numberOf(value){

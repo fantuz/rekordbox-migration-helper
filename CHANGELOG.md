@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Cache bounded case/Unicode directory resolution for mounted Windows audio and reject replaced mapped volumes without falling back to another recorded local file.
+- Label nonempty readable files Accessible while keeping existing `playable` API keys; empty files are Unverified and cannot be launched.
+- Preserve original tags, search cleanup steps, every MusicBrainz query attempt and candidate disagreements, with version checks in both directions.
+- Add a local OneTagger M3U/manifest handoff, tag rescan and explicit field-level review with stale-edit checks, atomic sidecar staging and provenance.
+- Independently read XML/native ZIP outputs against original-input expectations and frozen decisions before publication, covering metadata, references, cues and playlist order. Add encrypted mutation regressions and browser coverage for the handoff workflow.
+- Verify resolved native metadata lookup values as well as track references. Render OneTagger selection and review values as text, with browser regressions for HTML-like tags; exercise mounted-path caching on case-insensitive volumes too.
+
 ## 1.1.3 — 2026-11-16
 
 This patch makes import retries and metadata editing safer, keeps failed saves from changing the working session, and distinguishes missing metadata from genuine zero values.

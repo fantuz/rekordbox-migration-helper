@@ -5,18 +5,18 @@
 window.FileHealth=(()=>{
   let source='',offset=0,sort='artist',direction='asc',revision=0;
   const states=['playable','missing','inaccessible','unverified'];
-  const label=key=>I18n.t(key),stateNames={playable:'Playable',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'};
+  const label=key=>I18n.t(key),stateNames={playable:'Accessible',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'};
   const node=id=>document.getElementById('file-health-'+id);
   const chosen=()=>node('source')?.value||'';
   const statusBadge=value=>'<span class="file-status file-status-'+esc(value)+'">'+esc(label(stateNames[value]||'Unverified'))+'</span>';
   function renderCounts(data){
-    const buttons=[['all',data.checked,label('Checked')],['not_playable',data.counts.missing+data.counts.inaccessible,label('Not playable')],...states.map(s=>[s,data.counts[s],label(stateNames[s])])];
+    const buttons=[['all',data.checked,label('Checked')],['not_playable',data.counts.missing+data.counts.inaccessible,label('Unavailable')],...states.map(s=>[s,data.counts[s],label(stateNames[s])])];
     node('counts').innerHTML=buttons.map(([value,count,name])=>'<button type="button" data-file-status="'+esc(value)+'" aria-pressed="'+(node('status').value===value)+'">'+esc(name)+' · '+num(count)+'</button>').join('')+
       '<span>'+esc(label('Unchecked'))+' · '+num(data.unchecked)+'</span>';
     for(const b of node('counts').querySelectorAll('[data-file-status]'))b.onclick=()=>{node('status').value=b.dataset.fileStatus;offset=0;void loadResults();};
   }
   function renderRows(data){
-    const columns=[['artist','Artist'],['title','Track'],['playability','Playable?'],['status','File status'],['checked','Last checked']];
+    const columns=[['artist','Artist'],['title','Track'],['playability','Accessible?'],['status','File status'],['checked','Last checked']];
     const heads=columns.map(([id,name])=>'<th data-file-health-sort="'+id+'" aria-sort="'+(sort===id?(direction==='asc'?'ascending':'descending'):'none')+'"><button type="button" class="result-sort-button" data-file-health-sort="'+id+'" title="'+esc(label('Sort all scanned results'))+'" aria-label="'+esc(label('Sort all scanned results'))+' · '+esc(label(name))+'">'+esc(label(name))+'</button></th>').join('');
     const rows=data.rows.map(t=>{
       const playback=TrackPlayback.button(source.startsWith('snapshot:')?source.slice(9):source,t.track_id);
