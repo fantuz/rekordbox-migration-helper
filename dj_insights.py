@@ -248,6 +248,7 @@ def public_track(t,reason=''):
 
 
 def ranking(index,args,all_rows=False,limit=50):
+    from result_order import ordered,TRACK_FIELDS
     rows,context=index.scope(args);scope=statistics(rows);mode=args.get('perspective','most')
     if mode not in PERSPECTIVES:raise ValueError('Choose a supported insight perspective')
     def setting(name,default,minimum,maximum):
@@ -292,6 +293,10 @@ def ranking(index,args,all_rows=False,limit=50):
         elif mode=='last_used':order=lambda t:(-(t['_evidence_last'] or date.min).toordinal(),t['title'].casefold(),t['id'])
         else:order=lambda t:(t['title'].casefold(),t['artist'].casefold(),t['id'])
         selected.sort(key=order)
+    if args.get('sort')=='file_status':
+        selected=[{**t,'file_status':args.get('_file_statuses',{}).get(t['id'])} for t in selected]
+    selected=ordered(selected,args.get('sort',''),args.get('direction','asc'),
+                     (*TRACK_FIELDS,'family','plays','preparation','evidence_last_date','date_added'))
     def reason(t):
         return {'ready':'Saved analyzed status and at least one manual cue; no plays in the selected evidence',
                 'gems':str(t['rating'])+' personal stars; '+str(t['plays'])+' recorded plays',
@@ -310,7 +315,7 @@ def ranking(index,args,all_rows=False,limit=50):
     balance.sort(key=lambda g:(-g['recorded_plays'],-g['entries'],g['family']))
     return {'snapshot':index.info,'context':context,'perspective':mode,'title':PERSPECTIVES[mode],
             'scope_stats':scope,'result_stats':statistics(selected),'total':len(selected),'eligible':eligible,'offset':offset,
-            'rows':[public_track(t,reason(t)) for t in (selected if all_rows else selected[offset:offset+limit])],
+            'sort_scope':'collection','rows':[{**public_track(t,reason(t)),'file_status':args.get('_file_statuses',{}).get(t['id'])} for t in (selected if all_rows else selected[offset:offset+limit])],
             'genre_balance':balance,'seed':seed if mode=='random' else None,
             'sampling':args.get('random_mode','balanced') if mode=='random' else None,
             'rediscovery_date_available':index.reference is not None}

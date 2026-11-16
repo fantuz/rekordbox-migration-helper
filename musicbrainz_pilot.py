@@ -342,7 +342,7 @@ def run_batch(store,identity,client,progress):
         db.execute('UPDATE mb_batches SET status=? WHERE id=?',('running',identity))
     prior_requests=summary.get('requests',0);prior_hits=summary.get('cache_hits',0)
     from audio_paths import mappings_for,signature
-    source_snapshot=store.snapshot(r['snapshot_id'])
+    source_snapshot=store.snapshot(r['snapshot_id']) if summary.get('playable_only') or summary.get('audio_mapping_revision') else {}
     mappings=mappings_for(store,source_snapshot)
     local_tracks={t['id']:t for t in source_snapshot['tracks']} if summary.get('playable_only') else {}
     consecutive_errors=0;status='complete';totals=Counter(rating_available=0,genre_available=0,tags_available=0,year_available=0,service_errors=0,needs_local_tags=0,candidate_matches=0,no_match=0,skipped_unplayable=0)

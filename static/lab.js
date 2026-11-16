@@ -15,7 +15,7 @@ const labPost=(url,data)=>api('/api/lab/'+url,{method:'POST',body:JSON.stringify
 const labSnapshot=()=>$('#lab-snapshot').value;
 const labSummary=data=>'<div class="lab-summary">'+Object.entries(data || {}).filter(([,v])=>v===null || typeof v!=='object').map(([k,v])=>'<div><span>'+esc(I18n.t(k.replaceAll('_',' ')))+'</span><b>'+esc(v===null?I18n.t("Unknown"):v===true?I18n.t("Yes"):v===false?I18n.t("No"):v)+'</b></div>').join('')+'</div>';
 function labSelect(selector,items,label,empty=I18n.t("Choose a snapshot")) {
-  const el=$(selector),old=el.value;el.innerHTML='<option value="">'+esc(empty)+'</option>'+items.map(r=>'<option value="'+esc(r.id)+'">'+esc(label(r))+'</option>').join('');
+  const el=$(selector),old=el.value || window.BrowseState?.value(el.id);el.innerHTML='<option value="">'+esc(empty)+'</option>'+items.map(r=>'<option value="'+esc(r.id)+'">'+esc(label(r))+'</option>').join('');
   if(items.some(r=>r.id===old))el.value=old;
 }
 async function loadLab() {
@@ -25,8 +25,8 @@ async function loadLab() {
   const label=r=>r.label+' · '+snapshotMoment(r.created);
   for(const selector of ['#lab-snapshot','#lab-before','#lab-after'])labSelect(selector,labInfo.snapshots,label);
   const shared=window.Journeys?.context?.();
-  if(shared?.snapshot && labInfo.snapshots.some(r=>r.id===shared.snapshot))$('#lab-snapshot').value=shared.snapshot;
-  if(shared && !shared.snapshot){$('#lab-snapshot').value='';$('#lab-tracks').replaceChildren();$('#lab-edit-form').hidden=true;}
+  if(!labSnapshot() && shared?.snapshot && labInfo.snapshots.some(r=>r.id===shared.snapshot))$('#lab-snapshot').value=shared.snapshot;
+  if(!labSnapshot() && shared && !shared.snapshot){$('#lab-snapshot').value='';$('#lab-tracks').replaceChildren();$('#lab-edit-form').hidden=true;}
   if(!shared && !labSnapshot() && labInfo.snapshots.length)$('#lab-snapshot').value=labInfo.snapshots[0].id;
   labSelect('#lab-report-select',labInfo.reports,r=>r.kind+' · '+new Date(r.created).toLocaleString(I18n.language),I18n.t("Choose an evidence report"));
   $('#lab-pilot-enabled').checked=labInfo.musicbrainz_enabled;$('#lab-pilot-enabled').disabled=labInfo.musicbrainz_forced_off;
@@ -59,15 +59,16 @@ $('#lab-compare-form').onsubmit=wrap(async e=>{e.preventDefault();await labRun('
 async function labLoadReport() {
   const id=$('#lab-report-select').value;if(!id)return;
   const section=$('#lab-report-section').value,q=$('#lab-report-search').value;
-  labReport=await api('/api/lab/reports/'+encodeURIComponent(id)+'?'+new URLSearchParams({offset:labReportOffset,section,q}));
+  labReport=await api('/api/lab/reports/'+encodeURIComponent(id)+'?'+new URLSearchParams({offset:labReportOffset,section,q,...CollectionSort.args('lab-report')}));
   $('#lab-report-summary').innerHTML=labSummary(labReport.summary);
   const summary=labReport.summary;
   if(summary.scopes)$('#lab-report-summary').insertAdjacentHTML('beforeend',("<h4>"+esc(I18n.t("Inspected locations"))+"</h4>")+summary.scopes.map(r=>'<p class="subtle">'+esc(r.kind)+' · <code>'+esc(r.path)+'</code></p>').join('')+("<div class=\"lab-table\"><table><thead><tr><th>"+esc(I18n.t("Analysis extension"))+"</th><th>"+esc(I18n.t("Files"))+"</th><th>"+esc(I18n.t("Logical size"))+"</th></tr></thead><tbody>")+summary.analysis_extensions.map(r=>'<tr><td>'+esc(r.extension)+'</td><td>'+num(r.files)+'</td><td>'+esc(bytes(r.bytes))+'</td></tr>').join('')+'</tbody></table></div>');
   if(summary.stems)$('#lab-report-summary').insertAdjacentHTML('beforeend',("<div class=\"stems-summary\"><h3>"+esc(I18n.t("STEMS evidence"))+"</h3><p>")+esc(summary.stems.preparation_status)+'</p>'+labSummary({prepared_tracks:summary.stems.prepared_tracks,related_candidate_files:summary.stems.related_candidate_files,rbsc_drum_capture_files:summary.stems.rbsc_drum_capture_files})+("<p>"+esc(I18n.t("Related candidate file size:"))+" ")+esc(bytes(summary.stems.related_candidate_bytes))+'. '+esc(summary.stems.note)+'</p></div>');
   if(summary.scope_warnings?.length)$('#lab-report-summary').insertAdjacentHTML('beforeend',summary.scope_warnings.map(w=>'<p class="subtle">'+esc(w)+'</p>').join(''));
   $('#lab-report-section').innerHTML=("<option value=\"\">"+esc(I18n.t("All findings"))+"</option>")+labReport.sections.map(r=>'<option value="'+esc(r.section)+'">'+esc(r.section.replaceAll('_',' '))+' · '+num(r.count)+'</option>').join('');$('#lab-report-section').value=section;
-  $('#lab-report-download').hidden=false;$('#lab-report-download').href='/api/lab/reports/'+encodeURIComponent(id)+'/download';
+  $('#lab-report-download').hidden=false;$('#lab-report-download').href='/api/lab/reports/'+encodeURIComponent(id)+'/download?'+new URLSearchParams({section,q,...CollectionSort.args('lab-report')});
   $('#lab-report-rows').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Finding"))+"</th><th>"+esc(I18n.t("Track / group"))+"</th><th>"+esc(I18n.t("Evidence"))+"</th></tr></thead><tbody>")+labReport.rows.map((r,i)=>'<tr><td>'+esc(r.section.replaceAll('_',' '))+'</td><td>'+((labReport.sources?.length===1&&r.track_id)?TrackPlayback.button(labReport.sources[0],r.track_id):'')+'<strong>'+esc(r.title || r.playlist || r.name || I18n.t("Group"))+'</strong>'+'<br><span class="subtle">'+esc(r.artist || '')+'</span></td><td>'+esc(r.detail)+("<details><summary>"+esc(I18n.t("Show evidence"))+"</summary><pre>")+esc(JSON.stringify(r,null,2))+'</pre></details>'+(r.section==='variant'?'<button class="button secondary" data-lab-normalize="'+i+("\">"+esc(I18n.t("Stage"))+" "+"")+num(r.track_ids.length)+' as “'+esc(r.canonical)+'”</button>':'')+'</td></tr>').join('')+'</tbody></table>';
+  CollectionSort.bind('#lab-report-rows','lab-report',['section',['title','artist'],'detail'],labReport.rows,async()=>{labReportOffset=0;await labLoadReport();});
   $('#lab-report-count').textContent=num(labReport.total)+' findings · '+num(labReportOffset+1)+'–'+num(Math.min(labReportOffset+50,labReport.total));
   $('#lab-report-prev').disabled=labReportOffset===0;$('#lab-report-next').disabled=labReportOffset+50>=labReport.total;
   $$('[data-lab-normalize]').forEach(b=>b.onclick=wrap(async()=>{
@@ -84,11 +85,12 @@ $('#lab-report-next').onclick=wrap(async()=>{labReportOffset+=50;await labLoadRe
 
 async function labLoadTracks() {
   const revision=++labTracksRevision,snapshot=labSnapshot();if(!snapshot)return;
-  const r=await api('/api/lab/tracks?'+new URLSearchParams({snapshot,offset:labTrackOffset,q:$('#lab-track-search').value}));
+  const r=await api('/api/lab/tracks?'+new URLSearchParams({snapshot,offset:labTrackOffset,q:$('#lab-track-search').value,...CollectionSort.args('lab-tracks')}));
   if(revision!==labTracksRevision || snapshot!==labSnapshot())return;
   labTrackRows=r.rows;labUnlocked=r.unlocked;$('#lab-unlock').checked=labUnlocked;
   $('#lab-edit-state').textContent=(labUnlocked?I18n.t("Staging unlocked"):I18n.t("Read-only"))+' · '+num(r.override_fields)+" "+I18n.t("field overrides in this scope. Source database and audio tags stay unchanged.");
   $('#lab-tracks').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Track"))+"</th><th>"+esc(I18n.t("Artist"))+"</th><th>"+esc(I18n.t("Year / stars / genre"))+"</th><th></th></tr></thead><tbody>")+r.rows.map((item,i)=>{const t={...item.original,...Object.fromEntries(Object.entries(item.overrides).map(([k,v])=>[k,v.value]))};return '<tr><td>'+TrackPlayback.button(snapshot,t.id)+esc(t.title)+'<br><span class="subtle">'+esc(t.id)+'</span></td><td>'+esc(t.artist)+'</td><td>'+esc(t.year || '—')+' · '+esc(t.rating ?? I18n.t("Unknown"))+' ★ · '+esc(t.genre || I18n.t("Unknown"))+'</td><td><button class="button secondary" data-lab-edit="'+i+("\">"+esc(I18n.t("Inspect / edit"))+"")+(Object.keys(item.overrides).length?" "+I18n.t("· staged"):'')+'</button></td></tr>';}).join('')+'</tbody></table>';
+  CollectionSort.bind('#lab-tracks','lab-tracks',['title','artist',['year','rating','genre','album'],null,'file_status'],r.rows,async()=>{labTrackOffset=0;await labLoadTracks();});
   $('#lab-tracks-count').textContent=num(r.total)+' tracks · '+num(labTrackOffset+1)+'–'+num(Math.min(labTrackOffset+30,r.total));$('#lab-tracks-prev').disabled=!labTrackOffset;$('#lab-tracks-next').disabled=labTrackOffset+30>=r.total;
   $$('[data-lab-edit]').forEach(b=>b.onclick=wrap(()=>openTrackDetails(labSnapshot(),labTrackRows[Number(b.dataset.labEdit)].original.id)));
   if(labEdited){const updated=r.rows.find(t=>t.original.id===labEdited.original.id);if(updated)labEdit(updated);else $('#lab-edit-save').disabled=!labUnlocked;}

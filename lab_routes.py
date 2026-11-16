@@ -13,6 +13,7 @@ from workbench_store import Store,encoded,now
 from research_capture import capture_private_database,capture_workspace,open_capture
 from library_checks import compare_snapshots,metadata_consistency,collection_coverage
 from analysis_audit import audit_assets
+from result_order import ordered,page_result,scan_statuses,with_status,TRACK_FIELDS
 from history_browser import list_history,history_session
 from metadata_overrides import FIELDS,FREE_FIELDS,comparable,baseline,validate
 from track_tags import editable_colour,snapshot_colour_support
@@ -135,7 +136,8 @@ def register(owner):
     @app.get('/api/lab/reports/<identity>')
     @app.get('/api/lab/reports/<identity>/download')
     def lab_report(identity):
-        result=store().report(identity,request.args.get('offset',0),request.args.get('section',''),request.args.get('q',''),request.path.endswith('/download'))
+        result=store().report(identity,request.args.get('offset',0),request.args.get('section',''),request.args.get('q',''),True)
+        result=page_result(result,request.args,('section','severity','title','artist','detail','track_id'),full=request.path.endswith('/download'))
         if request.path.endswith('/download'):return download(result,'library-lab-report.json')
         return jsonify(result)
 
@@ -143,22 +145,28 @@ def register(owner):
     def lab_tracks():
         s=store().snapshot(request.args.get('snapshot',''));edits=store().overrides(s['scope_key']);query=request.args.get('q','').casefold()
         tracks=[t for t in s['tracks'] if not query or query in (' '.join(str(t.get(f) or '') for f in ('id','title','artist','album','genre'))).casefold()]
+        statuses=scan_statuses(store(),s)
+        effective=[{**t,**{f:v['value'] for f,v in edits.get(t['id'],{}).items()},'file_status':statuses.get(t['id'])} for t in tracks]
+        order=ordered(effective,request.args.get('sort',''),request.args.get('direction','asc'),TRACK_FIELDS)
+        by_id={t['id']:t for t in tracks};tracks=[by_id[t['id']] for t in order]
         offset=max(0,int(request.args.get('offset',0)))
-        return jsonify(rows=[{'original':{f:t.get(f) for f in ('id',*FIELDS)},'overrides':edits.get(t['id'],{})} for t in tracks[offset:offset+30]],
+        return jsonify(sort_scope='collection',rows=[{'file_status':statuses.get(t['id']),'original':{f:t.get(f) for f in ('id',*FIELDS)},'overrides':edits.get(t['id'],{})} for t in tracks[offset:offset+30]],
                        total=len(tracks),offset=offset,unlocked=s['scope_key'] in edit_unlocked,scope=s['scope_key'],override_fields=sum(len(v) for v in edits.values()))
 
     @app.get('/api/lab/history')
     def lab_history():
         from collection_sources import history_source
         s=history_source(owner, request.args)
-        return jsonify(list_history(s,request.args.get('q',''),request.args.get('year',''),request.args.get('offset',0)))
+        return jsonify(page_result(list_history(s,request.args.get('q',''),request.args.get('year',''),all_rows=True),
+                                   request.args,('name','date','tracks'),page_size=30))
 
     @app.get('/api/lab/history/<identity>')
     @app.get('/api/lab/history/<identity>/download')
     def lab_history_session(identity):
         from collection_sources import history_source
         s=history_source(owner, request.args);full=request.path.endswith('/download')
-        result=history_session(s,identity,request.args.get('q',''),request.args.get('offset',0),full)
+        result=page_result(history_session(s,identity,request.args.get('q',''),all_rows=True),
+                           request.args,('position',*TRACK_FIELDS),statuses=scan_statuses(store(),s),full=full)
         if full:return download(result,'saved-play-history.json')
         return jsonify(result)
 

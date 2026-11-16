@@ -2,20 +2,22 @@
 window.Intelligence=(()=>{
   let choices=null,last=null,offset=0,sourceRevision=0,requestRevision=0;
   const t=key=>I18n.t(key),e=value=>esc(value),node=id=>document.getElementById(id);
-  function select(id,rows,label){const el=node(id),old=el.value;el.innerHTML='<option value="">'+e(t('Choose a snapshot'))+'</option>'+rows.map(r=>'<option value="'+e(r.id)+'">'+e(label(r))+'</option>').join('');if(rows.some(r=>r.id===old))el.value=old;}
+  function select(id,rows,label){const el=node(id),old=el.value || window.BrowseState?.value(id);el.innerHTML='<option value="">'+e(t('Choose a snapshot'))+'</option>'+rows.map(r=>'<option value="'+e(r.id)+'">'+e(label(r))+'</option>').join('');if(rows.some(r=>r.id===old))el.value=old;}
   async function load(){
     const [info,context]=await Promise.all([api('/api/lab'),api('/api/journeys')]);
     choices=[...info.snapshots,...context.sources.filter(r=>r.id.startsWith('capture:'))];
     for(const id of ['intelligence-source','intelligence-before','intelligence-after'])select(id,choices,r=>r.label+' · '+date(r.created));
     const shared=window.Journeys?.context?.();
     const selected=shared?.snapshot || (shared?.source?.startsWith('capture:')?shared.source:'');
-    if(shared)node('intelligence-source').value=choices.some(r=>r.id===selected)?selected:'';
+    if(shared && !node('intelligence-source').value)node('intelligence-source').value=choices.some(r=>r.id===selected)?selected:'';
     node('intelligence-duplicates').disabled=!info.workspace || Boolean(shared && shared.source!=='workspace');
     if(!shared && !node('intelligence-source').value && choices.length)node('intelligence-source').value=choices[0].id;
+    if(last?.snapshot===node('intelligence-source').value){await run(last.kind,false);return;}
     await sourceChanged();
   }
   async function sourceChanged(){
     const revision=++sourceRevision;requestRevision++;
+    window.BrowseState?.remember();
     if(node('intelligence-source').value)node('intelligence-duplicates').disabled=true;
     window.EnrichmentExports?.reset();
     node('intelligence-results').replaceChildren();last=null;node('intelligence-save').disabled=true;node('intelligence-download').hidden=true;
@@ -49,6 +51,11 @@ window.Intelligence=(()=>{
       for(const field of ['genre','artist'])html+='<h3>'+e(I18n.field(field))+'</h3>'+table(['Name','Before','After','Change'],data.distributions[field].map(r=>[r.name || t('Unknown'),num(r.before),num(r.after),num(r.delta)]));
     }
     node('intelligence-results').innerHTML=html;
+    const fields={playlists:['name','common_tracks','tracks','jaccard','same_saved_order'],
+      contents:['sequence','title','artist','genre','bpm','rating','file_status'],
+      lenses:['title','artist','genre','playlists','saved_sessions','saved_entries','file_status'],
+      session:['sequence','title','artist','bpm','bpm_delta','tonality','color_name','file_status']};
+    if(fields[kind])CollectionSort.bind('#intelligence-results','intelligence-'+kind,fields[kind],data.rows,()=>run(kind));
     const paged=['playlists','session','contents','lenses'].includes(kind);node('intelligence-pagination').hidden=!paged;
     node('intelligence-prev').disabled=!offset;node('intelligence-next').disabled=!paged || offset+50>=data.total;
     node('intelligence-count').textContent=paged?num(data.total)+' · '+num(Math.min(offset+1,data.total))+'–'+num(Math.min(offset+50,data.total)):'';
@@ -56,7 +63,7 @@ window.Intelligence=(()=>{
   }
   async function run(kind,reset=true){
     if(reset)offset=0;const revision=++requestRevision;
-    const args={snapshot:node('intelligence-source').value,offset};let data;
+    const args={snapshot:node('intelligence-source').value,offset,...CollectionSort.args('intelligence-'+kind)};let data;
     if(kind==='playlists'){args.playlist=node('intelligence-playlist').value;args.minimum=node('intelligence-threshold').value;}
     if(kind==='contents'){args.playlist=node('intelligence-playlist').value;args.q=node('intelligence-search').value;}
     if(kind==='lenses'){args.lens=node('intelligence-lens').value;args.q=node('intelligence-search').value;}

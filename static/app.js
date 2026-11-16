@@ -307,6 +307,7 @@ async function saveDecision(action) {
   notify(action==="undo"?I18n.t("Decision undone"):I18n.t("Decision saved to this workspace"));
 }
 function showView(view) {
+  window.BrowseState?.enter(view);
   if(view!=="review")ReviewWorkspace.closeAll();
   if(view!=="bubbles" && $("#bubble-expanded").open)$("#bubble-expanded").close();
   $$(".view").forEach(v=>v.hidden=v.id!=="view-"+view);
@@ -817,4 +818,11 @@ $("#storage-form").onsubmit=wrap(async event=>{
   const started=await api("/api/storage/scan",{method:"POST",body:JSON.stringify({roots,policy:$("#storage-policy").value,source_report:$("#storage-source-report").value})});
   const result=await poll(started.job);storageOffset=0;await loadStorageAudit(result.id);await loadStorageInfo();$("#storage-result").scrollIntoView({behavior:"smooth",block:"start"});notify(I18n.t("Folder comparison saved · no media content read"));
 });
-wrap(refresh)();
+wrap(async()=>{await refresh();window.BrowseState?.start();})();
+
+window.addEventListener('workbench-stale',()=>{
+  let banner=document.getElementById('workspace-stale');
+  if(!banner){banner=document.createElement('div');banner.id='workspace-stale';banner.className='callout';banner.setAttribute('role','alert');document.getElementById('page-title').after(banner);}
+  banner.innerHTML='<p>'+esc(I18n.t('Workspace changed. Reload it before reviewing or staging more changes.'))+'</p><button class="button" type="button">'+esc(I18n.t('Reload workspace'))+'</button>';
+  banner.querySelector('button').onclick=wrap(async()=>{selected=null;chosen=null;currentGroup=null;ReviewWorkspace.closeAll();await refresh();banner.remove();showView('files');});
+});

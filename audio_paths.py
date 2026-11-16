@@ -18,7 +18,8 @@ def recorded(value):
     if not isinstance(value, str) or not value or any(ord(c)<32 for c in value):
         return None
     if value.lower().startswith('file:'):
-        parsed=urlsplit(value)
+        try:parsed=urlsplit(value)
+        except ValueError:return None
         if parsed.netloc.lower() not in ('','localhost') or parsed.query or parsed.fragment:
             return None
         value=unquote(parsed.path)

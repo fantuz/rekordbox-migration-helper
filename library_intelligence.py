@@ -44,7 +44,7 @@ def page_offset(value):
     return max(0,result)
 
 
-def playlist_overlap(snapshot, identity, minimum=.5, offset=0):
+def playlist_overlap(snapshot, identity, minimum=.5, offset=0, all_rows=False):
     try:minimum=float(minimum)
     except (TypeError,ValueError,OverflowError):raise ValueError('Choose an overlap threshold from 0 to 1') from None
     offset=page_offset(offset)
@@ -64,11 +64,11 @@ def playlist_overlap(snapshot, identity, minimum=.5, offset=0):
                      'smart':other['smart']})
     rows.sort(key=lambda r:(-r['jaccard'],-r['common_tracks'],r['name'].casefold()))
     return {'playlist':{'id':identity,'name':source['name'],'entries':len(source['tracks']),'distinct_tracks':len(selected)},
-            'rows':rows[offset:offset+50],'total':len(rows),'offset':offset,
+            'rows':rows if all_rows else rows[offset:offset+50],'total':len(rows),'offset':offset,
             'basis':'Shared captured track IDs / union of IDs. Intentional playlist overlap is not an error. Name-only captures can combine playlists with the same name; saved order is unavailable there.'}
 
 
-def session_progression(snapshot, identity, offset=0):
+def session_progression(snapshot, identity, offset=0, all_rows=False):
     caps=snapshot.get('capabilities',{})
     if not caps.get('history_details') or not caps.get('history_order'):
         raise ValueError('Saved native history order is required for session progression')
@@ -79,7 +79,7 @@ def session_progression(snapshot, identity, offset=0):
     def bpm(t):
         value=t.get('bpm')
         return value if isinstance(value,(int,float)) and isfinite(value) and value>0 else None
-    for index in range(offset,min(offset+50,len(entries))):
+    for index in range(0 if all_rows else offset,len(entries) if all_rows else min(offset+50,len(entries))):
         entry=entries[index];track=tracks.get(entry['track_id'],{});previous=tracks.get(entries[index-1]['track_id'],{}) if index else {}
         current_bpm,prior_bpm=bpm(track),bpm(previous)
         rows.append({'sequence':index+1,'position':entry.get('position'),'track_id':entry['track_id'],
@@ -108,7 +108,7 @@ def evolution(before, after):
             'basis':'Unique UUID, compatible ID, ISRC or recorded-path matches. Unmatched records may be new, removed or ambiguous; no deletion is inferred. Distributions count records, including duplicates.'}
 
 
-def playlist_contents(snapshot, identity, query='', offset=0):
+def playlist_contents(snapshot, identity, query='', offset=0, all_rows=False):
     source=next((p for p in playlists(snapshot) if p['id']==identity),None)
     if source is None:raise ValueError('Choose a captured playlist')
     tracks={t['id']:t for t in snapshot['tracks']}
@@ -123,7 +123,7 @@ def playlist_contents(snapshot, identity, query='', offset=0):
             'summary':{'entries':len(source['tracks']),'distinct_tracks':len(members),
                        'repeated_entries':len(source['tracks'])-len(members),
                        'missing_metadata':sum(i not in tracks for i in source['tracks'])},
-            'rows':rows[offset:offset+50],'total':len(rows),'offset':offset,
+            'rows':rows if all_rows else rows[offset:offset+50],'total':len(rows),'offset':offset,
             'basis':'Captured playlist membership; repeated entries and unavailable track metadata are retained. Smart playlists show captured membership, not a fresh evaluation of their rules. Order is shown only when captured.'}
 
 
@@ -144,7 +144,7 @@ def playlist_membership_available(snapshot):
             all('playlists' in t for t in snapshot.get('tracks',[])))
 
 
-def collection_lenses(snapshot, lens='unfiled', query='', offset=0):
+def collection_lenses(snapshot, lens='unfiled', query='', offset=0, all_rows=False):
     if lens not in ('all','unfiled','recurring','history_absent'):raise ValueError('Choose a collection view')
     tracks=snapshot['tracks'];lists=playlists(snapshot);offset=page_offset(offset)
     membership_available=playlist_membership_available(snapshot)
@@ -170,7 +170,7 @@ def collection_lenses(snapshot, lens='unfiled', query='', offset=0):
                             -(r['saved_entries'] or 0) if lens=='recurring' else 0,
                             str(r['artist'] or '').casefold(),str(r['title'] or '').casefold(),r['track_id']))
     active_ids={t['id'] for t in tracks}
-    return {'lens':lens,'rows':rows[offset:offset+50],'total':len(rows),'offset':offset,
+    return {'lens':lens,'rows':rows if all_rows else rows[offset:offset+50],'total':len(rows),'offset':offset,
             'summary':{'collection_tracks':len(tracks),'playlists':len(lists) if membership_available else None,'captured_sessions':len(histories),
                        'outside_playlists':sum(not membership[t['id']] for t in tracks) if membership_available else None,
                        'history_metadata_missing':sum(n for i,n in appearances.items() if i not in active_ids)},

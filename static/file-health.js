@@ -52,12 +52,12 @@ window.FileHealth=(()=>{
     const info=await api('/api/journeys',{feedback:false});
     if(request!==revision)return;
     const options=info.sources.filter(s=>/^(?:snapshot|capture):[0-9a-f]{32}$/u.test(s.id));
-    const old=node('source').value;
+    const old=node('source').value || window.BrowseState?.value('file-health-source');
     const current=window.Journeys?.context?.()?.source;
     node('source').innerHTML='<option value="">'+esc(label('Choose a saved collection snapshot'))+'</option>'+options.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.label)+' · '+esc(snapshotMoment(s.created))+'</option>').join('');
     const wanted=[old,current].find(v=>options.some(s=>s.id===v)) || options[0]?.id || '';
     node('source').value=wanted;
-    offset=0;await loadResults();
+    if(source!==wanted)offset=0;await loadResults();
   }
   node('source').onchange=wrap(async()=>{offset=0;await loadResults();});
   node('status').onchange=wrap(async()=>{offset=0;await loadResults();});
