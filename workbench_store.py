@@ -8,6 +8,9 @@ from pathlib import Path
 import sqlite3
 from uuid import uuid4
 from metadata_overrides import validate,baseline,comparable
+from metadata_concurrency import revision, require_revision
+
+_INTERNAL_EDIT = object()
 
 
 def now():return datetime.now(timezone.utc).isoformat()
@@ -25,6 +28,19 @@ class Store:
               CREATE INDEX IF NOT EXISTS report_sections ON report_rows(report_id,section,ordinal);
               CREATE TABLE IF NOT EXISTS overrides(scope_key TEXT,track_id TEXT,field TEXT,value TEXT,baseline TEXT,origin TEXT,updated TEXT,PRIMARY KEY(scope_key,track_id,field));
               CREATE TABLE IF NOT EXISTS override_history(id TEXT PRIMARY KEY,scope_key TEXT,track_id TEXT,field TEXT,previous TEXT,current TEXT,created TEXT);
+              CREATE TABLE IF NOT EXISTS override_revisions(scope_key TEXT PRIMARY KEY,revision INTEGER NOT NULL);
+              CREATE TRIGGER IF NOT EXISTS override_insert_revision AFTER INSERT ON overrides BEGIN
+                INSERT INTO override_revisions VALUES (NEW.scope_key,1)
+                ON CONFLICT(scope_key) DO UPDATE SET revision=revision+1;
+              END;
+              CREATE TRIGGER IF NOT EXISTS override_update_revision AFTER UPDATE ON overrides BEGIN
+                INSERT INTO override_revisions VALUES (NEW.scope_key,1)
+                ON CONFLICT(scope_key) DO UPDATE SET revision=revision+1;
+              END;
+              CREATE TRIGGER IF NOT EXISTS override_delete_revision AFTER DELETE ON overrides BEGIN
+                INSERT INTO override_revisions VALUES (OLD.scope_key,1)
+                ON CONFLICT(scope_key) DO UPDATE SET revision=revision+1;
+              END;
               CREATE TABLE IF NOT EXISTS settings(name TEXT PRIMARY KEY,value TEXT);
               CREATE TABLE IF NOT EXISTS mb_batches(id TEXT PRIMARY KEY,snapshot_id TEXT,created TEXT,status TEXT,summary TEXT,sample TEXT);
               CREATE TABLE IF NOT EXISTS mb_results(batch_id TEXT,track_id TEXT,status TEXT,payload TEXT,PRIMARY KEY(batch_id,track_id));
@@ -83,46 +99,67 @@ class Store:
             facets=[dict(r) for r in db.execute('SELECT section,count(*) AS count FROM report_rows WHERE report_id=? GROUP BY section',(identity,))]
         return {**dict(report),'summary':json.loads(report['summary']),'sources':json.loads(report['sources']),'rows':rows,'total':count,'offset':max(0,int(offset)),'sections':facets}
 
-    def overrides(self,scope):
+    def overrides(self,scope,db=None):
+        if db is None:
+            with self.connection() as connection:return self.overrides(scope,connection)
         result={}
-        with self.connection() as db:
-            for row in db.execute('SELECT * FROM overrides WHERE scope_key=?',(scope,)):
-                result.setdefault(row['track_id'],{})[row['field']]={'value':json.loads(row['value']),'baseline':json.loads(row['baseline']),'origin':row['origin'],'updated':row['updated']}
+        for row in db.execute('SELECT * FROM overrides WHERE scope_key=?',(scope,)):
+            result.setdefault(row['track_id'],{})[row['field']]={'value':json.loads(row['value']),'baseline':json.loads(row['baseline']),'origin':row['origin'],'updated':row['updated']}
         return result
 
-    def save_override(self,scope,track_id,field,value,baseline,origin='manual'):
+    def edit_state(self,scope,history=False,db=None):
+        """Return values, revision and optional provenance from one SQLite snapshot."""
+        if db is None:
+            with self.connection() as connection:
+                connection.execute('BEGIN')
+                return self.edit_state(scope,history,connection)
+        result={'edit_revision':revision(db,scope),'overrides':self.overrides(scope,db)}
+        if history:result['history']=self.override_history(scope,db)
+        return result
+
+    def save_override(self,scope,track_id,field,value,baseline,origin='manual',*,expected_revision=_INTERNAL_EDIT):
         value=validate(field,value)
         with self.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            if expected_revision is not _INTERNAL_EDIT:require_revision(db,scope,expected_revision)
             old=db.execute('SELECT value,baseline FROM overrides WHERE scope_key=? AND track_id=? AND field=?',(scope,track_id,field)).fetchone()
             if old is not None and comparable(field,json.loads(old[1]))!=comparable(field,baseline):raise ValueError('Metadata baseline changed; reset this edit and review the current snapshot')
             db.execute('INSERT INTO override_history VALUES (?,?,?,?,?,?,?)',(uuid4().hex,scope,track_id,field,old[0] if old else None,encoded(value),now()))
             db.execute('INSERT OR REPLACE INTO overrides VALUES (?,?,?,?,?,?,?)',(scope,track_id,field,encoded(value),encoded(baseline),str(origin)[:120],now()))
-        return value
+            state=self.edit_state(scope,db=db)
+        return value if expected_revision is _INTERNAL_EDIT else {'value':value,**state}
 
-    def save_bulk(self,snapshot,track_ids,field,value):
+    def save_bulk(self,snapshot,track_ids,field,value,*,expected_revision=_INTERNAL_EDIT):
         value=validate(field,value);tracks={t['id']:t for t in snapshot['tracks']}
         if not 1<=len(track_ids)<=10000 or any(i not in tracks for i in track_ids):raise ValueError('Choose between 1 and 10,000 tracks in this snapshot')
         scope=snapshot['scope_key'];created=now()
         with self.connection() as db:
-            for identity in set(track_ids):
+            db.execute('BEGIN IMMEDIATE')
+            if expected_revision is not _INTERNAL_EDIT:require_revision(db,scope,expected_revision)
+            for identity in sorted(set(track_ids)):
                 old=db.execute('SELECT value,baseline FROM overrides WHERE scope_key=? AND track_id=? AND field=?',(scope,identity,field)).fetchone()
                 if old is not None and comparable(field,json.loads(old[1]))!=comparable(field,baseline(field,tracks[identity])):raise ValueError('Metadata baseline changed; reset this edit and review the current snapshot')
                 db.execute('INSERT INTO override_history VALUES (?,?,?,?,?,?,?)',(uuid4().hex,scope,identity,field,old[0] if old else None,encoded(value),created))
                 db.execute('INSERT OR REPLACE INTO overrides VALUES (?,?,?,?,?,?,?)',(scope,identity,field,encoded(value),encoded(baseline(field,tracks[identity])),'manual normalization',created))
-        return len(set(track_ids))
+            stamp=revision(db,scope)
+        return len(set(track_ids)) if expected_revision is _INTERNAL_EDIT else {'count':len(set(track_ids)),'edit_revision':stamp}
 
-    def clear_override(self,scope,track_id,field):
+    def clear_override(self,scope,track_id,field,*,expected_revision=_INTERNAL_EDIT):
         with self.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            if expected_revision is not _INTERNAL_EDIT:require_revision(db,scope,expected_revision)
             old=db.execute('SELECT value FROM overrides WHERE scope_key=? AND track_id=? AND field=?',(scope,track_id,field)).fetchone()
             if old:db.execute('INSERT INTO override_history VALUES (?,?,?,?,?,?,?)',(uuid4().hex,scope,track_id,field,old[0],None,now()))
             db.execute('DELETE FROM overrides WHERE scope_key=? AND track_id=? AND field=?',(scope,track_id,field))
+            return self.edit_state(scope,db=db)
 
-    def override_history(self,scope):
+    def override_history(self,scope,db=None):
         """Private audit records, including replaced values and resets."""
-        with self.connection() as db:
-            return [{**dict(row),'previous':json.loads(row['previous']) if row['previous'] is not None else None,
-                     'current':json.loads(row['current']) if row['current'] is not None else None}
-                    for row in db.execute('SELECT * FROM override_history WHERE scope_key=? ORDER BY created,id',(scope,))]
+        if db is None:
+            with self.connection() as connection:return self.override_history(scope,connection)
+        return [{**dict(row),'previous':json.loads(row['previous']) if row['previous'] is not None else None,
+                 'current':json.loads(row['current']) if row['current'] is not None else None}
+                for row in db.execute('SELECT * FROM override_history WHERE scope_key=? ORDER BY created,id',(scope,))]
 
     def setting(self,name,default=None):
         with self.connection() as db:r=db.execute('SELECT value FROM settings WHERE name=?',(name,)).fetchone()
@@ -131,8 +168,9 @@ class Store:
     def set_setting(self,name,value):
         with self.connection() as db:db.execute('INSERT OR REPLACE INTO settings VALUES (?,?)',(name,encoded(value)))
 
-    def effective(self,snapshot):
-        result=deepcopy(snapshot);overrides=self.overrides(snapshot['scope_key']);count=0
+    def effective(self,snapshot,overrides=None):
+        result=deepcopy(snapshot);count=0
+        if overrides is None:overrides=self.overrides(snapshot['scope_key'])
         for track in result['tracks']:
             for field,edit in overrides.get(track['id'],{}).items():
                 if comparable(field,baseline(field,track))!=comparable(field,edit['baseline']):raise ValueError('Metadata baseline changed; capture again and review the edit for '+track['id']+' / '+field)

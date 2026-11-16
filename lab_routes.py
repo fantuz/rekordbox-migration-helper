@@ -20,12 +20,12 @@ from track_tags import editable_colour,snapshot_colour_support
 from musicbrainz_pilot import MusicBrainzClient,RateGate,SPEEDS,create_batch,batch_record,run_batch,target_options
 
 
-def workspace_overrides(data,session):
+def workspace_overrides(data,session,edits=None):
     """Freeze edits only when they still agree with the original workspace."""
-    store=Store(data/'workbench-sidecar.sqlite3')
+    if edits is None:edits=Store(data/'workbench-sidecar.sqlite3').overrides('session:'+session['id'])
     tracks={t['id']:t for t in __import__('metadata_export').capture_catalog(session['catalog'])['tracks']}
     result={}
-    for identity,fields in store.overrides('session:'+session['id']).items():
+    for identity,fields in edits.items():
         if identity not in tracks:raise ValueError('An edited track no longer belongs to this workspace')
         for field,edit in fields.items():
             if comparable(field,baseline(field,tracks[identity]))!=comparable(field,edit['baseline']):
@@ -123,13 +123,16 @@ def register(owner):
 
     @app.post('/api/lab/check')
     def lab_check():
-        b=body();s=snapshot(b);kind=b.get('kind');working=store().effective(s) if b.get('working') is True else s
+        b=body();s=snapshot(b);kind=b.get('kind');state=store().edit_state(s['scope_key'])
+        working=store().effective(s,state['overrides']) if b.get('working') is True else s
+        edit_revision=state['edit_revision']
         def work(progress):
             if kind=='consistency':summary,rows=metadata_consistency(working)
             elif kind=='coverage':summary,rows=collection_coverage(working,b.get('min_cues',1),b.get('min_manual',0),b.get('require_analysis',True) is True)
             elif kind=='assets':summary,rows=audit_assets(s,b.get('paths') or b.get('path',''),progress,b.get('verify') is True)
             else:raise ValueError('Choose metadata consistency, collection coverage or analysis asset audit')
             summary['working_metadata_applied']=working.get('metadata_overrides_applied',0)
+            summary['edit_revision']=edit_revision
             return store().save_report(kind,[s['id']],summary,rows)
         return jsonify(job=owner.launch(work,'Checking '+str(kind)))
 
@@ -143,14 +146,14 @@ def register(owner):
 
     @app.get('/api/lab/tracks')
     def lab_tracks():
-        s=store().snapshot(request.args.get('snapshot',''));edits=store().overrides(s['scope_key']);query=request.args.get('q','').casefold()
+        s=store().snapshot(request.args.get('snapshot',''));state=store().edit_state(s['scope_key']);edits=state['overrides'];query=request.args.get('q','').casefold()
         tracks=[t for t in s['tracks'] if not query or query in (' '.join(str(t.get(f) or '') for f in ('id','title','artist','album','genre'))).casefold()]
         statuses=scan_statuses(store(),s)
         effective=[{**t,**{f:v['value'] for f,v in edits.get(t['id'],{}).items()},'file_status':statuses.get(t['id'])} for t in tracks]
         order=ordered(effective,request.args.get('sort',''),request.args.get('direction','asc'),TRACK_FIELDS)
         by_id={t['id']:t for t in tracks};tracks=[by_id[t['id']] for t in order]
         offset=max(0,int(request.args.get('offset',0)))
-        return jsonify(sort_scope='collection',rows=[{'file_status':statuses.get(t['id']),'original':{f:t.get(f) for f in ('id',*FIELDS)},'overrides':edits.get(t['id'],{})} for t in tracks[offset:offset+30]],
+        return jsonify(sort_scope='collection',edit_revision=state['edit_revision'],rows=[{'edit_revision':state['edit_revision'],'file_status':statuses.get(t['id']),'original':{f:t.get(f) for f in ('id',*FIELDS)},'overrides':edits.get(t['id'],{})} for t in tracks[offset:offset+30]],
                        total=len(tracks),offset=offset,unlocked=s['scope_key'] in edit_unlocked,scope=s['scope_key'],override_fields=sum(len(v) for v in edits.values()))
 
     @app.get('/api/lab/history')
@@ -184,14 +187,14 @@ def register(owner):
         if t is None or field not in FIELDS:raise ValueError('Choose a track and editable field in this snapshot')
         if field not in FREE_FIELDS:unlocked(s)
         if request.method=='DELETE':
-            store().clear_override(s['scope_key'],identity,field)
-            return jsonify(reset=True,overrides=store().overrides(s['scope_key']).get(identity,{}))
+            state=store().clear_override(s['scope_key'],identity,field,expected_revision=b.get('edit_revision'))
+            return jsonify(reset=True,edit_revision=state['edit_revision'],overrides=state['overrides'].get(identity,{}))
         if field=='colour':
             proposed=validate(field,b.get('value'))
             entry=next((p for p in snapshot_colour_support(s)['palette'] if p['value']==proposed),None)
             if not entry or not entry['supported']:raise ValueError(entry['reason'] if entry else 'This colour cannot be represented by the source library')
-        value=store().save_override(s['scope_key'],identity,field,b.get('value'),baseline(field,t))
-        return jsonify(value=value,overrides=store().overrides(s['scope_key']).get(identity,{}))
+        state=store().save_override(s['scope_key'],identity,field,b.get('value'),baseline(field,t),expected_revision=b.get('edit_revision'))
+        return jsonify(value=state['value'],edit_revision=state['edit_revision'],overrides=state['overrides'].get(identity,{}))
 
     @app.get('/api/lab/track')
     def lab_track_detail():
@@ -200,7 +203,8 @@ def register(owner):
         if t is None:raise ValueError('Choose a track in this snapshot')
         fields=('id',*FIELDS,'bpm','duration','tonality','color_name','color_hex','color_status','color_basis','play_count','manual_cues','auto_cues','analysed')
         support=snapshot_colour_support(s);original={f:t.get(f) for f in fields};original['colour']=editable_colour(t)
-        return jsonify(original=original,overrides=store().overrides(s['scope_key']).get(identity,{}),
+        state=store().edit_state(s['scope_key'])
+        return jsonify(original=original,edit_revision=state['edit_revision'],overrides=state['overrides'].get(identity,{}),
                        editable_fields=[f for f in FIELDS if f not in FREE_FIELDS],unlocked=s['scope_key'] in edit_unlocked,
                        scope=s['scope_key'],comment_captured=t.get('comment') is not None,
                        snapshot_label=s.get('label','Library snapshot'),colour_palette=support['palette'],
@@ -215,7 +219,7 @@ def register(owner):
             proposed=validate('colour',b.get('value'))
             entry=next((p for p in snapshot_colour_support(s)['palette'] if p['value']==proposed),None)
             if not entry or not entry['supported']:raise ValueError(entry['reason'] if entry else 'This colour cannot be represented by the source library')
-        return jsonify(count=store().save_bulk(s,b.get('track_ids',[]),b.get('field'),b.get('value')))
+        return jsonify(store().save_bulk(s,b.get('track_ids',[]),b.get('field'),b.get('value'),expected_revision=b.get('edit_revision')))
 
     @app.post('/api/lab/features')
     def lab_feature():

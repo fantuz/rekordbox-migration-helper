@@ -129,12 +129,13 @@ def main():
                 assert ranked['rows'][0]['id']=='synthetic-1'
                 with urllib.request.urlopen(base+'/static/d3-hierarchy-3.1.2.min.js',timeout=10) as response:
                     assert b'pack' in response.read()
-                assert request('/api/lab/tracks?snapshot='+sid)['unlocked'] is False
+                reviewed=request('/api/lab/tracks?snapshot='+sid)
+                assert reviewed['unlocked'] is False
                 request('/api/lab/unlock',{'snapshot':sid,'unlocked':True})
-                request('/api/lab/overrides',{'snapshot':sid,'track_id':'synthetic-1','field':'genre','value':'Synthetic House'})
+                saved=request('/api/lab/overrides',{'snapshot':sid,'track_id':'synthetic-1','field':'genre','value':'Synthetic House','edit_revision':reviewed['edit_revision']})
                 assert request('/api/lab/tracks?snapshot='+sid)['override_fields']==1
                 request('/api/lab/unlock',{'snapshot':sid,'unlocked':False})
-                request('/api/lab/overrides',{'snapshot':sid,'track_id':'synthetic-1','field':'comment','value':'Synthetic private working comment'})
+                request('/api/lab/overrides',{'snapshot':sid,'track_id':'synthetic-1','field':'comment','value':'Synthetic private working comment','edit_revision':saved['edit_revision']})
                 detail=request('/api/lab/track?snapshot='+sid+'&track_id=synthetic-1')
                 assert detail['unlocked'] is False and detail['overrides']['comment']['value']=='Synthetic private working comment'
                 # This fixture deliberately references absent audio. Exercise the

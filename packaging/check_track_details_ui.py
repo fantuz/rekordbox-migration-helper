@@ -14,21 +14,21 @@ def check_track_details_ui(browser,base,output):
               'album':'Synthetic album','genre':'House','year':2026,'rating':3,'bpm':124,'duration':300,
               'comment':'Captured private comment','colour':'#FF007F','color_hex':'#FF007F',
               'color_name':'Opening · custom label','color_status':'assigned','play_count':12}
-    edits={};writes=[];errors=[];unexpected=[];fail_colour=False
+    edits={};writes=[];errors=[];unexpected=[];fail_colour=False;edit_revision=0
     palette=[{'name':name,'value':hex_value,'hex':hex_value,'supported':name!='Violet',
               'reason':'Synthetic missing native mapping' if name=='Violet' else '',
               'native_name':'Closing <img src=x onerror="window.quickEditExecuted=1">' if name=='Blue' else None}
              for name,hex_value in PALETTE]
     palette.append({'name':'No assigned colour','value':'','hex':None,'supported':True,'reason':''})
     def record():
-        return {'original':deepcopy(original),'overrides':deepcopy(edits),'unlocked':False,
+        return {'original':deepcopy(original),'overrides':deepcopy(edits),'edit_revision':str(edit_revision),'unlocked':False,
                 'editable_fields':['title','artist','album','genre','year'],'scope':'capture:synthetic-quick-edits',
                 'snapshot_label':'Synthetic quick edits','comment_captured':True,'colour_palette':palette,
                 'colour_editable':True,'colour_edit_reason':'','export_scope':'snapshot sidecar only'}
     context=browser.new_context(locale='en-US',viewport={'width':1440,'height':1000})
     context.add_init_script("localStorage.setItem('library-workbench.language.v1','en')")
     def synthetic_api(route):
-        nonlocal fail_colour
+        nonlocal fail_colour,edit_revision
         request=route.request;path=urlsplit(request.url).path
         if path=='/api/status':route.fulfill(json={**status,'session':None,'example_available':False});return
         if path=='/api/journeys':
@@ -55,13 +55,17 @@ def check_track_details_ui(browser,base,output):
             payload=request.post_data_json;writes.append((request.method,deepcopy(payload)))
             assert payload['snapshot']==sid and payload['track_id']==tid
             field=payload['field'];assert field in ('comment','colour','rating')
+            if payload.get('edit_revision')!=str(edit_revision):
+                route.fulfill(status=409,json={'error':'Staged metadata changed. Reload and review the current edits before saving or resetting them.'});return
             if field=='colour' and fail_colour:
                 fail_colour=False;route.fulfill(status=400,json={'error':'Synthetic rejected colour edit'});return
             if request.method=='DELETE':
-                edits.pop(field,None);route.fulfill(json={'reset':True,'overrides':deepcopy(edits)});return
+                edits.pop(field,None);edit_revision+=1
+                route.fulfill(json={'reset':True,'overrides':deepcopy(edits),'edit_revision':str(edit_revision)});return
             assert request.method=='POST'
             edits[field]={'value':payload['value'],'baseline':original[field],'origin':'user','updated':'synthetic'}
-            route.fulfill(json={'value':payload['value'],'overrides':deepcopy(edits)});return
+            edit_revision+=1
+            route.fulfill(json={'value':payload['value'],'overrides':deepcopy(edits),'edit_revision':str(edit_revision)});return
         if path=='/api/playback/availability':
             assert request.method=='POST'
             route.fulfill(json={'tracks':{tid:False for tid in request.post_data_json['track_ids']}});return
@@ -97,7 +101,7 @@ def check_track_details_ui(browser,base,output):
         assert page.locator('#track-comment-text').input_value()==draft
         assert page.locator('#track-working-count').inner_text()=='1'
         assert 'Comments' not in page.locator('#track-working-list').inner_text()
-        assert writes==[('POST',{'snapshot':sid,'track_id':tid,'field':'colour','value':'#0000FF'})]
+        assert writes==[('POST',{'snapshot':sid,'track_id':tid,'field':'colour','value':'#0000FF','edit_revision':'0'})]
 
         # Keyboard activation, clear and reset must preserve the comment draft.
         page.locator('[data-track-colour="#00FF00"]').focus();page.keyboard.press('Enter')
@@ -154,16 +158,29 @@ def check_track_details_ui(browser,base,output):
         page.locator('[data-track-rating="5"]').click()
         page.wait_for_function('document.querySelector("[data-track-rating=\\"5\\"]")?.getAttribute("aria-pressed")==="true" && !document.querySelector("[data-track-rating=\\"5\\"]")?.disabled')
         assert edits['rating']['value']==5
-        assert ('POST',{'snapshot':sid,'track_id':tid,'field':'rating','value':5}) in writes
+        assert any(method=='POST' and payload['field']=='rating' and payload['value']==5 and 'edit_revision' in payload for method,payload in writes)
         assert page.locator('#track-comment-text').input_value()==original['comment']
         page.locator('#track-rating-reset').click()
         page.wait_for_function('document.querySelector("[data-track-rating=\\"3\\"]")?.getAttribute("aria-pressed")==="true" && document.querySelector("#track-rating-reset").disabled')
         assert 'rating' not in edits
+        # Another tab wins: keep the local draft and require an explicit reload.
+        edits['comment']={'value':'Other tab','baseline':original['comment'],'origin':'user','updated':'synthetic'}
+        edit_revision+=1
+        page.fill('#track-comment-text','My stale draft');page.locator('#track-comment-save').click()
+        page.wait_for_function('document.querySelector("#toast").textContent.includes("Staged metadata changed") && !document.querySelector("#track-comment-save").disabled')
+        assert edits['comment']['value']=='Other tab'
+        assert page.locator('#track-comment-text').input_value()=='My stale draft'
+        page.locator('#track-detail-dialog .close-dialog').click()
+        page.locator('[data-lab-edit="0"]').click();page.wait_for_selector('#track-detail-dialog[open]')
+        assert page.locator('#track-comment-text').input_value()=='Other tab'
+        page.fill('#track-comment-text','Reviewed new comment');page.locator('#track-comment-save').click()
+        page.wait_for_function('document.querySelector("#track-comment-save").disabled && document.querySelector("#track-working-list").textContent.includes("Reviewed new comment")')
+        assert edits['comment']['value']=='Reviewed new comment'
         assert not errors,errors
         assert not unexpected,unexpected
         return {'comments_visible_without_click':True,'colour_palette_without_unlock':True,'keyboard_colour_selection':True,
                 'draft_preserved_during_colour_save':True,'stored_edit_recap_and_reset':True,'failed_save_not_staged':True,
-                'custom_colour_labels_escaped':True,'narrow_palette_layout':True,
+                'custom_colour_labels_escaped':True,'narrow_palette_layout':True,'stale_edit_keeps_draft_until_reload':True,
                 'transport':'synthetic intercepted responses; no original files or real edits'}
     finally:
         context.close()

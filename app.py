@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from hashlib import sha256
 from threading import RLock
+from functools import wraps
 from uuid import uuid4
 import argparse
 import json
@@ -15,7 +16,7 @@ import sqlite3
 import sys
 
 from report_files import save_json
-from flask import Flask, jsonify, request, send_file, send_from_directory
+from flask import Flask, g, has_request_context, jsonify, request, send_file, send_from_directory
 from engine import Catalog, analyze, enrich_usage, decision_map, export_xml
 from native_export import export_native
 from media import scan as scan_media, verify_pair
@@ -28,6 +29,7 @@ from metadata_export import capture_catalog, export_metadata, list_metadata_expo
 from task_control import TaskControl, OperationCancelled
 import localization
 import documentation
+from workspace_safety import transaction
 
 ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT.parent
@@ -73,16 +75,29 @@ def application_version():
 def persist(session):
     dest = DATA / session["id"] / "state.json"
     dest.parent.mkdir(parents=True,exist_ok=True)
-    payload = {k:v for k,v in session.items() if k not in ("catalog","inventory")}
+    payload = {k:v for k,v in session.items() if k not in ("catalog","inventory","_state_commit")}
     temp = dest.with_suffix(".tmp")
-    temp.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
-    os.replace(temp,dest)
+    try:
+        temp.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding="utf-8")
+        os.replace(temp,dest)
+        session['_state_commit']=uuid4().hex
+    finally:
+        try:temp.unlink(missing_ok=True)
+        except OSError:pass
 
 
 def log(session, text):
-    with lock:
+    with lock, transaction(session):
         session["events"].append({"time":datetime.now(timezone.utc).isoformat(),"text":text})
         persist(session)
+
+
+def atomic_workspace(view):
+    @wraps(view)
+    def wrapped(*args,**kwargs):
+        with lock:
+            with transaction(current()):return view(*args,**kwargs)
+    return wrapped
 
 
 def task_progress(job, amount, text):
@@ -156,13 +171,18 @@ def current():
         return require(sys.modules[__name__], sessions[active])
 
 
-def summary(session):
+def summary(session,metadata_state=None):
     decisions=session["decisions"]
     from workbench_store import Store
-    fields=Store(DATA/'workbench-sidecar.sqlite3').overrides('session:'+session['id']) if (DATA/'workbench-sidecar.sqlite3').is_file() else {}
+    if metadata_state is None:
+        metadata_state=Store(DATA/'workbench-sidecar.sqlite3').edit_state('session:'+session['id']) if (DATA/'workbench-sidecar.sqlite3').is_file() else {'overrides':{},'edit_revision':'0'}
+    fields=metadata_state['overrides']
     from workspace_safety import revision
     from export_references import target_info
-    return {"id":session["id"],"revision":revision(session),"name":session.get("name",session["metadata"]["name"]),"metadata":session["metadata"],"counts":session["catalog"].counts,
+    stamp=metadata_state['edit_revision']
+    if has_request_context() and request.method!='GET' and getattr(g,'workspace_session',None) is session:
+        stamp=g.workspace_edit_revision
+    return {"id":session["id"],"revision":revision(session,DATA,stamp),"name":session.get("name",session["metadata"]["name"]),"metadata":session["metadata"],"counts":session["catalog"].counts,
             "export_reference":target_info(session["catalog"],session.get("export_target","auto")),
             "metadata_override_fields":sum(len(v) for v in fields.values()),
             "metadata_override_tracks":len(fields),"metadata_override_by_field":{f:sum(f in v for v in fields.values()) for f in {f for v in fields.values() for f in v}},
@@ -542,6 +562,10 @@ def media_evidence(session,row):
             "content_hash_differs":bool(check and not check["same_file_bytes"])}}
 
 
+def duration_in_range(value,minimum,maximum):
+    return minimum==0 and maximum==float('inf') if value is None else minimum<=value<=maximum
+
+
 def in_scope(session,row,values,include_evidence=True):
     cat=session["catalog"]
     track=cat.tracks[row["keeper"]]
@@ -551,7 +575,7 @@ def in_scope(session,row,values,include_evidence=True):
     except ValueError:
         raise ValueError("Enter valid track lengths")
     if minimum<0 or maximum<minimum:raise ValueError("Invalid length range")
-    if not minimum<=track["duration_seconds"]<=maximum:return False
+    if not duration_in_range(track["duration_seconds"],minimum,maximum):return False
     if values.get("cohort")=="xml" and not all(cat.tracks[i]["october_xml"] for i in (row["a"],row["b"])):return False
     cue=cat.cue_summary(track["track_id"])
     feature=values.get("feature","all")
@@ -637,6 +661,7 @@ def stage(session,pair_id,choice,group_state=None):
 
 
 @app.post("/api/decision")
+@atomic_workspace
 def decide():
     body=request.get_json()
     with lock:
@@ -647,6 +672,7 @@ def decide():
 
 
 @app.post("/api/bulk")
+@atomic_workspace
 def bulk():
     body=request.get_json()
     if body.get("mode") not in ("ready","auto"):
@@ -685,6 +711,7 @@ def bulk():
 
 
 @app.post("/api/bulk/undo")
+@atomic_workspace
 def undo_batch():
     with lock:
         session=current()
@@ -712,7 +739,7 @@ def policy():
         raise ValueError("Unknown keeper preference")
     session=current()
     def change(progress):
-        with lock:
+        with lock, transaction(session):
             session["policy"]=value
             session["catalog"].policy=value
             session["catalog"].refresh_counts()
@@ -732,6 +759,7 @@ def reference_catalog(session):
 
 
 @app.post("/api/export-target")
+@atomic_workspace
 def export_target():
     from export_references import target_info
     session=current()
@@ -739,16 +767,13 @@ def export_target():
     if not isinstance(body,dict):raise ValueError('Choose an export target.')
     selected=body.get('target')
     target_info(session['catalog'],selected)
-    previous=session.get('export_target','auto')
     session['export_target']=selected
-    try:log(session,'Export reference target: '+selected)
-    except Exception:
-        session['export_target']=previous
-        raise
+    log(session,'Export reference target: '+selected)
     return jsonify(session=summary(session))
 
 
 @app.post("/api/relocation")
+@atomic_workspace
 def relocation():
     from urllib.parse import urlsplit
     body=request.get_json()
@@ -794,17 +819,23 @@ def export():
             raise ValueError("Native ZIP generation is currently available for v7 inputs only. Older libraries can be inspected with Source analyzer; native round-trip validation for v6 is pending.")
         check_inputs(catalog.metadata)
         from lab_routes import workspace_overrides
-        catalog.metadata['field_overrides']=workspace_overrides(DATA,session)
+        from workbench_store import Store
+        from workspace_safety import revision,WorkspaceConflict
+        edits=Store(DATA/'workbench-sidecar.sqlite3').edit_state('session:'+session['id'],history=True)
+        if request.headers.get('X-Workbench-Revision')!=revision(session,DATA,edits['edit_revision']):
+            raise WorkspaceConflict('Staged metadata changed. Reload and review the export again.')
+        catalog.metadata['field_overrides']=workspace_overrides(DATA,session,edits['overrides'])
         decisions=deepcopy(session["decisions"])
         relocations=dict(session["relocations"])
         from export_references import validate_export
         retired,_=decision_map(catalog,decisions)
         validate_export(catalog,relocations,kind,retired)
-        snapshot=deepcopy(summary(session))
+        snapshot=deepcopy(summary(session,edits))
         snapshot['metadata_overrides']=deepcopy(catalog.metadata['field_overrides'])
-        from workbench_store import Store
-        snapshot['metadata_override_evidence']=Store(DATA/'workbench-sidecar.sqlite3').overrides('session:'+session['id'])
-        snapshot['metadata_edit_history']=Store(DATA/'workbench-sidecar.sqlite3').override_history('session:'+session['id'])
+        snapshot['revision']=revision(session,DATA,edits['edit_revision'])
+        snapshot['metadata_edit_revision']=edits['edit_revision']
+        snapshot['metadata_override_evidence']=edits['overrides']
+        snapshot['metadata_edit_history']=edits['history']
     export_id=uuid4().hex
     def work(progress):
         result=prepare_export(catalog,decisions,relocations,snapshot,DATA/"exports",export_id,kind,progress,temporary_root=TEMPORARY.folder('exports'))
@@ -814,6 +845,7 @@ def export():
 
 
 @app.post("/api/backup/acknowledge")
+@atomic_workspace
 def acknowledge_backup():
     session=current()
     confirmed=(request.get_json() or {}).get("confirmed") is True
@@ -967,7 +999,7 @@ def statistics():
     if cohort not in ("all","xml"):
         raise ValueError("Unknown statistics scope")
     tracks=[t for t in session["catalog"].tracks.values()
-            if minimum<=t["duration_seconds"]<=maximum and (cohort=="all" or t["october_xml"])]
+            if duration_in_range(t["duration_seconds"],minimum,maximum) and (cohort=="all" or t["october_xml"])]
     counters={"total":len(tracks),"analysed":0,"rated":0,"full_manual":0,"mixed":0,"only_auto":0,"no_cues_no_plays":0,"no_cues":0}
     bins=[(30,"< 30 sec"),(60,"30–60 sec"),(180,"1–3 min"),(300,"3–5 min"),(600,"5–10 min"),
           (1800,"10–30 min"),(3600,"30–60 min"),(float("inf"),"> 60 min")]
@@ -981,6 +1013,7 @@ def statistics():
         counters["only_auto"]+=cues["total"]>0 and cues["other"]==0
         counters["no_cues"]+=cues["total"]==0
         counters["no_cues_no_plays"]+=cues["total"]==0 and (t["play_count"] or 0)==0
+        if t['duration_seconds'] is None:continue
         for n,(limit,_) in enumerate(bins):
             if t["duration_seconds"]<limit:
                 hist[n]+=1
@@ -996,7 +1029,7 @@ def statistics():
                     orphan_analysis_folders=session["metadata"].get("orphan_analysis_folders",0),
                     missing_media=None,orphan_media=None)
     from history_browser import added_years
-    return jsonify(counters=counters,histogram=[{"label":label,"count":count} for (_,label),count in zip(bins,hist)],
+    return jsonify(counters=counters,unknown_duration=sum(t['duration_seconds'] is None for t in tracks),histogram=[{"label":label,"count":count} for (_,label),count in zip(bins,hist)],
                    addition_dates=added_years(tracks),
                    scope=cohort,min_minutes=minimum/60,max_minutes=maximum/60 if maximum!=float("inf") else None,
                    note="Manual categories mean cues without CUE(Auto) or 1.1Bars labels. Zero play count is the saved count.")
@@ -1033,15 +1066,19 @@ def inventory_scan():
             result=scan_media(session["catalog"].tracks,mappings,progress)
             result['scan_id']=uuid4().hex
         progress(99,'Saving the media search results')
-        inventory_path=DATA/session["id"]/"inventory.json"
+        inventory_path=DATA/session["id"]/('inventory-'+uuid4().hex+'.json')
         temporary=inventory_path.with_suffix(".tmp")
         temporary.write_text(json.dumps(result,ensure_ascii=False),encoding="utf-8")
         os.replace(temporary,inventory_path)
-        with lock:
-            session["inventory"]=result
-            session["media_verifications"]={}
-            session["inventory_path"]=str(inventory_path)
-            log(session,f"Indexed {result['file_count']:,} media files in selected roots")
+        try:
+            with lock, transaction(session):
+                session["inventory"]=result
+                session["media_verifications"]={}
+                session["inventory_path"]=str(inventory_path)
+                log(session,f"Indexed {result['file_count']:,} media files in selected roots")
+        except Exception:
+            inventory_path.unlink(missing_ok=True)
+            raise
         return {"counts":result["counts"],"files":result["file_count"],"warnings":result["warnings"]}
     with lock:
         for job in tasks.values():
@@ -1094,7 +1131,7 @@ def verify_media():
     if not session.get("inventory"):raise ValueError("Scan the media roots first")
     def work(progress):
         result=verify_pair(session["catalog"],session["inventory"],pair,progress)
-        with lock:
+        with lock, transaction(session):
             session.setdefault("media_verifications",{})[pair]=result
             log(session,"Media hash verification "+("agreed" if result["same_file_bytes"] else "differed")+" for "+pair)
         return result
@@ -1102,6 +1139,7 @@ def verify_media():
 
 
 @app.post("/api/inventory/stage")
+@atomic_workspace
 def stage_inventory_reference():
     from file_health import local_request
     from media_recovery import stage_candidate
@@ -1160,6 +1198,7 @@ def resume_session(sid):
 
 
 @app.post("/api/session/name")
+@atomic_workspace
 def rename_session():
     name=str((request.get_json() or {}).get("name","")).strip()
     if not 1<=len(name)<=100:raise ValueError("Use a name of 1 to 100 characters")
@@ -1232,6 +1271,7 @@ def preview_recording_group():
 
 
 @app.post("/api/group/stage")
+@atomic_workspace
 def stage_recording_group():
     session=current()
     with lock:

@@ -27,19 +27,19 @@ function bindMusicBrainzChoices(result,batch){
     const track=row(button.dataset.mbCandidate);button.disabled=true;
     try{
       const response=await labPost('musicbrainz/'+batch+'/candidate',{track_id:track.id,candidate_mbid:element('data-mb-candidate-choice',track.id).value,
-        review_revision:track.review_revision,query_consent:element('data-mb-candidate-consent',track.id).checked});
+        review_revision:track.review_revision,edit_revision:track.edit_revision,query_consent:element('data-mb-candidate-consent',track.id).checked});
       await poll(response.job);if(batch===labBatch)await labLoadPilot();
     }finally{if(button.isConnected)button.disabled=false;}
   });
   for(const button of root.querySelectorAll('[data-mb-release]'))button.onclick=wrap(async()=>{
     const track=row(button.dataset.mbRelease);
-    await labPost('musicbrainz/'+batch+'/release',{track_id:track.id,release_mbid:element('data-mb-release-choice',track.id).value,review_revision:track.review_revision});
+    await labPost('musicbrainz/'+batch+'/release',{track_id:track.id,release_mbid:element('data-mb-release-choice',track.id).value,review_revision:track.review_revision,edit_revision:track.edit_revision});
     if(batch===labBatch)await labLoadPilot();
   });
   for(const button of root.querySelectorAll('[data-mb-stage]'))button.onclick=wrap(async()=>{
     const track=row(button.dataset.mbStage);
     if(result.snapshot_id!==musicBrainzSnapshot())throw new Error(I18n.t('Select the snapshot used for this pilot before staging suggestions'));
-    await labPost('musicbrainz/'+batch+'/stage',{track_id:track.id,field:button.dataset.field,year_basis:'release',review_revision:track.review_revision});
+    await labPost('musicbrainz/'+batch+'/stage',{track_id:track.id,field:button.dataset.field,year_basis:'release',review_revision:track.review_revision,edit_revision:track.edit_revision});
     notify(I18n.t('Metadata staged locally'));if(batch===labBatch)await labLoadPilot();
   });
   if(result.rows.some(r=>r.match_approved)){
