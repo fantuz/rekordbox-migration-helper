@@ -67,6 +67,18 @@ class WorkspaceSafetyTests(unittest.TestCase):
         self.assertEqual(self.client.post('/api/backup/acknowledge',json={'confirmed':True},headers=self.headers).status_code,200)
 
 
+class ImportPublicationTests(unittest.TestCase):
+    def test_failed_analysis_or_state_publication_keeps_previous_workspace(self):
+        temp=TemporaryDirectory();self.addCleanup(temp.cleanup)
+        old={'id':'old','decisions':{'p':{'action':'skip'}}}
+        metadata={'name':'new','source':'synthetic','zip_path':'synthetic.zip','xml_path':'synthetic.xml','pair_signature':'fixed'}
+        catalog=SimpleNamespace(tracks={},pairs={},refresh_counts=lambda:None)
+        with patch.object(application,'DATA',Path(temp.name)),patch.object(application,'sessions',{'old':old}),patch.object(application,'active','old'),\
+             patch.object(application,'Catalog',return_value=catalog),patch.object(application,'check_inputs',return_value={}),\
+             patch.object(application,'enrich_usage'),patch.object(application,'persist',side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):application.load_session(metadata,'b'*32,lambda *_:None)
+            self.assertEqual(application.active,'old');self.assertEqual(application.sessions,{'old':old})
+
 class UploadRecoveryTests(unittest.TestCase):
     def setUp(self):
         temp=TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name)
@@ -78,6 +90,14 @@ class UploadRecoveryTests(unittest.TestCase):
 
     def upload(self,data=b'replacement'):
         return self.client.put('/api/upload/'+self.sid+'/zip',data=data,headers=self.headers)
+
+    def test_retry_status_recovers_a_lost_success_response(self):
+        self.assertEqual(self.upload(b'complete backup').status_code,200)
+        response=self.client.get('/api/import/'+self.sid)
+        self.assertTrue(response.json['files']['zip']['complete'])
+        self.assertEqual(response.json['files']['zip']['bytes'],15)
+        self.assertFalse(response.json['files']['xml']['complete'])
+        self.assertEqual(self.client.get('/api/import/'+'f'*32).status_code,400)
 
     def test_disconnect_removes_partial_and_same_session_can_retry(self):
         class Broken(io.BytesIO):

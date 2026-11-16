@@ -31,5 +31,17 @@ window.CollectionSort=(()=>{
       button.onclick=wrap(()=>change(field));
     });
   }
-  return {args,bind};
+  function list(selector,key,fields,reload){
+    const root=document.querySelector(selector);if(!root)return;
+    root.parentElement.querySelector('[data-list-sort="'+key+'"]')?.remove();
+    const box=document.createElement('div');box.dataset.listSort=key;box.className='collection-sort filter-actions';
+    const select=document.createElement('select');select.setAttribute('aria-label',I18n.t('Sort all results by'));
+    for(const field of ['',...fields])select.append(new Option(field?I18n.field(field):I18n.t('Original order'),field));
+    const current=args(key);select.value=current.sort;box.append(select);
+    const direction=document.createElement('select');direction.setAttribute('aria-label',I18n.t('Sort direction'));
+    for(const [id,label] of [['asc','Ascending'],['desc','Descending']])direction.append(new Option(I18n.t(label),id));
+    direction.value=current.direction;box.append(direction);root.before(box);
+    select.onchange=direction.onchange=wrap(async()=>{state[key]={sort:select.value,direction:direction.value};window.BrowseState?.set('sort:'+key,state[key]);await reload();});
+  }
+  return {args,bind,list};
 })();

@@ -2,7 +2,7 @@
 from math import isfinite
 
 NUMERIC={'year','rating','bpm','duration','position','sequence','tracks','common_tracks','jaccard',
-         'playlists','saved_sessions','saved_entries','bpm_delta','plays','same_saved_order'}
+         'playlists','saved_sessions','saved_entries','bpm_delta','plays','same_saved_order','track_count','pair_count','candidate_count','physical_files'}
 TRACK_FIELDS=('title','artist','album','genre','year','rating','bpm','duration','file_status')
 STATUS={'playable':0,'missing':1,'inaccessible':2,'unverified':3}
 

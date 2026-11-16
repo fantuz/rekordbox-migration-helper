@@ -138,9 +138,9 @@ def load_session(metadata, sid, progress):
     session={"id":sid,"_workspace_generation":uuid4().hex,"metadata":metadata,"catalog":catalog,"decisions":saved.get("decisions",{}),
              "relocations":saved.get("relocations",{}),"events":saved.get("events",[]),"policy":catalog.policy,"last_batch":saved.get("last_batch",[]),"batches":saved.get("batches",[]),"held_pairs":saved.get("held_pairs",{}),"inventory":inventory,"inventory_path":saved.get("inventory_path"),"name":saved.get("name",metadata["name"]),"media_verifications":saved.get("media_verifications",{}),"backup_acknowledged":saved.get("backup_acknowledged")}
     with lock:
+        log(session,f"Loaded {len(catalog.tracks):,} tracks and {len(catalog.pairs):,} candidate pairs")
         sessions[sid]=session
         active=sid
-        log(session,f"Loaded {len(catalog.tracks):,} tracks and {len(catalog.pairs):,} candidate pairs")
     return {"session":sid}
 
 
@@ -189,7 +189,8 @@ register_workspace_safety(sys.modules[__name__])
 from werkzeug.exceptions import HTTPException
 @app.errorhandler(HTTPException)
 def http_error(error):
-    return jsonify(error=error.description),error.code
+    from workspace_safety import WorkspaceConflict
+    return jsonify(error=error.description,conflict='workspace' if isinstance(error,WorkspaceConflict) else 'resource'),error.code
 
 
 @app.errorhandler(ValueError)
@@ -473,7 +474,9 @@ def storage_details(audit_id):
     rows=audit["groups"]
     if request.args.get("scope")=="cloud_local":rows=[row for row in rows if row["cloud_local"]]
     offset=max(0,int(request.args.get("offset",0)))
-    return jsonify(**{key:value for key,value in audit.items() if key!="groups"},groups=rows[offset:offset+30],group_total=len(rows),offset=offset)
+    from result_order import ordered
+    rows=ordered(rows,request.args.get('sort',''),request.args.get('direction','asc'),('physical_files','id'))
+    return jsonify(sort_scope='collection',**{key:value for key,value in audit.items() if key!="groups"},groups=rows[offset:offset+30],group_total=len(rows),offset=offset)
 
 
 @app.get("/api/storage/<audit_id>/report")
@@ -846,11 +849,29 @@ def upload(sid,kind):
     return jsonify(bytes=done)
 
 
+@app.get('/api/import/<sid>')
+def upload_status(sid):
+    if not re_uuid(sid):raise ValueError('Unknown import')
+    folder=TEMPORARY.path/sid;path=folder/'upload.json'
+    if folder.is_symlink() or folder.is_junction() or not path.is_file():
+        raise ValueError('This upload session is unavailable. Start a new import.')
+    info=json.loads(path.read_text(encoding='utf-8'))
+    files={}
+    for kind in ('zip','xml'):
+        name=info.get(kind,'')
+        if not name or '/' in name or '\\\\' in name:raise ValueError('Invalid upload session')
+        candidate=folder/name
+        files[kind]={'complete':candidate.is_file() and not candidate.is_symlink(),
+                     'bytes':candidate.stat().st_size if candidate.is_file() else 0}
+    return jsonify(session=sid,files=files)
+
 @app.post("/api/import/<sid>/analyze")
 def run_import(sid):
     if not re_uuid(sid):
         raise ValueError("Unknown import")
-    folder=TEMPORARY.folder(sid)
+    folder=TEMPORARY.path/sid
+    if folder.is_symlink() or folder.is_junction() or not (folder/'upload.json').is_file():
+        raise ValueError('This upload session is unavailable. Start a new import.')
     info=json.loads((folder/"upload.json").read_text(encoding="utf-8"))
     backup,xml=folder/info["zip"],folder/info["xml"]
     if not backup.exists() or not xml.exists():
@@ -863,7 +884,13 @@ def run_import(sid):
         metadata.update(input_fingerprints=stamps,import_mode="uploaded")
         check_inputs(metadata)
         return load_session(metadata,sid,progress)
-    return jsonify(job=launch(work,"Analyzing the imported pair"))
+    with lock:
+        for task in tasks.values():
+            if task.get('import_session')==sid and task['status'] in ('running','complete'):
+                return jsonify(job=task['id'])
+        job=launch(work,"Analyzing the imported pair")
+        tasks[job]['import_session']=sid
+    return jsonify(job=job)
 
 
 def resume_state(sid):
@@ -1003,7 +1030,9 @@ def inventory_items():
         if query and query not in (track["title"]+" "+track["artist"]+" "+i).casefold():continue
         rows.append({"track_id":i,"title":track["title"],"artist":track["artist"],
                      'staged_uri':session['relocations'].get(i),**match})
-    return jsonify(counts=inventory["counts"],file_count=inventory["file_count"],roots=inventory["roots"],
+    from result_order import ordered
+    rows=ordered(rows,request.args.get('sort',''),request.args.get('direction','asc'),('title','artist','status','candidate_count'))
+    return jsonify(sort_scope='collection',counts=inventory["counts"],file_count=inventory["file_count"],roots=inventory["roots"],
                    scan_id=inventory.get('scan_id'),advanced=inventory.get('advanced',False),
                    complete=inventory.get('complete'),note=inventory.get('note'),
                    warnings=inventory["warnings"],total=len(rows),rows=rows[offset:offset+50])

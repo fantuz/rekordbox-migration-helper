@@ -21,7 +21,7 @@ let token = "", session = null, filter = "all", offset = 0, total = 0, selected 
 let searchTimer;
 let currentGroup=null, groupMode=false;
 let workspace=null,analyzerInfo=null,storageAudit=null,storageOffset=0;
-let resumeTarget=null;
+let resumeTarget=null,uploadAttempt=null;
 const activeUploads=new Set();
 let mutatingRequests=0;
 const metadataFields=["album","artist","genre","label","format","bpm_min","bpm_max","bitrate_min","playlist","availability"];
@@ -71,7 +71,7 @@ async function api(url, options = {}) {
       session.revision=res.headers.get('X-Workbench-Revision');
     const body = await res.json();
     if (!res.ok) {
-      if(res.status===409)window.dispatchEvent(new CustomEvent('workbench-stale',{detail:{url}}));
+      if(res.status===409 && body.conflict==='workspace')window.dispatchEvent(new CustomEvent('workbench-stale',{detail:{url}}));
       throw new Error(body.error ? I18n.error(body.error) : I18n.t("The action could not be completed"));
     }
     return body;
@@ -231,8 +231,9 @@ async function loadWorkspace() {
 }
 async function loadPairs() {
   if (!session || window.NativeCollection?.active()) return;
-  const scope=new URLSearchParams({...scopeValues(),filter,offset,view:groupMode?"groups":"pairs"});
+  const scope=new URLSearchParams({...scopeValues(),filter,offset,view:groupMode?"groups":"pairs",...CollectionSort.args("pairs")});
   const result=await api("/api/pairs?"+scope);
+  CollectionSort.list("#pair-list","pairs",["title","artist","category"],async()=>{offset=0;await loadPairs();});
   total=result.total;
   renderEvidence(result.facets);
   $("#workload").innerHTML=[
@@ -402,11 +403,22 @@ $("#import-form").onsubmit=wrap(async e=>{
   if (!zip || !xml) return;
   busy=true;$("#import-dialog").close();progress(null,I18n.t("Working"));
   try {
-    const started=await api("/api/import",{method:"POST",body:JSON.stringify({zip:zip.name,xml:xml.name,resume_session:resumeTarget})});
-    await uploadFile(zip,"/api/upload/"+started.session+"/zip");
-    await uploadFile(xml,"/api/upload/"+started.session+"/xml");
-    const result=await api("/api/import/"+started.session+"/analyze",{method:"POST",body:"{}"});
-    await poll(result.job);selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Input pair checked and loaded"));
+    if(!uploadAttempt || uploadAttempt.zip!==zip || uploadAttempt.xml!==xml || uploadAttempt.resume!==resumeTarget){
+      const started=await api("/api/import",{method:"POST",body:JSON.stringify({zip:zip.name,xml:xml.name,resume_session:resumeTarget})});
+      uploadAttempt={zip,xml,resume:resumeTarget,sid:started.session};
+    }
+    let uploaded;
+    try{uploaded=await api('/api/import/'+uploadAttempt.sid);}
+    catch(error){uploadAttempt=null;throw error;}
+    for(const [kind,file] of [['zip',zip],['xml',xml]]){
+      if(uploaded.files[kind].complete && uploaded.files[kind].bytes===file.size)continue;
+      if(uploaded.files[kind].complete){uploadAttempt=null;throw new Error(I18n.t('Upload interrupted'));}
+      await uploadFile(file,'/api/upload/'+uploadAttempt.sid+'/'+kind);
+    }
+    const result=await api("/api/import/"+uploadAttempt.sid+"/analyze",{method:"POST",body:"{}"});
+    await poll(result.job);uploadAttempt=null;selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Input pair checked and loaded"));
+  } catch(error){
+    finishProgress();$("#import-dialog").showModal();throw error;
   } finally {busy=false;finishProgress();}
 });
 $("#local-import-form").onsubmit=wrap(async e=>{
@@ -636,7 +648,7 @@ $("#scan-media").onclick=wrap(async()=>{
 async function loadInventory() {
   if (!session) return;
   const revision=++inventoryRevision,workspace=session.id;
-  const result=await api("/api/inventory?"+new URLSearchParams({offset:inventoryOffset,status:$("#inventory-status").value,q:$("#inventory-search").value}));
+  const result=await api("/api/inventory?"+new URLSearchParams({offset:inventoryOffset,status:$("#inventory-status").value,q:$("#inventory-search").value,...CollectionSort.args("inventory")}));
   if(revision!==inventoryRevision || session?.id!==workspace)return;
   const labels={found:'Found',available:'Playable',review:'Needs review',ambiguous:'Several candidates',not_found:'Absent from scanned roots',cloud_only:'Cloud placeholder',unverified:'Unverified'};
   const evidence={mapped_path_and_size:'Mapped path and size',filename_and_size:'Filename and size',tags_and_duration:'Tags and duration'};
@@ -655,6 +667,8 @@ async function loadInventory() {
     if(session?.id!==workspace)return;
     session=done.session;renderSession();await loadInventory();
   }));
+  CollectionSort.list('#inventory-list','inventory',['title','artist','status','candidate_count'],async()=>{inventoryOffset=0;await loadInventory();});
+  $('#inventory-report').href='/api/inventory/report?'+new URLSearchParams({workspace});
   $("#inventory-range").textContent=result.total?num(inventoryOffset+1)+"–"+num(Math.min(inventoryOffset+50,result.total))+" "+I18n.t("of")+" "+num(result.total)+(" "+I18n.t("References")+""):I18n.t("No matching references");
   $("#inventory-more").disabled=inventoryOffset+50>=result.total;
   $('#inventory-prev').disabled=!inventoryOffset;
@@ -792,7 +806,7 @@ function storageBar(locations,key) {
 }
 async function loadStorageAudit(id) {
   const scope=$("#storage-scope")?.value || "all";
-  storageAudit=await api("/api/storage/"+id+"?"+new URLSearchParams({offset:storageOffset,scope}));
+  storageAudit=await api("/api/storage/"+id+"?"+new URLSearchParams({offset:storageOffset,scope,...CollectionSort.args("storage")}));
   const audit=storageAudit,t=audit.totals,target=$("#storage-result");target.hidden=false;
   const cloudBytes=audit.locations.filter(row=>row.kind!=="local").reduce((sum,row)=>sum+row.logical_bytes,0);
   const allocated=audit.locations.reduce((sum,row)=>sum+row.known_allocated_bytes,0);
@@ -802,6 +816,7 @@ async function loadStorageAudit(id) {
     const held=group.files.some(file=>file.cloud_only);
     return '<article class="wide-card storage-group"><div class="storage-group-header"><strong>'+esc(label)+'</strong><span>'+num(group.physical_files)+" "+I18n.t("physical files ·")+" "+num(group.track_ids.length)+(" "+esc(I18n.t("matched DB records"))+"</span></div><p class=\"subtle\">")+esc(group.evidence.join(" + ").replaceAll("_"," ") || I18n.t("Multiple database references to one scanned path"))+'</p>'+group.files.map(file=>'<div class="storage-file"><span>'+esc(file.kind==="local"?I18n.t("Local"):file.kind==="dropbox"?"Dropbox":"Google Drive")+'</span><code>'+esc(file.path)+'</code><span>'+esc(bytes(file.size))+(file.cloud_only?" "+I18n.t("· placeholder"):'')+'</span></div>').join("")+'<div class="storage-group-actions"><button class="button secondary small" data-storage-verify="'+esc(group.id)+'" '+(held || group.physical_files<2?'disabled':'')+(">"+esc(I18n.t("Verify this group’s file bytes"))+"</button><span class=\"subtle\">")+(held?I18n.t("Download cloud-only files outside this tool first."):verified?I18n.t("Last checked")+" "+esc(new Date(verified.created).toLocaleString(I18n.language))+'. '+I18n.t('Re-scan after file changes.'):I18n.t("Filename/size and path evidence remain unverified until hashing."))+'</span></div></article>';
   }).join("")+'</div><div class="pagination"><span>'+num(audit.group_total?storageOffset+1:0)+'–'+num(Math.min(storageOffset+30,audit.group_total))+" "+I18n.t("of")+" "+num(audit.group_total)+(" "+esc("groups")+"</span><div><button class=\"button secondary small\" id=\"storage-prev\" ")+(storageOffset?'':'disabled')+(">"+esc(I18n.t("← Previous"))+"</button><button class=\"button secondary small\" id=\"storage-next\" ")+(storageOffset+30<audit.group_total?'':'disabled')+(">"+esc(I18n.t("Next →"))+"</button></div></div>");
+  CollectionSort.list(".storage-groups","storage",["physical_files"],async()=>{storageOffset=0;await loadStorageAudit(id);});
   $("#storage-scope").value=scope;
   $("#storage-scope").onchange=wrap(async()=>{storageOffset=0;await loadStorageAudit(id);});
   $("#storage-prev").onclick=wrap(async()=>{storageOffset=Math.max(0,storageOffset-30);await loadStorageAudit(id);});

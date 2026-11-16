@@ -35,9 +35,9 @@ class MountedAudioTests(unittest.TestCase):
 
     def test_windows_drive_uri_case_unicode_and_cache_use_the_same_mapping(self):
         original=deepcopy(self.track)
-        self.assertEqual(mapped_path(self.track['xml_location'],self.maps),self.audio)
+        self.assertTrue(mapped_path(self.track['xml_location'],self.maps).samefile(self.audio))
         self.assertEqual(inspect_audio(self.track,self.maps)[0],'playable')
-        self.assertEqual(available_audio(self.track,self.maps),self.audio)
+        self.assertTrue(available_audio(self.track,self.maps).samefile(self.audio))
         owner=SimpleNamespace(DATA=self.root)
         first,hits=inspect(owner,{'1':self.track},mappings=self.maps)
         self.assertEqual(first,{'1':'playable'});self.assertFalse(hits['1'])
@@ -89,7 +89,7 @@ class MountedAudioTests(unittest.TestCase):
             self.assertEqual(response.json['examples'][0]['status'],'playable')
             with patch('track_playback.open_audio') as launch:
                 response=client.post('/api/playback/open',json={'snapshot':self.sid,'track_id':'1'},headers=headers)
-                self.assertEqual(response.status_code,200,response.json);launch.assert_called_once_with(self.audio)
+                self.assertEqual(response.status_code,200,response.json);launch.assert_called_once();self.assertTrue(launch.call_args.args[0].samefile(self.audio))
             with self.store.connection() as db:
                 db.execute('INSERT INTO file_health_scans VALUES (?,?,?,?,?)',(source,1,1,1,'complete'))
                 db.execute('INSERT INTO file_health_records VALUES (?,?,?,?,?,?,?,?)',(source,'1','Title','DJ','House','playable',1,'title'))

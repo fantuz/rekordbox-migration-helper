@@ -137,6 +137,8 @@ def main():
                 report['bubble_labels_ui']=check_bubble_labels_ui(page,base,sid,args.output,store)
                 from check_native_collection_ui import check_native_collection_ui
                 report['native_collection_ui']=check_native_collection_ui(browser,base,data,args.output,root)
+                from check_delivery_ui import check_delivery_ui
+                report['delivery_ui']=check_delivery_ui(browser,base,store,root,args.output)
                 from check_workspace_maintenance_ui import check_workspace_maintenance_ui
                 report['maintenance_ui']=check_workspace_maintenance_ui(browser,base,args.output)
                 from check_activity_ui import check_activity_ui
