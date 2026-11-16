@@ -94,7 +94,7 @@ class StoreAndOverrideTests(unittest.TestCase):
                      genre='House') for i in range(125)]
         saved=self.store.save_snapshot(snapshot(tracks),'Sort test')
         batch=create_batch(self.store,self.store.snapshot(saved['id']),target='random',
-                           sample_size=125,seed='sort')
+                           sample_size=150,seed='sort')
         with self.store.connection() as db:
             for i in range(125):
                 db.execute('INSERT INTO mb_results (batch_id,track_id,status,payload) VALUES (?,?,?,?)',

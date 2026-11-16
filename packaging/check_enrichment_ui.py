@@ -191,7 +191,7 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
                                          'tracks':sorted_tracks,'playlists':[]},
                                         'Synthetic MusicBrainz sorting')['id']
     sorted_batch=create_batch(store,store.snapshot(sorted_snapshot),
-                              target='random',sample_size=125,seed='stable-sort')
+                              target='random',sample_size=150,seed='stable-sort')
     page.evaluate('(id)=>{labBatch=id;labPilotOffset=0;return labLoadPilot();}',sorted_batch['id'])
     page.wait_for_selector('#lab-pilot-results [data-mb-sort="title"]')
     assert page.locator('#lab-pilot-results [data-sort-column]').count()==0
