@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import urllib.error
 import urllib.request
@@ -48,10 +49,17 @@ def validate_release_target(plan, ref, commit, read, default_branch="main"):
         raise ValueError("Release tags must point to a commit already merged into the default branch")
 
 
+def validate_expected_source(expected, commit):
+    """Reject a branch that moved between automatic validation and dispatch."""
+    if expected and (not re.fullmatch(r'[0-9a-f]{40}', expected) or expected != commit):
+        raise ValueError('The default branch moved after validation; the requested source commit does not match')
+
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--assets",type=Path)
     args=parser.parse_args()
+    validate_expected_source(os.environ.get("EXPECTED_SOURCE_COMMIT", ""), os.environ["GITHUB_SHA"])
     ref=os.environ["GITHUB_REF"]
     default_branch=os.environ.get("RELEASE_DEFAULT_BRANCH") or "main"
     plan=release_plan(os.environ.get("REQUESTED_RELEASE_VERSION",""),ref,default_branch)

@@ -15,6 +15,14 @@ on:
         description: Publish when complete (unchecked creates a draft release)
         type: boolean
         default: false
+      expected_source_commit:
+        description: Expected source SHA (set by the automatic trigger; blank for manual releases)
+        type: string
+        default: ''
+      require_validated_build:
+        description: Require already validated packages (automatic releases only)
+        type: boolean
+        default: false
       prerelease:
         description: Publish as a preview (alpha/beta/rc versions are always previews)
         type: boolean
@@ -47,6 +55,7 @@ jobs:
           persist-credentials: false
       - id: plan
         env:
+          EXPECTED_SOURCE_COMMIT: ${{ inputs.expected_source_commit }}
           REQUESTED_RELEASE_VERSION: ${{ inputs.release_version }}
           REQUESTED_PRERELEASE: ${{ inputs.prerelease }}
           RELEASE_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
@@ -62,6 +71,7 @@ jobs:
       - name: Look for an exact-source validated main build
         id: reuse
         env:
+          REQUIRE_VALIDATED_BUILD: ${{ inputs.require_validated_build }}
           REQUESTED_RELEASE_VERSION: ${{ steps.plan.outputs.version }}
           RELEASE_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           GH_TOKEN: ${{ github.token }}

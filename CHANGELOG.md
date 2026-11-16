@@ -12,6 +12,8 @@ This patch makes import retries and metadata editing safer, keeps failed saves f
 - Preserve unknown duration and size values through XML/ZIP catalog import, snapshots, statistics and zero-value filters; keep explicit numeric zero distinct from missing metadata.
 - Align repository safeguard documentation and the main ruleset template with the verified active configuration, including required checks, native CodeQL protection and no bypass actors.
 
+- Automatically publish reviewed version bumps after the main build and security checks pass, reusing validated packages and rejecting changed source commits, missing release notes or existing tags. Retain the manual release workflow for recovery.
+
 Upgrade notes: reload open browser tabs after updating so they receive the current metadata edit revision. Older imported catalogs that already stored unknown duration or size as zero cannot recover that distinction automatically; reimport the original XML and ZIP to rebuild those values accurately.
 
 ## 1.1.2 — 2026-11-16

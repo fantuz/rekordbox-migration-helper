@@ -20,22 +20,30 @@ Archive filenames contain the version and architecture without a `-preview` suff
 
 The README download buttons always open the latest stable release's **Downloads** table. That table is generated for each release with links to its exact five versioned archives, so no README version edit is needed. Existing published releases keep their original names.
 
-## Required release alignment (future stable releases)
+## Release from a reviewed version bump
 
 Treat each release as a reviewed source milestone, not merely a version override.
 
 1. Confirm the previous stable tag, the intended `main` commit, and that the target release and tag do not already exist. Merge feature PRs before starting release preparation.
 2. Open a separate **release-preparation PR**. Set the root `VERSION` file to the target version. Move completed entries under **Unreleased** into a dated `## <version> — YYYY-MM-DD` section in `CHANGELOG.md`; attribute earlier released features to their historical release instead of duplicating them. Preserve `Unreleased` for new development.
 3. Use GitHub Actions to validate the PR: source checks across Linux/Windows/macOS, browser tests across Chromium/Firefox/WebKit, native packaging, aggregate checks and security. Merge only after checks pass.
-4. Confirm that the merge-triggered **Check and package** and **Security checks** on the exact new `main` SHA succeeded. Verify the version in `VERSION` matches the dated changelog and that no intervening merge changed the release target.
-5. On **Actions → Create release → Run workflow**, select **main**, use the same version, check **Publish when complete**, and leave **Preview / prerelease** unchecked for a stable release. The workflow creates the immutable tag only after validating the correct five archives, checksums and complete commit log.
+4. After merging, **Release merged version** automatically follows the successful main-push **Check and package** run. It requires an increasing `VERSION` change against the merge's first parent, a dated non-empty changelog section, all validated artifacts, and successful **Security checks** and CodeQL analysis for the same source commit.
+5. Keep `main` at that commit until publication finishes. The trigger starts the existing **Create release** workflow with the version and expected source SHA, publishes stable versions as latest, and keeps alpha/beta/rc versions as prereleases. The workflow reuses the exact validated main build and repeats the dependency audit and archive verification before creating the tag and release.
 6. Verify that `v<version>` points to the validated commit, that the release is the latest stable, and that all five archives, `SHA256SUMS`, `COMMIT-LOG.txt` and release notes are present. Do not consider a release published merely because a development run passed.
 
 The release workflow technically supports an explicit version override, but use it only for deliberate exceptional releases—not as a substitute for updating `VERSION` on `main`. Do not create hand-written releases, overwrite existing tags or bypass the release workflow.
 
-## Release without a shell
+## Automatic trigger and recovery
 
-Open **Actions → Create release → Run workflow**. Select **main**, enter a version such as `0.4.5` or `0.4.6-rc.1` (blank uses `VERSION`), and choose:
+The trigger runs only after a successful **push to main** package build in this repository. Pull requests, forks, manual development builds, failed/cancelled builds, ordinary commits without a version change, and initial commits do not publish. It uses the repository's short-lived `GITHUB_TOKEN` with `actions: write` only in the dispatcher job; no personal access token or additional secret is needed. GitHub permits [workflow dispatches made with GITHUB_TOKEN](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow) to start the release workflow.
+
+The source SHA is checked both before dispatch and by the receiving workflow. If `main` advances, automatic publication stops instead of releasing a different commit. Automatic publication requires already validated artifacts and cannot silently fall back to an unvalidated build. The dispatcher waits up to about ten minutes for the same commit's security and CodeQL runs; failed or missing validation stops publication. The current native CodeQL setup is identified by its `dynamic/github-code-scanning/codeql` workflow path; update the trigger if that setup is replaced.
+
+Existing releases or tags are never overwritten. Serialized trigger runs and an active-release check avoid duplicate dispatches; tag creation remains atomic if a manual release races automation. Rerun a failed trigger after transient/API errors or delayed security checks are resolved. If the branch moved or artifacts expired, inspect the new main commit and use the manual workflow below. A failed publication that already created a tag/draft still requires deliberate recovery; it is not silently retried or replaced.
+
+## Manual release and recovery without a shell
+
+Open **Actions → Create release → Run workflow**. Select **main**, enter a version such as `0.4.5` or `0.4.6-rc.1` (blank uses `VERSION`), and choose (leave **Expected source SHA** blank and **Require already validated packages** unchecked for the usual manual path):
 
 - **Publish when complete:** leave unchecked for a draft, or check to publish after every check passes.
 - **Preview / prerelease:** check to publish an optional preview. Plain versions publish as stable/latest by default. Versions containing `-alpha`, `-beta` or `-rc` are always prereleases.

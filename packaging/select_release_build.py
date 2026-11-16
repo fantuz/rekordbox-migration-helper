@@ -37,6 +37,8 @@ def main():
     except (urllib.error.URLError,ValueError,KeyError) as error:
         # Discovery is an optimization only; native assembly remains the fallback.
         print('No reusable build could be selected; rebuilding every platform ('+type(error).__name__+').')
+    if os.environ.get('REQUIRE_VALIDATED_BUILD') == 'true' and run is None:
+        raise ValueError('Automatic publication requires an available exact-source validated main build')
     with Path(os.environ['GITHUB_OUTPUT']).open('a',encoding='utf-8') as output:
         output.write('reuse_run_id='+('' if run is None else str(run))+'\n')
     print('Reusing validated main build '+str(run) if run else 'Building fresh native packages')
