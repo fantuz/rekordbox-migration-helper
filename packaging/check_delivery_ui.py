@@ -104,7 +104,7 @@ def check_delivery_ui(browser,base,store,root,output):
         row.locator('[data-mb-release-choice]').select_option(release)
         row.locator('[data-mb-release]').click()
         page.wait_for_selector('[data-mb-stage="'+track_id+'"][data-field="album"]',state='attached')
-        page.get_by_role('button',name='Unlock metadata edits',exact=True).click()
+        page.locator('#lab-panel-pilot').get_by_role('button',name='Unlock metadata edits',exact=True).click()
         row.locator('details').last.locator('summary').click()
         row.locator('[data-mb-stage][data-field="album"]').click()
         page.wait_for_function('document.querySelector("#toast").textContent.includes("Metadata staged locally")')
