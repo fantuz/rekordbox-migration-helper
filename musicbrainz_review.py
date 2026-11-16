@@ -87,7 +87,7 @@ def register(owner,store,enabled,unlocked,gate,pool,cancellations,network_lock,c
                         result.pop('reviewed_at',None);write(db,identity,track,result)
                     return {'selected_mbid':candidate,'review_revision':revision(result)}
                 finally:finished(None)
-            try:job=owner.launch(work,'Retrieving a selected MusicBrainz recording',pool=pool,on_finished=finished)
+            try:job=owner.launch(work,'Retrieving a selected MusicBrainz recording',pool=pool,on_finished=finished,cancel_event=event)
             except Exception:finished(None);raise
         return jsonify(job=job)
 

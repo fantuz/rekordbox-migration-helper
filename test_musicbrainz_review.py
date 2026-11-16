@@ -98,6 +98,20 @@ class MusicBrainzReviewTests(unittest.TestCase):
             self.assertEqual(self.post('candidate',candidate_mbid=B,query_consent=True,review_revision='stale').status_code,409)
             client.assert_not_called()
 
+    def test_cancelled_alternative_keeps_prior_result_and_releases_reservation(self):
+        pending={}
+        def queued(work,*args,**kwargs):
+            pending.update(work=work,**kwargs);return 'queued'
+        before=self.current()
+        with patch('enrichment_context.require_snapshot'),patch.object(application,'launch',side_effect=queued):
+            self.assertEqual(self.post('candidate',candidate_mbid=B,query_consent=True).status_code,200)
+        self.addCleanup(lambda:pending['on_finished']('cancelled'))
+        self.assertEqual(self.post('review',approved=True).status_code,409)
+        pending['cancel_event'].set()
+        with patch('lab_routes.MusicBrainzClient',return_value=self.fake()):
+            with self.assertRaises(InterruptedError):pending['work'](lambda *_:None)
+        self.assertEqual(self.current(),before);self.assertFalse(application.lab_jobs_active())
+
     def test_revoking_approval_removes_only_batch_suggestions(self):
         self.choose();self.post('stage',field='album')
         self.assertEqual(self.post('review',approved=False).status_code,200)

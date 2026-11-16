@@ -71,7 +71,7 @@ async function loadMusicBrainz(sync=false){
   labSelect('#musicbrainz-library',context.sources,s=>s.label);
   const shared=window.Journeys?.context?.();
   const sharedScope=info.snapshots.find(s=>s.id===shared?.snapshot)?.scope_key||shared?.source;
-  const source=context.sources.find(s=>!sync&&s.id===oldSource)||context.sources.find(s=>s.kind==='workspace')||context.sources.find(s=>s.id===sharedScope)||context.sources[0];
+  const source=context.sources.find(s=>sync&&s.id===sharedScope)||context.sources.find(s=>s.id===oldSource)||context.sources.find(s=>s.id===sharedScope)||context.sources.find(s=>s.kind==='workspace')||context.sources[0];
   $('#musicbrainz-library').value=source?.id||'';
   musicBrainzSelectPrepared();
   await AudioPaths.load($('#musicbrainz-audio-paths'),source?.id||'');

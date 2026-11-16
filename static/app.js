@@ -834,7 +834,7 @@ $("#storage-form").onsubmit=wrap(async event=>{
   const started=await api("/api/storage/scan",{method:"POST",body:JSON.stringify({roots,policy:$("#storage-policy").value,source_report:$("#storage-source-report").value})});
   const result=await poll(started.job);storageOffset=0;await loadStorageAudit(result.id);await loadStorageInfo();$("#storage-result").scrollIntoView({behavior:"smooth",block:"start"});notify(I18n.t("Folder comparison saved · no media content read"));
 });
-wrap(async()=>{await refresh();window.BrowseState?.start();})();
+document.addEventListener('DOMContentLoaded',wrap(async()=>{await refresh();window.BrowseState?.start();}),{once:true});
 
 window.addEventListener('workbench-stale',()=>{
   let banner=document.getElementById('workspace-stale');

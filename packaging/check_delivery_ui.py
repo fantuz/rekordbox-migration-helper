@@ -94,6 +94,7 @@ def check_delivery_ui(browser,base,store,root,output):
         page.locator('.nav[data-view="musicbrainz"]').click()
         page.wait_for_selector('#musicbrainz-library option[value="capture:'+capture+'"]',state='attached')
         page.select_option('#musicbrainz-library','capture:'+capture)
+        page.locator('.musicbrainz-source details summary').click()
         page.select_option('#musicbrainz-snapshot',sid)
         page.evaluate('(batch)=>{labBatch=batch;labPilotOffset=0;return labLoadPilot();}',batch)
         row=page.locator('[data-mb-track="'+track_id+'"]')

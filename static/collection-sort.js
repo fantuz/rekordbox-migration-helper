@@ -13,9 +13,12 @@ window.CollectionSort=(()=>{
       option.textContent=field?I18n.field(field):I18n.t('Original order');select.append(option);
     }
     select.value=current.sort;controls.append(select);table.before(controls);
-    const change=field=>{state[key]={sort:field,direction:current.sort===field && current.direction==='asc'?'desc':'asc'};
+    const change=(field,direction)=>{state[key]={sort:field,direction:direction || (current.sort===field && current.direction==='asc'?'desc':'asc')};
       window.BrowseState?.set('sort:'+key,state[key]);return reload();};
-    select.onchange=wrap(()=>change(select.value));
+    select.onchange=wrap(()=>change(select.value,'asc'));
+    const direction=document.createElement('select');direction.setAttribute('aria-label',I18n.t('Sort direction'));
+    for(const [id,label] of [['asc','Ascending'],['desc','Descending']])direction.append(new Option(I18n.t(label),id));
+    direction.value=current.direction;controls.append(direction);direction.onchange=wrap(()=>change(select.value,direction.value));
     const headers=[...table.tHead.rows[0].cells];
     if(choices.includes('file_status')){
       const head=document.createElement('th');head.textContent=I18n.t('File health');table.tHead.rows[0].append(head);

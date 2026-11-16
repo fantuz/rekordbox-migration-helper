@@ -92,11 +92,12 @@ def task_progress(job, amount, text):
         tasks[job].update(progress=amount,message=text)
 
 
-def launch(work, message, pool=None, on_finished=None):
+def launch(work, message, pool=None, on_finished=None, cancel_event=None):
     if shutdown.requested.is_set():raise ValueError('The application is stopping')
     job = uuid4().hex
     tasks[job] = {"id":job,"status":"running","progress":0,"message":message}
     task_controls[job] = TaskControl()
+    if cancel_event is not None:task_controls[job].event=cancel_event
     def run():
         try:
             task_controls[job].checkpoint()
@@ -148,10 +149,11 @@ def load_session(metadata, sid, progress):
 
 
 def current():
-    if not active or active not in sessions:
-        raise ValueError("Load a backup and XML first")
-    from workspace_safety import require
-    return require(sys.modules[__name__], sessions[active])
+    with lock:
+        if not active or active not in sessions:
+            raise ValueError("Load a backup and XML first")
+        from workspace_safety import require
+        return require(sys.modules[__name__], sessions[active])
 
 
 def summary(session):
@@ -181,7 +183,7 @@ def configured_example():
 def protect():
     if shutdown.requested.is_set() and request.path not in ('/api/cleanup','/api/desktop/stop','/api/status') and not request.path.startswith('/api/tasks/'):
         return jsonify(error='The app is stopping and cleaning its temporary copies'),503
-    if request.method in ("POST","PUT","DELETE") and request.headers.get("X-Workbench-Token")!=TOKEN:
+    if request.method in ("POST","PUT","PATCH","DELETE") and request.headers.get("X-Workbench-Token")!=TOKEN:
         return jsonify(error="Reload the local page to authorize this action"),403
 
 
