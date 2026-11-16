@@ -28,7 +28,7 @@ def slot(key):
 def receive(runtime, sid, kind, source, length=None, cancelled=lambda: False):
     folder = runtime.path / sid
     info_path = folder / 'upload.json'
-    if folder.is_symlink() or not info_path.is_file() or info_path.is_symlink():
+    if folder.is_symlink() or folder.is_junction() or not info_path.is_file() or info_path.is_symlink():
         raise ValueError('This upload session is unavailable. Start a new import.')
     key = (str(runtime.path), sid, kind)
     with slot(key), runtime.operation():
@@ -67,4 +67,5 @@ def receive(runtime, sid, kind, source, length=None, cancelled=lambda: False):
                 raise ValueError('The temporary folder is not writable. Check permissions and retry.') from error
             raise ValueError('The upload could not be saved. Check storage and retry this file.') from error
         finally:
-            temp.unlink(missing_ok=True)
+            try:temp.unlink(missing_ok=True)
+            except OSError:pass  # Retry removes abandoned partials after permissions are repaired.

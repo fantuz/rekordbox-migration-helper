@@ -198,7 +198,9 @@ def proposals(detail):
     tags=sorted([{'name':str(g['name'])[:200],'count':g.get('count',0)} for g in detail.get('tags',[])
                  if isinstance(g,dict) and g.get('name') and isinstance(g.get('count'),(int,float))
                  and isfinite(g['count']) and g['count']>0],key=lambda g:(-g['count'],g['name']))[:20]
-    releases=[{'title':r.get('title'),'date':r.get('date'),'mbid':r.get('id')} for r in detail.get('releases',[])[:20]]
+    releases=[{'title':r.get('title'),'date':r.get('date'),'mbid':r.get('id'),
+               'country':r.get('country'),'status':r.get('status'),'disambiguation':r.get('disambiguation')}
+              for r in detail.get('releases',[])[:100] if isinstance(r,dict) and r.get('id') and r.get('title')]
     return {'community_score':score,'votes':int(votes),'scale_max':5,'year':min(years) if years else None,
             'year_basis':'First known release year for this recording; may differ from this file release',
             'genre':genres[0]['name'] if genres else None,'genre_votes':genres,'tags':tags,'possible_albums':releases,
@@ -293,18 +295,21 @@ def batch_record(store,identity,offset=0,sort='sample',direction='asc'):
         scanned={x['track_id']:x for x in db.execute(
             'SELECT track_id,status,checked_at FROM file_health_records WHERE source=?',
             ('snapshot:'+r['snapshot_id'],))}
+    from musicbrainz_review import revision,selected_candidate
     sample=json.loads(r['sample'])
     rows=[]
     for track in sample:
         evidence=scanned.get(track['id'])
         status=evidence['status'] if evidence and evidence['status'] in BATCH_FILE_STATUS_ORDER else 'unchecked'
         rows.append({**track,**results.get(track['id'],{'status':'not_requested'}),
+                     'review_revision':revision(results.get(track['id'],{})),
+                     'selected_mbid':selected_candidate(results.get(track['id'],{})).get('mbid'),
                      'file_status':status,
                      'file_status_checked_at':evidence['checked_at'] if evidence and status!='unchecked' else None})
     if sort!='sample':
         def value(row):
             if sort in ('confidence','candidate'):
-                candidate=(row.get('candidates') or [{}])[0]
+                candidate=selected_candidate(row)
                 raw=candidate.get('confidence' if sort=='confidence' else 'title')
             elif sort=='year':
                 raw=(row.get('proposal') or {}).get('year') or row.get('year')
@@ -375,7 +380,7 @@ def run_batch(store,identity,client,progress):
                         if detail.get('id')!=candidates[0]['mbid']:raise ValueError('Candidate details do not match the requested recording; retry later')
                         proposal=proposals(detail)
                     result={'status':'candidate_needs_review' if candidates else 'no_match','query':query,'candidates':candidates,'proposal':proposal,
-                            'search_strategy':strategy if candidates else 'exhausted','search_attempts':attempts,'match_approved':False}
+                            'selected_mbid':candidates[0]['mbid'] if candidates else None,'search_strategy':strategy if candidates else 'exhausted','search_attempts':attempts,'match_approved':False}
             consecutive_errors=0
         except InterruptedError as error:status='cancelled';summary['message']=str(error);break
         except Exception as error:

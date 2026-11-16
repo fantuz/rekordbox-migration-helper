@@ -47,7 +47,7 @@ def register(owner):
                     'session':lambda:session_progression(s,values.get('history',''),all_rows=True)}
         fields={'playlists':('name','common_tracks','tracks','jaccard','same_saved_order'),
                 'contents':('sequence','title','artist','genre','bpm','rating','file_status'),
-                'lenses':('title','artist','genre','playlists','saved_sessions','saved_entries','file_status'),
+                'lenses':('title','artist','genre','bpm','rating','playlists','saved_sessions','saved_entries','file_status'),
                 'session':('sequence','title','artist','bpm','bpm_delta','tonality','color_name','file_status')}
         return page_result(operations[kind](),values,fields[kind],
                            statuses=None if kind=='playlists' else scan_statuses(store(),s))

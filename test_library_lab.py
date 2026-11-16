@@ -423,11 +423,12 @@ class LabApiTests(unittest.TestCase):
         result={'status':'candidate_needs_review','match_approved':False,'candidates':[{'mbid':'01234567-89ab-cdef-0123-456789abcdef'}],
                 'proposal':{'year':2001,'genre':'deep house','retrieved_at':'2026-01-01'}}
         with self.store.connection() as db:db.execute('INSERT INTO mb_results VALUES (?,?,?,?)',(record['id'],'one',result['status'],encoded(result)))
-        endpoint='/api/lab/musicbrainz/'+record['id'];data={'track_id':'one','field':'year'}
+        endpoint='/api/lab/musicbrainz/'+record['id'];data={'track_id':'one','field':'year','review_revision':__import__('musicbrainz_review').revision(result)}
         self.assertEqual(self.client.post(endpoint+'/stage',json=data,headers=self.headers).status_code,400)
         self.client.post('/api/lab/unlock',json={'snapshot':self.sid,'unlocked':True},headers=self.headers)
         self.assertEqual(self.client.post(endpoint+'/stage',json=data,headers=self.headers).status_code,400)
-        self.client.post(endpoint+'/review',json={'track_id':'one','approved':True},headers=self.headers)
+        review=self.client.post(endpoint+'/review',json={'track_id':'one','approved':True,'review_revision':data['review_revision']},headers=self.headers)
+        data['review_revision']=review.json['review_revision']
         response=self.client.post(endpoint+'/stage',json=data,headers=self.headers)
         self.assertEqual(response.json['value'],2001);self.assertIn('MusicBrainz',response.json['origin'])
         self.assertEqual(self.client.post(endpoint+'/stage',json={'track_id':'one','field':'rating'},headers=self.headers).status_code,400)

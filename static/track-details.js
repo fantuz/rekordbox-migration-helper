@@ -33,7 +33,8 @@ function renderTrackWorkingEdits(s){
   $('#track-working-empty').hidden=Boolean(entries.length);
   $('#track-working-list').innerHTML=entries.map(([field,edit])=>{
     const value=field==='colour'?trackColourLabel(s.record,edit.value):String(edit.value ?? '');
-    return '<li><b>'+esc(field==='colour'?I18n.t('Track colour'):I18n.field(field))+'</b><span>'+esc(value || I18n.t('Empty value'))+'</span></li>';
+    let provenance='';try{const p=JSON.parse(edit.origin);if(p.provider==='MusicBrainz')provenance='<details><summary>MusicBrainz · '+esc(I18n.t('Provenance'))+'</summary><pre>'+esc(JSON.stringify(p,null,2))+'</pre></details>';}catch{}
+    return '<li><b>'+esc(field==='colour'?I18n.t('Track colour'):I18n.field(field))+'</b><span>'+esc(value || I18n.t('Empty value'))+'</span>'+provenance+'</li>';
   }).join('');
 }
 function renderTrackColour(s){

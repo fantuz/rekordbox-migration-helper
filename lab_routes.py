@@ -354,32 +354,9 @@ def register(owner):
             if identity in cancellations:cancellations[identity].set()
         return jsonify(cancel_requested=True)
 
-    @app.post('/api/lab/musicbrainz/<identity>/review')
-    def lab_pilot_review(identity):
-        b=body();track_id=str(b.get('track_id',''))
-        with store().connection() as db:
-            r=db.execute('SELECT payload FROM mb_results WHERE batch_id=? AND track_id=?',(identity,track_id)).fetchone()
-            if not r:raise ValueError('No retrieved match exists for this track')
-            result=json.loads(r[0])
-            if not result.get('candidates') or not result.get('proposal'):raise ValueError('No candidate with metadata is available')
-            result['match_approved']=b.get('approved') is True
-            result['reviewed_at']=now()
-            db.execute('UPDATE mb_results SET payload=? WHERE batch_id=? AND track_id=?',(encoded(result),identity,track_id))
-        return jsonify(match_approved=result['match_approved'],note='Approval records identity only. Stage each metadata field separately in the editor.')
-
-    @app.post('/api/lab/musicbrainz/<identity>/stage')
-    def lab_pilot_stage(identity):
-        b=body();field=b.get('field');track_id=str(b.get('track_id',''))
-        if field not in ('year','genre'):raise ValueError('Stage a proposed year or genre; personal stars remain a manual choice')
-        record=batch_record(store(),identity);s=store().snapshot(record['snapshot_id']);unlocked(s)
-        with store().connection() as db:r=db.execute('SELECT payload FROM mb_results WHERE batch_id=? AND track_id=?',(identity,track_id)).fetchone()
-        result=json.loads(r[0]) if r else {}
-        if not result.get('match_approved') or result.get('proposal',{}).get(field) is None:raise ValueError('Approve this retrieved identity before staging its available metadata')
-        t=next((t for t in s['tracks'] if t['id']==track_id),None)
-        if not t:raise ValueError('The retrieved track is outside the selected snapshot')
-        origin='MusicBrainz '+result['candidates'][0]['mbid']+' '+result['proposal']['retrieved_at']
-        value=store().save_override(s['scope_key'],track_id,field,result['proposal'][field],t.get(field),origin)
-        return jsonify(value=value,origin=origin)
+    from musicbrainz_review import register as register_review
+    register_review(owner,store,enabled,unlocked,gate,network_pool,cancellations,network_lock,
+                    lambda *args:MusicBrainzClient(*args))
 
     @app.post('/api/lab/offline-export')
     def lab_offline_export():
