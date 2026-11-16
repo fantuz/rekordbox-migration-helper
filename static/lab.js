@@ -74,7 +74,8 @@ async function labLoadReport() {
   $$('[data-lab-normalize]').forEach(b=>b.onclick=wrap(async()=>{
     const r=labReport.rows[Number(b.dataset.labNormalize)];
     if(labReport.sources[0]!==labSnapshot())throw new Error(I18n.t("Select the snapshot used by this report before staging normalization"));
-    const result=await labPost('normalize',{snapshot:labSnapshot(),track_ids:r.track_ids,field:r.field,value:r.canonical});
+    const result=await labPost('normalize',{snapshot:labSnapshot(),track_ids:r.track_ids,field:r.field,value:r.canonical,edit_revision:labReport.summary.edit_revision});
+    labReport.summary.edit_revision=result.edit_revision;
     await labLoadTracks();notify(num(result.count)+" "+I18n.t("field overrides staged; reset individual fields in Metadata editor"));
   }));
 }
@@ -101,7 +102,7 @@ function labEdit(item) {
     const edit=item.overrides[field],value=edit?edit.value:item.original[field];
     return '<label>'+esc(I18n.field(field))+'<input data-lab-field="'+field+'" '+(['rating','year'].includes(field)?'type="number" step="1" '+(field==='rating'?'min="0" max="5"':'min="1000" max="'+(new Date().getFullYear()+1)+'"'):'maxlength="255"')+' value="'+esc(value ?? '')+'" '+(!labUnlocked?'disabled':'')+("><small class=\"subtle\">"+esc(I18n.t("Captured:"))+" ")+esc(item.original[field] ?? I18n.t("Unknown"))+'</small>'+(edit?'<button class="text-button" type="button" data-lab-reset="'+field+'" '+(!labUnlocked?'disabled':'')+(">"+esc(I18n.t("Reset override"))+"</button>"):'')+'</label>';
   }).join('');$('#lab-edit-save').disabled=!labUnlocked;
-  $$('[data-lab-reset]').forEach(b=>b.onclick=wrap(async()=>{await api('/api/lab/overrides',{method:'DELETE',body:JSON.stringify({snapshot:labSnapshot(),track_id:item.original.id,field:b.dataset.labReset})});await labLoadTracks();}));
+  $$('[data-lab-reset]').forEach(b=>b.onclick=wrap(async()=>{await api('/api/lab/overrides',{method:'DELETE',body:JSON.stringify({snapshot:labSnapshot(),track_id:item.original.id,field:b.dataset.labReset,edit_revision:item.edit_revision})});await labLoadTracks();}));
 }
 $('#lab-unlock').onchange=wrap(async()=>{try{await labPost('unlock',{snapshot:labSnapshot(),unlocked:$('#lab-unlock').checked});}finally{await labLoadTracks();}});
 $('#lab-edit-form').onsubmit=wrap(async e=>{
@@ -109,7 +110,8 @@ $('#lab-edit-form').onsubmit=wrap(async e=>{
   for(const input of $$('[data-lab-field]')){
     const field=input.dataset.labField,previous=labEdited.overrides[field]?.value ?? labEdited.original[field];
     if(String(previous ?? '')===input.value)continue;
-    await labPost('overrides',{snapshot:labSnapshot(),track_id:labEdited.original.id,field,value:input.value});count++;
+    const result=await labPost('overrides',{snapshot:labSnapshot(),track_id:labEdited.original.id,field,value:input.value,edit_revision:labEdited.edit_revision});
+    labEdited.edit_revision=result.edit_revision;labEdited.overrides=result.overrides;count++;
   }
   await labLoadTracks();notify(num(count)+" "+I18n.t("field changes staged locally"));
 });
@@ -182,10 +184,10 @@ async function labLoadPilot(feedback=true,signal) {
     await labLoadPilot();
     $('#lab-pilot-results [data-lab-pilot-sort="'+field+'"]')?.focus({preventScroll:true});
   }));
-  $$('[data-lab-approve]').forEach(b=>b.onclick=wrap(async()=>{await labPost('musicbrainz/'+labBatch+'/review',{track_id:b.dataset.labApprove,approved:b.dataset.approved==='true',review_revision:r.rows.find(t=>t.id===b.dataset.labApprove).review_revision});await labLoadPilot();}));
+  $$('[data-lab-approve]').forEach(b=>b.onclick=wrap(async()=>{const row=r.rows.find(t=>t.id===b.dataset.labApprove);await labPost('musicbrainz/'+labBatch+'/review',{track_id:row.id,approved:b.dataset.approved==='true',review_revision:row.review_revision,edit_revision:row.edit_revision});await labLoadPilot();}));
   $$('[data-lab-proposal]').forEach(b=>b.onclick=wrap(async()=>{
     const t=r.rows.find(t=>t.id===b.dataset.labProposal);if(r.snapshot_id!==musicBrainzSnapshot())throw new Error(I18n.t("Select the snapshot used for this pilot before staging suggestions"));
-    await labPost('musicbrainz/'+labBatch+'/stage',{track_id:t.id,field:b.dataset.field,review_revision:t.review_revision});notify(I18n.t("Proposed")+" "+b.dataset.field+" "+I18n.t("staged after identity approval"));await labLoadTracks();
+    await labPost('musicbrainz/'+labBatch+'/stage',{track_id:t.id,field:b.dataset.field,review_revision:t.review_revision,edit_revision:t.edit_revision});notify(I18n.t("Proposed")+" "+b.dataset.field+" "+I18n.t("staged after identity approval"));await labLoadTracks();await labLoadPilot();
   }));
   bindMusicBrainzChoices(r,batch);
   return r;

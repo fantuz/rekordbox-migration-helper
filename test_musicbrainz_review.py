@@ -34,7 +34,8 @@ class MusicBrainzReviewTests(unittest.TestCase):
     def current(self):
         with self.store.connection() as db:return json.loads(db.execute('SELECT payload FROM mb_results WHERE batch_id=? AND track_id=?',(self.batch,'one')).fetchone()[0])
     def post(self,action,**values):
-        return self.client.post(self.url+'/'+action,json={'track_id':'one','review_revision':revision(self.current()),**values},headers=self.headers)
+        return self.client.post(self.url+'/'+action,json={'track_id':'one','review_revision':revision(self.current()),
+            'edit_revision':self.store.edit_state(self.source['scope_key'])['edit_revision'],**values},headers=self.headers)
     def approve(self):self.assertEqual(self.post('review',approved=True).status_code,200)
     def choose(self):
         self.approve();self.assertEqual(self.post('release',release_mbid=R).status_code,200)
@@ -66,6 +67,28 @@ class MusicBrainzReviewTests(unittest.TestCase):
         for action,extra in [('review',{'approved':False}),('stage',{'field':'genre'}),('release',{'release_mbid':R})]:
             self.assertEqual(self.post(action,review_revision=old,**extra).status_code,409)
         self.assertTrue(self.current()['match_approved']);self.assertEqual(self.store.overrides(self.source['scope_key']),{})
+
+    def test_manual_edit_after_provider_review_blocks_stale_staging_and_reset(self):
+        self.choose();old=self.store.edit_state(self.source['scope_key'])['edit_revision']
+        self.store.save_override(self.source['scope_key'],'one','genre','Manual genre',self.source['tracks'][0]['genre'])
+        before=self.store.edit_state(self.source['scope_key'],history=True);review=self.current()
+        for action,values in [('stage',{'field':'genre'}),('review',{'approved':False}),('release',{'release_mbid':R})]:
+            response=self.post(action,edit_revision=old,**values)
+            self.assertEqual(response.status_code,409,response.json)
+        self.assertEqual(self.store.edit_state(self.source['scope_key'],history=True),before)
+        self.assertEqual(self.current(),review)
+
+    def test_edit_while_alternative_downloads_prevents_result_and_override_changes(self):
+        self.choose();self.post('stage',field='album');before=self.current()
+        def get(*_args):
+            self.store.save_override(self.source['scope_key'],'one','genre','While downloading','House')
+            return self.fake().get()
+        with patch('enrichment_context.require_snapshot'),patch('lab_routes.MusicBrainzClient',return_value=SimpleNamespace(get=get)),patch.object(application,'launch',side_effect=self.launch):
+            response=self.post('candidate',candidate_mbid=B,query_consent=True)
+        self.assertEqual(response.status_code,409,response.json);self.assertEqual(self.current(),before)
+        fields=self.store.overrides(self.source['scope_key'])['one']
+        self.assertIn('album',fields);self.assertEqual(fields['genre']['value'],'While downloading')
+        self.assertFalse(application.lab_jobs_active())
 
     def test_alternative_resets_approval_release_and_own_staging_preserves_manual_edits(self):
         self.choose();self.assertEqual(self.post('stage',field='album').status_code,200)

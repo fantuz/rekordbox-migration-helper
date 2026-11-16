@@ -289,8 +289,12 @@ def batch_record(store,identity,offset=0,sort='sample',direction='asc'):
     except (ValueError,TypeError):raise ValueError('Choose a valid results page offset') from None
     if not 0<=offset<=1000000:raise ValueError('Choose a valid results page offset')
     with store.connection() as db:
+        db.execute('BEGIN')
         r=db.execute('SELECT * FROM mb_batches WHERE id=?',(identity,)).fetchone()
         if not r:raise ValueError('Pilot batch not found')
+        from metadata_concurrency import revision as edit_stamp
+        source=db.execute('SELECT scope_key FROM snapshots WHERE id=?',(r['snapshot_id'],)).fetchone()
+        edit_revision=edit_stamp(db,source[0])
         results={x['track_id']:json.loads(x['payload']) for x in db.execute('SELECT track_id,payload FROM mb_results WHERE batch_id=?',(identity,))}
         scanned={x['track_id']:x for x in db.execute(
             'SELECT track_id,status,checked_at FROM file_health_records WHERE source=?',
@@ -302,7 +306,7 @@ def batch_record(store,identity,offset=0,sort='sample',direction='asc'):
         evidence=scanned.get(track['id'])
         status=evidence['status'] if evidence and evidence['status'] in BATCH_FILE_STATUS_ORDER else 'unchecked'
         rows.append({**track,**results.get(track['id'],{'status':'not_requested'}),
-                     'review_revision':revision(results.get(track['id'],{})),
+                     'review_revision':revision(results.get(track['id'],{})),'edit_revision':edit_revision,
                      'selected_mbid':selected_candidate(results.get(track['id'],{})).get('mbid'),
                      'file_status':status,
                      'file_status_checked_at':evidence['checked_at'] if evidence and status!='unchecked' else None})

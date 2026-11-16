@@ -64,11 +64,12 @@ async function trackStoreEdit(s,field,value,reset=false){
   const focusedRating=document.activeElement?.dataset.trackRating;
   s.saving=true;renderTrackRating(s);renderTrackColour(s);renderTrackCommentState(s);
   try{
-    const body={snapshot:s.snapshot,track_id:s.trackId,field};
+    const body={snapshot:s.snapshot,track_id:s.trackId,field,edit_revision:s.record.edit_revision};
     const result=reset?await api('/api/lab/overrides',{method:'DELETE',body:JSON.stringify(body)}):await labPost('overrides',{...body,value});
     if(result.overrides)s.record.overrides=result.overrides;
     else if(reset)delete s.record.overrides[field];
     else s.record.overrides[field]={value:result.value};
+    s.record.edit_revision=result.edit_revision;
     renderTrackWorkingEdits(s);
     // Refresh export counters without reopening the editor or replacing its drafts.
     const status=await api('/api/status');

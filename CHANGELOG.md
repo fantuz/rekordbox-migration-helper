@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Retry failed or cancelled import analysis with a fresh catalog and publish it only after successful analysis, retaining uploaded inputs and the previous active workspace.
+- Reject stale manual metadata saves, resets, bulk normalization and MusicBrainz staging using persistent edit revisions. Bind export approval to those revisions and capture values, history and provenance consistently.
+- Restore working decisions, references, names, acknowledgements and derived policy state when saving fails. Preserve the prior inventory file when publication fails.
+- Preserve unknown duration and size values through XML/ZIP catalog import, snapshots, statistics and zero-value filters; keep explicit numeric zero distinct from missing metadata.
+- Align repository safeguard documentation and the main ruleset template with the verified active configuration, including required checks, native CodeQL protection and no bypass actors.
+
 ## 1.1.2 — 2026-11-16
 
 This update improves editing libraries through Linux mounts while preserving Windows/macOS export destinations, and makes workspace recovery and library review more reliable.

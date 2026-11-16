@@ -8,6 +8,7 @@ from flask import jsonify,request
 from werkzeug.exceptions import Conflict
 from workbench_store import encoded,now
 from metadata_overrides import validate,comparable
+from metadata_concurrency import require_revision,revision as edit_stamp
 
 def revision(result):
     return sha256(encoded(result).encode()).hexdigest()
@@ -81,6 +82,7 @@ def register(owner,store,enabled,unlocked,gate,pool,cancellations,network_lock,c
                     with saved.connection() as db:
                         db.execute('BEGIN IMMEDIATE')
                         result=read(db,identity,track,expected)
+                        require_revision(db,s['scope_key'],b.get('edit_revision'))
                         reset_staged(db,s['scope_key'],track,identity)
                         result.update(selected_mbid=candidate,proposal=proposal,match_approved=False,selected_release=None,
                                       status='candidate_needs_review',candidate_selected_at=now())
@@ -98,6 +100,7 @@ def register(owner,store,enabled,unlocked,gate,pool,cancellations,network_lock,c
             idle(identity)
             with saved.connection() as db:
                 db.execute('BEGIN IMMEDIATE');result=read(db,identity,track,b.get('review_revision'))
+                require_revision(db,s['scope_key'],b.get('edit_revision'))
                 release=next((r for r in (result.get('proposal') or {}).get('possible_albums',[]) if r.get('mbid')==b.get('release_mbid')),None)
                 if not release or not re.fullmatch('[0-9a-f-]{36}',str(release.get('mbid',''))) or not release.get('title'):
                     raise ValueError('Choose a release from this recording')
@@ -115,6 +118,7 @@ def register(owner,store,enabled,unlocked,gate,pool,cancellations,network_lock,c
             idle(identity)
             with saved.connection() as db:
                 db.execute('BEGIN IMMEDIATE');result=read(db,identity,track,b.get('review_revision'))
+                require_revision(db,s['scope_key'],b.get('edit_revision'))
                 if not result.get('candidates') or not result.get('proposal'):raise ValueError('No candidate with metadata is available')
                 result['match_approved']=b.get('approved') is True;result['reviewed_at']=now()
                 if not result['match_approved']:reset_staged(db,s['scope_key'],track,identity);result['selected_release']=None
@@ -132,6 +136,7 @@ def register(owner,store,enabled,unlocked,gate,pool,cancellations,network_lock,c
             idle(identity)
             with saved.connection() as db:
                 db.execute('BEGIN IMMEDIATE');result=read(db,identity,track,b.get('review_revision'))
+                require_revision(db,s['scope_key'],b.get('edit_revision'))
                 if not result.get('match_approved'):raise ValueError('Approve this retrieved identity before staging its available metadata')
                 proposal=result.get('proposal') or {};release=result.get('selected_release');candidate=selected_candidate(result)
                 basis='recording';value=proposal.get(field)
@@ -152,4 +157,5 @@ def register(owner,store,enabled,unlocked,gate,pool,cancellations,network_lock,c
                 db.execute('INSERT INTO override_history VALUES (?,?,?,?,?,?,?)',(uuid4().hex,s['scope_key'],track,field,old['value'] if old else None,encoded(value),now()))
                 db.execute('INSERT OR REPLACE INTO overrides VALUES (?,?,?,?,?,?,?)',
                            (s['scope_key'],track,field,encoded(value),encoded(local.get(field)),encoded(provenance),now()))
-        return jsonify(value=value,origin=encoded(provenance),provenance=provenance)
+                stamp=edit_stamp(db,s['scope_key'])
+        return jsonify(value=value,origin=encoded(provenance),provenance=provenance,edit_revision=stamp)

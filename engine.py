@@ -8,10 +8,12 @@ from urllib.parse import unquote, urlsplit
 from xml.parsers import expat
 import json
 import ntpath
+import os
 import re
 import sqlite3
 import struct
 import zipfile
+from tempfile import TemporaryDirectory
 
 AUTO_LABELS = {"cue(auto)", "1.1bars"}
 HOT_NUMBERS = dict(zip((1, 2, 3, 5, *range(6, 18)), range(16)))
@@ -330,6 +332,17 @@ def parse_xml(path, progress):
 
 
 def analyze(backup, xml, folder, progress, scratch=None):
+    """Publish only a complete catalog; a retry never reuses partial SQL tables."""
+    folder=Path(folder);folder.mkdir(parents=True,exist_ok=True)
+    with TemporaryDirectory(prefix='.catalog-',dir=folder) as attempt:
+        metadata=_analyze(backup,xml,Path(attempt),progress,scratch=scratch or folder)
+        output=folder/'catalog.sqlite3'
+        os.replace(metadata['source'],output)
+        metadata['source']=str(output)
+        return metadata
+
+
+def _analyze(backup, xml, folder, progress, scratch=None):
     progress(5, "Reading backup directory")
     scratch=Path(scratch or folder);scratch.mkdir(parents=True,exist_ok=True)
     master = scratch / "master.db"
@@ -393,7 +406,7 @@ def analyze(backup, xml, folder, progress, scratch=None):
                     x = xml_tracks.get(r["ID"])
                     signal, grid = assets.get(asset_key(r["AnalysisDataPath"]), (None, None))
                     db.execute("INSERT INTO source_track VALUES (" + ",".join("?"*20) + ")", (
-                        r["ID"],r["Title"] or "",r["artist_name"] or "",bool(x),r["FileSize"] or 0,r["Length"] or 0,
+                        r["ID"],r["Title"] or "",r["artist_name"] or "",bool(x),r["FileSize"],r["Length"],
                         r["Rating"] or 0,r["Commnt"] or "",r["DeviceID"],r["ServiceID"],r["FolderPath"],r["OrgFolderPath"],
                         x["attrs"]["Location"] if x else None,r["AnalysisDataPath"],r["ImagePath"],signal,grid,
                         x["tempo"] if x else None,json.dumps(x["marks"] if x else []),r["DJPlayCount"]))
@@ -420,7 +433,7 @@ def analyze(backup, xml, folder, progress, scratch=None):
     catalog = Catalog(output, {})
     signals = defaultdict(list)
     for t in catalog.tracks.values():
-        if t["preview_sha256"] and t["size_bytes"] > 0 and t["duration_seconds"] > 0:
+        if t["preview_sha256"] and (t["size_bytes"] or 0) > 0 and (t["duration_seconds"] or 0) > 0:
             signals[t["size_bytes"],t["duration_seconds"],t["preview_sha256"]].append(t["track_id"])
     with closing(sqlite3.connect(output)) as db:
         for ids in signals.values():
@@ -608,6 +621,8 @@ def export_xml(catalog, decisions, relocations, destination, progress):
                            DateAdded=(row["StockDate"] or "")[:10],Location=location,Comments=row["Commnt"] or "",
                            PlayCount=row["DJPlayCount"] or 0,SampleRate=row["SampleRate"] or 0,BitRate=row["BitRate"] or 0,
                            Tonality=row["Tonality"] or "")
+                for attr,column in (('Size','FileSize'),('TotalTime','Length')):
+                    if row[column] is None:attrs.pop(attr)
                 element=etree.Element("TRACK",{k:str(v) for k,v in attrs.items()})
                 if row.get('ReleaseYear'):element.set('Year',str(row['ReleaseYear']))
                 member=member_index.get(asset_key(t["analysis_path"]))
