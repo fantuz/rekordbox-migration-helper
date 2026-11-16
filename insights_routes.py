@@ -69,7 +69,7 @@ def register(owner):
     @app.get('/api/insights/tracks.csv')
     def download_csv():
         args=rank_args(request.args);result=ranking(index_for(args.get('snapshot','')),args,all_rows=True)
-        columns=('id','title','artist','album','genre','family','year','tonality','color_name','color_hex','color_status','bpm','rating','duration','format',
+        columns=('id','title','artist','album','genre','family','year','tonality','color_name','color_hex','color_status','bpm','rating','duration','size','format',
                  'plays','play_count','manual_cues','auto_cues','analysed','date_added','evidence_last_date','reason')
         stream=StringIO(newline='');writer=csv.writer(stream);writer.writerow((*columns,'usage_evidence'))
         def safe(value):

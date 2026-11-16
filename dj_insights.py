@@ -13,6 +13,8 @@ from track_tags import rgb
 
 PERSPECTIVES={
     'most':'Most played','least':'Least played · positive counts','zero':'No recorded plays',
+    'missing_mix':'Missing BPM or key','played_unprepared':'Played but unprepared',
+    'favourites_prepare':'Favourites needing cues','long_tracks':'Long tracks / mixes',
     'ready':'Prepared, no recorded plays','gems':'Highly rated, underplayed','rediscover':'Rediscover past rotation',
     'recent':'Recently added','last_used':'Recently used','preparation':'Preparation opportunities','random':'Random discovery','all':'All matching tracks'}
 DIMENSIONS={'family':'Genre family','genre':'Saved genre tag','year':'Release year','added':'Addition year',
@@ -35,7 +37,7 @@ RULES=(
 UNKNOWN={'','unknown','unknown genre','unclassified','no genre','none','n a','na','not set','?'}
 PREPARATION={'manual':'Manual cues','mixed':'Mixed manual / auto cues','auto':'Only automatic cues','none':'No cues','unknown':'Cue status unknown'}
 TRACK_FIELDS=('id','title','artist','album','genre','year','bpm','rating','duration','format','play_count',
-              'manual_cues','auto_cues','analysed','date_added','last_played','tonality','color_key','color_name','color_hex','color_status','color_basis')
+              'size','manual_cues','auto_cues','analysed','date_added','last_played','tonality','color_key','color_name','color_hex','color_status','color_basis')
 NOTE=('Recorded usage is evidence, not a measure of liking. Zero counts do not prove a track was never played. '
       'History dates belong to sessions, not individual play events. Cue origin is inferred from editable labels. '
       'Counts describe library entries; duplicate recordings can appear more than once. Originals and audio stay unchanged.')
@@ -97,6 +99,7 @@ class InsightIndex:
             t['color_key']=str(t['color_key'] or ('rgb:'+t['color_hex'] if t['color_hex'] and t['color_status']=='assigned' else t['color_status']))
             t['color_name']=str(t['color_name'] or {'unassigned':'No assigned colour','unknown':'Colour not captured','assigned':'Assigned colour'}[t['color_status']])
             for field in ('play_count','manual_cues','auto_cues'):t[field]=number(t[field],0,2**53-1)
+            t['size']=number(source.get('size',source.get('size_bytes')),0,2**53-1)
             for field in ('bpm','duration'):t[field]=number(t[field],.001 if field=='bpm' else 0,2**53-1)
             t['rating']=number(t['rating'],0,5);t['year']=number(t['year'],1000,2999)
             if t['genre'] not in families:families[t['genre']]=genre_family(t['genre'])
@@ -242,13 +245,16 @@ def statistics(rows):
 
 
 def public_track(t,reason=''):
+    from track_flags import flags
     return {k:t.get(k) for k in TRACK_FIELDS}|{'family':t['family'],'preparation':t['preparation'],'plays':t['plays'],
                                             'evidence_last_date':t['_evidence_last'].isoformat() if t['_evidence_last'] else None,
-                                            'evidence_date_after_snapshot':t['evidence_date_after_snapshot'],'reason':reason}
+                                            'evidence_date_after_snapshot':t['evidence_date_after_snapshot'],'reason':reason,'flags':flags(t)}
 
 
 def ranking(index,args,all_rows=False,limit=50):
     from result_order import ordered,TRACK_FIELDS
+    from track_flags import flags,checked_flag,FLAGS
+    quality=checked_flag(args.get('quality',''))
     rows,context=index.scope(args);scope=statistics(rows);mode=args.get('perspective','most')
     if mode not in PERSPECTIVES:raise ValueError('Choose a supported insight perspective')
     def setting(name,default,minimum,maximum):
@@ -261,7 +267,11 @@ def ranking(index,args,all_rows=False,limit=50):
     cutoff=index.reference-timedelta(days=days) if index.reference else None
     known=lambda t:t['plays'] is not None
     prepared=lambda t:t['analysed'] is True and t['manual_cues'] is not None and t['manual_cues']>0
-    predicates={'most':lambda t:known(t) and t['plays']>0,'least':lambda t:known(t) and t['plays']>0,
+    predicates={'missing_mix':lambda t:t['bpm'] is None or folded(t['tonality']) in UNKNOWN,
+                'played_unprepared':lambda t:known(t) and t['plays']>0 and t['manual_cues']==0,
+                'favourites_prepare':lambda t:t['rating'] is not None and t['rating']>=4 and t['manual_cues']==0,
+                'long_tracks':lambda t:t['duration'] is not None and t['duration']>=600,
+                'most':lambda t:known(t) and t['plays']>0,'least':lambda t:known(t) and t['plays']>0,
                 'zero':lambda t:known(t) and t['plays']==0,'ready':lambda t:known(t) and t['plays']==0 and prepared(t),
                 'gems':lambda t:known(t) and t['plays']<=max_plays and t['rating'] is not None and t['rating']>=stars and t['rating']>0,
                 'rediscover':lambda t:known(t) and t['plays']>0 and t['_evidence_last'] is not None and cutoff is not None and t['_evidence_last']<=cutoff,
@@ -269,7 +279,10 @@ def ranking(index,args,all_rows=False,limit=50):
                 'last_used':lambda t:known(t) and t['plays']>0 and t['_evidence_last'] is not None and not t['evidence_date_after_snapshot'],
                 'preparation':lambda t:t['analysed'] is False or t['preparation'] in ('auto','none'),
                 'random':lambda t:True,'all':lambda t:True}
-    selected=[t for t in rows if predicates[mode](t)];eligible=len(selected)
+    selected=[t for t in rows if predicates[mode](t)]
+    quality_counts={key:sum(key in flags(t) for t in selected) for key in FLAGS}
+    if quality:selected=[t for t in selected if quality in flags(t)]
+    eligible=len(selected)
     if mode=='random':
         random_key=lambda t:sha256((seed+'\0'+t['id']).encode()).digest()
         selected.sort(key=random_key)
@@ -298,7 +311,11 @@ def ranking(index,args,all_rows=False,limit=50):
     selected=ordered(selected,args.get('sort',''),args.get('direction','asc'),
                      (*TRACK_FIELDS,'family','plays','preparation','evidence_last_date','date_added'))
     def reason(t):
-        return {'ready':'Saved analyzed status and at least one manual cue; no plays in the selected evidence',
+        return {'missing_mix':'BPM or saved musical key is missing or unknown',
+                'played_unprepared':'Positive usage in the selected evidence and zero recorded manual cues',
+                'favourites_prepare':'At least four personal stars and zero recorded manual cues',
+                'long_tracks':'Recorded duration is at least ten minutes; may be a long track or a mix',
+                'ready':'Saved analyzed status and at least one manual cue; no plays in the selected evidence',
                 'gems':str(t['rating'])+' personal stars; '+str(t['plays'])+' recorded plays',
                 'rediscover':'Last recorded date is at least '+str(int(days))+' days before the snapshot reference date',
                 'preparation':'Saved status indicates analysis or manual cue preparation to review',
@@ -313,7 +330,7 @@ def ranking(index,args,all_rows=False,limit=50):
         balance.append({'family':key,**s,'library_share':library_share,'play_share':play_share,
                         'exploration_gap':library_share-play_share if library_share is not None and play_share is not None and s['known_usage'] else None})
     balance.sort(key=lambda g:(-g['recorded_plays'],-g['entries'],g['family']))
-    return {'snapshot':index.info,'context':context,'perspective':mode,'title':PERSPECTIVES[mode],
+    return {'quality':quality,'quality_counts':quality_counts,'snapshot':index.info,'context':context,'perspective':mode,'title':PERSPECTIVES[mode],
             'scope_stats':scope,'result_stats':statistics(selected),'total':len(selected),'eligible':eligible,'offset':offset,
             'sort_scope':'collection','rows':[{**public_track(t,reason(t)),'file_status':args.get('_file_statuses',{}).get(t['id'])} for t in (selected if all_rows else selected[offset:offset+limit])],
             'genre_balance':balance,'seed':seed if mode=='random' else None,

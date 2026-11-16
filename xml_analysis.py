@@ -27,7 +27,7 @@ def analyze_xml(source,output,progress):
         t=track({'id':identity,'title':a.get('Name'),'artist':a.get('Artist'),'album':a.get('Album'),'genre':a.get('Genre'),
                  'year':a.get('Year'),'bpm':a.get('AverageBpm'),'duration':a.get('TotalTime'),'rating':rating,'label':a.get('Label'),
                  'composer':a.get('Composer'),'play_count':a.get('PlayCount'),'date_added':a.get('DateAdded'),'bitrate':a.get('BitRate'),
-                 'sample_rate':a.get('SampleRate'),'current_path':a.get('Location'),'manual_cues':len(marks)-auto,'auto_cues':auto,
+                 'size':a.get('Size'),'sample_rate':a.get('SampleRate'),'current_path':a.get('Location'),'manual_cues':len(marks)-auto,'auto_cues':auto,
                  'comment':a.get('Comments'),'tonality':a.get('Tonality'),**xml_colour(a.get('Colour'))})
         t.update(cues=None,raw_tags={'year':a.get('Year'),'bpm':a.get('AverageBpm'),'duration':a.get('TotalTime'),'rating':rating},uuid=None,isrc=a.get('ISRC',''))
         tracks.append(t);by_location[path_key(a.get('Location'))].append(identity)

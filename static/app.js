@@ -191,6 +191,10 @@ $("#quick-export-form").onsubmit=wrap(async event=>{
 });
 
 function renderWorkflow() {
+  const reference=session?.export_reference;
+  $('#export-reference-target').disabled=!session || busy;
+  $('#export-reference-target').value=reference?.requested || 'auto';
+  $('#export-reference-target-state').textContent=!session?I18n.t('Load a library pair to begin.'):reference?.target?I18n.t('Export target: {target}. Recorded references are preserved unless explicitly edited.',{target:reference.target==='windows'?'Windows':'macOS'}):I18n.t('Source paths are mixed or unknown. Choose Windows or macOS before staging references or exporting.');
   $("#continue-review").disabled=!session;
   const acknowledged=!!session?.backup_acknowledged;
   const nativeVersion=String(session?.metadata?.version || "").split(".")[0]==="7";
@@ -454,6 +458,13 @@ $("#confirm-batch").onclick=wrap(async()=>{
     session=result.session;renderSession();await loadPairs();notify(num(result.count)+" "+I18n.t("merges staged ·")+" "+num(result.covered)+" "+I18n.t("comparisons already covered ·")+" "+num(result.blocked)+" "+I18n.t("group choices held"));
   } finally {finishProgress();}
 });
+$('#export-reference-target').onchange=wrap(async event=>{
+  const target=event.target.value;event.target.disabled=true;
+  try{
+    const response=await api('/api/export-target',{method:'POST',body:JSON.stringify({target})});
+    session=response.session;
+  }finally{renderWorkflow();}
+});
 $("#reference-form").onsubmit=wrap(async e=>{
   e.preventDefault();
   const result=await api("/api/relocation",{method:"POST",body:JSON.stringify({track_id:$("#reference-track").value.trim(),uri:$("#reference-uri").value.trim()})});
@@ -631,7 +642,7 @@ function renderGroupControls() {
 let inventoryOffset=0,inventoryRevision=0;
 function addMediaRoot(root={}) {
   const row=document.createElement("div");row.className="media-root";
-  row.innerHTML=("<label>"+esc(I18n.t("Folder on this computer"))+"<input class=\"media-folder\" placeholder=\"/home/you/Music or D:\\Music\" value=\"")+esc(root.root || "")+("\"></label><label>"+esc(I18n.t("Recorded prefix · optional"))+"<input class=\"media-prefix\" placeholder=\"C:/Users/you/Music\" value=\"")+esc(root.recorded_prefix || "")+("\"></label><label>"+esc(I18n.t("Export root URI · optional"))+"<input class=\"media-export\" placeholder=\"file://localhost/D:/Music\" value=\"")+esc(root.export_uri || "")+'"></label>';
+  row.innerHTML=("<label>"+esc(I18n.t("Folder on this computer"))+"<input class=\"media-folder\" placeholder=\"/home/you/Music or D:\\Music\" value=\"")+esc(root.root || "")+("\"></label><label>"+esc(I18n.t("Recorded prefix · optional"))+"<input class=\"media-prefix\" placeholder=\"C:/Users/you/Music\" value=\"")+esc(root.recorded_prefix || "")+("\"></label><label>"+esc(I18n.t("Exported reference prefix · required for staging"))+"<input class=\"media-export\" placeholder=\"file://localhost/D:/Music\" value=\"")+esc(root.export_uri || "")+'"></label>';
   $("#media-roots").append(row);
 }
 addMediaRoot();

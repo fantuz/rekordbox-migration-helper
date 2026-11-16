@@ -18,7 +18,8 @@ class WorkflowTests(unittest.TestCase):
         self.xml=self.root/"original.xml";self.xml.write_bytes(b"source collection")
         self.meta={"zip_path":str(self.zip),"xml_path":str(self.xml)}
         self.meta["input_fingerprints"]=fingerprint_inputs(self.meta)
-        self.catalog=SimpleNamespace(metadata=self.meta)
+        self.meta["export_target"]="windows"
+        self.catalog=SimpleNamespace(metadata=self.meta,tracks={})
         self.snapshot={"id":"session","name":"Test library","counts":{"tracks":2}}
         self.decisions={"a~b":{"action":"merge","keeper":"a"}}
 

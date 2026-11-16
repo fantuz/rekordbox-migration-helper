@@ -148,6 +148,8 @@ def rewrite_archive(source_path, destination, replacements, progress):
 
 def export_native(catalog,decisions,relocations,destination,progress):
     mapping,results=decision_map(catalog,decisions)
+    from export_references import validate_export,restore_note
+    export_target=validate_export(catalog,relocations,'zip',mapping)
     field_edits=override_plan(catalog,mapping)
     folder=destination.parent
     master=folder/"native-master.db"
@@ -299,4 +301,4 @@ def export_native(catalog,decisions,relocations,destination,progress):
             "metadata_changes_by_field":change_summary(field_edits)["by_field"],
             "bytes":destination.stat().st_size,"local_update_count":usn,
             "format":"Experimental native rekordbox Backup Library ZIP",
-            "restore_validation":"Verify in an isolated Windows library with Cloud Library Sync paused before replacing your working library."}
+            "export_target":export_target,"restore_validation":restore_note(export_target)}

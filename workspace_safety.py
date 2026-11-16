@@ -10,7 +10,7 @@ class WorkspaceConflict(Conflict):
 
 
 FIELDS = ('decisions', 'relocations', 'policy', 'backup_acknowledged', 'name',
-          'held_pairs', 'batches', 'media_verifications')
+          'held_pairs', 'batches', 'media_verifications', 'export_target')
 
 
 def revision(session):

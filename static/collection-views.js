@@ -1,7 +1,7 @@
 /* Native captures share the collection selector; source files are never mutated. */
 window.NativeCollection=(()=>{
   const revisions={review:0,reference:0};
-  const state={review:{offset:0,basis:'path',q:'',sort:'count',direction:'desc'},reference:{offset:0,mode:'all',q:'',sort:'title',direction:'asc'}};
+  const state={review:{offset:0,basis:'path',q:'',sort:'count',direction:'desc',flag:window.BrowseState?.value('native-zero-filter')||''},reference:{offset:0,mode:'all',q:'',sort:'title',direction:'asc'}};
   const labels={unreviewed:'Unreviewed',keep_separate:'Keep separate',candidate:'Candidate for later cleanup'};
   const fileStates=['playable','missing','inaccessible','unverified'];
   const fileStateLabels={playable:'Playable',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'};
@@ -47,6 +47,11 @@ window.NativeCollection=(()=>{
     panel.dataset.loadedScope=scope;
     const options=view==='review'?[['path','Same recorded path'],['metadata','Same artist and title']]:[['all','All references'],['changed','Original path differs'],['missing_path','No recorded current path']];
     panel.innerHTML=(view==='review'?'<div class="review-workspace native-review-workspace">':'')+'<article class="wide-card '+(view==='review'?'review-candidates':'')+'"><h2>'+text(view==='review'?'Captured duplicate candidates':'Captured file references')+'</h2>'+(view==='review'?'<details class="native-review-note"><summary>'+text('Details')+'</summary><p>'+esc(r.note)+'</p></details>':'<p class="callout">'+esc(r.note)+'</p>')+'<form class="native-filter"><label>'+text('Evidence')+'<select name="mode">'+options.map(([v,l])=>'<option value="'+v+'" '+(v===(values.basis || values.mode)?'selected':'')+'>'+text(l)+'</option>').join('')+'</select></label><label>'+text('Search')+'<input name="query" value="'+esc(values.q)+'"></label><button class="button">'+text('Apply')+'</button></form><p class="native-result-count">'+(view==='review'?num(r.groups)+' '+text('candidate groups')+' · '+num(r.tracks)+' '+text('tracks'):num(r.tracks)+' '+text('tracks')+' · '+num(r.changed)+' '+text('different original paths')+' · '+num(r.missing_path)+' '+text('empty current paths'))+'</p><div class="native-table"><table data-sort-scope="server"><thead><tr>'+(view==='review'?heading('title','Track',values)+heading('count','Records',values,'native-count')+heading('duration_spread','Duration spread',values,'native-spread')+heading('review','Review status',values,'native-review-state')+'<th scope="col" class="native-action">'+text('Review')+'</th>':heading('title','Track',values)+heading('current_path','Current path',values)+heading('original_path','Original path',values)+heading('analysis_path','Analysis path',values))+'</tr></thead><tbody>'+r.rows.map(t=>view==='review'?'<tr><td><strong>'+esc(t.title)+'</strong><br><span class="native-candidate-artist">'+esc(t.artist)+'</span></td><td class="native-count">'+num(t.count)+'</td><td class="native-spread">'+esc(t.duration_spread ?? I18n.t('Unknown'))+'</td><td class="native-review-state">'+text(labels[t.review] || 'Unreviewed')+'</td><td><button class="button secondary" data-native-group="'+esc(t.id)+'">'+text('Review')+'</button></td></tr>':'<tr><td>'+track(t)+'</td><td><code>'+esc(t.current_path || '')+'</code></td><td><code>'+esc(t.original_path || '')+'</code></td><td><code>'+esc(t.analysis_path || '')+'</code></td></tr>').join('')+'</tbody></table></div>'+pager(view,r)+'</article>'+(view==='review'?'<section class="native-detail" id="native-review-detail"><div class="detail-empty"><h3>'+text('Review')+'</h3><p>'+text('Compare captured records')+'</p></div></section></div>':'<div class="native-detail"></div>');
+    if(view==='review'){
+      const filters=document.createElement('div');filters.innerHTML=MetadataFlags.controls(r.flag_counts,values.flag)+'<p class="subtle">'+text('Filter groups containing flagged records. Keep all siblings visible for comparison.')+'</p>';
+      panel.querySelector('.native-filter').after(filters);
+      filters.querySelectorAll('[data-metadata-flag]').forEach(button=>button.onclick=wrap(async()=>{values.flag=button.dataset.metadataFlag;values.offset=0;BrowseState.set('native-zero-filter',values.flag);await load(view);}));
+    }
     panel.querySelector('form').onsubmit=wrap(async e=>{e.preventDefault();values.q=e.target.elements.query.value;values[view==='review'?'basis':'mode']=e.target.elements.mode.value;values.offset=0;await load(view);});
     panel.querySelectorAll('[data-native-sort]').forEach(button=>button.onclick=wrap(async()=>{
       const field=button.dataset.nativeSort;
@@ -69,8 +74,8 @@ window.NativeCollection=(()=>{
     const r=await api('/api/collection/duplicates/'+encodeURIComponent(id)+'?'+new URLSearchParams({source:scope,basis,offset}));
     if(scope!==source() || revision!==revisions.review)return;
     const hadFocus=host.contains(document.activeElement);
-    const fields=[['duration','Duration'],['rating','Rating'],['play_count','Play count'],['manual_cues','Manual cues'],['auto_cues','Automatic cues']];
-    host.innerHTML='<article class="wide-card"><p class="native-review-scope">'+text('Review notes are saved locally. Merging and path edits require the XML + ZIP export workspace.')+'</p><div class="native-compare-records">'+r.rows.map(t=>'<article class="native-compare-record" data-file-track="'+esc(t.id)+'"><header>'+track(t)+'<span class="native-file-status">'+fileBadge('unverified')+'</span></header><dl>'+fields.map(([field,label])=>'<div><dt>'+text(label)+'</dt><dd>'+esc(t[field] ?? I18n.t('Unknown'))+'</dd></div>').join('')+'</dl><div class="native-record-path"><span>'+text('Current path')+'</span><code>'+esc(t.current_path || '')+'</code></div></article>').join('')+'</div>'+pager('detail',r)+'<div class="native-review-actions"><label>'+text('Review status')+'<select class="native-status">'+Object.entries(labels).map(([v,l])=>'<option value="'+v+'" '+(v===r.review?'selected':'')+'>'+text(l)+'</option>').join('')+'</select></label><button class="button native-save">'+text('Save review')+'</button></div></article>';
+    const fields=[['duration','Duration'],['size','Recorded size (bytes)'],['rating','Rating'],['play_count','Play count'],['manual_cues','Manual cues'],['auto_cues','Automatic cues']];
+    host.innerHTML='<article class="wide-card"><p class="native-review-scope">'+text('Review notes are saved locally. Merging and path edits require the XML + ZIP export workspace.')+'</p><div class="native-compare-records">'+r.rows.map(t=>'<article class="native-compare-record" data-file-track="'+esc(t.id)+'"><header>'+track(t)+'<span class="native-file-status">'+fileBadge('unverified')+'</span>'+MetadataFlags.badges(t)+'</header><dl>'+fields.map(([field,label])=>'<div><dt>'+text(label)+'</dt><dd>'+esc(t[field] ?? I18n.t('Unknown'))+'</dd></div>').join('')+'</dl><div class="native-record-path"><span>'+text('Current path')+'</span><code>'+esc(t.current_path || '')+'</code></div></article>').join('')+'</div>'+pager('detail',r)+'<div class="native-review-actions"><label>'+text('Review status')+'<select class="native-status">'+Object.entries(labels).map(([v,l])=>'<option value="'+v+'" '+(v===r.review?'selected':'')+'>'+text(l)+'</option>').join('')+'</select></label><button class="button native-save">'+text('Save review')+'</button></div></article>';
     host.querySelector('[data-native-prev]').onclick=wrap(()=>detail(id,Math.max(0,offset-50)));
     host.querySelector('[data-native-next]').onclick=wrap(()=>detail(id,offset+50));
     host.querySelector('.native-save').onclick=wrap(async()=>{
@@ -99,6 +104,18 @@ window.NativeCollection=(()=>{
       for(const card of cards.querySelectorAll('[data-file-track]'))
         card.hidden=Boolean(current && selector.value!=='all' && current[card.dataset.fileTrack]!==selector.value);
     };
+    function paintEvidence(){
+      const counts=Object.fromEntries(fileStates.map(k=>[k,0]));
+      for(const card of cards.querySelectorAll('[data-file-track]')){
+        const status=current?.[card.dataset.fileTrack]||'unverified';counts[status]++;
+        card.querySelector('.native-file-status').innerHTML=fileBadge(status);
+      }
+      evidence.querySelector('.native-file-summary').innerHTML=fileStates.map(k=>fileBadge(k)+' '+num(counts[k])).join(' · ');selector.onchange();
+    }
+    cards.addEventListener('workbench-file-status',event=>{
+      const card=event.target.closest('[data-file-track]');if(!card || !fileStates.includes(event.detail?.status))return;
+      current={...current,[card.dataset.fileTrack]:event.detail.status};paintEvidence();
+    });
     async function loadEvidence(refreshNow=false){
       const ids=r.rows.map(t=>String(t.id));
       if(!ids.length)return;

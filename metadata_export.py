@@ -56,6 +56,7 @@ def track(values):
     result['colour']=editable_colour(result)
     for field in ("duration", "play_count", "manual_cues", "auto_cues", "bitrate", "sample_rate", "bit_depth"):
         result[field] = number(values.get(field))
+    result["size"] = number(values.get("size",values.get("size_bytes")),0,2**53-1)
     result["year"] = number(values.get("year"), 1000, 2999)
     result["bpm"] = number(values.get("bpm"), .001)
     result["rating"] = number(values.get("rating"), 0, 5)
@@ -109,7 +110,7 @@ def capture_database(db, columns):
     cue_known = {"ContentID", "Comment"} <= columns.get("djmdCue", set())
     source_fields = ("ID", "Title", "ArtistID", "AlbumID", "GenreID", "LabelID", "ComposerID", "ReleaseYear",
                      "BPM", "Rating", "Length", "DJPlayCount", "StockDate", "Analysed", "BitRate", "SampleRate",
-                     "BitDepth", "FolderPath", "OrgFolderPath", "Commnt", "KeyID", "ColorID")
+                     "BitDepth", "FileSize", "FolderPath", "OrgFolderPath", "Commnt", "KeyID", "ColorID")
     tracks = []
     for row in rows("djmdContent", source_fields):
         identity = str(row["ID"])
@@ -119,7 +120,7 @@ def capture_database(db, columns):
                   "bpm": None if saved_bpm is None else saved_bpm/100,
                   "rating": row["Rating"], "duration": row["Length"], "play_count": row["DJPlayCount"],
                   "date_added": row["StockDate"], "analysed": row["Analysed"], "bitrate": row["BitRate"],
-                  "sample_rate": row["SampleRate"], "bit_depth": row["BitDepth"], "current_path": row["FolderPath"],
+                  "sample_rate": row["SampleRate"], "size": row["FileSize"], "bit_depth": row["BitDepth"], "current_path": row["FolderPath"],
                   "original_path": row["OrgFolderPath"], "playlists": playlists[identity],
                   'comment':row['Commnt'],'tonality':keys.get(str(row['KeyID']),''),
                   **native_colour(row['ColorID'],colours.get(str(row['ColorID'])),'ColorID' in columns.get('djmdContent',set())),

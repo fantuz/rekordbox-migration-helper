@@ -139,16 +139,20 @@ def register(owner):
     @app.get('/api/collection/duplicates')
     @cached_collection(owner)
     def collection_duplicates():
+        from track_flags import flags,checked_flag,FLAGS
+        flag=checked_flag(request.args.get('flag',''))
         key, snapshot = source()
         groups = duplicate_groups(snapshot, request.args.get('basis', 'path'))
         saved = reviews(key)
         rows = [{'id': g['id'], 'basis': g['basis'], 'count': g['count'], 'duration_spread': g['duration_spread'],
                  'title': g['tracks'][0].get('title'), 'artist': g['tracks'][0].get('artist'),
-                 'review': saved.get(g['id'], 'unreviewed')} for g in groups if any(matches(t) for t in g['tracks'])]
+                 'review': saved.get(g['id'], 'unreviewed'), 'flags': sorted({f for t in g['tracks'] for f in flags(t)})} for g in groups if any(matches(t) for t in g['tracks'])]
+        flag_counts={key:sum(key in r['flags'] for r in rows) for key in FLAGS}
+        if flag:rows=[r for r in rows if flag in r['flags']]
         sorting = request.args.get('sort', 'count')
         direction = request.args.get('direction', 'desc')
         rows = sort_collection_rows(rows, 'duplicates', sorting, direction)
-        return jsonify(source=key, **page(rows), sort=sorting, direction=direction,
+        return jsonify(source=key, **page(rows), sort=sorting, direction=direction, flag=flag,flag_counts=flag_counts,
                        groups=len(groups), tracks=sum(g['count'] for g in groups),
                        note='Candidates only. Paths and matching tags do not prove identical audio; versions, durations and cues need review. No merge or source write is performed.')
 
@@ -159,7 +163,8 @@ def register(owner):
         group = next((g for g in duplicate_groups(snapshot, request.args.get('basis', 'path')) if g['id'] == identity), None)
         if group is None:
             raise ValueError('This candidate group is no longer available')
-        return jsonify(source=key, id=identity, count=group['count'], review=reviews(key).get(identity, 'unreviewed'), **page(group['tracks']))
+        from track_flags import flags
+        return jsonify(source=key, id=identity, count=group['count'], review=reviews(key).get(identity, 'unreviewed'), **page([{**t,'flags':flags(t)} for t in group['tracks']]))
 
     @app.post('/api/collection/duplicates/<identity>/review')
     def review_duplicate(identity):

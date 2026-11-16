@@ -148,7 +148,7 @@ class StoreAndOverrideTests(unittest.TestCase):
         xml.write_text('<DJ_PLAYLISTS><PRODUCT Version="7.0.0"/><COLLECTION Entries="1"><TRACK TrackID="one" Name="Original" Artist="" Year="2000" Rating="51"><TEMPO Inizio="0" Bpm="120" Metro="4/4" Battito="1"/><POSITION_MARK Name="Drop" Num="0" Type="0" Start="1.000"/></TRACK></COLLECTION><PLAYLISTS><NODE><TRACK Key="one"/></NODE></PLAYLISTS></DJ_PLAYLISTS>',encoding='utf-8')
         original=[sha256(p.read_bytes()).hexdigest() for p in (backup,xml)]
         edits={'one':{'title':'Łódź · Ελληνικά · Česky · Русский · 🎧','artist':'Grüße & Français','album':'Città più · Español ñ','genre':'House · Δοκιμή','year':2024,'rating':4,'comment':'First line\nGrüße Français Città Español Ελληνικά Łódź Český Русский 🎧 & <mix>','colour':'#FF0000'}}
-        c=SimpleNamespace(tracks={'one':{'october_xml':True}},metadata={'xml_path':str(xml),'zip_path':str(backup),'version':'7.0.0','field_overrides':edits})
+        c=SimpleNamespace(tracks={'one':{'october_xml':True}},metadata={'xml_path':str(xml),'zip_path':str(backup),'version':'7.0.0','field_overrides':edits,'export_target':'windows'})
         outxml=self.root/'edited.xml';outzip=self.root/'edited.zip'
         x=export_xml(c,{}, {},outxml,lambda *_:None);n=export_native(c,{}, {},outzip,lambda *_:None)
         self.assertEqual((x['metadata_fields'],n['metadata_fields']),(8,8))

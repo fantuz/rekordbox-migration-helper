@@ -548,6 +548,8 @@ def export_xml(catalog, decisions, relocations, destination, progress):
     xml = Path(catalog.metadata["xml_path"])
     backup = Path(catalog.metadata["zip_path"])
     mapping, results = decision_map(catalog, decisions)
+    from export_references import validate_export,restore_note
+    export_target=validate_export(catalog,relocations,'xml',mapping)
     field_edits=override_plan(catalog,mapping)
     in_xml = {i for i,t in catalog.tracks.items() if t["october_xml"]}
     result_ids = {mapping.get(i,i) for i in in_xml}
@@ -694,4 +696,4 @@ def export_xml(catalog, decisions, relocations, destination, progress):
             "metadata_fields":sum(len(fields) for i,fields in field_edits.items() if i in result_ids),
             "metadata_tracks_outside_xml":len(field_edits.keys()-result_ids),
             "metadata_changes_by_field":change_summary({i:f for i,f in field_edits.items() if i in result_ids})["by_field"],
-            "relocations":len(relocations),"sha256":digest,"native_backup_status":"Windows restore validation required"}
+            "relocations":len(relocations),"sha256":digest,"export_target":export_target,"native_backup_status":restore_note(export_target)}

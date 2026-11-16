@@ -124,7 +124,7 @@ class SeratoValidationTests(unittest.TestCase):
     def test_posix_paths_remain_case_sensitive_and_uri_unicode_is_decoded(self):
         self.assertEqual(volume_relative('file://localhost/Volumes/DJ/Music/%C3%A9.wav','/Volumes/DJ'),'Music/é.wav')
         data=source();data['tracks']=[{'id':'a','current_path':'/Music/A.wav'},{'id':'b','current_path':'/Music/a.wav'}]
-        self.assertEqual(draft_package(data,'/')[1]['tracks_written'],2)
+        self.assertEqual(draft_package(data,'/',target_profile='macos')[1]['tracks_written'],2)
         for path in ('//server/share/a.wav','C:/Music/../a.wav','C:/Music/a.wav:stream','C:/Music/\x00.wav'):
             with self.assertRaises(ValueError):volume_relative(path,'C:/')
 

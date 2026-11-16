@@ -28,9 +28,13 @@ def resolve_serato_profile(source_root,target_root='',profile='auto',host=None):
     if not source_root:raise ValueError('Choose a music volume root')
     source_windows=bool(re.match(r'^[A-Za-z]:/',source_root))
     if target_root:
+        if profile=='auto' and not (re.match(r'^[A-Za-z]:',target_root) or _mac_volume(target_root)):
+            raise ValueError('Choose Windows or macOS explicitly for an ambiguous target root.')
         inferred='windows' if re.match(r'^[A-Za-z]:',target_root) else 'macos'
         target=inferred if profile=='auto' else profile
     else:
+        if profile=='auto' and not (source_windows or source_root.startswith('/Volumes/') and _mac_volume(source_root)):
+            raise ValueError('Use the recorded source volume or choose Windows/macOS explicitly; a Linux mount is not a target profile.')
         target=('windows' if source_windows else 'macos') if profile=='auto' else profile
         # Keep compatible volume roots; cross-platform/default simulation uses
         # an explicit conventional destination, without inspecting local disks.

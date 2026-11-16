@@ -158,7 +158,7 @@ class ColourSidecarAPITests(unittest.TestCase):
         evidence=self.store.overrides('session:synthetic')
         edits={identity:{f:e['value'] for f,e in fields.items()} for identity,fields in evidence.items()}
         xml=self.root/'source.xml';xml.write_text('<TRACK/>');backup=self.root/'source.zip';backup.write_bytes(b'fixture')
-        catalog=SimpleNamespace(metadata={'xml_path':str(xml),'zip_path':str(backup),'field_overrides':edits})
+        catalog=SimpleNamespace(metadata={'xml_path':str(xml),'zip_path':str(backup),'field_overrides':edits,'export_target':'windows'},tracks={})
         state={'id':'synthetic','metadata_override_evidence':evidence,'metadata_edit_history':self.store.override_history('session:synthetic')}
         def writer(c,d,r,path,p):path.write_bytes(b'output');return {'merges':0,'metadata_fields':1,'metadata_changes_by_field':{'comment':1},'metadata_tracks_outside_xml':1}
         result=prepare_export(catalog,{}, {},state,self.root/'exports','a'*32,'xml',lambda *_:None,xml_writer=writer)

@@ -140,7 +140,7 @@ def load_session(metadata, sid, progress):
     catalog.policy=saved.get("policy","newest")
     catalog.refresh_counts()
     session={"id":sid,"_workspace_generation":uuid4().hex,"metadata":metadata,"catalog":catalog,"decisions":saved.get("decisions",{}),
-             "relocations":saved.get("relocations",{}),"events":saved.get("events",[]),"policy":catalog.policy,"last_batch":saved.get("last_batch",[]),"batches":saved.get("batches",[]),"held_pairs":saved.get("held_pairs",{}),"inventory":inventory,"inventory_path":saved.get("inventory_path"),"name":saved.get("name",metadata["name"]),"media_verifications":saved.get("media_verifications",{}),"backup_acknowledged":saved.get("backup_acknowledged")}
+             "export_target":saved.get("export_target","auto"),"relocations":saved.get("relocations",{}),"events":saved.get("events",[]),"policy":catalog.policy,"last_batch":saved.get("last_batch",[]),"batches":saved.get("batches",[]),"held_pairs":saved.get("held_pairs",{}),"inventory":inventory,"inventory_path":saved.get("inventory_path"),"name":saved.get("name",metadata["name"]),"media_verifications":saved.get("media_verifications",{}),"backup_acknowledged":saved.get("backup_acknowledged")}
     with lock:
         log(session,f"Loaded {len(catalog.tracks):,} tracks and {len(catalog.pairs):,} candidate pairs")
         sessions[sid]=session
@@ -161,7 +161,9 @@ def summary(session):
     from workbench_store import Store
     fields=Store(DATA/'workbench-sidecar.sqlite3').overrides('session:'+session['id']) if (DATA/'workbench-sidecar.sqlite3').is_file() else {}
     from workspace_safety import revision
+    from export_references import target_info
     return {"id":session["id"],"revision":revision(session),"name":session.get("name",session["metadata"]["name"]),"metadata":session["metadata"],"counts":session["catalog"].counts,
+            "export_reference":target_info(session["catalog"],session.get("export_target","auto")),
             "metadata_override_fields":sum(len(v) for v in fields.values()),
             "metadata_override_tracks":len(fields),"metadata_override_by_field":{f:sum(f in v for v in fields.values()) for f in {f for v in fields.values() for f in v}},
             "policy":session["policy"],"backup_acknowledged":session.get("backup_acknowledged"),"staged":sum(d["action"]=="merge" for d in decisions.values()),
@@ -719,6 +721,33 @@ def policy():
     return jsonify(job=launch(change,"Updating keeper suggestions"))
 
 
+
+def reference_catalog(session):
+    from workbench_store import Store
+    catalog=copy(session["catalog"])
+    catalog.metadata=deepcopy(catalog.metadata)
+    catalog.metadata['export_target']=session.get('export_target','auto')
+    catalog.metadata['_audio_access_mappings']=Store(DATA/'workbench-sidecar.sqlite3').setting('audio_paths:session:'+session['id'],[])
+    return catalog
+
+
+@app.post("/api/export-target")
+def export_target():
+    from export_references import target_info
+    session=current()
+    body=request.get_json(silent=True)
+    if not isinstance(body,dict):raise ValueError('Choose an export target.')
+    selected=body.get('target')
+    target_info(session['catalog'],selected)
+    previous=session.get('export_target','auto')
+    session['export_target']=selected
+    try:log(session,'Export reference target: '+selected)
+    except Exception:
+        session['export_target']=previous
+        raise
+    return jsonify(session=summary(session))
+
+
 @app.post("/api/relocation")
 def relocation():
     from urllib.parse import urlsplit
@@ -731,6 +760,8 @@ def relocation():
     if uri and (urlsplit(uri).scheme!="file" or not urlsplit(uri).path):
         raise ValueError("Enter a file URI such as file://localhost/D:/Music/track.mp3")
     if uri:
+        from export_references import validate_relocations
+        validate_relocations(reference_catalog(session),{i:uri})
         session["relocations"][i]=uri
     else:
         session["relocations"].pop(i,None)
@@ -744,7 +775,7 @@ def report():
     mapping,results=decision_map(session["catalog"],session["decisions"])
     payload={**summary(session),"decisions":session["decisions"],"reference_edits":session["relocations"],
              "merge_map":mapping,"cue_changes":{i:r["changes"] for i,r in results.items()},
-             "format":"Offline review plan v1","native_backup_writer":"Experimental ZIP export; isolated Windows restore test required"}
+             "format":"Offline review plan v1","native_backup_writer":"Native ZIP export requires an isolated restore test on the selected Windows/macOS target"}
     return app.response_class(json.dumps(payload,ensure_ascii=False,indent=2),mimetype="application/json",
                               headers={"Content-Disposition":'attachment; filename="library-review-report.json"'})
 
@@ -758,8 +789,7 @@ def export():
         session=current()
         if not session.get("backup_acknowledged"):
             raise ValueError("Keep a separate, untouched rekordbox Backup Library backup before transforming files, then acknowledge it on Prepare export.")
-        catalog=copy(session["catalog"])
-        catalog.metadata=deepcopy(catalog.metadata)
+        catalog=reference_catalog(session)
         if kind in ("zip","pair") and str(catalog.metadata.get("version","")).split(".")[0]!="7":
             raise ValueError("Native ZIP generation is currently available for v7 inputs only. Older libraries can be inspected with Source analyzer; native round-trip validation for v6 is pending.")
         check_inputs(catalog.metadata)
@@ -767,6 +797,9 @@ def export():
         catalog.metadata['field_overrides']=workspace_overrides(DATA,session)
         decisions=deepcopy(session["decisions"])
         relocations=dict(session["relocations"])
+        from export_references import validate_export
+        retired,_=decision_map(catalog,decisions)
+        validate_export(catalog,relocations,kind,retired)
         snapshot=deepcopy(summary(session))
         snapshot['metadata_overrides']=deepcopy(catalog.metadata['field_overrides'])
         from workbench_store import Store
@@ -1091,6 +1124,8 @@ def stage_inventory_reference():
             log(session,'Cleared inventory reference for '+session['catalog'].tracks[i]['title'])
             return jsonify(session=summary(session))
         uri=stage_candidate(inventory,match)
+        from export_references import validate_relocations
+        validate_relocations(reference_catalog(session),{i:uri})
         session['relocations'][i]=uri
         log(session,'Staged inventory reference for '+session['catalog'].tracks[i]['title'])
         return jsonify(session=summary(session))
