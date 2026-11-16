@@ -18,6 +18,16 @@ Third-party research describes `master.sqlite` and `root.sqlite` inside the 4.x 
 
 A future **read-only 4.x discovery phase** should identify which stores exist, capture file and journal metadata, inventory tables and relationships from a stable private copy, and compare results against application counts. It must not merge, checkpoint or replace an active Serato database. Cue, loop and grid migration additionally needs explicit source/audio-tag handling and independent test fixtures.
 
+### Cross-platform target path profiles
+
+The detached legacy draft now accepts an explicit target path profile: **Auto**, **Windows** or **macOS**. On Linux, both targets are explicitly treated as **simulated path conventions**, not evidence of an installed/running Serato application. An optional target music volume root can differ from the source volume: for example source `C:/`, target `/Volumes/DJ`. Only volume-relative track paths are encoded; they retain their internal folder hierarchy, which must actually be copied to the chosen destination before testing. This does not invent file existence or translate drive letters automatically. Preview and ZIP manifest identify the source and target roots, target OS profile and whether it was simulated. The generated ZIP remains an **unverified legacy database V2 and static crate draft**, not a Serato 4.x SQLite database.
+
+Official Serato paths: on Windows, `%USERPROFILE%/Music/_Serato_` and `%LOCALAPPDATA%/Serato/Library`; on macOS, `~/Music/_Serato_` and `~/Library/Application Support/Serato/Library`. External volumes typically carry `_Serato_` at their root. The newer `Serato/Library` folder is shown as a *location hint only*: our ZIP does not write its modern SQLite content.
+
+Auto uses the entered target root first, falling back to the source path style. An explicit Windows or macOS selection with no compatible root offers `C:/` or `/Volumes/DJ`; a compatible custom root is retained. Windows targets require a drive root, and macOS targets require `/` or `/Volumes/<drive>`. Source roots remain independent. The preview and manifest include up to five mapped destination path examples; encoded database paths stay volume-relative.
+
+Case aliases on a Windows source still share one exported record. Distinct POSIX source paths that would collide on a Windows destination are different: the conflicting record and its playlist references are omitted with `target_path_collision`, so no playlist silently points to a different file. Review and resolve these filenames before migration. macOS path comparisons remain case-sensitive; the actual destination filesystem may differ.
+
 ### Suggested compatibility milestones
 
 1. **Real-application acceptance:** import the existing synthetic three-track fixture into isolated installations of Serato 3.x and 4.x, recording application version, OS, library layout, errors and what Serato actually displays.
@@ -26,33 +36,6 @@ A future **read-only 4.x discovery phase** should identify which stores exist, c
 4. **Advanced metadata last:** investigate cues, loops, grids, ratings and smart-crate rules only after round-trip, version-specific and data-loss validation. Never automatically promote incomplete conversions to full migration.
 
 
-
-## Source and target path profiles
-
-The draft exporter now keeps the **source library music-volume root** separate
-from its **target Serato platform** (Windows or macOS) and **target music-volume root**.
-For example, a source `C:/` can be previewed as `/Volumes/DJ`,
-or a captured `/Volumes/DJ` source can target `D:/`.
-The generated legacy database continues to encode paths *relative to the selected
-music volume*; a profile records intended path mappings in the JSON manifest
-without accessing either filesystem. The target root is a drive root such as
-`C:/` on Windows, or `/` / `/Volumes/DJ` on macOS. The export
-remains detached and does **not** write into a running Serato installation.
-
-On **Linux**, Serato is not installed or run by the helper: both Windows and
-macOS profile options are clearly marked **simulated** in the preview and
-manifest. Auto mode infers a target path style from the recorded source when
-there is no native Serato platform. Windows paths compare case-insensitively to
-avoid path collisions; macOS profiles preserve case-sensitive spelling for
-comparison (actual filesystem behavior can differ). Never treat path simulation
-or independent binary validation as proof of a successful Serato import.
-
-Serato's official support documentation identifies `~/Music/_Serato_` and
-`%USERPROFILE%\\Music\\_Serato_` as standard folder locations, with the
-separate 4.x **Library** folder in `~/Library/Application Support/Serato/Library`
-or `%LOCALAPPDATA%\\Serato\\Library`.
-This draft still targets the **legacy database V2**, not the Serato 4.x
-SQLite library and never attempts to replace either database.
 
 ## Included and omitted
 

@@ -89,38 +89,6 @@ class StoreAndOverrideTests(unittest.TestCase):
         self.assertEqual(self.store.snapshot(identity),original)
         self.store.clear_override('scope','one','genre');self.assertEqual(self.store.effective(original)['metadata_overrides_applied'],0)
 
-    def test_musicbrainz_global_sort_is_stable_across_50_row_pages_and_refresh(self):
-        tracks=[song(str(i),title=f'Title {124-i:03}',artist=f'Artist {i % 7}',
-                     genre='House') for i in range(125)]
-        saved=self.store.save_snapshot(snapshot(tracks),'Sort test')
-        batch=create_batch(self.store,self.store.snapshot(saved['id']),target='random',
-                           sample_size=150,seed='sort')
-        with self.store.connection() as db:
-            for i in range(125):
-                db.execute('INSERT INTO mb_results (batch_id,track_id,status,payload) VALUES (?,?,?,?)',
-                           (batch['id'],str(i),'candidate_needs_review',
-                            json.dumps({'status':'candidate_needs_review',
-                                        'candidates':[{'title':f'Candidate {124-i:03}'}],
-                                        'proposal':{'community_score':i / 100}})))
-            for i,state in [(0,'missing'),(1,'playable'),(2,'inaccessible')]:
-                db.execute('INSERT INTO file_health_records VALUES (?,?,?,?,?,?,?,?)',
-                           ('snapshot:'+saved['id'],str(i),f'Title {124-i:03}','Artist','House',
-                            state,0,''))
-        ordered=[batch_record(self.store,batch['id'],page,'title','asc') for page in (0,50,100)]
-        names=[row['title'] for batch_page in ordered for row in batch_page['rows']]
-        self.assertEqual(names,[f'Title {i:03}' for i in range(125)])
-        self.assertEqual([len(batch_page['rows']) for batch_page in ordered],[50,50,25])
-        self.assertEqual(batch_record(self.store,batch['id'],50,'title','asc')['rows'][0]['title'],'Title 050')
-        self.assertEqual(batch_record(self.store,batch['id'],0,'title','desc')['rows'][0]['title'],'Title 124')
-        community=batch_record(self.store,batch['id'],0,'community','desc')
-        self.assertEqual(community['rows'][0]['id'],'124')
-        by_status=batch_record(self.store,batch['id'],0,'file_status','asc')
-        self.assertEqual([row['id'] for row in by_status['rows'][:3]],['1','0','2'])
-        self.assertEqual(by_status['rows'][3]['file_status'],'unchecked')
-        self.assertEqual(batch_record(self.store,batch['id'],50,'title','asc')['sort'],'title')
-        for field,direction in [('bad','asc'),('title','sideways')]:
-            with self.assertRaises(ValueError):batch_record(self.store,batch['id'],0,field,direction)
-
     def test_whole_stars_plausible_year_and_merge_conflicts(self):
         for field,value in [('rating',2.5),('rating',6),('year',42),('genre','bad\0tag')]:
             with self.assertRaises(ValueError):validate(field,value)
@@ -245,6 +213,90 @@ class AssetAndOrphanTests(unittest.TestCase):
 class MusicBrainzTests(unittest.TestCase):
     def setUp(self):
         temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup);self.store=Store(Path(temporary.name)/'pilot.sqlite3')
+
+
+    def test_full_batch_sort_survives_paging_and_updates(self):
+        tracks=[song(str(i),title=f'Track {149-i:03}',artist=f'Artist {i%4}',year=2000+i%10)
+                for i in range(150)]
+        record=create_batch(self.store,snapshot(tracks),sample_size=150,target='random',seed='ordered')
+        identity=record['id']
+        default=batch_record(self.store,identity)
+        first=batch_record(self.store,identity,0,'title','asc')
+        second=batch_record(self.store,identity,50,'title','asc')
+        third=batch_record(self.store,identity,100,'title','asc')
+        expected=sorted([t['title'] for t in record['sample']],key=str.casefold)
+        self.assertEqual([r['title'] for part in (first,second,third) for r in part['rows']],expected)
+        self.assertEqual(first['sort'],'title')
+        self.assertEqual(second['direction'],'asc')
+        self.assertEqual(len(second['rows']),50)
+        self.assertEqual(default['rows'][0]['id'],record['sample'][0]['id'])
+        desc=batch_record(self.store,identity,50,'title','desc')
+        self.assertEqual([r['title'] for r in desc['rows']],list(reversed(expected))[50:100])
+        # Late provider results must not reset the active sort, and missing
+        # numeric evidence remains at the end in both sort directions.
+        with self.store.connection() as db:
+            db.execute('INSERT INTO mb_results VALUES (?,?,?,?)',
+                       (identity,record['sample'][0]['id'],'candidate_needs_review',
+                        json.dumps({'status':'candidate_needs_review','candidates':[{'confidence':.98}],
+                                    'proposal':{'year':2022}})))
+        ranked=batch_record(self.store,identity,0,'confidence','desc')
+        self.assertEqual(ranked['rows'][0]['id'],record['sample'][0]['id'])
+        self.assertEqual(batch_record(self.store,identity,0,'confidence','asc')['rows'][0]['id'],record['sample'][0]['id'])
+        self.assertEqual(batch_record(self.store,identity,50,'title','asc')['rows'][0]['title'],expected[50])
+        for kwargs in ({'sort':'sql injection'}, {'direction':'sideways'}, {'offset':'n/a'}, {'offset':-1}):
+            with self.assertRaises(ValueError):batch_record(self.store,identity,**kwargs)
+
+
+    def test_combined_sort_fields_saved_health_and_missing_values(self):
+        tracks=[song(str(i),title=f'Title {124-i:03}',artist='Same artist',genre='House') for i in range(125)]
+        saved=self.store.save_snapshot(snapshot(tracks),'Recovered sorting')
+        before=self.store.snapshot(saved['id'])
+        batch=create_batch(self.store,before,target='random',sample_size=150,seed='combined')
+        with self.store.connection() as db:
+            for i in range(125):
+                db.execute('INSERT INTO mb_results VALUES (?,?,?,?)',
+                           (batch['id'],str(i),'candidate_needs_review',json.dumps({
+                               'status':'candidate_needs_review',
+                               'candidates':[{'title':f'Candidate {124-i:03}','confidence':i/125}],
+                               'proposal':{'community_score':i/25,'year':1900+i}})))
+            for i,state in [(0,'missing'),(1,'playable'),(2,'inaccessible'),(3,'unverified')]:
+                db.execute('INSERT INTO file_health_records VALUES (?,?,?,?,?,?,?,?)',
+                           ('snapshot:'+saved['id'],str(i),'Title','Artist','House',state,123.0,''))
+        pages=[batch_record(self.store,batch['id'],offset,'title') for offset in (0,50,100)]
+        self.assertEqual([r['title'] for page in pages for r in page['rows']],[f'Title {i:03}' for i in range(125)])
+        self.assertEqual([len(page['rows']) for page in pages],[50,50,25])
+        for field in ('confidence','community','year'):
+            self.assertEqual(batch_record(self.store,batch['id'],0,field,'desc')['rows'][0]['id'],'124')
+        self.assertEqual(batch_record(self.store,batch['id'],0,'candidate')['rows'][0]['id'],'124')
+        for direction,expected in [('asc',['1','0','2','3']),('desc',['3','2','0','1'])]:
+            result=batch_record(self.store,batch['id'],0,'file_status',direction)
+            self.assertEqual([r['id'] for r in result['rows'][:4]],expected)
+            self.assertEqual(result['rows'][4]['file_status'],'unchecked')
+            self.assertIsNone(result['rows'][4]['file_status_checked_at'])
+            self.assertEqual(result['rows'][0]['file_status_checked_at'],123.0)
+            self.assertEqual(result['file_status_basis'],'last_explicit_scan')
+        # Status evidence is scoped to the batch snapshot, not merely track ID.
+        other=create_batch(self.store,snapshot(tracks),target='random',sample_size=150)
+        self.assertTrue(all(r['file_status']=='unchecked' for r in batch_record(self.store,other['id'])['rows']))
+        self.assertEqual(self.store.snapshot(saved['id']),before)
+
+    def test_sort_ties_nonfinite_values_and_original_order(self):
+        batch=create_batch(self.store,snapshot([song(str(i)) for i in range(6)]),target='random',sample_size=150)
+        ids=[row['id'] for row in batch['sample']]
+        with self.store.connection() as db:
+            for identity,number in zip(ids,[0.5,0.5,'NaN','Infinity',None,True]):
+                db.execute('INSERT INTO mb_results VALUES (?,?,?,?)',
+                           (batch['id'],identity,'candidate_needs_review',json.dumps({
+                               'status':'candidate_needs_review',
+                               'candidates':[{'confidence':number,'title':'Equal'}],
+                               'proposal':{'community_score':number}})))
+        for field in ('confidence','community'):
+            for direction in ('asc','desc'):
+                self.assertEqual([r['id'] for r in batch_record(self.store,batch['id'],0,field,direction)['rows']],ids)
+        for field in ('sample','original','candidate','artist','genre','status'):
+            self.assertEqual([r['id'] for r in batch_record(self.store,batch['id'],0,field,'desc')['rows']],ids)
+        for kwargs in ({'sort':'not-a-field'},{'direction':'bad'},{'offset':-1},{'offset':1000001},{'offset':'bad'}):
+            with self.assertRaises(ValueError):batch_record(self.store,batch['id'],**kwargs)
 
     def test_sample_twenty_per_top_genre_plus_fifty_unknown_unique_and_stable(self):
         tracks=[song(str(n),genre='Genre '+str(n//30)) for n in range(180)]+[song('unknown'+str(n),genre='') for n in range(70)]

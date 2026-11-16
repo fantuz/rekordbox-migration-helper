@@ -267,59 +267,69 @@ def create_batch(store,snapshot,top=5,seed='preview',delay=2.0,sample_size=None,
     return {'id':identity,'summary':summary,'sample':sample,'status':'preview'}
 
 
-PILOT_SORT_FIELDS=('original','title','artist','genre','candidate','community','file_status')
-PILOT_FILE_STATUS_ORDER={'playable':0,'missing':1,'inaccessible':2,'unverified':3,'unchecked':4}
+BATCH_SORT_FIELDS=('sample','title','artist','genre','status','confidence','year',
+                   'candidate','community','file_status')
+BATCH_FILE_STATUS_ORDER={'playable':0,'missing':1,'inaccessible':2,'unverified':3}
 
 
-def batch_record(store,identity,offset=0,sort='original',direction='asc'):
-    """Order the complete saved batch before selecting a page.
+def batch_record(store,identity,offset=0,sort='sample',direction='asc'):
+    """Sort saved evidence across the full batch, then return a 50-row page.
 
-    File status uses last explicit File Health evidence, not a newly inferred
-    playable state. Unscanned tracks remain unchecked.
+    File status is the last explicit File Health scan for this snapshot.
+    Playback probes do not alter this evidence or the resulting order.
+    Missing values and unscanned files stay last in either direction.
     """
-    if sort not in PILOT_SORT_FIELDS or direction not in ('asc','desc'):
-        raise ValueError('Choose a supported MusicBrainz sort column and direction')
+    if sort=='original':sort='sample'  # Accept the original PR #52 API spelling.
+    if sort not in BATCH_SORT_FIELDS or direction not in ('asc','desc'):
+        raise ValueError('Choose a supported MusicBrainz column and direction')
     try:offset=int(offset)
-    except (TypeError,ValueError):raise ValueError('Choose a valid MusicBrainz page offset') from None
-    if not 0<=offset<=1000000:raise ValueError('Choose a valid MusicBrainz page offset')
+    except (ValueError,TypeError):raise ValueError('Choose a valid results page offset') from None
+    if not 0<=offset<=1000000:raise ValueError('Choose a valid results page offset')
     with store.connection() as db:
-        batch=db.execute('SELECT * FROM mb_batches WHERE id=?',(identity,)).fetchone()
-        if not batch:raise ValueError('Pilot batch not found')
-        results={row['track_id']:json.loads(row['payload']) for row in db.execute(
-            'SELECT track_id,payload FROM mb_results WHERE batch_id=?',(identity,))}
-        source='snapshot:'+batch['snapshot_id']
-        scanned={row['track_id']:row['status'] for row in db.execute(
-            'SELECT track_id,status FROM file_health_records WHERE source=?',(source,))}
-    sample=json.loads(batch['sample'])
-    rows=[{**track,**results.get(track['id'],{'status':'not_requested'}),
-           'file_status':scanned.get(track['id'],'unchecked')} for track in sample]
-    if sort!='original':
-        def key(row):
-            if sort in ('title','artist','genre'):
-                value=row.get(sort)
-                return None if value is None or not str(value).strip() else str(value).casefold()
-            if sort=='candidate':
+        r=db.execute('SELECT * FROM mb_batches WHERE id=?',(identity,)).fetchone()
+        if not r:raise ValueError('Pilot batch not found')
+        results={x['track_id']:json.loads(x['payload']) for x in db.execute('SELECT track_id,payload FROM mb_results WHERE batch_id=?',(identity,))}
+        scanned={x['track_id']:x for x in db.execute(
+            'SELECT track_id,status,checked_at FROM file_health_records WHERE source=?',
+            ('snapshot:'+r['snapshot_id'],))}
+    sample=json.loads(r['sample'])
+    rows=[]
+    for track in sample:
+        evidence=scanned.get(track['id'])
+        status=evidence['status'] if evidence and evidence['status'] in BATCH_FILE_STATUS_ORDER else 'unchecked'
+        rows.append({**track,**results.get(track['id'],{'status':'not_requested'}),
+                     'file_status':status,
+                     'file_status_checked_at':evidence['checked_at'] if evidence and status!='unchecked' else None})
+    if sort!='sample':
+        def value(row):
+            if sort in ('confidence','candidate'):
                 candidate=(row.get('candidates') or [{}])[0]
-                value=candidate.get('title')
-                return None if value is None or not str(value).strip() else str(value).casefold()
-            if sort=='community':
-                proposal=row.get('proposal') or {}
+                raw=candidate.get('confidence' if sort=='confidence' else 'title')
+            elif sort=='year':
+                raw=(row.get('proposal') or {}).get('year') or row.get('year')
+            elif sort=='community':
+                raw=(row.get('proposal') or {}).get('community_score')
+            elif sort=='file_status':
+                return BATCH_FILE_STATUS_ORDER.get(row['file_status'])
+            else:
+                raw=row.get(sort)
+            if raw is None or isinstance(raw,str) and not raw.strip():return None
+            if sort in ('confidence','year','community'):
+                if isinstance(raw,bool):return None
                 try:
-                    value=float(proposal.get('community_score'))
-                    return value if isfinite(value) else None
-                except (ValueError,TypeError):return None
-            if sort=='file_status':return PILOT_FILE_STATUS_ORDER.get(row['file_status'],4)
-        # Python's sort is stable: equal keys retain their captured order, even
-        # when sorting descending. Unknown values always remain at the end.
-        indexed=[(i,row,key(row)) for i,row in enumerate(rows)]
-        populated=[entry for entry in indexed if entry[2] is not None]
-        unknown=[entry for entry in indexed if entry[2] is None]
-        populated.sort(key=lambda entry:entry[2],reverse=direction=='desc')
-        rows=[entry[1] for entry in populated+unknown]
-    return {'id':identity,'snapshot_id':batch['snapshot_id'],'created':batch['created'],
-            'status':batch['status'],'summary':json.loads(batch['summary']),
+                    number=float(raw)
+                    return number if isfinite(number) else None
+                except (TypeError,ValueError):return None
+            return str(raw).casefold()
+        # Stable ties retain original captured order, including descending sorts.
+        known=[(value(row),row) for row in rows]
+        present=[(key,row) for key,row in known if key is not None]
+        absent=[row for key,row in known if key is None]
+        present.sort(key=lambda item:item[0],reverse=direction=='desc')
+        rows=[row for _,row in present]+absent
+    return {'id':identity,'snapshot_id':r['snapshot_id'],'created':r['created'],'status':r['status'],'summary':json.loads(r['summary']),
             'total':len(rows),'offset':offset,'sort':sort,'direction':direction,
-            'rows':rows[offset:offset+50]}
+            'file_status_basis':'last_explicit_scan','rows':rows[offset:offset+50]}
 
 
 def run_batch(store,identity,client,progress):

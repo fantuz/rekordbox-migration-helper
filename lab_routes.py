@@ -288,7 +288,7 @@ def register(owner):
     def lab_pilot_record(identity):
         with network_lock:
             saved=store();recover_batches(saved)
-            return jsonify(batch_record(saved,identity,request.args.get('offset',0),request.args.get('sort','original'),request.args.get('direction','asc')))
+            return jsonify(batch_record(saved,identity,request.args.get('offset',0),request.args.get('sort','sample'),request.args.get('direction','asc')))
 
     @app.post('/api/lab/musicbrainz/<identity>/start')
     def lab_pilot_start(identity):
