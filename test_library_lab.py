@@ -216,9 +216,9 @@ class MusicBrainzTests(unittest.TestCase):
 
 
     def test_full_batch_sort_survives_paging_and_updates(self):
-        tracks=[song(str(i),title=f'Track {119-i:03}',artist=f'Artist {i%4}',year=2000+i%10)
-                for i in range(120)]
-        record=create_batch(self.store,snapshot(tracks),sample_size=120,target='random',seed='ordered')
+        tracks=[song(str(i),title=f'Track {149-i:03}',artist=f'Artist {i%4}',year=2000+i%10)
+                for i in range(150)]
+        record=create_batch(self.store,snapshot(tracks),sample_size=150,target='random',seed='ordered')
         identity=record['id']
         default=batch_record(self.store,identity)
         first=batch_record(self.store,identity,0,'title','asc')
