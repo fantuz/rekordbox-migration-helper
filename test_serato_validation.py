@@ -41,7 +41,7 @@ class SeratoValidationTests(unittest.TestCase):
         for root,profile in [('C:/','macos'),('/Volumes/DJ','windows'),('../foo','macos')]:
             with self.assertRaises(ValueError):resolve_serato_profile('C:/',root,profile,host='linux')
         report=preview_package(source(),'C:/','macos','/Volumes/DJ')
-        self.assertTrue(report['target_profile']['simulated'])
+        self.assertEqual(report['target_profile']['simulated'],__import__('sys').platform!='darwin')
         self.assertEqual(report['target_profile']['target_volume_root'],'/Volumes/DJ')
         self.assertEqual(report['tracks_written'],2)
         packed,manifest=draft_package(source(),'C:/','macos','/Volumes/DJ')
