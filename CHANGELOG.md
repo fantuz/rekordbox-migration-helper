@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 1.1.5 — 2026-11-16
+
+This update adds migration-readiness reports and real-server browser checks, strengthens original-input verification, and rejects invalid metadata before it can block an export.
+
+- Add **Library lab → Health & coverage → Migration readiness**, with saved evidence reports and full JSON downloads. Controls are localized across all 13 supported interface languages.
+- Inspect backup ZIP coverage for database, analysis, artwork, settings and music members; identify missing captured analysis references. Optionally verify member SHA-256 and ZIP CRCs within a 512 MiB read budget, leaving unread members explicitly unverified. No files are extracted or restored.
+- Add a versioned CDJ-2000NXS2 format-family profile, FAT32 single-file size checks, and recorded destination-name advisories. Missing evidence stays Unknown; these metadata checks do not certify decoding, firmware, a device database or physical playback.
+- Compare saved BPM with newly captured XML average/grid tempo, highlight possible half/double-tempo disagreements, and list recognized saved keys in Camelot wheel order while retaining original notation. These reports do not analyze audio or rewrite BPM, keys or beatgrids.
+- Record full-file SHA-256 fingerprints at import and verify content on resume and before/after export. Reject XML/ZIP changes even when file size and modification time are preserved; retain known content identities when reattaching originals. Hashing supports cooperative cancellation.
+- Reject XML-invalid characters in all exportable text overrides before committing them, preserving prior values, edit history and revisions on rejection.
+- Bound completed in-memory job results to 256 records or one hour, protect active jobs and completion callbacks, and synchronize task insertion/pruning. Saved reports, decisions and exports remain available in their history views after a transient job record expires.
+- Run real-server Playwright workflow-integrity checks in Chromium CI, covering competing tabs, scoped edits, restart/reset persistence, export checksums and source preservation. Add migration-report acceptance, invalid-edit rejection, responsive controls, and first-table/search timing checks on a 5,000-track synthetic snapshot.
+
+Release scope: merged [PR #59](https://github.com/fantuz/rekordbox-migration-helper/pull/59). Backup coverage is not a restore test. Player profiles and tempo/key reports are read-only advisories. Older/native-only snapshots may lack comparative XML tempo evidence; capture fresh matching inputs when needed. Existing workspaces without full-file hashes validate their recorded XML digest/native pair identity before upgrading. Full-file verification adds disk reads for large backups, and an expired task ID returns 404 without deleting persisted outputs. Real rekordbox restoration and physical player compatibility require separate validation.
+
 ## 1.1.4 — 2026-11-16
 
 This update strengthens access to audio on mounted libraries, makes MusicBrainz matching more auditable, adds reviewed OneTagger tag transfers, and independently verifies exported libraries before publication.
