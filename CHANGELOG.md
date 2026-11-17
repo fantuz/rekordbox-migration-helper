@@ -2,11 +2,21 @@
 
 ## Unreleased
 
+## 1.1.6 — 2026-11-17
+
+This update adds format and STEMS inspection, native source insights, and more precise backup and tempo evidence.
+
 - Add **Library lab → Formats & STEMS**, with bounded ANLZ framing, grid/tempo and repeated cue-group checks, player-settings CRC validation, classic catalog headers, separate OneLibrary detection and recognized Recordbox STEMS cache structure. Keep source association, unsupported formats and native STEMS readiness explicit.
 - Add **Native source insights** for captured composer/remixer/original-artist/lyricist relationships, raw analysis flags, cue anomalies and bounded smart-playlist definitions. Resolve key and signed MyTag references without executing rules or guessing BPM-rule units.
 - Combine report section, severity, validation and text filters before pagination and full JSON downloads. Expose captured native evidence in single-track details and localize the new controls across all 13 interface languages.
 - Correct player-settings `.DAT` classification in backup coverage; report device catalogs separately and verify captured `.3EX` members individually. Keep ZIP checksum success separate from invalid settings payloads.
 - Add synthetic format/source regressions and real-server Playwright checks for the new sections, filters, source preservation, saved reports, native details and mobile controls in the existing CI workflow.
+
+- Check exact backup member paths and retain tempo evidence from XML-only collections.
+- Keep smart playlists with unavailable rule definitions visible, distinguish STEMS inspection limits from corrupt lengths, and leave truncated grid tempo comparisons inconclusive.
+- Link OneTagger and its existing reviewed M3U handoff workflow from the README.
+
+Release scope: merged PRs #61, #62 and #63. Format inspection and checksum results do not certify native STEMS readiness, rekordbox restoration or physical player compatibility. Unsupported or incomplete evidence remains explicit; original libraries and audio are not rewritten by these inspections.
 
 ## 1.1.5 — 2026-11-16
 
