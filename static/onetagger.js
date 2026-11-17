@@ -47,6 +47,11 @@ window.OneTaggerBridge=(()=>{
       node.append(element('td','—'),element('td',row.title||row.track_id),value);result.body.append(node);
     }
     for(const row of scan.rows){
+      if(row.report){
+        const details=element('details'),summary=element('summary',t('OneTagger report')+' · '+row.report.status);
+        details.append(summary,element('pre',JSON.stringify({before:row.report.before,after:row.report.after,attempts:row.report.attempts},null,2)));
+        const node=element('tr'),cell=element('td');cell.colSpan=5;cell.append(details);node.append(cell);result.body.append(node);
+      }
       if(row.status==='unreadable'){message(row,row.error);continue;}
       if(row.warnings?.length)message(row,t('Tag warnings')+': '+row.warnings.map(w=>w.field+': '+w.reason).join(' · '));
       if(!row.changes.length){message(row,t('No tag changes'));continue;}
@@ -69,6 +74,7 @@ window.OneTaggerBridge=(()=>{
     $('create').disabled=busy || !selected.size;$('selected').textContent=num(selected.size)+' / 500';
     $('prev').disabled=busy || !offset;$('next').disabled=busy || offset+50>=total;
     $('rescan').disabled=busy || !selection;
+    $('report-file').disabled=busy || !selection;
     $('stage').disabled=busy || !scan || !$('reviewed').checked || !$('review').querySelector('input:checked');
   }
   async function load(){
@@ -105,6 +111,15 @@ window.OneTaggerBridge=(()=>{
     await load();await review();notify(t('Selection ready for OneTagger'));
   }));
   $('rescan').onclick=wrap(()=>action(async()=>{const result=await post('/'+encodeURIComponent(selection)+'/rescan',{});await poll(result.job);await review();}));
+  $('report-file').onchange=wrap(()=>action(async()=>{
+    const file=$('report-file').files[0];if(!file)return;
+    try{
+      if(file.size>8*1024*1024)throw new Error(t('Choose a results report smaller than 8 MiB'));
+      const report=JSON.parse(await file.text());
+      const result=await post('/'+encodeURIComponent(selection)+'/import-results',{report});
+      await poll(result.job);await review();notify(t('OneTagger report ready for review'));
+    }finally{$('report-file').value='';}
+  }));
   $('unlock').onclick=wrap(async()=>{
     await api('/api/lab/unlock',{method:'POST',body:JSON.stringify({snapshot,unlocked:true})});notify(t('Staging unlocked'));
   });
@@ -118,3 +133,4 @@ window.OneTaggerBridge=(()=>{
   window.addEventListener('workbench-audio-paths',()=>{reviewSequence++;scan=null;$('review').replaceChildren();controls();});
   controls();return {load};
 })();
+

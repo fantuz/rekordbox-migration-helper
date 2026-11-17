@@ -244,6 +244,8 @@
 <label><span data-i18n="Saved selections">Saved selections</span><select id="onetagger-selections"></select></label>
 <div class="lab-actions"><a class="button secondary" id="onetagger-playlist" hidden data-i18n="Download M3U">Download M3U</a><a class="button secondary" id="onetagger-manifest" hidden data-i18n="Download selection manifest">Download selection manifest</a><button class="button" id="onetagger-rescan" disabled data-i18n="Rescan tags after OneTagger">Rescan tags after OneTagger</button><button class="button secondary" id="onetagger-unlock" data-i18n="Unlock metadata edits">Unlock metadata edits</button></div>
 <p class="subtle" data-i18n="Drop the M3U into OneTagger. Keep files at the same locations, then rescan here. Missing tags do not erase library metadata.">Drop the M3U into OneTagger. Keep files at the same locations, then rescan here. Missing tags do not erase library metadata.</p>
+<label><span data-i18n="Import OneTagger results JSON">Import OneTagger results JSON</span> <input type="file" id="onetagger-report-file" accept=".json,application/json" disabled></label>
+<p class="muted" data-i18n="Import verifies the report against the selected audio files. Review and select fields before staging.">Import verifies the report against the selected audio files. Review and select fields before staging.</p>
 <div class="native-table" id="onetagger-review"></div>
 <label><input type="checkbox" id="onetagger-reviewed"><span data-i18n="I reviewed the selected tag changes.">I reviewed the selected tag changes.</span></label><button class="button" id="onetagger-stage" disabled data-i18n="Stage selected fields">Stage selected fields</button>
 </article>
@@ -330,3 +332,4 @@
 <script src="/static/onetagger.js"></script>
 </body>
 </html>
+
