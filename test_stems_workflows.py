@@ -91,6 +91,14 @@ class ScopeTests(unittest.TestCase):
         with patch('stems_cache.source_stamp',side_effect=changing):
             with self.assertRaisesRegex(ValueError,'changed'):self.audit()
 
+    def test_renamed_source_and_temporary_cache_output_do_not_establish_readiness(self):
+        self.source.rename(self.source.with_name('renamed.wav'))
+        summary,rows=self.audit();prep=self.preparation(rows)
+        self.assertEqual(prep['cache_state'],'unknown');self.assertEqual(prep['source_stamp_status'],'unavailable')
+        temporary=self.cache/MODEL/KEY[:2]/(KEY+'.flac.tmp');temporary.write_bytes(b'partial write')
+        _,rows=self.audit();partial=next(r for r in rows if r.get('format')=='rbstems_partial')
+        self.assertEqual(partial['cache_state'],'incomplete');self.assertIsNone(partial['native_stems_readiness'])
+
     def test_metadata_budget_and_expired_deadline_do_not_prove_completeness(self):
         summary,rows=self.audit(max_inspect_bytes=64)
         self.assertLessEqual(summary['format_inspection']['bytes_inspected'],64)
@@ -107,6 +115,24 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual(cache_profile(context({'target':'native','quality':'speed'})),'unknown')
         self.assertEqual(cache_profile(context({'target':'rbstemsplus','platform':'windows'})),'profile_mismatch')
         self.assertEqual(cache_profile(context({'target':'rbstemsplus','architecture':'x86_64'})),'unverified_version')
+
+    def test_unavailable_cache_scope_and_reconnect_are_distinct_from_missing_chunks(self):
+        detached=self.cache.with_name('detached-cache');self.cache.rename(detached)
+        paths=list(map(str,(self.cache,self.meta,self.audio)))
+        summary,rows=stems_report({},paths,{},lambda *_:None)
+        self.assertEqual(summary['unavailable_scopes'],1)
+        self.assertEqual(self.preparation(rows)['cache_state'],'unknown')
+        self.assertTrue(any(r.get('cache_state')=='unavailable' for r in rows))
+        detached.rename(self.cache)
+        summary,rows=stems_report({},paths,{},lambda *_:None)
+        self.assertEqual(summary['unavailable_scopes'],0);self.assertEqual(self.preparation(rows)['cache_state'],'consistent')
+
+    def test_empty_scopes_and_relative_scope_validation(self):
+        empty=self.root/'empty';empty.mkdir()
+        summary,_=stems_report({},[str(empty)],{},lambda *_:None)
+        self.assertEqual(summary['format_inspection']['files'],0)
+        for paths in (['relative/cache'],[str(empty)]*21,[42]):
+            with self.assertRaises(ValueError):stems_report({},paths,{},lambda *_:None)
 
 
 class SourceEvidenceTests(unittest.TestCase):

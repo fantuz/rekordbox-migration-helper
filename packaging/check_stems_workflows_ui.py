@@ -72,7 +72,7 @@ def check_stems_workflows_ui(browser,base,store,root,output):
         assert prep['cache_profile_status']=='matches_declared_profile' and prep['source_association']=='metadata_match'
         assert all(r.get('native_stems_readiness') is None for r in result['rows'])
         assert not page.locator('#lab-report-rows img').count()
-        page.screenshot(path=str(output/'stems-workflows.png'),full_page=True)
+        page.locator('#lab-panel-stems').screenshot(path=str(output/'stems-workflows.png'))
         filtered=apply_filter('asset_family','preparation_manifest')
         filtered=apply_filter('provider','rbstemsplus');filtered=apply_filter('cache_state','consistent')
         assert len(filtered['rows'])==1 and filtered['rows'][0]['section']=='stems_preparation'
@@ -109,6 +109,11 @@ def check_stems_workflows_ui(browser,base,store,root,output):
         page.fill('#lab-stems-path','\n'.join(map(str,(cache,meta,folder))))
         source.write_bytes(b'changed synthetic source');originals[source]=sha256(source.read_bytes()).hexdigest()
         _,stale=run();assert any(r.get('cache_state')=='stale' for r in stale['rows'])
+        detached=cache.with_name('detached-cache');cache.rename(detached)
+        _,unavailable=run();assert unavailable['summary']['unavailable_scopes']==1
+        assert any(r.get('cache_state')=='unavailable' for r in unavailable['rows'])
+        detached.rename(cache)
+        _,reconnected=run();assert reconnected['summary']['unavailable_scopes']==0
         descriptor=cache/MODEL/KEY[:2]/(KEY+'.desc');descriptor.unlink();originals.pop(descriptor)
         _,incomplete=run();assert any(r.get('cache_state')=='incomplete' for r in incomplete['rows'])
         # Language changes update the new tab and its controls in the existing session.
@@ -125,7 +130,7 @@ def check_stems_workflows_ui(browser,base,store,root,output):
         for path,digest in originals.items():assert sha256(path.read_bytes()).hexdigest()==digest
         assert not errors,errors;assert not external,external
         return {'status':'passed','saved_report_id':identity,'tracks':125,'blocked_sources':63,'candidate_sources':62,
-                'ni_containers':2,'cache_states':['consistent','stale','incomplete'],'source_only':True,
+                'ni_containers':2,'cache_states':['consistent','stale','incomplete','unavailable'],'source_only':True,'reconnect':True,
                 'filters':'asset_family, provider, cache_state, eligibility, source_provider',
                 'pagination_and_full_download':True,'languages':len(LANGUAGES),'sources_preserved':True,
                 'native_prepared_tracks':None,'inference_run':False,'real_http':True}

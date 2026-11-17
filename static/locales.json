@@ -26510,6 +26510,20 @@
       "ar": "غير معروف",
       "pt-PT": "Desconhecido",
       "pt-BR": "Desconhecido"
+    },
+    "unavailable scopes": {
+      "de": "Nicht verfügbare Bereiche",
+      "fr": "emplacements indisponibles",
+      "it": "ambiti non disponibili",
+      "es": "ámbitos no disponibles",
+      "el": "μη διαθέσιμα πεδία",
+      "pl": "niedostępne zakresy",
+      "cs": "nedostupné oblasti",
+      "ru": "недоступные области",
+      "ja": "利用できない場所",
+      "ar": "النطاقات غير المتاحة",
+      "pt-PT": "âmbitos indisponíveis",
+      "pt-BR": "escopos indisponíveis"
     }
   }
 }

@@ -116,8 +116,9 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Compact Rekordbox and Serato cards on Files & workflow open local source analysis and the existing experimental Serato export workflow. Serato library import is not implemented.
 - Audit preparation coverage, saved analysis references and STEMS-related evidence.
 - Inspect ANLZ framing, grids and repeated cue groups, player-settings CRCs, classic catalog headers and Recordbox STEMS cache structure in **Library lab → Formats & STEMS**, with bounded reads and optional SHA-256 fingerprints. Native STEMS readiness stays Unknown.
+- Check **STEMS workflows** for NI-style `.stem.m4a`/`.stem.mp4` containers, RB Stems Plus chunk/manifest completeness, source staleness, declared engine/model profiles and provider-specific source eligibility. Inspect retention expiry and unavailable cache locations separately; see the [STEMS workflow guide](docs/STEMS-WORKFLOWS.md).
 - Review captured native artist roles, raw analysis flags, cue anomalies and smart-playlist definitions in **Native source insights**. Unsupported rules and unresolved IDs remain visible; no playlist rule is executed.
-- Combine finding section, severity, validation and text filters across saved evidence reports and complete filtered JSON downloads. See [format and STEMS inspection](docs/FORMATS-AND-STEMS.md).
+- Combine finding section, severity, validation, asset family/provider, cache state, source eligibility/provider and text filters across saved evidence reports and complete filtered JSON downloads. See [format and STEMS inspection](docs/FORMATS-AND-STEMS.md).
 - Inspect comments, personal stars, colour assignments and other captured metadata in a single-track view.
 - Stage metadata edits in a private sidecar; quick comments and colours remain separate from the original files.
 - Play available recorded audio files in the computer's default media player from live track views.

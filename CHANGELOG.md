@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add **Library lab → STEMS workflows** with source-only advisories or selected folder/ZIP inspection, declared session/engine/model profiles and provider-specific Apple Music/Spotify restrictions. Preserve private native service evidence without guessing numeric provider IDs; missing evidence stays Unknown.
+- Recognize NI-style `.stem.m4a`/`.stem.mp4` containers using bounded metadata, stereo track/enable flags, sample rates and presentation/edit-list checks. Keep sample-entry types, codec-profile uncertainty, generic multistream files and native acceptance distinct.
+- Inspect RB Stems Plus cache markers, eight-channel FLAC STREAMINFO, RBD1/RBD2 descriptors, preparation manifests and retention sets. Check expected chunks per cache root/ZIP, source metadata changes and declared model/profile mismatches; report unavailable locations and support rechecking after reconnect. Never combine split caches to claim completeness.
+- Add five globally applied report filters, full filtered downloads, translations across all 13 interface languages and a documented evidence profile. Extend unit/API and existing real-server Playwright pipeline checks for STEMS workflows, pagination, stale/missing/split caches, cancellation, scope/privacy boundaries, disconnect/reconnect and saved reports across restart.
+
 ## 1.1.6 — 2026-11-17
 
 This update adds format and STEMS inspection, native source insights, and more precise backup and tempo evidence.

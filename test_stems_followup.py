@@ -105,6 +105,34 @@ class ContainerTests(unittest.TestCase):
     def test_duplicate_metadata_keys_and_unknown_revision(self):
         raw=ni_bytes();old=b'"version": 1'
         raw=raw.replace(old,b'"version": 2');self.assertEqual(self.inspect(raw)['validation'],'unsupported')
+        from stems_formats import unique_json
+        with self.assertRaises(ValueError):json.loads('{"version":1,"version":1}',object_pairs_hook=unique_json)
+
+    def test_track_flags_identifiers_and_unspecified_duration_require_review(self):
+        raw=ni_bytes()
+        second=raw.index(b'tkhd',raw.index(b'tkhd')+4)+4
+        for offset,value,expected in ((second+3,3,'unsupported'),(second+12,0,'corrupt'),(second+12,1,'corrupt')):
+            changed=bytearray(raw)
+            if offset==second+3:changed[offset]=value
+            else:struct.pack_into('>I',changed,offset,value)
+            self.assertEqual(self.inspect(changed)['validation'],expected)
+        for value in (0,2**32-1):
+            changed=bytearray(raw);struct.pack_into('>I',changed,raw.index(b'mdhd')+4+16,value)
+            self.assertEqual(self.inspect(changed)['validation'],'unsupported')
+
+    def test_different_sample_rates_and_encrypted_entries_are_not_recognized(self):
+        raw=ni_bytes();second=raw.index(b'mp4a',raw.index(b'mp4a')+4)+4
+        changed=bytearray(raw);struct.pack_into('>I',changed,second+24,48000*65536)
+        self.assertEqual(self.inspect(changed)['validation'],'unsupported')
+        self.assertEqual(self.inspect(raw.replace(b'mp4a',b'enca',1))['validation'],'unsupported')
+
+    def test_huge_box_inventory_and_metadata_are_bounded(self):
+        raw=ni_bytes()+box(b'free')*2050
+        self.assertEqual(self.inspect(raw)['validation'],'not_checked')
+        raw=ni_bytes();old=b'"Part 0 '
+        changed=raw.replace(old,b'"'+b'x'*65536+old[1:])
+        # Invalid parent lengths cannot make an oversized field escape its boundary.
+        self.assertIn(self.inspect(changed)['validation'],('corrupt','not_checked'))
 
     def test_mutations_return_bounded_evidence(self):
         raw=ni_bytes()
@@ -136,6 +164,12 @@ class CacheMetadataTests(unittest.TestCase):
         raw=f'rbstemsplus-kept 1\nuntil 1\n{MODEL} {KEY}\n'.encode()
         r=inspect_manifest(raw,len(raw),True);self.assertEqual(r['asset_family'],'retention_set');self.assertEqual(r['referenced_chunks'],1)
         self.assertIsNone(r['native_stems_readiness'])
+
+    def test_unknown_provider_revisions_remain_unsupported(self):
+        for kept,prefix in ((False,b'rbstemsplus-manifest'),(True,b'rbstemsplus-kept')):
+            raw=prefix+b' 2\n';self.assertEqual(inspect_manifest(raw,len(raw),kept)['validation'],'unsupported')
+        raw=cache_desc().replace(b'RBD2',b'RBD3')
+        self.assertEqual(inspect_cache_file('a.desc',raw,len(raw),True)['validation'],'unsupported')
 
 
 class WorkflowTests(unittest.TestCase):
@@ -226,6 +260,11 @@ class EligibilityTests(unittest.TestCase):
         summary,rows=eligibility({'tracks':[{'id':'x'}]},context())
         self.assertEqual(summary['unknown'],1)
         self.assertEqual(eligibility({'tracks':[{'source_provider':'other_streaming'}]},context({'enabled':'enabled','mode':'performance'}))[1][0]['eligibility'],'unknown')
+
+    def test_named_service_locations_take_precedence_over_unmapped_fallback(self):
+        profile=context({'source_provider':'local'})
+        self.assertEqual(provider({'source_evidence':{'service_id':42},'current_path':'spotify:track:invented'},profile)[0],'spotify')
+        self.assertEqual(provider({'source_evidence':{'service_id':'apple_music'},'current_path':'/cache/song.mp3'},profile)[0],'apple_music')
 
     def test_invalid_session_values_and_fingerprint_are_rejected(self):
         for profile in ({'enabled':True},{'quality':'invented'},{'model_sha256':'short'},{'unexpected':1}):

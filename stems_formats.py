@@ -67,6 +67,8 @@ def inspect_cache_file(name,data,size,provider_context=False):
         if not frames:return evidence('rbstems_flac','not_checked','Cache sample count is unavailable',**facts)
         return evidence('rbstems_flac','recognized','Eight-channel cache STREAMINFO recognized; audio frames were not decoded',**facts)
     if name.endswith('.desc'):
+        if provider_context and data.startswith(b'RBD') and data[:4] not in (b'RBD1',b'RBD2'):
+            return evidence('rbstems_descriptor','unsupported','Unknown cache descriptor revision')
         if not provider_context and not data.startswith((b'RBD1',b'RBD2')):return None
         if len(data)<16 or data[:4] not in (b'RBD1',b'RBD2'):return evidence('rbstems_descriptor','corrupt','Invalid cache descriptor header')
         frames=struct.unpack_from('<i',data,4)[0]
@@ -92,6 +94,8 @@ def inspect_manifest(data,size,kept=False):
         text=data.decode('utf-8')
         if not text.endswith('\n') or '\x00' in text or '\r' in text:raise ValueError()
         lines=text.splitlines()
+        prefix='rbstemsplus-kept ' if kept else 'rbstemsplus-manifest '
+        if lines and lines[0].startswith(prefix) and lines[0]!=prefix+'1':return out('unsupported','Unknown provider metadata revision')
         if kept:
             if len(lines)<2 or lines[0]!='rbstemsplus-kept 1' or not re.fullmatch(r'until [0-9]{1,12}',lines[1]):raise ValueError()
             if len(lines)-2>MAX_REFERENCES:return out('not_checked','Retention reference-count budget reached')
@@ -216,6 +220,7 @@ def inspect_iso(read,size):
             timescale=struct.unpack_from('>I',mdhd,at)[0]
             duration=struct.unpack_from('>Q' if mdhd[0] else '>I',mdhd,at+4)[0]
             if not timescale:raise ContainerInvalid('Zero media timescale')
+            if duration in (0,2**(64 if mdhd[0] else 32)-1):raise ContainerUnsupported('Media duration is empty or unspecified')
             minf=children(one(mdia,b'minf'));stbl=children(one(minf,b'stbl'));stsd=one(stbl,b'stsd')
             start=field(stsd,8)
             if start[0]!=0 or struct.unpack_from('>I',start,4)[0]!=1:raise ContainerUnsupported('Unsupported audio sample-description table')

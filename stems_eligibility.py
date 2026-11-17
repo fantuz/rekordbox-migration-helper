@@ -64,17 +64,18 @@ def provider(track,profile):
     if label in names:return names[label],raw.get('basis','Captured provider label')
     service=raw.get('service_id')
     if service not in (None,''):
-        normalized=str(service).casefold().replace(' ','')
+        normalized=str(service).casefold().replace(' ','').replace('_','')
         if normalized in names:return names[normalized],'Captured service label'
-        if profile.get('source_provider','unknown')!='unknown':return profile['source_provider'],'User-declared fallback; native service identifier is unmapped'
-        return 'unknown','Unmapped native service identifier'
     path=str(track.get('current_path') or track.get('xml_location') or '')
     try:
         parts=urlsplit(path);host=(parts.hostname or '').casefold()
         if parts.scheme=='spotify' or host=='open.spotify.com':return 'spotify','Recorded Spotify location'
         if host=='music.apple.com':return 'apple_music','Recorded Apple Music location'
-        if path.startswith('/') or PureWindowsPath(path).is_absolute() or parts.scheme=='file':return 'local','Recorded local file reference; access is not checked'
+        if service in (None,'') and (path.startswith('/') or PureWindowsPath(path).is_absolute() or parts.scheme=='file'):return 'local','Recorded local file reference; access is not checked'
     except ValueError:pass
+    if service not in (None,''):
+        if profile.get('source_provider','unknown')!='unknown':return profile['source_provider'],'User-declared fallback; native service identifier is unmapped'
+        return 'unknown','Unmapped native service identifier'
     return profile.get('source_provider','unknown'),'User-declared fallback provider' if profile.get('source_provider','unknown')!='unknown' else 'Provider evidence unavailable'
 
 

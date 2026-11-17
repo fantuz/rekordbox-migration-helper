@@ -27,7 +27,7 @@ def asset_stamp(path,strong=False):
 
 
 def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**2,
-                 max_directories=160000,max_files=300000,max_seconds=45,inspect=False,max_inspect_bytes=8*1024**2,profile=None):
+                 max_directories=160000,max_files=300000,max_seconds=45,inspect=False,max_inspect_bytes=8*1024**2,profile=None,allow_empty=False):
     values=source if isinstance(source,list) else [source]
     if not 1<=len(values)<=20:raise ValueError('Choose between one and twenty analysis folders or backup ZIPs')
     roots=[];root_keys=set()
@@ -107,12 +107,12 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                     if directories%250==0:progress(15,'Indexed '+str(len(folders))+' analysis locations')
                     if partial:break
             if partial:warnings.append('Inventory budget reached; results are partial. Choose narrower paths.');break
-        if not folders and not stem_files and not inspection_records:raise ValueError('No analysis, STEMS, player-settings or device-catalog candidate assets were found in these selected scopes')
+        if not allow_empty and not folders and not stem_files and not inspection_records:raise ValueError('No analysis, STEMS, player-settings or device-catalog candidate assets were found in these selected scopes')
         references={k for p in snapshot.get('asset_references',[]) if (k:=analysis_folder(p))}
         complete=snapshot.get('capabilities',{}).get('analysis_references',False)
         found_keys={f['reference_key'] for f in folders.values() if f['reference_key']}
         rows=[]
-        rows.extend({'section':'stems_related_asset','severity':'info' if f['rbsc'] else 'review','title':Path(f['path']).name,'detail':f['evidence'],**f} for f in stem_files.values())
+        rows.extend({'section':'stems_related_asset','asset_family':'candidate','provider':'unknown','severity':'info' if f['rbsc'] else 'review','title':Path(f['path']).name,'detail':f['evidence'],**f} for f in stem_files.values())
         for key in sorted(references-found_keys):rows.append({'section':'asset_missing','severity':'review','title':key,'detail':'Referenced folder not found in the inspected scope'+(' (inventory incomplete)' if partial or warnings else '')})
         for location,folder in folders.items():
             key=folder['reference_key']
