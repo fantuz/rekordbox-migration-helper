@@ -2,12 +2,32 @@
 
 ## Unreleased
 
+## 1.1.9 — 2026-11-17
+
+This release adds reviewed label/composer imports and a real OneTagger producer-to-importer test, and includes the report-review and integrity improvements shipped in 1.1.8.
+
+- Accept version-2 OneTagger reports with optional label and composer values. New selection manifests request version 2; version-1 reports and older producers remain supported with their original five fields. Missing tags never authorize clearing library values.
+- Independently read label/composer, offer unchecked field choices and stage only explicitly approved values. Apply those values through XML Label/Composer and native LabelID/ComposerID lookups with independent export verification. Composer support reads existing tags; it does not add composer lookup to providers.
+- Reduce repeated metadata reads when several library IDs reference the same file. Reuse a read only within the current import or staging operation, validate file state on every reuse and recheck it before committing. Read shared native artist/composer lookups once during export verification.
+- Require a pinned production OneTagger batch to produce actual JSON for the Helper importer in CI. Test version 2, legacy negotiation, provider fallback, cancellation, explicit staging and stale-file rejection with an offline provider. A separate 500-reference regression verifies read reuse and invalidation after file changes.
+- Retain the 1.1.8 review protections: bounded raw JSON, provider/run evidence, partial outcomes, explicit field approval, stale-review blocking, private review downloads and saved evidence across restarts, with controls in all 13 interface languages.
+- Retain the 1.1.8 integrity checks for active-loop and captured metadata changes, playlist moves and type conversions, renumbered parent IDs, non-PMAI `.3EX` variants and bounded PQT2 counts/fractions. Keep unsupported evidence and native STEMS readiness explicit.
+- Extend Chromium, Firefox and WebKit checks for label/composer while retaining version-1 fixtures. The source archive includes both shared report fixtures and the producer-to-importer test runner.
+
+New release scope: merged [PR #70](https://github.com/fantuz/rekordbox-migration-helper/pull/70), together with all prior improvements. Only approved metadata fields are staged by the Helper; personal stars, BPM, musical key, grids, cues, play counts, playlists, references and audio bytes remain outside these handoff edits. A compatible OneTagger producer is required for version-2 fields. See the [versioned results guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.1.9/docs/ONETAGGER-RESULTS.md) and [integrity review](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.1.9/docs/RECORDBOX-INTEGRITY-REVIEW.md). Offline provider tests do not certify live matching, native restoration or physical players.
+
+## 1.1.8 — 2026-11-17
+
+This published release introduced verified OneTagger report review and broader preparation-workflow integrity checks.
+
 - Extend snapshot comparisons to known active-loop switches, captured title/BPM/key/play-count/analyzed values, playlist moves and folder/smart/manual conversions. Resolve parent identities across renumbered IDs and retain unknown evidence without assuming a change.
 - Keep non-PMAI `.3EX` variants Unsupported instead of falsely reporting corruption. Check the observed PQT2 revision's count/body agreement and fractional ranges; retain checksum and unsupported semantics as unverified.
 - Add synthetic regressions and real-server Playwright checks for comparison filters/downloads, duplicate playlist members, folder/ZIP format parity and saved reports across restart. Document the broader [Recordbox integrity review](docs/RECORDBOX-INTEGRITY-REVIEW.md), public fixture evidence and outstanding identity/recovery/backup/STEMS questions.
 - Import version-1 OneTagger tagging-results JSON into the existing field-review workflow. Require the exact saved selection, membership and paths; independently verify final file state and tags. Retain application/run identity, before/after tags, fallback-provider evidence and partial/cancelled outcomes without automatically staging edits.
 - Accept bounded raw JSON files, reject duplicate keys and nonfinite numbers, and read year components from stored release dates. Add review downloads, verification counts and outdated-review notices. Recheck selected files before committing staged fields and roll back changes if files changed during staging.
 - Translate the new controls across all 13 interface languages and extend shared-fixture, API and real-server Playwright checks for report import, stale evidence, explicit field selection, input preservation and restart recovery. Personal stars, cues, grids, BPM, keys, playlist membership and recorded references remain outside this report-import contract.
+
+Release scope: merged PRs #67, #68 and #69. Published from `eaef775`; this changelog section records the already published release without changing its tag or packages.
 
 ## 1.1.7 — 2026-11-17
 
