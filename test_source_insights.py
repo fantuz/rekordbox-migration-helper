@@ -111,6 +111,19 @@ class SourceInsightTests(unittest.TestCase):
         source['tracks'][0]['cues']=[{'kind':5,'in_ms':2000,'out_ms':1000,'active_loop':1}]
         self.assertEqual(source_insights(source)[0]['cue_anomalies'],2)
 
+    def test_unknown_active_loop_flag_is_not_counted_as_true(self):
+        source=native_snapshot();source['tracks'][0]['cues'][0]['active_loop']=8
+        summary,rows=source_insights(source)
+        self.assertEqual(summary['active_loops'],0);self.assertEqual(summary['cue_anomalies'],2)
+
+    def test_oversized_rule_keeps_identity_hash_without_executing(self):
+        source={'tracks':[],'playlists':[{'id':'large','smart':True,'smart_definition':None,
+                'smart_definition_status':'oversized','criteria_sha256':'synthetic-digest'}]}
+        summary,rows=source_insights(source)
+        rule=next(r for r in rows if r['section']=='smart_playlist')
+        self.assertEqual(rule['validation'],'unsupported');self.assertEqual(rule['criteria_sha256'],'synthetic-digest')
+        self.assertFalse(rule['executable'])
+
     def test_old_and_xml_snapshots_report_unavailable_not_empty_evidence(self):
         s,rows=source_insights({'tracks':[{'id':'a'}],'playlists':[]})
         self.assertEqual(s['tracks_with_native_evidence'],0)

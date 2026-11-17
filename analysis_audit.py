@@ -15,6 +15,14 @@ from asset_formats import format_candidate,inspect_format,PROBE_LIMIT
 from task_control import OperationCancelled
 
 
+def asset_stamp(path,strong=False):
+    record=file_record(path)
+    if strong:
+        current=path.stat()
+        record.update(inode=current.st_ino,device=current.st_dev,ctime_ns=current.st_ctime_ns)
+    return record
+
+
 def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**2,
                  max_directories=160000,max_files=300000,max_seconds=45,inspect=False,max_inspect_bytes=8*1024**2):
     values=source if isinstance(source,list) else [source]
@@ -49,7 +57,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
             progress(5,'Inventorying selected analysis scope: '+root.name)
             if root.is_file():
                 if root.suffix.lower()!='.zip':raise ValueError('Choose analysis folders or native backup ZIPs')
-                stamp=file_record(root)
+                stamp=asset_stamp(root,inspect)
                 if stamp['cloud_only']:raise ValueError('Make the selected backup ZIP available locally first')
                 archive=stack.enter_context(zipfile.ZipFile(root));archive_stamps.append((root,stamp))
                 archive_names=set()
@@ -87,7 +95,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                         if path.is_symlink():continue
                         hint=path.suffix.casefold() in ('.rbsc','.stem','.stems') or path.name.casefold().endswith(('.stem.mp4','.stems.mp4')) or any(p.casefold() in ('stems','stem','track separation','track_separation','trackseparation') for p in path.parts[:-1])
                         if not (reference or ANALYSIS.fullmatch(name) or hint or inspect and format_candidate(name)):continue
-                        try:stamp=file_record(path)
+                        try:stamp=asset_stamp(path,inspect)
                         except OSError as error:warnings.append(str(error));continue
                         record={'name':name,'bytes':stamp['size'],'source':str(path),'archive':None,'cloud':stamp['cloud_only'],'stamp':stamp}
                         stem_evidence(str(path),stamp['size'],str(path),record,scope)
@@ -128,14 +136,14 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                         if f['cloud']:reason='Online-only analysis assets were not read';skipped+=1;break
                         if not ANALYSIS.fullmatch(f['name']):reason='Verification is limited to recognized ANLZ analysis members';skipped+=1;break
                         if hash_bytes+f['bytes']>max_hash_bytes:reason='Explicit verification byte budget reached';skipped+=1;break
-                        if not f['archive'] and file_record(Path(f['source']))!=f['stamp']:raise ValueError('An analysis file changed after inventory; capture again')
+                        if not f['archive'] and asset_stamp(Path(f['source']),inspect)!=f['stamp']:raise ValueError('An analysis file changed after inventory; capture again')
                         digest.update((f['name'].casefold()+'\0'+str(f['bytes'])+'\0').encode())
                         stream=f['archive'].open(f['source']) if f['archive'] else Path(f['source']).open('rb')
                         with stream:
                             while chunk:=stream.read(min(2*1024**2,max_hash_bytes-hash_bytes+1)):
                                 if hash_bytes+len(chunk)>max_hash_bytes:reason='Explicit verification byte budget reached';skipped+=1;break
                                 digest.update(chunk);hash_bytes+=len(chunk)
-                        if not f['archive'] and file_record(Path(f['source']))!=f['stamp']:raise ValueError('An analysis file changed during verification; capture again')
+                        if not f['archive'] and asset_stamp(Path(f['source']),inspect)!=f['stamp']:raise ValueError('An analysis file changed during verification; capture again')
                         progress(50,'Verifying explicitly selected candidate analysis bytes')
                         if reason:break
                     if reason:break
@@ -160,7 +168,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
             inspection_summary['tempo_disagreements']=len(comparisons)
             rows.extend(inspection_rows);rows.extend(comparisons);hash_bytes+=used
         for root,stamp in archive_stamps:
-            if file_record(root)!=stamp:raise ValueError('A backup ZIP changed during the audit; capture again')
+            if asset_stamp(root,inspect)!=stamp:raise ValueError('A backup ZIP changed during the audit; capture again')
         return {'scopes':scopes,'folders':len(folders),'files':sum(len(f['files']) for f in folders.values()),
                 'analysis_extensions':[{'extension':ext,**totals} for ext,totals in sorted(extension_counts.items(),key=lambda item:-item[1]['bytes'])],
                 'stems':{'prepared_tracks':None,'preparation_status':'Unavailable: no validated persistent per-track STEMS indicator is decoded',
@@ -180,7 +188,7 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
     """Read only explicitly requested candidates, with independent header and checksum budgets."""
     rows=[];counts=defaultdict(int);inspected=hashed=0
     def unchanged(f):
-        if not f['archive'] and (Path(f['source']).is_symlink() or file_record(Path(f['source']))!=f['stamp']):
+        if not f['archive'] and (Path(f['source']).is_symlink() or asset_stamp(Path(f['source']),True)!=f['stamp']):
             raise ValueError('An asset changed during format inspection; capture again')
     def stream(f):
         return f['archive'].open(f['source']) if f['archive'] else Path(f['source']).open('rb')

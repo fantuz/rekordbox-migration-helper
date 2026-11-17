@@ -4,6 +4,7 @@ from hashlib import sha256
 from pathlib import Path
 import binascii
 import json
+import os
 import struct
 import tempfile
 import unittest
@@ -68,6 +69,10 @@ class FormatTests(unittest.TestCase):
             self.assertEqual(self.inspect('MYSETTING.DAT',changed)['validation'],'corrupt')
         self.assertEqual(self.inspect('MYSETTING.DAT',raw[:108],len(raw))['validation'],'not_checked')
 
+    def test_unknown_settings_payload_revision_is_unsupported_not_corrupt(self):
+        raw=bytearray(149);struct.pack_into('<I',raw,0,96);struct.pack_into('<I',raw,100,41)
+        self.assertEqual(self.inspect('MYSETTING.DAT',raw)['validation'],'unsupported')
+
     def test_anlz_repeated_groups_unknown_tags_and_variable_tempo(self):
         raw=anlz_bytes((12800,13000));r=self.inspect('ANLZ0000.DAT',raw)
         self.assertEqual(r['validation'],'recognized');self.assertEqual(r['section_counts']['PCOB'],2)
@@ -114,6 +119,11 @@ class FormatTests(unittest.TestCase):
         raw=bytearray(anlz_bytes());struct.pack_into('>I',raw,28+24+8+4,0)
         self.assertEqual(self.inspect('ANLZ0000.DAT',raw)['validation'],'corrupt')
 
+    def test_analysis_section_count_is_bounded(self):
+        body=section('ZZZZ')*1025;raw=b'PMAI'+struct.pack('>II',28,28+len(body))+bytes(16)+body
+        result=self.inspect('ANLZ0000.DAT',raw)
+        self.assertEqual(result['validation'],'not_checked');self.assertEqual(len(result['sections']),1024)
+
     def test_stems_header_proves_structure_only(self):
         r=self.inspect('name.stems',stems_bytes())
         self.assertEqual(r['validation'],'recognized');self.assertEqual(r['channels'],8)
@@ -141,6 +151,13 @@ class FormatTests(unittest.TestCase):
     def test_suffix_container_and_rbsc_are_candidates(self):
         for name,data in (('a.stems',b'unknown'),('drums.rbsc',b'unknown'),('a.stem.mp4',b'\x00\x00\x00\x18ftypisom')):
             r=self.inspect(name,data);self.assertEqual(r['validation'],'unsupported');self.assertIsNone(r['native_stems_readiness'])
+
+    def test_single_byte_mutations_stay_bounded_and_return_evidence(self):
+        for name,original in (('ANLZ0000.DAT',anlz_bytes()),('MYSETTING.DAT',settings_bytes()),('a.stems',stems_bytes())):
+            for index in range(len(original)):
+                damaged=bytearray(original);damaged[index]^=255
+                result=self.inspect(name,damaged)
+                self.assertIn(result['validation'],('recognized','corrupt','unsupported','not_checked'))
 
 
 class AuditTests(unittest.TestCase):
@@ -195,6 +212,17 @@ class AuditTests(unittest.TestCase):
         with patch('analysis_audit.inspect_format',side_effect=mutate):
             with self.assertRaisesRegex(ValueError,'changed'):self.audit()
 
+    def test_same_size_and_mtime_replacement_during_probe_is_rejected(self):
+        import analysis_audit
+        original=analysis_audit.inspect_format
+        def replace(name,prefix,size):
+            path=self.folder/name;stamp=path.stat();replacement=path.with_name('replacement.tmp')
+            replacement.write_bytes(b'x'*size);os.utime(replacement,ns=(stamp.st_atime_ns,stamp.st_mtime_ns))
+            replacement.replace(path)
+            return original(name,prefix,size)
+        with patch('analysis_audit.inspect_format',side_effect=replace):
+            with self.assertRaisesRegex(ValueError,'changed'):self.audit()
+
     def test_archive_replacement_is_detected_before_report_publication(self):
         def mutate(amount,*_):
             if amount==75:
@@ -228,3 +256,26 @@ class AuditTests(unittest.TestCase):
         summary,rows=backup_manifest(source,str(self.archive),lambda *_:None)
         self.assertEqual(summary['missing_analysis_references'],1)
         self.assertEqual(next(r['title'] for r in rows if r['section']=='missing_analysis'),'usbanlz/p001/abc/anlz0000.3ex')
+
+    def test_tempo_comparisons_require_unambiguous_exact_references(self):
+        from analysis_audit import compare_analysis_tempos
+        path='/PIONEER/USBANLZ/P001/ABC/ANLZ0000.DAT'
+        source={'tracks':[{'id':'a','title':'Track A','analysis_path':path,'bpm':87}]}
+        result={'format':'anlz','validation':'recognized','path':path,'scope':'synthetic',
+                'tempo_evidence':[{'bpms':[174]}]}
+        before=deepcopy(source);rows=compare_analysis_tempos(source,[result])
+        self.assertEqual(len(rows),1);self.assertTrue(rows[0]['half_double']);self.assertEqual(source,before)
+        self.assertIn('not verified',result['tempo_reference']['basis'])
+        source['tracks'].append({**source['tracks'][0],'id':'b'})
+        self.assertEqual(compare_analysis_tempos(source,[result]),[])
+        source['tracks']=source['tracks'][:1];source['tracks'][0]['bpm']=None
+        self.assertEqual(compare_analysis_tempos(source,[result]),[])
+
+    def test_bad_settings_crc_remains_separate_from_successful_zip_crc(self):
+        bad=bytearray(settings_bytes());bad[104]^=1
+        with zipfile.ZipFile(self.archive,'w') as z:z.writestr('PIONEER/MYSETTING.DAT',bad)
+        summary,rows=backup_manifest({},str(self.archive),lambda *_:None,True)
+        self.assertEqual(summary['checksum_status'],'verified')
+        row=next(r for r in rows if r['section']=='backup_member')
+        self.assertEqual(row['verification'],'verified');self.assertEqual(row['format_evidence']['validation'],'corrupt')
+        self.assertEqual(row['severity'],'review')

@@ -16,6 +16,8 @@ Automatic cue origin is inferred from editable CUE(Auto)/1.1Bars labels. It is n
 
 Reports support finding filters, paging and complete JSON download. Analysis audit now accepts multiple custom folders/ZIPs, bounded discovery and separate STEMS evidence counters. The Play history page browses native session snapshots and ordered membership, with missing tracks retained. See [discovery, assets and history](DISCOVERY-ASSETS-HISTORY.md) for limits and privacy. All library inputs, reports, working data and real pilot samples stay local and are excluded from source control, public CI and releases.
 
+**Formats & STEMS** adds bounded structure checks for analysis assets, player settings, device catalog headers and recognized Recordbox stem caches. **Native source insights** inspects captured artist-role relationships, raw native fields, cue anomalies and smart-playlist definitions. Saved reports can combine section, severity, validation and text filters; JSON downloads retain the same selection across all matching pages. See [format/STEMS checks and evidence limits](FORMATS-AND-STEMS.md).
+
 ## Staged field overrides
 
 The per-track file view opens Comments directly. Save a comment without unlocking other metadata. The colour palette also stages a working edit with one click: choose a labelled standard colour or clear the assignment. The selected colour has a checkmark and a pressed state, and captured custom colour names remain visible. Unavailable native colour mappings stay disabled with an explanation. Changing colour does not submit or replace an unsaved comment.
