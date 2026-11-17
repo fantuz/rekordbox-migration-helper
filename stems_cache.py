@@ -21,11 +21,13 @@ def selected_source(value,roots):
     path=Path(value)
     if not path.is_absolute() or '..' in path.parts:return 'not_in_scope',None,None
     if len(path.parts)>64:return 'not_checked',None,None
-    scope=next((root for root in roots if path.is_relative_to(root)),None)
-    if scope is None:return 'not_in_scope',None,None
+    scopes=[root if isinstance(root,tuple) else (root,root) for root in roots]
+    selected=next(((alias,scope) for alias,scope in scopes if path.is_relative_to(alias)),None)
+    if selected is None:return 'not_in_scope',None,None
+    alias,scope=selected
     try:
         current=path
-        while current!=scope:
+        while current!=alias:
             if current.is_symlink() or current.is_junction():return 'linked_path',None,None
             current=current.parent
         resolved=path.resolve(strict=True)
@@ -36,7 +38,7 @@ def selected_source(value,roots):
     except OSError:return 'unavailable',None,None
 
 
-def provider_report(rows,roots,profile,progress,deadline,inventory_complete=True,max_rows=10000,now=None):
+def provider_report(rows,roots,profile,progress,deadline,inventory_complete=True,max_rows=10000,now=None,source_aliases=None):
     now=time.time() if now is None else now
     caches={};markers={};reports=[];checked_sources={};source_memo={};counts=Counter();partial=False
     def root_key(row,root):return (row.get('_archive_scope') or '',str(root))
@@ -93,7 +95,10 @@ def provider_report(rows,roots,profile,progress,deadline,inventory_complete=True
                                 'native_stems_readiness':None,'detail':reason})
             else:partial=True
     inventory_complete=inventory_complete and not partial
-    source_roots=[root for root in roots if root.is_dir()]
+    # Accept only aliases explicitly selected by the user, tied to their approved
+    # physical scope. Do not resolve arbitrary manifest paths to discover scope.
+    source_roots=[(root,root) for root in roots if root.is_dir()]
+    source_roots.extend((alias,scope) for alias,scope in source_aliases or [] if scope.is_dir())
     for row in rows:
         if row.get('format')!='rbstems_manifest' or row['validation']!='recognized':continue
         model=row['model_namespace'];records=row.get('_manifest_records',[]);duplicates=Counter(r['path'] for r in records)

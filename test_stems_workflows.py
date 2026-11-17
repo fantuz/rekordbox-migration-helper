@@ -40,7 +40,7 @@ class ScopeTests(unittest.TestCase):
             for path in self.cache.rglob('*'):
                 if path.is_file():z.write(path,'RB Stems Plus Cache.noindex/'+path.relative_to(self.cache).as_posix())
         summary,rows=audit_assets({},[str(archive),str(self.meta),str(self.audio)],lambda *_:None,inspect=True)
-        prep=self.preparation(rows);self.assertEqual(prep['cache_state'],'consistent');self.assertIn(str(archive)+'!/',prep['cache_root'])
+        prep=self.preparation(rows);self.assertEqual(prep['cache_state'],'consistent');self.assertIn(str(archive.resolve())+'!/',prep['cache_root'])
         self.assertEqual(summary['format_inspection']['provider_cache']['chunk_sets_present'],1)
         self.assertTrue(all(not any(k.startswith('_') for k in row) for row in rows))
 
@@ -98,6 +98,16 @@ class ScopeTests(unittest.TestCase):
         temporary=self.cache/MODEL/KEY[:2]/(KEY+'.flac.tmp');temporary.write_bytes(b'partial write')
         _,rows=self.audit();partial=next(r for r in rows if r.get('format')=='rbstems_partial')
         self.assertEqual(partial['cache_state'],'incomplete');self.assertIsNone(partial['native_stems_readiness'])
+
+    def test_explicit_selected_root_alias_is_allowed_but_not_a_manifest_only_alias(self):
+        alias=self.root/'selected-root-alias'
+        try:alias.symlink_to(self.audio,target_is_directory=True)
+        except OSError:self.skipTest('Directory symlinks unavailable')
+        (self.meta/'test.manifest').write_bytes(manifest(alias/self.source.name))
+        _,rows=audit_assets({},list(map(str,(self.cache,self.meta,alias))),lambda *_:None,inspect=True)
+        self.assertEqual(self.preparation(rows)['cache_state'],'consistent')
+        # Merely mentioning the same alias in a manifest grants no extra scope.
+        self.assertEqual(self.preparation(self.audit()[1])['source_stamp_status'],'not_in_scope')
 
     def test_metadata_budget_and_expired_deadline_do_not_prove_completeness(self):
         summary,rows=self.audit(max_inspect_bytes=64)

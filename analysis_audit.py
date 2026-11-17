@@ -30,11 +30,12 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                  max_directories=160000,max_files=300000,max_seconds=45,inspect=False,max_inspect_bytes=8*1024**2,profile=None,allow_empty=False):
     values=source if isinstance(source,list) else [source]
     if not 1<=len(values)<=20:raise ValueError('Choose between one and twenty analysis folders or backup ZIPs')
-    roots=[];root_keys=set()
+    roots=[];root_keys=set();source_aliases=[]
     for value in values:
         path=Path(str(value).strip().strip('"')).expanduser()
         if not path.is_absolute() or not path.exists():raise ValueError('Choose accessible absolute paths to analysis folders or backup ZIPs')
-        path=path.resolve()
+        selected=path;path=path.resolve()
+        if path.is_dir():source_aliases.append((selected,path))
         if str(path) not in root_keys:roots.append(path);root_keys.add(str(path))
     folders={};seen_files=set();scopes=[];warnings=[];hash_bytes=0;skipped=0;partial=False;directories=0;files_seen=0;started=time.monotonic()
     stem_files={};inspection_records={};extension_counts=defaultdict(lambda:{'files':0,'bytes':0})
@@ -170,7 +171,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
             comparisons=compare_analysis_tempos(snapshot,inspection_rows)
             inspection_summary['tempo_disagreements']=len(comparisons)
             provider_rows,provider_summary=provider_report(inspection_rows,roots,profile or stems_context(),progress,
-                started+max_seconds,inventory_complete=not partial and not warnings)
+                started+max_seconds,inventory_complete=not partial and not warnings,source_aliases=source_aliases)
             for record in inspection_rows:
                 for key in list(record):
                     if key.startswith('_'):record.pop(key)
