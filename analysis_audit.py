@@ -276,13 +276,13 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
                               detail='Asset could not be completely inspected: '+str(error),checksum_status='failed')
             unchanged(f)
         kind=record['format']
-        family,provider={'anlz':('analysis','rekordbox'),'player_settings':('player_settings','rekordbox'),
+        family,provider={'anlz':('analysis','rekordbox'),'anlz_3ex':('analysis','rekordbox'),'player_settings':('player_settings','rekordbox'),
                          'device_sql':('device_catalog','rekordbox'),'onelibrary_catalog':('device_catalog','rekordbox'),
                          'recordbox_stems_v1':('separation_cache','recordbox'),'rbsc_candidate':('capture','rekordbox')}.get(kind,('candidate','unknown'))
         record.setdefault('asset_family',family);record.setdefault('provider',provider)
         if kind=='recordbox_stems_v1':record.setdefault('cache_state','present' if record['validation']=='recognized' else 'unknown')
         record['severity']='info' if record['validation']=='recognized' else 'review'
-        record['section']={'anlz':'analysis_format','player_settings':'player_settings','device_sql':'device_catalog',
+        record['section']={'anlz':'analysis_format','anlz_3ex':'analysis_format','player_settings':'player_settings','device_sql':'device_catalog',
                            'onelibrary_catalog':'device_catalog','recordbox_stems_v1':'stems_cache','ni_stems_v1':'stems_container'}.get(kind,'provider_cache_metadata' if kind.startswith('rbstems_') else 'format_candidate')
         counts[record['validation']]+=1;counts[kind]+=1;counts[kind+'_'+record['validation']]+=1
         if record['checksum_status']=='computed':counts['fingerprinted_files']+=1

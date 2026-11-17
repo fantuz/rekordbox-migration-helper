@@ -46,12 +46,58 @@ def pdb_bytes():
     return bytes(data)
 
 
+def pqt2_bytes(fractions=(125,986),revision=0x01000002):
+    extra=(struct.pack('>III',0,revision,0)+struct.pack('>HHI',1,12800,25)
+           +struct.pack('>HHI',2,12800,525)+struct.pack('>II',len(fractions),26153)+bytes(8))
+    body=section('PQT2',extra,b''.join(struct.pack('>H',v) for v in fractions))
+    return b'PMAI'+struct.pack('>II',28,28+len(body))+bytes(16)+body
+
+
 def stems_bytes(frames=8):
     return b'PDSTEMS1'+struct.pack('<Q',frames)+bytes(16*frames)
 
 
 class FormatTests(unittest.TestCase):
     def inspect(self,name,raw,size=None):return inspect_format(name,raw,len(raw) if size is None else size)
+
+    def test_non_pmai_3ex_is_unsupported_even_with_an_embedding_prefix(self):
+        for raw in (b'opaque',b'',b'\x81\xa9embedding',b'\x81\xa9embedding\xc1',
+                    b'\x81\xa9embedding\x81\xa2d4\xcb'+struct.pack('>d',1.25)):
+            with self.subTest(raw=raw):
+                result=self.inspect('ANLZ0000.3EX',raw)
+                self.assertEqual(result['validation'],'unsupported')
+                self.assertEqual(result['format'],'anlz_3ex');self.assertFalse(result['payload_verified'])
+                self.assertEqual(result['embedding_signature'],raw.startswith(b'\x81\xa9embedding'))
+                self.assertIsNone(result['native_stems_readiness'])
+        self.assertEqual(self.inspect('ANLZ0000.3EX',anlz_bytes())['validation'],'recognized')
+        self.assertEqual(self.inspect('ANLZ0000.3EX',b'PMAI'+bytes(20))['validation'],'corrupt')
+
+    def test_known_extended_grid_checks_count_and_fraction_range_without_claiming_checksum(self):
+        result=self.inspect('ANLZ0000.EXT',pqt2_bytes())
+        self.assertEqual(result['validation'],'recognized')
+        grid=result['extended_grid_evidence'][0]
+        self.assertEqual(grid['validation'],'recognized');self.assertEqual(grid['beats'],2)
+        self.assertEqual((grid['min_fraction'],grid['max_fraction']),(125,986))
+        self.assertEqual(grid['checksum_validation'],'not_checked')
+        self.assertIsNone(result['native_stems_readiness'])
+
+    def test_extended_grid_rejects_mismatched_huge_counts_and_invalid_fractions(self):
+        for count in (0,1,3,2**32-1):
+            raw=bytearray(pqt2_bytes());struct.pack_into('>I',raw,28+40,count)
+            self.assertEqual(self.inspect('ANLZ0000.EXT',raw)['validation'],'corrupt')
+        for fraction in (1000,65535):
+            self.assertEqual(self.inspect('ANLZ0000.EXT',pqt2_bytes((fraction,)))['validation'],'corrupt')
+
+    def test_extended_grid_unknown_revision_and_budget_limits_do_not_imply_corruption(self):
+        result=self.inspect('ANLZ0000.EXT',pqt2_bytes((65535,),revision=0x02000002))
+        self.assertEqual(result['validation'],'recognized')  # PMAI framing only
+        self.assertEqual(result['extended_grid_evidence'][0]['validation'],'unsupported')
+        raw=pqt2_bytes()
+        for at in range(12,len(raw)):
+            result=self.inspect('ANLZ0000.EXT',raw[:at],len(raw))
+            self.assertIn(result['validation'],('recognized','not_checked'))
+            if result['extended_grid_evidence']:
+                self.assertEqual(result['extended_grid_evidence'][0]['validation'],'not_checked')
 
     def test_all_settings_types_and_distinct_checksum_scopes(self):
         for name in SETTINGS:

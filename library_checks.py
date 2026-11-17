@@ -39,6 +39,9 @@ def match_tracks(before,after):
 
 
 def cue_changes(old,new,tolerance=0):
+    def active(c):
+        value=c.get('active_loop')
+        return str(int(value)) if isinstance(value,(int,bool)) and value in (0,1) else value if value in ('0','1') else None
     def position(c):return (c.get('in_ms'),c.get('out_ms') if c.get('out_ms') is not None and c['out_ms']>=0 else -1)
     def same(a,b):
         if a.get('kind')!=b.get('kind'):return False
@@ -52,9 +55,41 @@ def cue_changes(old,new,tolerance=0):
             if len(stable)==1:matched=stable[0];changes.append(('changed_cue',a,matched))
             else:changes.append(('lost_cue',a,None));continue
         elif any(a.get(f)!=matched.get(f) for f in ('label','color')):changes.append(('cue_annotation',a,matched))
+        if active(a) is not None and active(matched) is not None and active(a)!=active(matched):
+            changes.append(('cue_active_loop',a,matched))
         remaining.remove(matched)
     changes.extend(('added_cue',None,b) for b in remaining)
     return changes
+
+
+def match_playlists(previous,later):
+    """Match unique UUIDs before guarded IDs or names; never consume an ID rival first."""
+    old={p['id']:p for p in previous};new={p['id']:p for p in later};mapping={}
+    for field in ('uuid','id','name_parent'):
+        left=defaultdict(set);right=defaultdict(set)
+        for records,index,excluded in ((old,left,set(mapping)),(new,right,set(mapping.values()))):
+            for identity,p in records.items():
+                if identity in excluded:continue
+                parent=None if p.get('parent') is None else str(p['parent'])
+                key=(p['name'],parent) if field=='name_parent' else p.get(field)
+                if key:index[key].add(identity)
+        for key,ids in left.items():
+            if len(ids)!=1 or len(right.get(key,set()))!=1:continue
+            a,b=next(iter(ids)),next(iter(right[key]))
+            if old[a].get('uuid') and new[b].get('uuid') and old[a]['uuid']!=new[b]['uuid']:continue
+            mapping[a]=b
+    return old,new,mapping
+
+
+def playlist_parent(playlist,nodes,mapping=None):
+    """Resolve a captured parent through matched identities; unknown parents stay unknown."""
+    if playlist.get('parent') is None:return None
+    identity=str(playlist['parent'])
+    if identity in nodes:
+        target=mapping.get(identity) if mapping is not None else identity
+        return ('node',target) if target is not None else None
+    if identity in ('','0','root'):return ('root',)
+    return None
 
 
 def compare_snapshots(before,after,tolerance_ms=0):
@@ -67,6 +102,9 @@ def compare_snapshots(before,after,tolerance_ms=0):
             rows.append(row('rating',right,f"Personal stars: {left['rating']} → {right['rating']}",before=left['rating'],after=right['rating'],match=evidence[a]));counts['ratings_changed']+=1
         for field in ('year','artist','album','genre'):
             if left.get(field)!=right.get(field):rows.append(row('metadata',right,field+' changed',field=field,before=left.get(field),after=right.get(field),match=evidence[a]));counts['metadata_changed']+=1
+        for field in ('title','bpm','tonality','play_count','analysed'):
+            if left.get(field) is not None and right.get(field) is not None and left[field]!=right[field]:
+                rows.append(row('metadata',right,field+' changed',field=field,before=left[field],after=right[field],match=evidence[a]));counts['metadata_changed']+=1
         if left.get('cues') is not None and right.get('cues') is not None:
             for kind,prior,current in cue_changes(left['cues'],right['cues'],tolerance_ms):
                 rows.append(row(kind,right,kind.replace('_',' '),before=prior,after=current,manual_involved=any(c and not c.get('auto') for c in (prior,current)),match=evidence[a]));counts[kind]+=1
@@ -74,14 +112,20 @@ def compare_snapshots(before,after,tolerance_ms=0):
     for identity in old.keys()-mapping.keys():rows.append(row('unmatched_before',old[identity],'No unique safe match in the later snapshot; cue loss is not inferred'));counts['unmatched_before']+=1
     for identity in new.keys()-set(mapping.values()):rows.append(row('unmatched_after',new[identity],'New or unmatched track in the later snapshot'));counts['unmatched_after']+=1
     if before.get('capabilities',{}).get('playlist_order') and after.get('capabilities',{}).get('playlist_order'):
-        previous=before.get('playlists',[]);later=after.get('playlists',[]);used=set()
+        previous=before.get('playlists',[]);later=after.get('playlists',[])
+        old_lists,new_lists,matched=match_playlists(previous,later)
+        old_nodes={str(k):v for k,v in old_lists.items()};new_nodes={str(k):v for k,v in new_lists.items()}
+        parent_mapping={str(k):str(v) for k,v in matched.items()}
         for p in previous:
-            candidates=[q for q in later if q['id'] not in used and ((p.get('uuid') and p['uuid']==q.get('uuid')) or (p['id']==q['id'] and not (p.get('uuid') and q.get('uuid') and p['uuid']!=q['uuid'])))]
-            if len(candidates)!=1:
-                candidates=[q for q in later if q['id'] not in used and q['name']==p['name'] and q.get('parent')==p.get('parent') and not (p.get('uuid') and q.get('uuid') and p['uuid']!=q['uuid'])]
-            if len(candidates)!=1:rows.append(row('playlist',{},'Playlist removed or ambiguous',playlist=p['name'],before=p));counts['playlists_unmatched']+=1;continue
-            q=candidates[0];used.add(q['id']);changes={}
+            if p['id'] not in matched:rows.append(row('playlist',{},'Playlist removed or ambiguous',playlist=p['name'],before=p));counts['playlists_unmatched']+=1;continue
+            q=new_lists[matched[p['id']]];changes={}
             if p['name']!=q['name']:changes['name']=[p['name'],q['name']]
+            prior_parent=playlist_parent(p,old_nodes,parent_mapping);current_parent=playlist_parent(q,new_nodes)
+            if prior_parent is None or current_parent is None:counts['playlist_hierarchy_unavailable']+=1
+            elif prior_parent!=current_parent:changes['parent']=[p['parent'],q['parent']]
+            for field in ('folder','smart'):
+                if isinstance(p.get(field),bool) and isinstance(q.get(field),bool) and p[field]!=q[field]:
+                    changes[field]=[p[field],q[field]]
             if p.get('criteria_sha256')!=q.get('criteria_sha256'):changes['smart_criteria']='changed'
             if not p.get('smart') and not q.get('smart'):
                 prior=[mapping.get(i,'unmatched-before:'+i) for i in p['tracks']];current=q['tracks']
@@ -89,7 +133,7 @@ def compare_snapshots(before,after,tolerance_ms=0):
                     changes.update(removed=list((Counter(prior)-Counter(current)).elements()),added=list((Counter(current)-Counter(prior)).elements()),order_changed=Counter(prior)==Counter(current))
             if changes:rows.append(row('playlist',{},'Playlist changed',playlist=q['name'],changes=changes));counts['playlists_changed']+=1
         for q in later:
-            if q['id'] not in used:rows.append(row('playlist',{},'New or unmatched playlist',playlist=q['name']));counts['playlists_added']+=1
+            if q['id'] not in matched.values():rows.append(row('playlist',{},'New or unmatched playlist',playlist=q['name']));counts['playlists_added']+=1
     else:counts['playlist_comparison_unavailable']=1
     return {'matched_tracks':len(mapping),'before_tracks':len(old),'after_tracks':len(new),'cue_tolerance_ms':tolerance_ms,**counts},rows
 

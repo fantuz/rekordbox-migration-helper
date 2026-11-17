@@ -77,9 +77,16 @@ def inspect_format(name, prefix, size,read_at=None,provider_context=False):
                       catalog_layer='classic_device', records_decoded=False)
     if prefix.startswith(b'PMAI'):
         return inspect_anlz(prefix, size, result)
+    if name.startswith('anlz') and name.endswith('.3ex'):
+        # Recordbox's RB7 observation is a prefix sniff, not a MessagePack validator.
+        embedding = prefix.startswith(b'\x81\xa9embedding')
+        return finish('unsupported', 'anlz_3ex',
+                      'Possible MessagePack embedding signature; payload is not decoded' if embedding else
+                      'Non-PMAI .3EX analysis variant; payload is not decoded',
+                      embedding_signature=embedding, payload_verified=False)
     cache=inspect_cache_file(name,prefix,size,provider_context)
     if cache is not None:return cache
-    if name.endswith(('.dat','.ext','.2ex','.3ex')) and name.startswith('anlz'):
+    if name.endswith(('.dat','.ext','.2ex')) and name.startswith('anlz'):
         return finish('corrupt', 'anlz', 'Expected PMAI analysis header is absent')
     if name.endswith('.rbsc'):
         return finish('unsupported', 'rbsc_candidate', 'Documented DRUM CAPTURE filename type; binary contents are not decoded',
@@ -93,7 +100,7 @@ def inspect_format(name, prefix, size,read_at=None,provider_context=False):
 
 
 def inspect_anlz(data, size, base):
-    result = {**base, 'format':'anlz', 'sections':[], 'cue_groups':[], 'tempo_evidence':[],
+    result = {**base, 'format':'anlz', 'sections':[], 'cue_groups':[], 'tempo_evidence':[], 'extended_grid_evidence':[],
               'phrase_evidence':False, 'vocal_activity_evidence':False}
     def finish(state, detail):
         result.update(validation=state, detail=detail)
@@ -123,6 +130,31 @@ def inspect_anlz(data, size, base):
         result['sections'].append(section);counts[tag] += 1
         # Read semantic fields only within this section, never from a following one.
         available = min(offset+length, len(data))
+        if tag == 'PQT2':
+            grid = {'tag':tag, 'validation':'unsupported',
+                    'detail':'Extended-grid revision is not decoded', 'checksum_validation':'not_checked'}
+            result['extended_grid_evidence'].append(grid)
+            if hlen == 56 and offset+56 <= available:
+                revision = struct.unpack_from('>I', data, offset+16)[0]
+                grid['revision'] = revision
+                if revision == 0x01000002:
+                    n, checksum = struct.unpack_from('>II', data, offset+40)
+                    grid.update(beats=n, stored_checksum=checksum)
+                    if 56 + n*2 != length:
+                        return finish('corrupt', 'PQT2 beat count disagrees with section length')
+                    grid.update(validation='not_checked', detail='Extended-grid fractions exceed the inspection byte budget')
+                    if offset+length <= len(data):
+                        low = high = None
+                        for (value,) in struct.iter_unpack('>H', data[offset+56:offset+length]):
+                            if value > 999:
+                                return finish('corrupt', 'PQT2 contains an invalid sub-millisecond fraction')
+                            low = value if low is None else min(low, value)
+                            high = value if high is None else max(high, value)
+                        grid.update(validation='recognized', fraction_unit='microseconds within a millisecond',
+                                    min_fraction=low, max_fraction=high,
+                                    detail='Known extended-grid count and fractions checked; checksum and multi-tempo semantics are not verified')
+            elif offset+hlen > available:
+                grid.update(validation='not_checked', detail='Extended-grid header exceeds the inspection byte budget')
         if tag == 'PQTZ':
             if hlen < 24 or length < 24 or offset+24 > available:
                 return finish('corrupt' if offset+24 <= len(data) else 'not_checked', 'Incomplete PQTZ header')

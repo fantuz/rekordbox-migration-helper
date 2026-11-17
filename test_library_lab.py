@@ -33,6 +33,86 @@ def snapshot(tracks=None):
 
 
 class ComparisonTests(unittest.TestCase):
+    def test_active_loop_changes_are_independent_from_positions_and_annotations(self):
+        before=snapshot();before['tracks'][0]['cues'][0].update(kind=4,out_ms=2000,active_loop=0)
+        after=deepcopy(before);after['tracks'][0]['cues'][0].update(active_loop='1',label='Active loop')
+        summary,rows=compare_snapshots(before,after)
+        self.assertEqual(summary['cue_active_loop'],1);self.assertEqual(summary['cue_annotation'],1)
+        result=next(r for r in rows if r['section']=='cue_active_loop')
+        self.assertEqual(result['before']['active_loop'],0);self.assertEqual(result['after']['active_loop'],'1')
+        self.assertEqual(compare_snapshots(after,before)[0]['cue_active_loop'],1)
+
+    def test_active_loop_normalization_and_missing_evidence_do_not_invent_changes(self):
+        before=snapshot();before['tracks'][0]['cues'][0]['active_loop']=1
+        for value in (True,'1',None,2,'unknown'):
+            after=deepcopy(before);after['tracks'][0]['cues'][0]['active_loop']=value
+            self.assertEqual(compare_snapshots(before,after)[1],[])
+        after=deepcopy(before);after['tracks'][0]['cues'][0].update(in_ms=1100,active_loop=0)
+        summary,_=compare_snapshots(before,after)
+        self.assertEqual(summary['changed_cue'],1);self.assertEqual(summary['cue_active_loop'],1)
+
+    def test_known_performance_metadata_changes_retain_before_and_after_evidence(self):
+        before=snapshot([song(bpm=87,tonality='Am',play_count=0,analysed=False)])
+        after=deepcopy(before)
+        after['tracks'][0].update(title='Renamed song',bpm=174,tonality='C',play_count=1,analysed=True)
+        summary,rows=compare_snapshots(before,after)
+        self.assertEqual(summary['metadata_changed'],5)
+        fields={r['field']:r for r in rows}
+        self.assertEqual((fields['bpm']['before'],fields['bpm']['after']),(87,174))
+        self.assertEqual(fields['play_count']['before'],0)
+        for name in ('bpm','tonality','play_count','analysed'):before['tracks'][0][name]=None
+        self.assertEqual(compare_snapshots(before,after)[0]['metadata_changed'],1)
+
+    def playlist_snapshot(self):
+        result=snapshot()
+        result['playlists']=[{'id':n,'uuid':'folder-'+n,'name':n,'parent':'root',
+                              'folder':True,'smart':False,'tracks':[]} for n in ('a','b')]
+        result['playlists'].append({'id':'p','uuid':'playlist-p','name':'Set','parent':'a',
+                                    'folder':False,'smart':False,'tracks':['one','one']})
+        return result
+
+    def test_playlist_moves_and_type_changes_are_reported_without_invented_member_loss(self):
+        before=self.playlist_snapshot();after=deepcopy(before)
+        after['playlists'][2].update(parent='b',smart=True)
+        summary,rows=compare_snapshots(before,after)
+        self.assertEqual(summary['playlists_changed'],1)
+        self.assertEqual(rows[0]['changes'],{'parent':['a','b'],'smart':[False,True]})
+        after=deepcopy(before);after['playlists'][2]['folder']=True
+        self.assertEqual(compare_snapshots(before,after)[1][0]['changes'],{'folder':[False,True]})
+
+    def test_renumbered_parent_ids_are_resolved_before_hierarchy_comparison(self):
+        before=self.playlist_snapshot();after=deepcopy(before)
+        after['playlists'][0]['id']='new-a';after['playlists'][1]['id']='new-b'
+        after['playlists'][2].update(id='new-p',parent='new-a')
+        self.assertEqual(compare_snapshots(before,after)[1],[])
+        after['playlists'][2]['parent']='new-b'
+        self.assertEqual(compare_snapshots(before,after)[1][0]['changes'],{'parent':['a','new-b']})
+
+    def test_uuid_matches_win_when_ids_are_reused_by_other_playlists(self):
+        before=self.playlist_snapshot();after=deepcopy(before)
+        after['playlists'][0]['id']='b';after['playlists'][1]['id']='a'
+        after['playlists'][2]['parent']='b'
+        summary,rows=compare_snapshots(before,after)
+        self.assertEqual(rows,[]);self.assertNotIn('playlists_unmatched',summary)
+
+    def test_unknown_or_unmatched_parents_do_not_become_proven_moves(self):
+        before=self.playlist_snapshot();after=deepcopy(before)
+        after['playlists'][2]['parent']='not-captured'
+        summary,rows=compare_snapshots(before,after)
+        self.assertEqual(rows,[]);self.assertEqual(summary['playlist_hierarchy_unavailable'],1)
+        before['playlists'][2]['parent']=None
+        after['playlists'][2]['parent']='root'
+        self.assertEqual(compare_snapshots(before,after)[1],[])
+        before=self.playlist_snapshot();after=deepcopy(before)
+        after['playlists'][2]['parent']=0
+        self.assertEqual(compare_snapshots(before,after)[1][0]['changes'],{'parent':['a',0]})
+
+    def test_missing_playlist_type_fields_are_not_assumed_to_be_manual(self):
+        before=self.playlist_snapshot();after=deepcopy(before)
+        del before['playlists'][2]['smart'];del before['playlists'][2]['folder']
+        after['playlists'][2].update(smart=True,folder=True)
+        self.assertEqual(compare_snapshots(before,after)[1],[])
+
     def test_positions_labels_ratings_and_order_are_independent_evidence(self):
         before=snapshot([song('one'),song('two')]);after=deepcopy(before)
         before['playlists']=[{'id':'p','uuid':'p-uuid','name':'Set','parent':'root','tracks':['one','two']}]
