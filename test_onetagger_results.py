@@ -1,7 +1,6 @@
 """Producer-shaped reports, real metadata reads and protected review transitions."""
 from copy import deepcopy
 from hashlib import sha256
-from pathlib import Path
 import json
 from unittest import TestCase
 from unittest.mock import patch
@@ -11,7 +10,7 @@ from metadata_export import payload
 from onetagger_bridge import FIELDS,read_tags,stamp
 from onetagger_results import decode_report,validate_report
 from task_control import OperationCancelled
-from test_onetagger_bridge import OneTaggerBridgeTests
+import test_onetagger_bridge as bridge_fixtures
 from workbench_store import Store
 
 
@@ -29,11 +28,11 @@ def mp3_tags(path,values):
 
 
 class ResultsTests(TestCase):
-    setUp=OneTaggerBridgeTests.setUp
-    export=OneTaggerBridgeTests.export
-    results_report=OneTaggerBridgeTests.results_report
-    import_report=OneTaggerBridgeTests.import_report
-    stage=OneTaggerBridgeTests.stage
+    setUp=bridge_fixtures.OneTaggerBridgeTests.setUp
+    export=bridge_fixtures.OneTaggerBridgeTests.export
+    results_report=bridge_fixtures.OneTaggerBridgeTests.results_report
+    import_report=bridge_fixtures.OneTaggerBridgeTests.import_report
+    stage=bridge_fixtures.OneTaggerBridgeTests.stage
 
     def raw_import(self,identity,data,**options):
         def launch(work,*_,**kwargs):work(lambda *_:None);return 'job'
@@ -229,7 +228,6 @@ class ResultsTests(TestCase):
     def test_mixed_cancelled_results_keep_all_rows_and_only_verify_written_files(self):
         identity=self.export();manifest=self.store.setting('onetagger:'+identity)
         # A native library can contain several IDs for the same selected audio.
-        duplicate={**manifest['tracks'][0],'track_id':'two'}
         snapshot=deepcopy(self.before);snapshot['tracks'].append({**snapshot['tracks'][0],'id':'two'})
         self.sid=self.store.save_snapshot(snapshot,'Two IDs')['id'];self.before=self.store.snapshot(self.sid)
         identity=self.client.post('/api/onetagger/export',json={'snapshot':self.sid,'track_ids':['one','two']},headers=self.headers).json['id']
