@@ -260,8 +260,10 @@ def compare_analysis_tempos(snapshot,rows):
         track=candidates[0];saved=finite(track.get('bpm'))
         tempos=sorted({bpm for grid in row.get('tempo_evidence',[]) for bpm in grid['bpms']})
         row['tempo_reference']={'track_id':track.get('id'),'saved_bpm':saved,
-                                'basis':'Normalized captured file reference; content association is not verified'}
+                                'basis':'Normalized captured file reference; content association is not verified',
+                                'grid_tempos_complete':all(g.get('bpms_complete',True) for g in row.get('tempo_evidence',[]))}
         if saved is None or not tempos:continue
+        if not row['tempo_reference']['grid_tempos_complete']:continue
         if not any(abs(saved-bpm)<=.02 for bpm in tempos):
             findings.append({'section':'analysis_tempo_disagreement','severity':'review','validation':'recognized',
                              'track_id':track.get('id'),'title':track.get('title',''),'artist':track.get('artist',''),

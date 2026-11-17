@@ -131,7 +131,8 @@ def inspect_anlz(data, size, base):
                     if not 1 <= beat <= 4 or bpm100 == 0 or ms < previous:
                         return finish('corrupt', 'PQTZ contains invalid beats, tempo or nonmonotonic times')
                     tempos.add(bpm100/100);previous = ms
-                result['tempo_evidence'].append({'tag':tag, 'beats':n, 'bpms':sorted(tempos)[:256], 'unit':'BPM',
+                result['tempo_evidence'].append({'tag':tag, 'beats':n, 'bpms':sorted(tempos)[:256],
+                                                 'bpms_complete':len(tempos)<=256,'distinct_tempo_count':len(tempos),'unit':'BPM',
                                                  'variable_tempo':len(tempos)>1})
         if tag in ('PCOB','PCO2'):
             minimum = 24 if tag == 'PCOB' else 20

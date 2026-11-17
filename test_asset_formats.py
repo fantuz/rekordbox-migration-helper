@@ -276,6 +276,18 @@ class AuditTests(unittest.TestCase):
         source['tracks']=source['tracks'][:1];source['tracks'][0]['bpm']=None
         self.assertEqual(compare_analysis_tempos(source,[result]),[])
 
+    def test_bounded_tempo_lists_cannot_establish_a_false_disagreement(self):
+        from analysis_audit import compare_analysis_tempos
+        raw=anlz_bytes(tuple(range(12000,12300)))
+        evidence=inspect_format('ANLZ0000.DAT',raw,len(raw))
+        grid=evidence['tempo_evidence'][0]
+        self.assertFalse(grid['bpms_complete']);self.assertEqual(grid['distinct_tempo_count'],300)
+        path='/USBANLZ/P001/ABC/ANLZ0000.DAT'
+        source={'tracks':[{'id':'a','analysis_path':path,'bpm':122.99}]}
+        evidence.update(path=path,scope='synthetic')
+        self.assertEqual(compare_analysis_tempos(source,[evidence]),[])
+        self.assertFalse(evidence['tempo_reference']['grid_tempos_complete'])
+
     def test_bad_settings_crc_remains_separate_from_successful_zip_crc(self):
         bad=bytearray(settings_bytes());bad[104]^=1
         with zipfile.ZipFile(self.archive,'w') as z:z.writestr('PIONEER/MYSETTING.DAT',bad)
