@@ -11,8 +11,11 @@ import zipfile
 from analyzer import analysis_folder
 from discovery import ANALYSIS
 from media import file_record,cloud_placeholder
-from asset_formats import format_candidate,inspect_format,PROBE_LIMIT
+from asset_formats import format_candidate,inspect_format,PROBE_LIMIT,SETTINGS,CATALOGS,basename
 from task_control import OperationCancelled
+from stems_formats import stem_candidate,cache_candidate,CACHE_FOLDERS,ContainerLimit
+from stems_cache import provider_report
+from stems_eligibility import context as stems_context
 
 
 def asset_stamp(path,strong=False):
@@ -24,7 +27,7 @@ def asset_stamp(path,strong=False):
 
 
 def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**2,
-                 max_directories=160000,max_files=300000,max_seconds=45,inspect=False,max_inspect_bytes=8*1024**2):
+                 max_directories=160000,max_files=300000,max_seconds=45,inspect=False,max_inspect_bytes=8*1024**2,profile=None):
     values=source if isinstance(source,list) else [source]
     if not 1<=len(values)<=20:raise ValueError('Choose between one and twenty analysis folders or backup ZIPs')
     roots=[];root_keys=set()
@@ -38,7 +41,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
     def stem_evidence(path,size,identity,record,scope):
         name=path.replace('\\','/').casefold();parts=name.split('/')
         documented=name.endswith('.rbsc')
-        hint=documented or name.endswith(('.stem','.stems','.stem.mp4','.stems.mp4')) or any(p in ('stems','stem','track separation','track_separation','trackseparation') for p in parts[:-1])
+        hint=stem_candidate(path) or cache_candidate(path)
         if hint:stem_files[identity]={'path':path,'scope':scope,'bytes':size,'evidence':'RBSC drum-capture filename type; binary format unverified' if documented else 'Filename/folder candidate; purpose unverified','rbsc':documented}
         if inspect and (hint or format_candidate(path)):inspection_records[identity]=(path,scope,record)
     def exceeded():return directories>=max_directories or files_seen>=max_files or time.monotonic()-started>=max_seconds
@@ -93,7 +96,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                         if exceeded():partial=True;break
                         path=Path(directory)/name;reference=analysis_folder(str(path))
                         if path.is_symlink():continue
-                        hint=path.suffix.casefold() in ('.rbsc','.stem','.stems') or path.name.casefold().endswith(('.stem.mp4','.stems.mp4')) or any(p.casefold() in ('stems','stem','track separation','track_separation','trackseparation') for p in path.parts[:-1])
+                        hint=stem_candidate(str(path)) or cache_candidate(str(path))
                         if not (reference or ANALYSIS.fullmatch(name) or hint or inspect and format_candidate(name)):continue
                         try:stamp=asset_stamp(path,inspect)
                         except OSError as error:warnings.append(str(error));continue
@@ -166,7 +169,16 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                 max_inspect_bytes,max(0,max_hash_bytes-hash_bytes),deadline=started+max_seconds)
             comparisons=compare_analysis_tempos(snapshot,inspection_rows)
             inspection_summary['tempo_disagreements']=len(comparisons)
-            rows.extend(inspection_rows);rows.extend(comparisons);hash_bytes+=used
+            provider_rows,provider_summary=provider_report(inspection_rows,roots,profile or stems_context(),progress,
+                started+max_seconds,inventory_complete=not partial and not warnings)
+            for record in inspection_rows:
+                for key in list(record):
+                    if key.startswith('_'):record.pop(key)
+            for _,_,f in inspection_records.values():
+                if not f['archive'] and asset_stamp(Path(f['source']),True)!=f['stamp']:
+                    raise ValueError('An asset changed before report publication; capture again')
+            rows.extend(inspection_rows);rows.extend(comparisons);rows.extend(provider_rows);hash_bytes+=used
+            inspection_summary['provider_cache']=provider_summary
         for root,stamp in archive_stamps:
             if asset_stamp(root,inspect)!=stamp:raise ValueError('A backup ZIP changed during the audit; capture again')
         return {'scopes':scopes,'folders':len(folders),'files':sum(len(f['files']) for f in folders.values()),
@@ -185,29 +197,57 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
 
 
 def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,deadline):
-    """Read only explicitly requested candidates, with independent header and checksum budgets."""
+    """Bound reads by bytes actually consumed; only local files allow sparse metadata seeks."""
+    from pathlib import PurePosixPath
     rows=[];counts=defaultdict(int);inspected=hashed=0
+    marker_roots=[]
+    for _,scope,f in records.values():
+        if basename(f['name'])=='.rbstemsplus-cache':marker_roots.append((scope if f['archive'] else '',PurePosixPath(f['source']).parent))
     def unchanged(f):
         if not f['archive'] and (Path(f['source']).is_symlink() or asset_stamp(Path(f['source']),True)!=f['stamp']):
             raise ValueError('An asset changed during format inspection; capture again')
-    def stream(f):
-        return f['archive'].open(f['source']) if f['archive'] else Path(f['source']).open('rb')
+    def stream(f):return f['archive'].open(f['source']) if f['archive'] else Path(f['source']).open('rb')
+    def wanted(f,prefix):
+        name=basename(f['name'])
+        if prefix.startswith(b'PMAI'):return PROBE_LIMIT
+        if prefix.startswith(b'PDSTEMS1'):return 16
+        if name in SETTINGS:return 160
+        if name in ('export.pdb','exportext.pdb'):return 1052
+        if prefix.startswith(b'rbstemsplus-') or name.endswith(('.manifest','.kept')):return PROBE_LIMIT
+        if prefix.startswith((b'RBD1',b'RBD2')) or name.endswith('.desc'):return 8216
+        if prefix[4:8]==b'ftyp' and f['archive']:return PROBE_LIMIT
+        return 64
     for path,scope,f in records.values():
         progress(75,'Inspecting selected file formats')
+        source=PurePosixPath(f['source']);archive_scope=scope if f['archive'] else ''
+        provider_context=any(part.casefold() in CACHE_FOLDERS for part in source.parts[:-1]) or any(s==archive_scope and source.is_relative_to(root) for s,root in marker_roots)
         record={'section':'format_evidence','title':f['name'],'path':path,'scope':scope,'bytes':f['bytes'],
                 'validation':'not_checked','format':'unknown','checksum_status':'not_checked',
-                'native_stems_readiness':None,'source_association':'unknown'}
+                'native_stems_readiness':None,'source_association':'unknown','_source':f['source'],'_archive_scope':archive_scope}
         if f['cloud']:record['detail']='Online-only asset was not opened'
         elif time.monotonic()>=deadline:record['detail']='Format inspection time budget reached'
         elif inspected>=max_inspect_bytes:record['detail']='Format inspection byte budget reached'
         else:
             unchanged(f)
             try:
-                limit=min(f['bytes'],PROBE_LIMIT,max_inspect_bytes-inspected)
-                with stream(f) as reader:prefix=reader.read(limit)
-                inspected+=len(prefix)
-                if len(prefix)!=limit:record.update(validation='corrupt',detail='Asset became shorter than its inventoried size')
-                else:record.update(inspect_format(f['name'],prefix,f['bytes']))
+                initial=min(f['bytes'],64,max_inspect_bytes-inspected)
+                with stream(f) as reader:
+                    prefix=reader.read(initial);inspected+=len(prefix)
+                    limit=max(len(prefix),min(f['bytes'],wanted(f,prefix),max_inspect_bytes-inspected+len(prefix)))
+                    if limit>len(prefix):
+                        extra=reader.read(limit-len(prefix));prefix+=extra;inspected+=len(extra)
+                    def read_at(offset,length):
+                        nonlocal inspected
+                        if offset+length<=len(prefix):return prefix[offset:offset+length]
+                        if f['archive']:raise ContainerLimit('Movie metadata is beyond the bounded ZIP prefix; inspect a selected local copy')
+                        if length>max_inspect_bytes-inspected or time.monotonic()>=deadline:raise ContainerLimit('Container inspection byte or time budget reached')
+                        progress(75,'Reading bounded container metadata')
+                        reader.seek(offset);value=reader.read(length);inspected+=len(value)
+                        return value
+                    if len(prefix)!=limit:record.update(validation='corrupt',detail='Asset became shorter than its inventoried size')
+                    elif prefix[4:8]==b'ftyp':record.update(inspect_format(f['name'],prefix,f['bytes'],read_at=read_at))
+                    elif cache_candidate(f['source']):record.update(inspect_format(f['name'],prefix,f['bytes'],provider_context=provider_context))
+                    else:record.update(inspect_format(f['name'],prefix,f['bytes']))
                 if verify:
                     if f['bytes']>max_hash_bytes-hashed:record['checksum_status']='budget_exceeded'
                     elif time.monotonic()>=deadline:record['checksum_status']='time_budget_exceeded'
@@ -229,15 +269,22 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
                 record.update(validation='corrupt' if isinstance(error,zipfile.BadZipFile) else 'not_checked',
                               detail='Asset could not be completely inspected: '+str(error),checksum_status='failed')
             unchanged(f)
+        kind=record['format']
+        family,provider={'anlz':('analysis','rekordbox'),'player_settings':('player_settings','rekordbox'),
+                         'device_sql':('device_catalog','rekordbox'),'onelibrary_catalog':('device_catalog','rekordbox'),
+                         'recordbox_stems_v1':('separation_cache','recordbox'),'rbsc_candidate':('capture','rekordbox')}.get(kind,('candidate','unknown'))
+        record.setdefault('asset_family',family);record.setdefault('provider',provider)
+        if kind=='recordbox_stems_v1':record.setdefault('cache_state','present' if record['validation']=='recognized' else 'unknown')
         record['severity']='info' if record['validation']=='recognized' else 'review'
         record['section']={'anlz':'analysis_format','player_settings':'player_settings','device_sql':'device_catalog',
-                           'onelibrary_catalog':'device_catalog','recordbox_stems_v1':'stems_cache'}.get(record['format'],'format_candidate')
-        counts[record['validation']]+=1;counts[record['format']]+=1;counts[record['format']+'_'+record['validation']]+=1
+                           'onelibrary_catalog':'device_catalog','recordbox_stems_v1':'stems_cache','ni_stems_v1':'stems_container'}.get(kind,'provider_cache_metadata' if kind.startswith('rbstems_') else 'format_candidate')
+        counts[record['validation']]+=1;counts[kind]+=1;counts[kind+'_'+record['validation']]+=1
         if record['checksum_status']=='computed':counts['fingerprinted_files']+=1
         rows.append(record)
     return rows,{'files':len(rows),'recognized':counts['recognized'],'corrupt':counts['corrupt'],
                  'unsupported':counts['unsupported'],'not_checked':counts['not_checked'],
                  'recognized_stems_caches':counts['recordbox_stems_v1_recognized'],
+                 'recognized_ni_containers':counts['ni_stems_v1_recognized'],
                  'stems_cache_candidates':counts['recordbox_stems_v1'],'fingerprinted_files':counts['fingerprinted_files'],
                  'valid_player_settings':counts['player_settings_recognized'],
                  'classic_catalog_headers':counts['device_sql_recognized'],'onelibrary_candidates':counts['onelibrary_catalog'],

@@ -9,6 +9,7 @@ from itertools import islice
 
 from platform_paths import discover_sources,location_hints,database_names
 from media import cloud_placeholder
+from stems_formats import stem_candidate,cache_candidate,CACHE_FOLDERS
 
 DATABASES={'master.db','datafile.edb','extdata.edb'}
 ANALYSIS=re.compile(r'^anlz\d*\.(?:dat|ext|2ex|3ex)$',re.I)
@@ -183,7 +184,7 @@ def scan_roots(roots,progress,kind='both',depth=8,max_directories=12000,max_entr
         except OSError as error:warnings.append(str(error));continue
         dbs=sorted(n for n in files if n.casefold() in DATABASES)
         if dbs and kind!='assets':libraries[key]={'path':key,'origin':'Bounded search of a user-selected folder','databases':dbs}
-        asset_kind='USBANLZ analysis tree' if folder.name.casefold()=='usbanlz' else 'Analysis-file folder' if any(ANALYSIS.fullmatch(n) for n in files) else 'STEMS-related filename candidates' if any(n.casefold().endswith(('.rbsc','.stem','.stems','.stem.mp4','.stems.mp4')) for n in files) else None
+        asset_kind='USBANLZ analysis tree' if folder.name.casefold()=='usbanlz' else 'Analysis-file folder' if any(ANALYSIS.fullmatch(n) for n in files) else 'STEMS-related filename candidates' if any(stem_candidate(n) or cache_candidate(n) for n in files) or folder.name.casefold() in CACHE_FOLDERS else None
         if kind!='libraries' and asset_kind:
             assets[key]={'path':key,'origin':'Bounded search of a user-selected folder','kind':asset_kind}
         # Once a USBANLZ tree is found, list its root rather than thousands of per-track folders.

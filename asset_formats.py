@@ -3,6 +3,7 @@ from collections import Counter
 from pathlib import PurePosixPath
 import binascii
 import struct
+from stems_formats import inspect_iso,inspect_cache_file,ContainerLimit
 
 SETTINGS = {'mysetting.dat':40, 'mysetting2.dat':40, 'devsetting.dat':32, 'djmmysetting.dat':52}
 CATALOGS = {'export.pdb', 'exportext.pdb', 'exportlibrary.db'}
@@ -18,7 +19,7 @@ def format_candidate(name):
     return basename(name) in SETTINGS.keys() | CATALOGS
 
 
-def inspect_format(name, prefix, size):
+def inspect_format(name, prefix, size,read_at=None,provider_context=False):
     """Inspect a bounded prefix and independently supplied logical size, without allocations from headers."""
     result = {'validation':'unsupported', 'format':'unknown', 'detail':'Filename candidate; binary format is unrecognized',
               'native_stems_readiness':None, 'source_association':'unknown'}
@@ -76,14 +77,18 @@ def inspect_format(name, prefix, size):
                       catalog_layer='classic_device', records_decoded=False)
     if prefix.startswith(b'PMAI'):
         return inspect_anlz(prefix, size, result)
+    cache=inspect_cache_file(name,prefix,size,provider_context)
+    if cache is not None:return cache
     if name.endswith(('.dat','.ext','.2ex','.3ex')) and name.startswith('anlz'):
         return finish('corrupt', 'anlz', 'Expected PMAI analysis header is absent')
     if name.endswith('.rbsc'):
         return finish('unsupported', 'rbsc_candidate', 'Documented DRUM CAPTURE filename type; binary contents are not decoded',
                       account_restrictions=True, whole_track_stems=False)
     if len(prefix) >= 12 and prefix[4:8] == b'ftyp':
-        return finish('unsupported', 'iso_media_candidate',
-                      'ISO media container signature found; stem streams, codec and target-player support are not validated')
+        def bounded(at,length):
+            if at+length>len(prefix):raise ContainerLimit('Required container metadata is outside the bounded prefix')
+            return prefix[at:at+length]
+        return inspect_iso(read_at or bounded,size)
     return result
 
 
