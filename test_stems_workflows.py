@@ -62,7 +62,7 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual(self.preparation(self.audit()[1])['cache_state'],'incomplete')
 
     def test_expired_retention_does_not_make_complete_audio_stale(self):
-        (self.meta/'test.kept').write_text(f'rbstemsplus-kept 1\nuntil 1\n{MODEL} {KEY}\n')
+        (self.meta/'test.kept').write_bytes(f'rbstemsplus-kept 1\nuntil 1\n{MODEL} {KEY}\n'.encode())
         _,rows=self.audit();self.assertEqual(self.preparation(rows)['cache_state'],'consistent')
         retained=next(r for r in rows if r.get('format')=='rbstems_kept');self.assertEqual(retained['retention_status'],'expired')
         chunk=next(r for r in rows if r['section']=='stems_cache_chunk');self.assertEqual(chunk['retention_status'],'expired')
@@ -110,10 +110,12 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual(self.preparation(self.audit()[1])['source_stamp_status'],'not_in_scope')
 
     def test_metadata_budget_and_expired_deadline_do_not_prove_completeness(self):
-        summary,rows=self.audit(max_inspect_bytes=64)
-        self.assertLessEqual(summary['format_inspection']['bytes_inspected'],64)
-        self.assertEqual(summary['format_inspection']['provider_cache']['manifest_associations_consistent'],0)
-        self.assertFalse(any(r.get('cache_state')=='consistent' for r in rows))
+        for budget in (3,16,64):
+            summary,rows=self.audit(max_inspect_bytes=budget)
+            self.assertLessEqual(summary['format_inspection']['bytes_inspected'],budget)
+            self.assertEqual(summary['format_inspection']['corrupt'],0)
+            self.assertEqual(summary['format_inspection']['provider_cache']['manifest_associations_consistent'],0)
+            self.assertFalse(any(r.get('cache_state')=='consistent' for r in rows))
         rows,summary=provider_report([],[],context(),lambda *_:None,time.monotonic()-1)
         self.assertEqual(rows,[]);self.assertEqual(summary['manifest_associations_consistent'],0)
 

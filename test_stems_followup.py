@@ -171,6 +171,12 @@ class CacheMetadataTests(unittest.TestCase):
         raw=cache_desc().replace(b'RBD2',b'RBD3')
         self.assertEqual(inspect_cache_file('a.desc',raw,len(raw),True)['validation'],'unsupported')
 
+    def test_short_budget_prefix_is_not_a_corrupt_cache_header(self):
+        for name,raw in (('a.flac',cache_flac()),('a.desc',cache_desc())):
+            for length in (0,3,10):
+                self.assertEqual(inspect_cache_file(name,raw[:length],len(raw),True)['validation'],'not_checked')
+            self.assertEqual(inspect_cache_file(name,raw[:10],10,True)['validation'],'corrupt')
+
 
 class WorkflowTests(unittest.TestCase):
     def setUp(self):

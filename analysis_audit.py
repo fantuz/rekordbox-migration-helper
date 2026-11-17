@@ -245,9 +245,14 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
                         progress(75,'Reading bounded container metadata')
                         reader.seek(offset);value=reader.read(length);inspected+=len(value)
                         return value
+                    ready=len(prefix)==limit and len(prefix)>=min(f['bytes'],64)
                     if len(prefix)!=limit:record.update(validation='corrupt',detail='Asset became shorter than its inventoried size')
+                    elif not ready:record['detail']='Format inspection byte budget reached before the initial probe was complete'
                     elif prefix[4:8]==b'ftyp':record.update(inspect_format(f['name'],prefix,f['bytes'],read_at=read_at))
-                    elif cache_candidate(f['source']):record.update(inspect_format(f['name'],prefix,f['bytes'],provider_context=provider_context))
+                # Prefix-only parsers need no live handle. Closing it also lets
+                # Windows replacements be detected by the final identity check.
+                if ready and prefix[4:8]!=b'ftyp':
+                    if cache_candidate(f['source']):record.update(inspect_format(f['name'],prefix,f['bytes'],provider_context=provider_context))
                     else:record.update(inspect_format(f['name'],prefix,f['bytes']))
                 if verify:
                     if f['bytes']>max_hash_bytes-hashed:record['checksum_status']='budget_exceeded'

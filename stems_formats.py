@@ -56,6 +56,7 @@ def inspect_cache_file(name,data,size,provider_context=False):
         return evidence('rbstems_partial','not_checked','Temporary cache output; completion has not been established',cache_state='incomplete')
     if name.endswith('.flac'):
         if not provider_context:return None
+        if len(data)<min(size,42):return evidence('rbstems_flac','not_checked','FLAC STREAMINFO exceeds the inspection byte budget')
         if len(data)<42 or data[:4]!=b'fLaC' or data[4]&127!=0 or int.from_bytes(data[5:8],'big')!=34:
             return evidence('rbstems_flac','corrupt','Missing or truncated FLAC STREAMINFO')
         value=int.from_bytes(data[18:26],'big')
@@ -67,9 +68,10 @@ def inspect_cache_file(name,data,size,provider_context=False):
         if not frames:return evidence('rbstems_flac','not_checked','Cache sample count is unavailable',**facts)
         return evidence('rbstems_flac','recognized','Eight-channel cache STREAMINFO recognized; audio frames were not decoded',**facts)
     if name.endswith('.desc'):
+        if not provider_context and not data.startswith((b'RBD1',b'RBD2')):return None
+        if len(data)<min(size,16):return evidence('rbstems_descriptor','not_checked','Descriptor header exceeds the inspection byte budget')
         if provider_context and data.startswith(b'RBD') and data[:4] not in (b'RBD1',b'RBD2'):
             return evidence('rbstems_descriptor','unsupported','Unknown cache descriptor revision')
-        if not provider_context and not data.startswith((b'RBD1',b'RBD2')):return None
         if len(data)<16 or data[:4] not in (b'RBD1',b'RBD2'):return evidence('rbstems_descriptor','corrupt','Invalid cache descriptor header')
         frames=struct.unpack_from('<i',data,4)[0]
         if not 1<=frames<=512:return evidence('rbstems_descriptor','corrupt','Invalid descriptor frame count')
