@@ -8,8 +8,8 @@ from unittest.mock import patch
 
 import app
 from metadata_export import payload
-from onetagger_bridge import FIELDS,read_tags,stamp
-from onetagger_results import decode_report,validate_report
+from onetagger_bridge import read_tags,stamp
+from onetagger_results import FIELDS,decode_report,validate_report
 from task_control import OperationCancelled
 import test_onetagger_bridge as bridge_fixtures
 from workbench_store import Store
@@ -21,7 +21,7 @@ def syncsafe(value):return bytes((value>>21&127,value>>14&127,value>>7&127,value
 def mp3_tags(path,values):
     """Invented ID3v2.4 metadata; no songs, codecs, models or provider requests."""
     frames=[]
-    for key,field in (('TIT2','title'),('TPE1','artist'),('TALB','album'),('TCON','genre'),('TDRC','year')):
+    for key,field in (('TIT2','title'),('TPE1','artist'),('TALB','album'),('TCON','genre'),('TDRC','year'),('TPUB','label'),('TCOM','composer')):
         if values.get(field) is None:continue
         data=b'\x03'+str(values[field]).encode('utf-8')
         frames.append(key.encode()+syncsafe(len(data))+b'\0\0'+data)
@@ -295,3 +295,4 @@ class ResultsTests(TestCase):
         scan=self.review(identity);self.assertEqual(reader.call_count,1)
         self.assertEqual(scan['summary']['verified'],1);self.assertEqual(scan['summary']['not_written'],1)
         self.assertTrue(scan['report']['cancelled']);self.assertEqual(scan['rows'][1]['changes'],[])
+

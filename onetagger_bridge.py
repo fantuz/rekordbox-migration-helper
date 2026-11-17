@@ -13,11 +13,11 @@ from audio_paths import mappings_for,signature
 from file_health import local_request
 from metadata_concurrency import require_revision,revision
 from metadata_overrides import comparable,validate
-from onetagger_results import MAX_BYTES,decode_report,validate_report
+from onetagger_results import MAX_BYTES,decode_report,validate_report,FIELDS as V1_FIELDS,EXTENDED_FIELDS
 from track_playback import available_audio
 from workbench_store import Store,encoded,now
 
-FIELDS=('title','artist','album','genre','year')
+FIELDS=EXTENDED_FIELDS
 LIMIT=500
 TAGGABLE={'.mp3','.flac','.aif','.aiff','.m4a','.wav','.ogg','.opus'}
 
@@ -36,6 +36,9 @@ def read_tags(path):
     mp4=tag.as_dict() if path.suffix.lower()=='.m4a' else {}
     for field in FIELDS:
         raw=getattr(tag,field,None)
+        if field=='label':
+            label_values=tag.other.get('label' if path.suffix.lower()=='.m4a' else 'publisher',[])
+            raw=(', '.join(label_values) if path.suffix.lower() not in ('.flac','.ogg','.opus') else label_values[0]) if label_values else None
         if field!='year' and isinstance(mp4.get(field),list):raw=', '.join(mp4[field])
         # Absent tags do not silently erase captured library metadata.
         if raw in (None,''):continue
@@ -45,6 +48,18 @@ def read_tags(path):
         except ValueError as error:warnings.append({'field':field,'reason':str(error)})
     if stamp(path)!=before:raise Conflict('An audio file changed while its tags were being read. Rescan it.')
     return values,before,warnings
+
+
+class ReadBatch:
+    """Reuse read-back only within one operation; validate every reuse by stat."""
+    def __init__(self):self.files={}
+    def read(self,path):
+        cached=self.files.get(path)
+        if cached is not None:
+            if stamp(path)!=cached[1]:raise Conflict('An audio file changed while its tags were being read. Rescan it.')
+            return cached
+        result=read_tags(path);self.files[path]=result
+        return result
 
 
 def playlist(manifest):
@@ -115,7 +130,7 @@ def register(owner,unlocked):
             selected.append({'track_id':identity,'local_path':str(path),
                              'recorded_references':{k:track.get(k) for k in ('current_path','xml_location','original_path')},
                              'library_tags':{k:track.get(k) for k in FIELDS}})
-        manifest={'schema':1,'id':uuid4().hex,'created':now(),'snapshot':snapshot['id'],
+        manifest={'schema':1,'results_version':2,'id':uuid4().hex,'created':now(),'snapshot':snapshot['id'],
                   'snapshot_digest':sha256(encoded(snapshot).encode()).hexdigest(),'scope_key':snapshot['scope_key'],
                   'mapping_revision':signature(mappings),'tracks':selected,'scan':None,'scan_generation':None,
                   'audio_files_modified':False,'note':'Local paths are access aliases. Recorded references and track IDs are preserved. OneTagger edits the selected audio files separately.'}
@@ -146,7 +161,8 @@ def register(owner,unlocked):
             saved.set_setting('onetagger:'+identity,manifest)
         edit_state=saved.edit_state(snapshot['scope_key'])
         def work(progress):
-            output=[]
+            output=[];reads=ReadBatch()
+            fields=V1_FIELDS if imported and imported['version']==1 else FIELDS
             for n,row in enumerate(manifest['tracks']):
                 progress(95*n/len(manifest['tracks']),'Reading OneTagger tags: '+str(n+1)+' / '+str(len(manifest['tracks'])))
                 track=tracks[row['track_id']]
@@ -155,7 +171,8 @@ def register(owner,unlocked):
                     if evidence and evidence['status']!='written':
                         output.append({'track_id':track['id'],'title':track.get('title'),'status':'reported',
                                        'verification':'not_written','report':evidence,'changes':[]});continue
-                    path=path_for(track,row,mappings);tags,file_stamp,warnings=read_tags(path)
+                    path=path_for(track,row,mappings);tags,file_stamp,warnings=reads.read(path)
+                    tags={f:v for f,v in tags.items() if f in fields}
                     if evidence:
                         expected=evidence['after'];state=evidence['file_state']
                         if expected is None or state is None or evidence['after_error']:
@@ -163,7 +180,7 @@ def register(owner,unlocked):
                         if state['size']!=file_stamp[2] or state['modified_ns']!=str(file_stamp[3]):
                             raise Conflict('Audio file changed after the OneTagger report. Rescan or create a new report.')
                         expected={f:validate(f,v) for f,v in expected.items() if v not in (None,'')}
-                        if any(comparable(f,expected.get(f))!=comparable(f,tags.get(f)) for f in FIELDS):
+                        if any(comparable(f,expected.get(f))!=comparable(f,tags.get(f)) for f in fields):
                             raise Conflict('Audio tags differ from the report. Rescan and review the current file.')
                     changes=[]
                     for field,value in tags.items():
@@ -225,9 +242,12 @@ def register(owner,unlocked):
         if any(pair not in proposals for pair in pairs):raise ValueError('Choose fields present in this tag review')
         selected_rows={r['track_id']:r for r in manifest['tracks']}
         checked={r['track_id']:r for r in scan['rows']}
+        reads=ReadBatch()
+        fields=V1_FIELDS if scan.get('report',{}).get('version')==1 else FIELDS
         for track_id in {i for i,_ in pairs}:
             path=path_for(tracks[track_id],selected_rows[track_id],mappings)
-            tags,file_stamp,_=read_tags(path)
+            tags,file_stamp,_=reads.read(path)
+            tags={f:v for f,v in tags.items() if f in fields}
             if file_stamp!=checked[track_id]['file_stamp'] or tags!=checked[track_id]['tags']:
                 raise Conflict('Audio tags changed since the review. Rescan before staging them.')
         with owner.lock,saved.connection() as db:
@@ -257,4 +277,5 @@ def register(owner,unlocked):
                     raise Conflict('Audio tags changed while staging the review. Rescan before staging them.')
             stamp_value=revision(db,snapshot['scope_key'])
         return jsonify(staged=len(pairs),edit_revision=stamp_value,audio_files_modified=False,recorded_references_modified=False)
+
 

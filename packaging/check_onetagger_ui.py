@@ -6,7 +6,8 @@ from urllib.parse import quote,unquote
 import wave
 
 from audio_paths import validate
-from onetagger_bridge import read_tags,FIELDS
+from onetagger_bridge import read_tags
+from onetagger_results import FIELDS
 
 CAPTURED_TITLE='<img src=x onerror="window.bridgeInjected=true"> & DJ'
 TAGGED_TITLE='<svg onload="window.bridgeInjected=true">Retagged</svg>'
@@ -95,3 +96,4 @@ def check_onetagger_ui(browser,base,store,root,output):
                 'explicit_field_selection':True,'snapshot_unchanged':True,'no_audio_writes':True,
                 'metadata_rendered_as_text':True,'selection_urls_encoded':True,'no_page_errors':True}
     finally:context.close()
+

@@ -12,7 +12,8 @@ import wave
 
 import app
 from audio_paths import validate
-from onetagger_bridge import read_tags,stamp,FIELDS
+from onetagger_bridge import read_tags,stamp
+from onetagger_results import FIELDS
 from workbench_store import Store
 
 
@@ -61,7 +62,7 @@ class OneTaggerBridgeTests(TestCase):
     def test_rejects_malformed_foreign_duplicate_and_moved_results_before_reading_files(self):
         identity=self.export();valid=self.results_report(identity)
         bad=[]
-        for version in (2,True,'1'):
+        for version in (3,True,'1'):
             value=deepcopy(valid);value['version']=version;bad.append(value)
         for key in valid['selection']:
             value=deepcopy(valid);value['selection'][key]='foreign';bad.append(value)
@@ -203,4 +204,5 @@ class OneTaggerBridgeTests(TestCase):
         scan=self.client.get('/api/onetagger/'+identity+'/review').json['scan']
         self.assertEqual(scan['rows'][0]['error'],'Damaged tag block');self.assertEqual(scan['rows'][0]['changes'],[])
         self.assertEqual(self.store.overrides(self.before['scope_key']),{})
+
 

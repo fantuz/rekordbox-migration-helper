@@ -17,8 +17,9 @@ import zipfile
 from lxml import etree
 
 BOOKKEEPING={'created_at','updated_at','rb_local_usn','usn','rb_local_synced','rb_local_deleted'}
-NAMED={'artist':('ArtistID','djmdArtist'),'album':('AlbumID','djmdAlbum'),'genre':('GenreID','djmdGenre')}
-XML_FIELDS={'title':'Name','artist':'Artist','album':'Album','genre':'Genre','year':'Year','rating':'Rating','comment':'Comments','colour':'Colour'}
+NAMED={'artist':('ArtistID','djmdArtist'),'album':('AlbumID','djmdAlbum'),'genre':('GenreID','djmdGenre'),
+       'label':('LabelID','djmdLabel'),'composer':('ComposerID','djmdArtist')}
+XML_FIELDS={'title':'Name','artist':'Artist','album':'Album','genre':'Genre','year':'Year','rating':'Rating','comment':'Comments','colour':'Colour','label':'Label','composer':'Composer'}
 CONTENT_FIELDS={'title':'Title','year':'ReleaseYear','rating':'Rating','comment':'Commnt'}
 HOT_NUMBERS=dict(zip((1,2,3,5,*range(6,18)),range(16)))
 
@@ -106,7 +107,7 @@ def native_state(db, mapping=None, results=None, edits=None, relocations=None):
     mapping=mapping or {};results=results or {};edits=edits or {};relocations=relocations or {}
     tables=schema(db)
     names={table:{str(r['ID']):r.get('Name') for r in rows(db,table)}
-           for _,table in NAMED.values() if table in tables}
+           for table in {table for _,table in NAMED.values()} if table in tables}
     keys={str(r['ID']):r.get('ScaleName') for r in rows(db,'djmdKey')} if 'djmdKey' in tables else {}
     colors={str(r['ID']):r for r in rows(db,'djmdColor')} if 'djmdColor' in tables else {}
     uuids={str(r['ID']):r.get('UUID') for r in rows(db,'djmdContent')}
@@ -271,3 +272,4 @@ def freeze(catalog,decisions,relocations,kind,folder):
     from metadata_overrides import plan
     mapping,results=decision_map(catalog,deepcopy(decisions))
     return ExportExpectations(catalog,deepcopy(mapping),deepcopy(results),deepcopy(plan(catalog,mapping)),deepcopy(relocations),kind,folder)
+

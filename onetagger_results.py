@@ -7,6 +7,7 @@ import re
 from metadata_overrides import xml_text
 
 FIELDS=('title','artist','album','genre','year')
+EXTENDED_FIELDS=FIELDS+('label','composer')
 IDENTITY=('id','snapshot','snapshot_digest','scope_key','mapping_revision')
 MAX_BYTES=8*1024*1024
 STATES={'written','failed','skipped','unprocessed'}
@@ -42,20 +43,22 @@ def text(value,limit=256,optional=False):
     return value
 
 
-def tags(value):
+def tags(value,version=1):
     if value is None:return None
-    if not isinstance(value,dict) or set(value)!=set(FIELDS):raise ValueError('Unsupported report tag fields')
+    fields=FIELDS if version==1 else EXTENDED_FIELDS
+    if not isinstance(value,dict) or not set(FIELDS)<=set(value)<=set(fields):raise ValueError('Unsupported report tag fields')
     for field,item in value.items():
         if item is None:continue
         if field=='year':
             if type(item) is not int or not -(2**31)<=item<2**31:raise ValueError('Invalid report year')
         elif not isinstance(item,str) or len(item)>16384 or any(0xD800<=ord(c)<=0xDFFF for c in item):raise ValueError('Invalid report tag value')
-    return value
+    return {field:value.get(field) for field in fields}
 
 
 def validate_report(value,manifest):
-    if not isinstance(value,dict) or value.get('schema')!=SCHEMA or type(value.get('version')) is not int or value['version']!=1:
-        raise ValueError('Choose a supported OneTagger results JSON (version 1)')
+    if not isinstance(value,dict) or value.get('schema')!=SCHEMA or type(value.get('version')) is not int or value['version'] not in (1,2):
+        raise ValueError('Choose a supported OneTagger results JSON (version 1 or 2)')
+    version=value['version']
     identity=value.get('selection')
     if not isinstance(identity,dict) or identity!={k:manifest[k] for k in IDENTITY}:
         raise ValueError('This report belongs to a different or outdated Helper selection')
@@ -79,7 +82,7 @@ def validate_report(value,manifest):
             raise ValueError('A reported file path changed. Create a new Helper selection after moving files.')
         status=row.get('status')
         if not isinstance(status,str) or status not in STATES:raise ValueError('Invalid report track outcome')
-        before=tags(row.get('before'));after=tags(row.get('after'))
+        before=tags(row.get('before'),version);after=tags(row.get('after'),version)
         state=row.get('file_state')
         if state is not None:
             if not isinstance(state,dict) or set(state)!={'size','modified_ns'} or type(state['size']) is not int or not 0<=state['size']<2**64 or not isinstance(state['modified_ns'],str) or not re.fullmatch('[0-9]{1,30}',state['modified_ns']):
@@ -104,5 +107,6 @@ def validate_report(value,manifest):
         checked[track_id]={'track_id':track_id,'status':status,'before':before,'after':after,'file_state':state,
                            'before_error':text(row.get('before_error'),optional=True),'after_error':text(row.get('after_error'),optional=True),
                            'attempts':clean}
-    return {'schema':SCHEMA,'version':1,'run_id':run_id,**header,'selection':dict(identity),
+    return {'schema':SCHEMA,'version':version,'run_id':run_id,**header,'selection':dict(identity),
             'cancelled':value['cancelled'],'rows':checked}
+
