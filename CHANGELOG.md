@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Import version-1 OneTagger tagging-results JSON into the existing field-review workflow. Require the exact saved selection, membership and paths; independently verify final file state and tags. Retain application/run identity, before/after tags, fallback-provider evidence and partial/cancelled outcomes without automatically staging edits.
+- Accept bounded raw JSON files, reject duplicate keys and nonfinite numbers, and read year components from stored release dates. Add review downloads, verification counts and outdated-review notices. Recheck selected files before committing staged fields and roll back changes if files changed during staging.
+- Translate the new controls across all 13 interface languages and extend shared-fixture, API and real-server Playwright checks for report import, stale evidence, explicit field selection, input preservation and restart recovery. Personal stars, cues, grids, BPM, keys, playlist membership and recorded references remain outside this report-import contract.
+
 ## 1.1.7 — 2026-11-17
 
 This update adds STEMS workflow checks for containers, provider caches and source eligibility, with saved evidence reports and expanded cross-platform validation.

@@ -33,8 +33,10 @@ def read_tags(path):
     try:tag=TinyTag.get(path,duration=False,image=False)
     except TinyTagException as error:raise ValueError('Could not read file tags: '+str(error)) from error
     values={};warnings=[]
+    mp4=tag.as_dict() if path.suffix.lower()=='.m4a' else {}
     for field in FIELDS:
         raw=getattr(tag,field,None)
+        if field!='year' and isinstance(mp4.get(field),list):raw=', '.join(mp4[field])
         # Absent tags do not silently erase captured library metadata.
         if raw in (None,''):continue
         # OneTagger's report reads the year component of stored release dates.

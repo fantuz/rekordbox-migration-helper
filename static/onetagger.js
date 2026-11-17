@@ -1,7 +1,7 @@
 /* Explicit handoff and field review; no provider requests or audio writes. */
 window.OneTaggerBridge=(()=>{
   const $=id=>document.getElementById('onetagger-'+id),t=key=>I18n.t(key);
-  let snapshot='',selection='',offset=0,total=0,rows=[],scan=null,sequence=0,reviewSequence=0,busy=false,languageRefresh=false;
+  let snapshot='',selection='',offset=0,total=0,rows=[],scan=null,sequence=0,reviewSequence=0,busy=false,languageRefresh=false,reviewStale=false;
   const selected=new Set();
   const post=(path,body)=>api('/api/onetagger'+path,{method:'POST',body:JSON.stringify(body)});
   const outcome=value=>t(({written:'Written',failed:'Failed',skipped:'Skipped',unprocessed:'Unprocessed'})[value]||'Unknown');
@@ -74,6 +74,7 @@ window.OneTaggerBridge=(()=>{
     $('evidence').hidden=!scan;
     if(!scan)return;
     const summary=scan.summary||{};
+    if(reviewStale)node.append(element('p',t('Review is outdated; import or rescan again.')));
     if(scan.report){
       node.append(element('h4',t('Imported OneTagger report')),
         element('p','OneTagger '+scan.report.application_version+' · '+scan.report.application_commit+' · '+scan.report.run_id));
@@ -87,12 +88,12 @@ window.OneTaggerBridge=(()=>{
   function controls(){
     for(const id of ['snapshot','selections','search','find','unlock','reviewed'])$(id).disabled=busy;
     for(const box of $('tracks').querySelectorAll('input'))box.disabled=busy;
-    for(const box of $('review').querySelectorAll('input'))box.disabled=busy;
+    for(const box of $('review').querySelectorAll('input'))box.disabled=busy || reviewStale;
     $('create').disabled=busy || !selected.size;$('selected').textContent=num(selected.size)+' / 500';
     $('prev').disabled=busy || !offset;$('next').disabled=busy || offset+50>=total;
     $('rescan').disabled=busy || !selection;
     $('report-file').disabled=busy || !selection;
-    $('stage').disabled=busy || !scan || !$('reviewed').checked || !$('review').querySelector('input:checked');
+    $('stage').disabled=busy || reviewStale || !scan || !$('reviewed').checked || !$('review').querySelector('input:checked');
   }
   async function load(){
     const revision=++sequence,chosen=$('snapshot').value||snapshot;
@@ -110,10 +111,10 @@ window.OneTaggerBridge=(()=>{
   }
   async function review(){
     const generation=++reviewSequence,id=selection;
-    scan=null;$('review').replaceChildren();$('reviewed').checked=false;reportSummary();controls();if(!id)return;
+    scan=null;reviewStale=false;$('review').replaceChildren();$('reviewed').checked=false;reportSummary();controls();if(!id)return;
     const data=await api('/api/onetagger/'+encodeURIComponent(id)+'/review',{feedback:false});
     if(generation!==reviewSequence || id!==selection)return;
-    scan=data.scan;reportSummary();if(!scan){controls();return;}
+    scan=data.scan;reviewStale=!!scan && data.edit_revision!==scan.edit_revision;reportSummary();if(!scan){controls();return;}
     reviewRows();
     controls();
   }
@@ -147,7 +148,7 @@ window.OneTaggerBridge=(()=>{
   $('stage').onclick=wrap(()=>action(async()=>{
     const changes=[...$('review').querySelectorAll('input:checked')].map(b=>({track_id:b.dataset.track,field:b.dataset.onetaggerField}));
     await post('/'+encodeURIComponent(selection)+'/stage',{changes,reviewed:$('reviewed').checked,review_revision:scan.review_revision,edit_revision:scan.edit_revision});
-    notify(t('Metadata staged locally'));scan=null;$('review').replaceChildren();$('reviewed').checked=false;reportSummary();
+    await review();notify(t('Metadata staged locally'));
   }));
   window.addEventListener('workbench-language',()=>{if(!$('bridge').closest('.view').hidden){if(busy)languageRefresh=true;else void load().then(review).catch(error=>notify(error.message,true));}});
   window.addEventListener('workbench-audio-paths',()=>{reviewSequence++;scan=null;$('review').replaceChildren();reportSummary();controls();});

@@ -37,7 +37,7 @@ See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XM
 
 [OneTagger](https://github.com/fantuz/onetagger) complements Library Workbench with automatic metadata lookup, manual audio-tag editing, Quick Tag and file renaming. Desktop and command-line packages are available from its [releases page](https://github.com/fantuz/onetagger/releases/latest).
 
-Use our [OneTagger bridge](docs/AUDIO-MATCHING-AND-ONETAGGER.md#onetagger-handoff) to export selected local files as an M3U playlist, tag them in OneTagger, then rescan and review the changes here. Both tools must run on the same computer for this handoff. OneTagger writes the audio-file tags; Library Workbench stages only the fields you approve, preserving personal stars, cues and original file references.
+Use our [OneTagger bridge](docs/AUDIO-MATCHING-AND-ONETAGGER.md#onetagger-handoff) to select local files and review their tag changes. A compatible OneTagger build can load the JSON selection manifest and return a [versioned results report](docs/ONETAGGER-RESULTS.md) with provider evidence; Workbench independently reads the selected files before offering changes. The M3U and tag-rescan workflow remains available. Both tools must run on the same computer. OneTagger writes audio-file tags; Library Workbench stages only the fields you approve, preserving personal stars, cues and original file references.
 
 ## Native collection views and saved investigations
 
@@ -155,7 +155,7 @@ The objective is long-term library maintainability: distinguish redundant record
 - Read compact, contextual guidance between the page title and language controls rather than repeated full-width notices; expand Details to view full history, statistics and lab explanations and documentation links.
 - Review recording matches, separate community ratings and vote counts, genres, tags and release-year suggestions.
 - Retain original titles/artists, every search cleanup and attempted query, and candidate disagreements including version differences in both directions. Search cleanup never replaces captured tags automatically.
-- Use the [OneTagger bridge](docs/AUDIO-MATCHING-AND-ONETAGGER.md) to hand off up to 500 selected local files through M3U, rescan their tags, review changes and stage only approved title, artist, album, genre or year fields. Original references, personal stars and cues remain unchanged by the bridge.
+- Use the [OneTagger bridge](docs/AUDIO-MATCHING-AND-ONETAGGER.md) to hand off up to 500 local files through a selection manifest or M3U. Import supported results JSON with retained run/provider evidence, or rescan current tags. Independently verify reported tags, review partial/cancelled outcomes, download review evidence and stage only approved title, artist, album, genre or year fields. Stale approvals are blocked; original references, personal stars, cues, grids, keys and playlists are preserved.
 - Preserve unknown ratings and personal stars; identity approval is required before staging supported suggestions.
 - Retrieve public ListenBrainz weekly, monthly or yearly listening charts and match them locally to the selected snapshot.
 - Review ambiguous versions and duplicate matches before exporting a chart-ordered M3U8 playlist.

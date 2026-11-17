@@ -89,7 +89,9 @@ def check_onetagger_ui(browser,base,store,root,output):
             assert page.locator('#onetagger-'+kind).get_attribute('href')=='/api/onetagger/'+quote(hostile,safe='')+'/'+suffix
         assert page.evaluate('window.bridgeInjected') is None
         assert not errors,errors
-        return {'m3u_roundtrip':True,'original_references_preserved':True,'tag_rescan':True,'results_json_review':True,
+        from check_onetagger_results_ui import check_onetagger_results_ui
+        results=check_onetagger_results_ui(browser,base,store,root,output)
+        return {'m3u_roundtrip':True,'original_references_preserved':True,'tag_rescan':True,'results_json_review':True,'results_workflow':results,
                 'explicit_field_selection':True,'snapshot_unchanged':True,'no_audio_writes':True,
                 'metadata_rendered_as_text':True,'selection_urls_encoded':True,'no_page_errors':True}
     finally:context.close()
