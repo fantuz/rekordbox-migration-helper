@@ -33,6 +33,12 @@ See the [migration workflow](docs/MIGRATION.md), [format sources for v5/v6/v7 XM
 
 **Keep a fresh, untouched backup created by rekordbox Backup Library outside this workspace before generating transformed files. Preserve the audio separately when it is excluded from the backup. Native ZIP restoration in rekordbox remains experimental.**
 
+## Related projects
+
+[OneTagger](https://github.com/fantuz/onetagger) complements Library Workbench with automatic metadata lookup, manual audio-tag editing, Quick Tag and file renaming. Desktop and command-line packages are available from its [releases page](https://github.com/fantuz/onetagger/releases/latest).
+
+Use our [OneTagger bridge](docs/AUDIO-MATCHING-AND-ONETAGGER.md#onetagger-handoff) to export selected local files as an M3U playlist, tag them in OneTagger, then rescan and review the changes here. Both tools must run on the same computer for this handoff. OneTagger writes the audio-file tags; Library Workbench stages only the fields you approve, preserving personal stars, cues and original file references.
+
 ## Native collection views and saved investigations
 
 - Selecting a captured `master.db` supplies Collection statistics, Duplicate review, File references and Play history without an XML/ZIP workspace.
