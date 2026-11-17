@@ -128,6 +128,8 @@ def main():
                 report['enrichment_ui']=check_enrichment_ui(page,base,sid,args.output,store,root)
                 from check_onetagger_ui import check_onetagger_ui
                 report['onetagger_bridge']=check_onetagger_ui(browser,base,store,root,args.output)
+                from check_snapshot_integrity_ui import check_snapshot_integrity_ui
+                report['snapshot_integrity']=check_snapshot_integrity_ui(browser,base,store,args.output)
                 from check_results_sort_file_health_ui import check_results_sort_file_health_ui
                 report['result_sort_and_file_health']=check_results_sort_file_health_ui(browser,base,sid,args.output)
                 from check_recovery_queue_ui import check_recovery_queue_ui

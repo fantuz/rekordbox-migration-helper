@@ -84,7 +84,9 @@ class FormatTests(unittest.TestCase):
     def test_extended_grid_rejects_mismatched_huge_counts_and_invalid_fractions(self):
         for count in (0,1,3,2**32-1):
             raw=bytearray(pqt2_bytes());struct.pack_into('>I',raw,28+40,count)
-            self.assertEqual(self.inspect('ANLZ0000.EXT',raw)['validation'],'corrupt')
+            result=self.inspect('ANLZ0000.EXT',raw)
+            self.assertEqual(result['validation'],'corrupt')
+            self.assertEqual(result['extended_grid_evidence'][0]['validation'],'corrupt')
         for fraction in (1000,65535):
             self.assertEqual(self.inspect('ANLZ0000.EXT',pqt2_bytes((fraction,)))['validation'],'corrupt')
 

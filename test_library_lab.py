@@ -46,7 +46,9 @@ class ComparisonTests(unittest.TestCase):
         before=snapshot();before['tracks'][0]['cues'][0]['active_loop']=1
         for value in (True,'1',None,2,'unknown'):
             after=deepcopy(before);after['tracks'][0]['cues'][0]['active_loop']=value
-            self.assertEqual(compare_snapshots(before,after)[1],[])
+            summary,rows=compare_snapshots(before,after)
+            self.assertEqual(rows,[])
+            self.assertEqual(summary.get('after_active_loop_unknown',0),0 if value in (True,'1') else 1)
         after=deepcopy(before);after['tracks'][0]['cues'][0].update(in_ms=1100,active_loop=0)
         summary,_=compare_snapshots(before,after)
         self.assertEqual(summary['changed_cue'],1);self.assertEqual(summary['cue_active_loop'],1)
@@ -111,7 +113,8 @@ class ComparisonTests(unittest.TestCase):
         before=self.playlist_snapshot();after=deepcopy(before)
         del before['playlists'][2]['smart'];del before['playlists'][2]['folder']
         after['playlists'][2].update(smart=True,folder=True)
-        self.assertEqual(compare_snapshots(before,after)[1],[])
+        summary,rows=compare_snapshots(before,after)
+        self.assertEqual(rows,[]);self.assertEqual(summary['playlist_type_unavailable'],1)
 
     def test_positions_labels_ratings_and_order_are_independent_evidence(self):
         before=snapshot([song('one'),song('two')]);after=deepcopy(before)

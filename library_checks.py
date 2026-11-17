@@ -38,10 +38,12 @@ def match_tracks(before,after):
     return old,new,mapping,evidence
 
 
+def active_loop_state(cue):
+    value=cue.get('active_loop')
+    return str(int(value)) if isinstance(value,(int,bool)) and value in (0,1) else value if value in ('0','1') else None
+
+
 def cue_changes(old,new,tolerance=0):
-    def active(c):
-        value=c.get('active_loop')
-        return str(int(value)) if isinstance(value,(int,bool)) and value in (0,1) else value if value in ('0','1') else None
     def position(c):return (c.get('in_ms'),c.get('out_ms') if c.get('out_ms') is not None and c['out_ms']>=0 else -1)
     def same(a,b):
         if a.get('kind')!=b.get('kind'):return False
@@ -55,7 +57,7 @@ def cue_changes(old,new,tolerance=0):
             if len(stable)==1:matched=stable[0];changes.append(('changed_cue',a,matched))
             else:changes.append(('lost_cue',a,None));continue
         elif any(a.get(f)!=matched.get(f) for f in ('label','color')):changes.append(('cue_annotation',a,matched))
-        if active(a) is not None and active(matched) is not None and active(a)!=active(matched):
+        if active_loop_state(a) is not None and active_loop_state(matched) is not None and active_loop_state(a)!=active_loop_state(matched):
             changes.append(('cue_active_loop',a,matched))
         remaining.remove(matched)
     changes.extend(('added_cue',None,b) for b in remaining)
@@ -106,14 +108,19 @@ def compare_snapshots(before,after,tolerance_ms=0):
             if left.get(field) is not None and right.get(field) is not None and left[field]!=right[field]:
                 rows.append(row('metadata',right,field+' changed',field=field,before=left[field],after=right[field],match=evidence[a]));counts['metadata_changed']+=1
         if left.get('cues') is not None and right.get('cues') is not None:
+            for side,cues in (('before',left['cues']),('after',right['cues'])):
+                unknown=sum(active_loop_state(c) is None for c in cues)
+                if unknown:counts[side+'_active_loop_unknown']+=unknown
             for kind,prior,current in cue_changes(left['cues'],right['cues'],tolerance_ms):
-                rows.append(row(kind,right,kind.replace('_',' '),before=prior,after=current,manual_involved=any(c and not c.get('auto') for c in (prior,current)),match=evidence[a]));counts[kind]+=1
+                detail='Active loop state changed' if kind=='cue_active_loop' else kind.replace('_',' ')
+                rows.append(row(kind,right,detail,before=prior,after=current,manual_involved=any(c and not c.get('auto') for c in (prior,current)),match=evidence[a]));counts[kind]+=1
         else:counts['cue_comparison_unavailable']+=1
     for identity in old.keys()-mapping.keys():rows.append(row('unmatched_before',old[identity],'No unique safe match in the later snapshot; cue loss is not inferred'));counts['unmatched_before']+=1
     for identity in new.keys()-set(mapping.values()):rows.append(row('unmatched_after',new[identity],'New or unmatched track in the later snapshot'));counts['unmatched_after']+=1
     if before.get('capabilities',{}).get('playlist_order') and after.get('capabilities',{}).get('playlist_order'):
         previous=before.get('playlists',[]);later=after.get('playlists',[])
         old_lists,new_lists,matched=match_playlists(previous,later)
+        used=set(matched.values())
         old_nodes={str(k):v for k,v in old_lists.items()};new_nodes={str(k):v for k,v in new_lists.items()}
         parent_mapping={str(k):str(v) for k,v in matched.items()}
         for p in previous:
@@ -126,6 +133,8 @@ def compare_snapshots(before,after,tolerance_ms=0):
             for field in ('folder','smart'):
                 if isinstance(p.get(field),bool) and isinstance(q.get(field),bool) and p[field]!=q[field]:
                     changes[field]=[p[field],q[field]]
+            if any(not isinstance(item.get(field),bool) for item in (p,q) for field in ('folder','smart')):
+                counts['playlist_type_unavailable']+=1
             if p.get('criteria_sha256')!=q.get('criteria_sha256'):changes['smart_criteria']='changed'
             if not p.get('smart') and not q.get('smart'):
                 prior=[mapping.get(i,'unmatched-before:'+i) for i in p['tracks']];current=q['tracks']
@@ -133,7 +142,7 @@ def compare_snapshots(before,after,tolerance_ms=0):
                     changes.update(removed=list((Counter(prior)-Counter(current)).elements()),added=list((Counter(current)-Counter(prior)).elements()),order_changed=Counter(prior)==Counter(current))
             if changes:rows.append(row('playlist',{},'Playlist changed',playlist=q['name'],changes=changes));counts['playlists_changed']+=1
         for q in later:
-            if q['id'] not in matched.values():rows.append(row('playlist',{},'New or unmatched playlist',playlist=q['name']));counts['playlists_added']+=1
+            if q['id'] not in used:rows.append(row('playlist',{},'New or unmatched playlist',playlist=q['name']));counts['playlists_added']+=1
     else:counts['playlist_comparison_unavailable']=1
     return {'matched_tracks':len(mapping),'before_tracks':len(old),'after_tracks':len(new),'cue_tolerance_ms':tolerance_ms,**counts},rows
 

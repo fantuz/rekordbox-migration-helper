@@ -141,12 +141,14 @@ def inspect_anlz(data, size, base):
                     n, checksum = struct.unpack_from('>II', data, offset+40)
                     grid.update(beats=n, stored_checksum=checksum)
                     if 56 + n*2 != length:
+                        grid.update(validation='corrupt', detail='PQT2 beat count disagrees with section length')
                         return finish('corrupt', 'PQT2 beat count disagrees with section length')
                     grid.update(validation='not_checked', detail='Extended-grid fractions exceed the inspection byte budget')
                     if offset+length <= len(data):
                         low = high = None
                         for (value,) in struct.iter_unpack('>H', data[offset+56:offset+length]):
                             if value > 999:
+                                grid.update(validation='corrupt', detail='PQT2 contains an invalid sub-millisecond fraction')
                                 return finish('corrupt', 'PQT2 contains an invalid sub-millisecond fraction')
                             low = value if low is None else min(low, value)
                             high = value if high is None else max(high, value)

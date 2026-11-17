@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Extend snapshot comparisons to known active-loop switches, captured title/BPM/key/play-count/analyzed values, playlist moves and folder/smart/manual conversions. Resolve parent identities across renumbered IDs and retain unknown evidence without assuming a change.
+- Keep non-PMAI `.3EX` variants Unsupported instead of falsely reporting corruption. Check the observed PQT2 revision's count/body agreement and fractional ranges; retain checksum and unsupported semantics as unverified.
+- Add synthetic regressions and real-server Playwright checks for comparison filters/downloads, duplicate playlist members, folder/ZIP format parity and saved reports across restart. Document the broader [Recordbox integrity review](docs/RECORDBOX-INTEGRITY-REVIEW.md), public fixture evidence and outstanding identity/recovery/backup/STEMS questions.
+
 ## 1.1.7 — 2026-11-17
 
 This update adds STEMS workflow checks for containers, provider caches and source eligibility, with saved evidence reports and expanded cross-platform validation.

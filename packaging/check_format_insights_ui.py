@@ -8,13 +8,14 @@ import zipfile
 
 def check_format_insights_ui(browser,base,store,root,output):
     from playwright.sync_api import expect
-    from test_asset_formats import anlz_bytes,stems_bytes,settings_bytes,pdb_bytes
+    from test_asset_formats import anlz_bytes,stems_bytes,settings_bytes,pdb_bytes,pqt2_bytes
     from test_source_insights import native_snapshot
     source=native_snapshot();sid=store.save_snapshot(source,'Format insights 日本')['id']
     captured=store.snapshot(sid)
     folder=root/'format fixtures 日本';folder.mkdir()
     bad=bytearray(settings_bytes('DEVSETTING.DAT'));bad[104]^=1
-    files={'ANLZ0000.DAT':anlz_bytes((12800,13000)),'valid.stems':stems_bytes(),
+    files={'ANLZ0000.DAT':anlz_bytes((12800,13000)),'ANLZ0000.EXT':pqt2_bytes(),
+           'ANLZ0000.3EX':b'\x81\xa9embedding\x80','valid.stems':stems_bytes(),
            'broken.stems':stems_bytes()[:-1],'MYSETTING.DAT':settings_bytes(),'DEVSETTING.DAT':bytes(bad),
            'export.pdb':pdb_bytes(),'exportLibrary.db':b'opaque OneLibrary candidate','drums.rbsc':b'candidate'}
     for name,raw in files.items():(folder/name).write_bytes(raw)
@@ -55,14 +56,19 @@ def check_format_insights_ui(browser,base,store,root,output):
         page.locator('#lab-formats-verify').check()
         format_id,result=report('formats')
         summary=result['summary']['format_inspection'];evidence=[r for r in result['rows'] if 'validation' in r]
-        assert summary['files']==16,summary
+        assert summary['files']==20,summary
         assert summary['corrupt']==4,summary
         assert result['summary']['stems']['prepared_tracks'] is None
         assert all(r['checksum_status']=='computed' for r in evidence)
         caches=[r for r in evidence if r['format']=='recordbox_stems_v1' and r['validation']=='recognized']
         assert len(caches)==2 and all(r['source_association']=='unknown' and r['native_stems_readiness'] is None for r in caches)
-        anlz=[r for r in evidence if r['format']=='anlz']
+        anlz=[r for r in evidence if r['format']=='anlz' and 'PQTZ' in r['section_counts']]
         assert all(r['section_counts']['PCOB']==2 and r['tempo_evidence'][0]['bpms']==[128,130] for r in anlz)
+        grids=[r['extended_grid_evidence'][0] for r in evidence if r.get('extended_grid_evidence')]
+        assert len(grids)==2 and all(g['validation']=='recognized' and g['checksum_validation']=='not_checked' for g in grids)
+        embeddings=[r for r in evidence if r['format']=='anlz_3ex']
+        assert len(embeddings)==2 and all(r['validation']=='unsupported' and r['asset_family']=='analysis'
+                                        and r['provider']=='rekordbox' and r['embedding_signature'] for r in embeddings)
         page.screenshot(path=str(output/'formats-stems.png'),full_page=True)
         filtered=filter_report('validation','corrupt')
         assert len(filtered['rows'])==4 and all(r['validation']=='corrupt' for r in filtered['rows'])
@@ -110,7 +116,8 @@ def check_format_insights_ui(browser,base,store,root,output):
         assert store.snapshot(sid)==captured
         for path,digest in original.items():assert sha256(path.read_bytes()).hexdigest()==digest
         assert not errors,errors
-        return {'status':'passed','format_candidates':16,'corrupt_format_findings':4,'native_roles_resolved':3,
+        return {'status':'passed','format_candidates':20,'corrupt_format_findings':4,'native_roles_resolved':3,
+                'unsupported_3ex_variants':2,'extended_grids_checked':2,
                 'smart_rules_recognized':1,'smart_rules_unsupported':1,'filters':'section, severity, validation',
                 'zip_folder_parity':True,'sources_preserved':True,'native_readiness':'unknown',
                 'real_http':True,'inference_run':False}

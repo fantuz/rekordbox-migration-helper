@@ -146,12 +146,14 @@ class MetadataExportTests(unittest.TestCase):
 class QuickExportAPITests(unittest.TestCase):
     def setUp(self):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name)
+        from temporary_files import TemporaryWorkspace
+        temporary=TemporaryWorkspace(self.root);self.addCleanup(temporary.cleanup)
         self.catalog=example_catalog()
         self.session={'id':'test','catalog':self.catalog,'backup_acknowledged':None,'decisions':{'sample':{'action':'merge'}},'relocations':{'a':'file:///new/location.mp3'}}
         self.outputs=[]
         def launch(work,message):
             self.outputs.append(work(lambda *_:None));return 'job'
-        for name,value in (('DATA',self.root),('sessions',{'test':self.session}),('active','test'),('launch',launch)):
+        for name,value in (('DATA',self.root),('TEMPORARY',temporary),('sessions',{'test':self.session}),('active','test'),('launch',launch)):
             p=patch.object(application,name,value);p.start();self.addCleanup(p.stop)
         self.client=workspace_client(application);self.headers={'X-Workbench-Token':application.TOKEN}
 
