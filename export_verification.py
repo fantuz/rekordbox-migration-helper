@@ -107,7 +107,7 @@ def native_state(db, mapping=None, results=None, edits=None, relocations=None):
     mapping=mapping or {};results=results or {};edits=edits or {};relocations=relocations or {}
     tables=schema(db)
     names={table:{str(r['ID']):r.get('Name') for r in rows(db,table)}
-           for _,table in NAMED.values() if table in tables}
+           for table in {table for _,table in NAMED.values()} if table in tables}
     keys={str(r['ID']):r.get('ScaleName') for r in rows(db,'djmdKey')} if 'djmdKey' in tables else {}
     colors={str(r['ID']):r for r in rows(db,'djmdColor')} if 'djmdColor' in tables else {}
     uuids={str(r['ID']):r.get('UUID') for r in rows(db,'djmdContent')}

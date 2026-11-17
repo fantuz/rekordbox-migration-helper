@@ -21,7 +21,7 @@ def syncsafe(value):return bytes((value>>21&127,value>>14&127,value>>7&127,value
 def mp3_tags(path,values):
     """Invented ID3v2.4 metadata; no songs, codecs, models or provider requests."""
     frames=[]
-    for key,field in (('TIT2','title'),('TPE1','artist'),('TALB','album'),('TCON','genre'),('TDRC','year')):
+    for key,field in (('TIT2','title'),('TPE1','artist'),('TALB','album'),('TCON','genre'),('TDRC','year'),('TPUB','label'),('TCOM','composer')):
         if values.get(field) is None:continue
         data=b'\x03'+str(values[field]).encode('utf-8')
         frames.append(key.encode()+syncsafe(len(data))+b'\0\0'+data)

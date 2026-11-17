@@ -2,7 +2,7 @@
 
 This is a local, same-computer workflow: export a selection from rekordbox Migration Helper, load its JSON manifest in OneTagger, tag the selected files, then import the results JSON into that saved Helper selection.
 
-Use a OneTagger build containing the producer changes in [OneTagger PR #47](https://github.com/fantuz/onetagger/pull/47), paired with [Workbench PR #67](https://github.com/fantuz/rekordbox-migration-helper/pull/67). Development builds can retain the same version number, so check the build's support for `onetagger.tagging-results` version 1. Producer native UI validation is tracked in its own PR; Workbench acceptance does not certify an installed OneTagger application.
+The original five-field workflow uses [OneTagger #47](https://github.com/fantuz/onetagger/pull/47) and the merged Helper #67/#68 changes. Label/composer support is paired in [OneTagger #48](https://github.com/fantuz/onetagger/pull/48) and [Helper #70](https://github.com/fantuz/rekordbox-migration-helper/pull/70). Development builds can retain the same application version; check the build commit and negotiated report version. Workbench acceptance does not certify an installed OneTagger application.
 
 ## Use the bridge
 
@@ -32,7 +32,7 @@ The CLI still requires `--path`, but the manifest replaces that input with its e
 
 ## Report contract
 
-Reports identify their format with `schema: "onetagger.tagging-results"` and `version: 1`. They contain a unique 32-character hexadecimal run ID, application version/commit, creation/completion timestamps and an optional selection identity. The identity preserves `id`, `snapshot`, `snapshot_digest`, `scope_key` and `mapping_revision` without reinterpretation.
+Reports identify their format with `schema: "onetagger.tagging-results"` and `version: 1` or `version: 2`. They contain a unique 32-character hexadecimal run ID, application version/commit, creation/completion timestamps and an optional selection identity. The identity preserves `id`, `snapshot`, `snapshot_digest`, `scope_key` and `mapping_revision` without reinterpretation.
 
 Each track records its Helper track ID (when present), original local path, final path, before/after tag snapshots, final file state, read errors and provider attempts. Several library IDs can reference the same file: OneTagger tags it once and reports every selected ID.
 

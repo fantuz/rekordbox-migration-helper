@@ -62,10 +62,11 @@ def check_onetagger_results_ui(browser,base,store,root,output):
         target=output/'onetagger-results-selection.json';pending.value.save_as(target)
         manifest=json.loads(target.read_text());assert {r['track_id'] for r in manifest['tracks']}=={'result-0','result-1','result-2','result-3','result-51'}
         after={'title':'<svg onload="window.resultsInjected=true">Tagged Café</svg>',
-               'artist':'DJ, Producer','album':'New album','genre':'Techno','year':2020}
+               'artist':'DJ, Producer','album':'New album','genre':'Techno','year':2020,
+               'label':'Independent label','composer':'Composer'}
         mp3_tags(paths[0],{**after,'year':'2020-12-31'})
         expected_audio={path:sha256(path.read_bytes()).hexdigest() for path in paths}
-        fixture=json.loads((Path(__file__).resolve().parents[1]/'docs/fixtures/onetagger-results-v1.json').read_text())
+        fixture=json.loads((Path(__file__).resolve().parents[1]/'docs/fixtures/onetagger-results-v2.json').read_text())
         report={**fixture,'cancelled':True,'selection':{k:manifest[k] for k in ('id','snapshot','snapshot_digest','scope_key','mapping_revision')},'tracks':[]}
         for item in manifest['tracks']:
             written=item['track_id'] in ('result-0','result-51');path=Path(item['local_path']);state=path.stat()
@@ -81,7 +82,7 @@ def check_onetagger_results_ui(browser,base,store,root,output):
         data=json.dumps(report,ensure_ascii=False,indent=2).encode()
         (output/'onetagger-producer-shaped-results.json').write_bytes(data)
         upload(data)
-        first=saved(identity);assert first['summary']=={'tracks':5,'verified':2,'not_written':3,'unreadable':0,'changes':10},first['summary']
+        first=saved(identity);assert first['summary']=={'tracks':5,'verified':2,'not_written':3,'unreadable':0,'changes':14},first['summary']
         assert first['report']['digest']==sha256(data).hexdigest()
         expect(page.locator('#onetagger-report-summary')).to_contain_text('Cancelled run')
         expect(page.locator('[data-onetagger-field="genre"]')).to_have_count(2)
@@ -97,7 +98,7 @@ def check_onetagger_results_ui(browser,base,store,root,output):
         assert json.loads(evidence.read_text())['scan']==first
         expect(page.locator('#toast')).not_to_be_visible(timeout=10000)
         page.locator('#onetagger-results').screenshot(path=str(output/'onetagger-results.png'))
-        duplicate=data.replace(b'"version": 1',b'"version": 2, "version": 1',1)
+        duplicate=data.replace(b'"version": 2',b'"version": 1, "version": 2',1)
         upload(duplicate,400);expect(page.locator('#toast')).to_contain_text('Duplicate JSON keys')
         assert saved(identity)==first
         # All paths remain unchanged; only the reported file state is stale.
@@ -115,15 +116,15 @@ def check_onetagger_results_ui(browser,base,store,root,output):
             'reviewed':True,'review_revision':first['review_revision'],'edit_revision':first['edit_revision'],
             'changes':[{'track_id':'result-0','field':'genre'}]})
         assert response.status==409,response.text()
-        page.locator('[data-onetagger-field="genre"][data-track="result-0"]').check()
+        page.locator('[data-onetagger-field="label"][data-track="result-0"]').check()
         page.locator('#onetagger-reviewed').check()
         with page.expect_response(lambda r:r.url.endswith('/stage') and r.request.method=='POST') as pending:
             page.locator('#onetagger-stage').click()
         assert pending.value.status==200,pending.value.text()
         expect(page.locator('#toast')).to_contain_text('Metadata staged locally')
-        edits=store.overrides(scope);assert set(edits)=={'result-0'} and set(edits['result-0'])=={'genre'}
-        assert edits['result-0']['genre']['value']=='Techno'
-        provenance=json.loads(edits['result-0']['genre']['origin'])
+        edits=store.overrides(scope);assert set(edits)=={'result-0'} and set(edits['result-0'])=={'label'}
+        assert edits['result-0']['label']['value']=='Independent label'
+        provenance=json.loads(edits['result-0']['label']['origin'])
         assert provenance['report']['digest']==sha256(data).hexdigest() and len(provenance['attempts'])==2
         expect(page.locator('#onetagger-report-summary')).to_contain_text('Review is outdated')
         expect(page.locator('#onetagger-stage')).to_be_disabled()
@@ -149,7 +150,7 @@ def check_onetagger_results_ui(browser,base,store,root,output):
         assert not errors,errors;assert not external,external
         return {'status':'passed','selection_id':identity,'review_revision':current['review_revision'],
                 'report_digest':sha256(data).hexdigest(),'selected_tracks':5,'verified_tracks':2,'not_written':3,
-                'raw_upload_digest':True,'date_year_readback':True,'provider_fallback_retained':True,
+                'extended_label_composer_review':True,'raw_upload_digest':True,'date_year_readback':True,'provider_fallback_retained':True,
                 'duplicate_json_rejected':True,'stale_report_held':True,'stale_review_rejected':True,
                 'explicit_staged_fields':1,'snapshot_and_audio_preserved':True,'languages':len(LANGUAGES),
                 'mobile_controls':True,'real_http':True,'mocked_api_responses':False}
@@ -158,3 +159,4 @@ def check_onetagger_results_ui(browser,base,store,root,output):
         raise
     finally:
         context.tracing.stop(path=str(output/'onetagger-results-trace.zip'));context.close()
+
