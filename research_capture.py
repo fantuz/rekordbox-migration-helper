@@ -30,8 +30,8 @@ def capture_private_database(db,scope_key):
         active=' WHERE coalesce(rb_local_deleted,0)=0' if 'rb_local_deleted' in columns[table] and not include_deleted else ''
         return [dict(zip(wanted,r)) for r in db.execute('SELECT '+fields+' FROM "'+table+'"'+active)]
     cues=defaultdict(list)
-    for r in rows('djmdCue',('ID','UUID','ContentID','Kind','InMsec','OutMsec','Comment','Color')):
-        cues[str(r['ContentID'])].append({'id':r['ID'],'uuid':r['UUID'],'kind':r['Kind'],'in_ms':r['InMsec'],'out_ms':r['OutMsec'],'label':r['Comment'] or '', 'color':r['Color'],'auto':is_auto(r)})
+    for r in rows('djmdCue',('ID','UUID','ContentID','Kind','InMsec','OutMsec','Comment','Color','ActiveLoop')):
+        cues[str(r['ContentID'])].append({'id':r['ID'],'uuid':r['UUID'],'kind':r['Kind'],'in_ms':r['InMsec'],'out_ms':r['OutMsec'],'label':r['Comment'] or '', 'color':r['Color'],'auto':is_auto(r),'active_loop':r['ActiveLoop']})
     details={str(r['ID']):r for r in rows('djmdContent',('ID','UUID','ISRC','FileSize','AnalysisDataPath','ReleaseYear','BPM','Rating','Length'))}
     history_rows=rows('djmdHistory',('ID','UUID','Name','DateCreated','ParentID','Attribute'))
     history={str(r['ID']):r['DateCreated'] for r in history_rows}
@@ -68,8 +68,12 @@ def capture_private_database(db,scope_key):
         entries=sorted(members[str(r['ID'])],key=lambda x:(order(x['TrackNo']),str(x['ID'])))
         snapshot['playlists'].append({'id':str(r['ID']),'uuid':r['UUID'],'name':r['Name'] or '', 'parent':r['ParentID'],
                                       'folder':r['Attribute']==1,'smart':bool(r['SmartList']),
+                                      'smart_definition':r['SmartList'] if isinstance(r['SmartList'],str) and len(r['SmartList'])<=65536 else None,
+                                      'smart_definition_status':'oversized' if isinstance(r['SmartList'],str) and len(r['SmartList'])>65536 else 'captured' if 'SmartList' in columns.get('djmdPlaylist',set()) else 'not_captured',
                                       'criteria_sha256':sha256(str(r['SmartList'] or '').encode()).hexdigest(),
                                       'tracks':[str(x['ContentID']) for x in entries]})
+    snapshot['smart_rule_lookups']={'keys':{str(r['ID']):r['ScaleName'] for r in rows('djmdKey',('ID','ScaleName'))},
+                                  'mytags':{str(r['ID']):{'name':r['Name'],'parent_id':r['ParentID']} for r in rows('djmdMyTag',('ID','Name','ParentID'))}}
     references=[t['analysis_path'] for t in snapshot['tracks'] if t.get('analysis_path')]
     references.extend(r['Path'] for r in rows('contentFile',('Path',)) if r['Path'])
     snapshot.update(schema=1,scope_key=scope_key,asset_references=references,

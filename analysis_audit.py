@@ -4,16 +4,19 @@ from contextlib import ExitStack
 from hashlib import sha256
 from pathlib import Path
 import os
+import stat
 import time
 import zipfile
 
 from analyzer import analysis_folder
 from discovery import ANALYSIS
 from media import file_record,cloud_placeholder
+from asset_formats import format_candidate,inspect_format,PROBE_LIMIT
+from task_control import OperationCancelled
 
 
 def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**2,
-                 max_directories=160000,max_files=300000,max_seconds=45):
+                 max_directories=160000,max_files=300000,max_seconds=45,inspect=False,max_inspect_bytes=8*1024**2):
     values=source if isinstance(source,list) else [source]
     if not 1<=len(values)<=20:raise ValueError('Choose between one and twenty analysis folders or backup ZIPs')
     roots=[];root_keys=set()
@@ -23,16 +26,18 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
         path=path.resolve()
         if str(path) not in root_keys:roots.append(path);root_keys.add(str(path))
     folders={};seen_files=set();scopes=[];warnings=[];hash_bytes=0;skipped=0;partial=False;directories=0;files_seen=0;started=time.monotonic()
-    stem_files={};extension_counts=defaultdict(lambda:{'files':0,'bytes':0})
-    def stem_evidence(path,size,identity):
+    stem_files={};inspection_records={};extension_counts=defaultdict(lambda:{'files':0,'bytes':0})
+    def stem_evidence(path,size,identity,record,scope):
         name=path.replace('\\','/').casefold();parts=name.split('/')
         documented=name.endswith('.rbsc')
         hint=documented or name.endswith(('.stem','.stems','.stem.mp4','.stems.mp4')) or any(p in ('stems','stem','track separation','track_separation','trackseparation') for p in parts[:-1])
-        if hint:stem_files[identity]={'path':path,'bytes':size,'evidence':'RBSC drum-capture file type' if documented else 'Filename/folder candidate; purpose unverified','rbsc':documented}
+        if hint:stem_files[identity]={'path':path,'scope':scope,'bytes':size,'evidence':'RBSC drum-capture filename type; binary format unverified' if documented else 'Filename/folder candidate; purpose unverified','rbsc':documented}
+        if inspect and (hint or format_candidate(path)):inspection_records[identity]=(path,scope,record)
     def exceeded():return directories>=max_directories or files_seen>=max_files or time.monotonic()-started>=max_seconds
     def add(scope,location,reference,record,identity):
         if identity in seen_files:return
         seen_files.add(identity)
+        if inspect:inspection_records[identity]=(location+'/'+record['name'],scope,record)
         folder=folders.setdefault(location,{'path':location,'reference_key':reference,'scope':scope,'files':[]})
         folder['files'].append(record)
         ext=Path(record['name']).suffix.casefold() or '(none)';extension_counts[ext]['files']+=1;extension_counts[ext]['bytes']+=record['bytes']
@@ -47,14 +52,20 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                 stamp=file_record(root)
                 if stamp['cloud_only']:raise ValueError('Make the selected backup ZIP available locally first')
                 archive=stack.enter_context(zipfile.ZipFile(root));archive_stamps.append((root,stamp))
+                archive_names=set()
                 for info in archive.infolist():
                     files_seen+=1
                     if exceeded():partial=True;break
                     name=info.filename.replace('\\','/');reference=analysis_folder(name)
-                    if not info.is_dir():stem_evidence(name,info.file_size,(scope,info.filename))
+                    parts=Path(name).parts
+                    if name.startswith('/') or '..' in parts or ':' in name or name in archive_names or stat.S_ISLNK(info.external_attr>>16):
+                        raise ValueError('Backup contains repeated, linked or unsafe member paths')
+                    archive_names.add(name)
+                    record={'name':Path(name).name,'bytes':info.file_size,'crc':info.CRC,'source':info.filename,'archive':archive,'cloud':False}
+                    if not info.is_dir():stem_evidence(name,info.file_size,(scope,info.filename),record,scope)
                     if info.is_dir() or not (reference or ANALYSIS.fullmatch(Path(name).name)):continue
                     location=scope+'!/'+name.rpartition('/')[0]
-                    add(scope,location,reference,{'name':Path(name).name,'bytes':info.file_size,'crc':info.CRC,'source':info.filename,'archive':archive,'cloud':False},(scope,info.filename))
+                    add(scope,location,reference,record,(scope,info.filename))
             else:
                 def on_error(error):warnings.append(str(error))
                 for directory,dirs,names in os.walk(root,followlinks=False,onerror=on_error):
@@ -75,16 +86,17 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                         path=Path(directory)/name;reference=analysis_folder(str(path))
                         if path.is_symlink():continue
                         hint=path.suffix.casefold() in ('.rbsc','.stem','.stems') or path.name.casefold().endswith(('.stem.mp4','.stems.mp4')) or any(p.casefold() in ('stems','stem','track separation','track_separation','trackseparation') for p in path.parts[:-1])
-                        if not (reference or ANALYSIS.fullmatch(name) or hint):continue
+                        if not (reference or ANALYSIS.fullmatch(name) or hint or inspect and format_candidate(name)):continue
                         try:stamp=file_record(path)
                         except OSError as error:warnings.append(str(error));continue
-                        if hint:stem_evidence(str(path),stamp['size'],str(path))
+                        record={'name':name,'bytes':stamp['size'],'source':str(path),'archive':None,'cloud':stamp['cloud_only'],'stamp':stamp}
+                        stem_evidence(str(path),stamp['size'],str(path),record,scope)
                         if not (reference or ANALYSIS.fullmatch(name)):continue
-                        add(scope,str(path.parent),reference,{'name':name,'bytes':stamp['size'],'source':str(path),'archive':None,'cloud':stamp['cloud_only'],'stamp':stamp},str(path))
+                        add(scope,str(path.parent),reference,record,str(path))
                     if directories%250==0:progress(15,'Indexed '+str(len(folders))+' analysis locations')
                     if partial:break
             if partial:warnings.append('Inventory budget reached; results are partial. Choose narrower paths.');break
-        if not folders and not stem_files:raise ValueError('No USBANLZ, ANLZ or STEMS-related candidate assets were found in these selected scopes')
+        if not folders and not stem_files and not inspection_records:raise ValueError('No analysis, STEMS, player-settings or device-catalog candidate assets were found in these selected scopes')
         references={k for p in snapshot.get('asset_references',[]) if (k:=analysis_folder(p))}
         complete=snapshot.get('capabilities',{}).get('analysis_references',False)
         found_keys={f['reference_key'] for f in folders.values() if f['reference_key']}
@@ -140,6 +152,13 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                     record=duplicate_row('asset_bytes_differ',locations,'Matching member names/sizes, but SHA-256 content differs')
                     record['potential_extra_bytes']=0;rows.append(record)
             else:rows.append(duplicate_row('asset_duplicate_candidate',locations,'Matching analysis member names/sizes; content equality not established',reason))
+        inspection_summary={}
+        if inspect:
+            inspection_rows,inspection_summary,used=inspect_records(inspection_records,progress,verify,
+                max_inspect_bytes,max(0,max_hash_bytes-hash_bytes),deadline=started+max_seconds)
+            comparisons=compare_analysis_tempos(snapshot,inspection_rows)
+            inspection_summary['tempo_disagreements']=len(comparisons)
+            rows.extend(inspection_rows);rows.extend(comparisons);hash_bytes+=used
         for root,stamp in archive_stamps:
             if file_record(root)!=stamp:raise ValueError('A backup ZIP changed during the audit; capture again')
         return {'scopes':scopes,'folders':len(folders),'files':sum(len(f['files']) for f in folders.values()),
@@ -148,9 +167,97 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                          'related_candidate_files':len(stem_files),'related_candidate_bytes':sum(f['bytes'] for f in stem_files.values()),
                          'rbsc_drum_capture_files':sum(f['rbsc'] for f in stem_files.values()),
                          'note':'RBSC captures and filename hints do not establish how many tracks are STEMS-ready. General ANLZ containers are not counted as separated audio.'},
+                **({'format_inspection':inspection_summary} if inspect else {}),
                 'logical_bytes':sum(m['bytes'] for f in folders.values() for m in f['files']),
                 'missing_in_scope':len(references-found_keys),'ownership_complete':complete,
                 'unreferenced_folders':sum(bool(f['reference_key']) and f['reference_key'] not in references for f in folders.values()) if complete else None,
                 'ownership_unknown_folders':sum(not f['reference_key'] or not complete for f in folders.values()),
                 'duplicate_candidate_groups':candidates,'verified_duplicate_groups':verified_groups,'verified_extra_logical_bytes':verified_bytes,
                 'bytes_hashed':hash_bytes,'verification_skipped':skipped,'inventory_complete':not partial and not warnings,'source_writes':False,'scope_warnings':warnings[:100]},rows
+
+
+def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,deadline):
+    """Read only explicitly requested candidates, with independent header and checksum budgets."""
+    rows=[];counts=defaultdict(int);inspected=hashed=0
+    def unchanged(f):
+        if not f['archive'] and (Path(f['source']).is_symlink() or file_record(Path(f['source']))!=f['stamp']):
+            raise ValueError('An asset changed during format inspection; capture again')
+    def stream(f):
+        return f['archive'].open(f['source']) if f['archive'] else Path(f['source']).open('rb')
+    for path,scope,f in records.values():
+        progress(75,'Inspecting selected file formats')
+        record={'section':'format_evidence','title':f['name'],'path':path,'scope':scope,'bytes':f['bytes'],
+                'validation':'not_checked','format':'unknown','checksum_status':'not_checked',
+                'native_stems_readiness':None,'source_association':'unknown'}
+        if f['cloud']:record['detail']='Online-only asset was not opened'
+        elif time.monotonic()>=deadline:record['detail']='Format inspection time budget reached'
+        elif inspected>=max_inspect_bytes:record['detail']='Format inspection byte budget reached'
+        else:
+            unchanged(f)
+            try:
+                limit=min(f['bytes'],PROBE_LIMIT,max_inspect_bytes-inspected)
+                with stream(f) as reader:prefix=reader.read(limit)
+                inspected+=len(prefix)
+                if len(prefix)!=limit:record.update(validation='corrupt',detail='Asset became shorter than its inventoried size')
+                else:record.update(inspect_format(f['name'],prefix,f['bytes']))
+                if verify:
+                    if f['bytes']>max_hash_bytes-hashed:record['checksum_status']='budget_exceeded'
+                    elif time.monotonic()>=deadline:record['checksum_status']='time_budget_exceeded'
+                    else:
+                        digest=sha256();actual=0;complete=True
+                        with stream(f) as reader:
+                            while chunk:=reader.read(min(1024**2,max_hash_bytes-hashed+1)):
+                                progress(80,'Verifying selected asset bytes')
+                                hashed+=len(chunk);actual+=len(chunk)
+                                if hashed>max_hash_bytes:raise ValueError('Asset verification exceeded its byte budget')
+                                digest.update(chunk)
+                                if time.monotonic()>=deadline:complete=False;break
+                        if complete and actual==f['bytes']:
+                            record.update(checksum_status='computed',sha256=digest.hexdigest(),zip_crc_verified=bool(f['archive']),
+                                          checksum_basis='SHA-256 fingerprint computed; no trusted reference digest was supplied')
+                        else:record['checksum_status']='time_budget_exceeded' if not complete else 'size_mismatch'
+            except OperationCancelled:raise
+            except (OSError,zipfile.BadZipFile,RuntimeError) as error:
+                record.update(validation='corrupt' if isinstance(error,zipfile.BadZipFile) else 'not_checked',
+                              detail='Asset could not be completely inspected: '+str(error),checksum_status='failed')
+            unchanged(f)
+        record['severity']='info' if record['validation']=='recognized' else 'review'
+        record['section']={'anlz':'analysis_format','player_settings':'player_settings','device_sql':'device_catalog',
+                           'onelibrary_catalog':'device_catalog','recordbox_stems_v1':'stems_cache'}.get(record['format'],'format_candidate')
+        counts[record['validation']]+=1;counts[record['format']]+=1;counts[record['format']+'_'+record['validation']]+=1
+        if record['checksum_status']=='computed':counts['fingerprinted_files']+=1
+        rows.append(record)
+    return rows,{'files':len(rows),'recognized':counts['recognized'],'corrupt':counts['corrupt'],
+                 'unsupported':counts['unsupported'],'not_checked':counts['not_checked'],
+                 'recognized_stems_caches':counts['recordbox_stems_v1_recognized'],
+                 'stems_cache_candidates':counts['recordbox_stems_v1'],'fingerprinted_files':counts['fingerprinted_files'],
+                 'valid_player_settings':counts['player_settings_recognized'],
+                 'classic_catalog_headers':counts['device_sql_recognized'],'onelibrary_candidates':counts['onelibrary_catalog'],
+                 'bytes_inspected':inspected,'inspection_budget_bytes':max_inspect_bytes,
+                 'bytes_hashed':hashed,'checksum_budget_bytes':max_hash_bytes,
+                 'catalogs':counts['device_sql']+counts['onelibrary_catalog'],
+                 'note':'Recognized structure does not prove source association, native STEMS readiness or target-player support'},hashed
+
+
+def compare_analysis_tempos(snapshot,rows):
+    from backup_manifest import analysis_member
+    from migration_readiness import finite
+    by_reference=defaultdict(list);findings=[]
+    for track in snapshot.get('tracks',[]):
+        if key:=analysis_member(track.get('analysis_path')):by_reference[key].append(track)
+    for row in rows:
+        if row.get('format')!='anlz' or row['validation']!='recognized':continue
+        candidates=by_reference.get(analysis_member(row['path']),[])
+        if len(candidates)!=1:continue
+        track=candidates[0];saved=finite(track.get('bpm'))
+        tempos=sorted({bpm for grid in row.get('tempo_evidence',[]) for bpm in grid['bpms']})
+        row['tempo_reference']={'track_id':track.get('id'),'saved_bpm':saved,
+                                'basis':'Normalized captured file reference; content association is not verified'}
+        if saved is None or not tempos:continue
+        if not any(abs(saved-bpm)<=.02 for bpm in tempos):
+            findings.append({'section':'analysis_tempo_disagreement','severity':'review','validation':'recognized',
+                             'track_id':track.get('id'),'title':track.get('title',''),'artist':track.get('artist',''),
+                             'saved_bpm':saved,'analysis_bpms':tempos,'path':row['path'],'scope':row['scope'],
+                             'half_double':any(abs(saved*2-bpm)<=.04 or abs(saved-bpm*2)<=.04 for bpm in tempos),
+                             'detail':'Captured saved BPM differs from this referenced analysis grid; review tempo evidence before migration'})
+    return findings
