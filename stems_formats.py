@@ -13,6 +13,12 @@ CACHE_FOLDERS={'rbstemsplus','rb stems plus cache.noindex'}
 HEX64=re.compile(r'^[0-9a-f]{64}$')
 MAX_REFERENCES=16384
 MAX_METADATA=2*1024**2
+REPORT_FILTERS={
+    'asset_family':('candidate','stem_container','separation_cache','preparation_manifest','retention_set','source_eligibility','analysis','capture','player_settings','device_catalog'),
+    'provider':('unknown','native_instruments','rbstemsplus','recordbox','rekordbox'),
+    'cache_state':('unknown','present','consistent','incomplete','stale','profile_mismatch','unavailable'),
+    'eligibility':('unknown','candidate','blocked'),
+    'source_provider':('unknown','local','apple_music','spotify','other_streaming')}
 
 
 def stem_candidate(path):
@@ -196,6 +202,10 @@ def inspect_iso(read,size):
         for trak in (v for v in movie if v[0]==b'trak'):
             if len(tracks)>=16:raise ContainerLimit('Container track-count budget reached')
             parts=children(trak);tkhd=one(parts,b'tkhd');flags=field(tkhd,4)
+            if flags[0] not in (0,1):raise ContainerUnsupported('Unsupported track-header revision')
+            track_header=field(tkhd,96 if flags[0] else 84)
+            track_id=struct.unpack_from('>I',track_header,20 if flags[0] else 12)[0]
+            if track_id==0 or any(t['track_id']==track_id for t in tracks):raise ContainerInvalid('Invalid or duplicate track identifier')
             mdia=children(one(parts,b'mdia'));handler=payload(one(mdia,b'hdlr'),65536)
             if len(handler)<12:raise ContainerInvalid('Truncated track handler')
             if handler[8:12]!=b'soun':raise ContainerUnsupported('NI candidate contains non-audio tracks')
@@ -217,7 +227,7 @@ def inspect_iso(read,size):
             codec={b'mp4a':'mp4a',b'alac':'alac'}.get(sample[0][0])
             if codec is None:raise ContainerUnsupported('NI audio codec is unsupported or encrypted')
             if not sample_rate or not channels:raise ContainerInvalid('Invalid audio sample rate or channel count')
-            track={'enabled':bool(int.from_bytes(flags[1:4],'big')&1),'codec':codec,'codec_profile':'unverified','channels':channels,
+            track={'track_id':track_id,'enabled':bool(int.from_bytes(flags[1:4],'big')&1),'codec':codec,'codec_profile':'unverified','channels':channels,
                    'sample_rate':sample_rate,'media_duration_seconds':duration/timescale,'start_seconds':0,'duration_seconds':duration/timescale}
             edts=one(parts,b'edts',False)
             if edts:
@@ -236,12 +246,13 @@ def inspect_iso(read,size):
                         lead+=segment
                     else:content=True
                     total+=segment;edits.append({'segment_seconds':segment/movie_rate,'media_start_seconds':None if media==-1 else media/timescale})
-                track.update(start_seconds=lead/movie_rate,duration_seconds=total/movie_rate,edits=edits)
+                if edits:track.update(start_seconds=lead/movie_rate,duration_seconds=total/movie_rate,edits=edits)
             tracks.append(track)
         result['tracks']=tracks
         if len(tracks)!=5:raise ContainerInvalid('NI metadata requires one mix and four audio stem tracks')
         if [t['enabled'] for t in tracks]!=[True,False,False,False,False]:raise ContainerUnsupported('NI track enable flags require review')
         if any(t['channels']!=2 for t in tracks):raise ContainerUnsupported('NI stem tracks are not consistently stereo')
+        if any(t['duration_seconds']<=0 for t in tracks):raise ContainerUnsupported('Stem presentation duration is unavailable or empty')
         tolerance=1/min(t['sample_rate'] for t in tracks)+1e-9
         if any(t['sample_rate']!=tracks[0]['sample_rate'] or abs(t['start_seconds']-tracks[0]['start_seconds'])>tolerance or abs(t['duration_seconds']-tracks[0]['duration_seconds'])>tolerance for t in tracks):
             raise ContainerUnsupported('Stem rates or presentation timelines differ; compatibility requires review')

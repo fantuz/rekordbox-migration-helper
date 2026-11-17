@@ -234,7 +234,7 @@ class EligibilityTests(unittest.TestCase):
     def test_profile_versions_and_rebuilt_model_namespaces(self):
         from hashlib import sha256
         profile=context({'target':'rbstemsplus','enabled':'enabled','mode':'performance','quality':'quality',
-                         'app_version':'7.2.19','engine_version':'0002','runtime_version':'1.18.0','model_sha256':PIONEER_MODEL})
+                         'app_version':'7.2.19','engine_version':'0002','runtime_version':'1.18.0','model_sha256':PIONEER_MODEL,'platform':'macos','architecture':'arm64'})
         rebuilt=sha256(('rbstems-rebuild-1:'+PIONEER_MODEL).encode()).hexdigest()
         self.assertEqual(namespace_status(rebuilt,profile),'matches_declared_model')
         self.assertEqual(cache_profile(profile),'matches_declared_profile')

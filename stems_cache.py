@@ -20,6 +20,7 @@ def selected_source(value,roots):
     """Only stat a manifest path inside an explicitly selected, link-free folder scope."""
     path=Path(value)
     if not path.is_absolute() or '..' in path.parts:return 'not_in_scope',None,None
+    if len(path.parts)>64:return 'not_checked',None,None
     scope=next((root for root in roots if path.is_relative_to(root)),None)
     if scope is None:return 'not_in_scope',None,None
     try:
@@ -41,13 +42,17 @@ def provider_report(rows,roots,profile,progress,deadline,inventory_complete=True
     def root_key(row,root):return (row.get('_archive_scope') or '',str(root))
     def display(key):return key[0]+'!/'+key[1] if key[0] else key[1]
     def cache(key):return caches.setdefault(key,{'chunks':defaultdict(lambda:defaultdict(list)),'marker':None})
-    for row in rows:
+    for index,row in enumerate(rows):
+        if index%250==0:progress(85,'Grouping provider cache metadata')
+        if time.monotonic()>=deadline:partial=True;break
         if row.get('format')=='rbstems_marker':
-            key=root_key(row,PurePosixPath(row['_source']).parent)
+            key=root_key(row,PurePosixPath(row['_source'].replace('\\','/')).parent)
             markers[key]=row;cache(key)['marker']=row
-    for row in rows:
+    for index,row in enumerate(rows):
+        if index%250==0:progress(85,'Grouping provider cache companions')
+        if time.monotonic()>=deadline:partial=True;break
         if row.get('format') not in ('rbstems_flac','rbstems_descriptor'):continue
-        path=PurePosixPath(row['_source']);parts=path.parts
+        path=PurePosixPath(row['_source'].replace('\\','/'));parts=path.parts
         if len(parts)<3:continue
         model,prefix=parts[-3:-1];key=path.stem
         if not HEX64.fullmatch(model) or not HEX64.fullmatch(key) or prefix!=key[:2]:
@@ -66,6 +71,8 @@ def provider_report(rows,roots,profile,progress,deadline,inventory_complete=True
         marker=group['marker'];needs_marker=PurePosixPath(identity[1]).name.casefold()!='rbstemsplus'
         location='recognized' if marker and marker['validation']=='recognized' else 'default_layout' if not needs_marker else 'unverified_marker'
         for (model,key),members in group['chunks'].items():
+            if len(facts)%250==0:progress(85,'Checking scoped cache companions')
+            if time.monotonic()>=deadline:partial=True;break
             state='present';reason='Expected FLAC and descriptor structures agree; audio payload and source identity are unverified'
             flacs=members['flac'];descs=members['descriptor']
             if not flacs or not descs:state='incomplete';reason='Expected cache FLAC/descriptor companion is absent from this scoped inventory'
@@ -85,6 +92,7 @@ def provider_report(rows,roots,profile,progress,deadline,inventory_complete=True
                                 'location_status':location,'retention_status':retention,'cache_profile_status':cache_profile(profile),
                                 'native_stems_readiness':None,'detail':reason})
             else:partial=True
+    inventory_complete=inventory_complete and not partial
     source_roots=[root for root in roots if root.is_dir()]
     for row in rows:
         if row.get('format')!='rbstems_manifest' or row['validation']!='recognized':continue
@@ -125,7 +133,8 @@ def provider_report(rows,roots,profile,progress,deadline,inventory_complete=True
                                 'detail':detail+'; metadata consistency does not establish native readiness or audio identity'})
         if partial:break
     # Recheck metadata checked through manifest references; nothing outside selected roots was opened.
-    for path,stamp in checked_sources.items():
+    for index,(path,stamp) in enumerate(checked_sources.items()):
+        if index%250==0:progress(88,'Rechecking selected source metadata')
         if source_stamp(Path(path))!=stamp:raise ValueError('A referenced source changed during the STEMS audit; capture again')
     return reports,{'cache_locations':len(caches),'chunk_sets_present':counts['chunks_present'],
                     'chunk_sets_incomplete':counts['chunks_incomplete'],'chunk_sets_unknown':counts['chunks_unknown'],

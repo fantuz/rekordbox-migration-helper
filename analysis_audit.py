@@ -202,7 +202,7 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
     rows=[];counts=defaultdict(int);inspected=hashed=0
     marker_roots=[]
     for _,scope,f in records.values():
-        if basename(f['name'])=='.rbstemsplus-cache':marker_roots.append((scope if f['archive'] else '',PurePosixPath(f['source']).parent))
+        if basename(f['name'])=='.rbstemsplus-cache':marker_roots.append((scope if f['archive'] else '',PurePosixPath(f['source'].replace('\\','/')).parent))
     def unchanged(f):
         if not f['archive'] and (Path(f['source']).is_symlink() or asset_stamp(Path(f['source']),True)!=f['stamp']):
             raise ValueError('An asset changed during format inspection; capture again')
@@ -219,7 +219,7 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
         return 64
     for path,scope,f in records.values():
         progress(75,'Inspecting selected file formats')
-        source=PurePosixPath(f['source']);archive_scope=scope if f['archive'] else ''
+        source=PurePosixPath(f['source'].replace('\\','/'));archive_scope=scope if f['archive'] else ''
         provider_context=any(part.casefold() in CACHE_FOLDERS for part in source.parts[:-1]) or any(s==archive_scope and source.is_relative_to(root) for s,root in marker_roots)
         record={'section':'format_evidence','title':f['name'],'path':path,'scope':scope,'bytes':f['bytes'],
                 'validation':'not_checked','format':'unknown','checksum_status':'not_checked',

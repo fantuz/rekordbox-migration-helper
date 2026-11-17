@@ -16,6 +16,9 @@ from analysis_audit import audit_assets
 from backup_manifest import backup_manifest
 from migration_readiness import export_readiness,tempo_key_review
 from source_insights import source_insights
+from stems_report import stems_report
+from stems_eligibility import context as stems_context
+from stems_formats import REPORT_FILTERS
 from result_order import ordered,page_result,scan_statuses,with_status,TRACK_FIELDS
 from history_browser import list_history,history_session
 from metadata_overrides import FIELDS,FREE_FIELDS,comparable,baseline,validate
@@ -129,11 +132,13 @@ def register(owner):
         b=body();s=snapshot(b);kind=b.get('kind');state=store().edit_state(s['scope_key'])
         working=store().effective(s,state['overrides']) if b.get('working') is True else s
         edit_revision=state['edit_revision']
+        if kind=='stems':stems_context(b.get('profile'))
         def work(progress):
             if kind=='consistency':summary,rows=metadata_consistency(working)
             elif kind=='coverage':summary,rows=collection_coverage(working,b.get('min_cues',1),b.get('min_manual',0),b.get('require_analysis',True) is True)
             elif kind=='assets':summary,rows=audit_assets(s,b.get('paths') or b.get('path',''),progress,b.get('verify') is True)
             elif kind=='formats':summary,rows=audit_assets(s,b.get('paths') or b.get('path',''),progress,b.get('verify') is True,inspect=True)
+            elif kind=='stems':summary,rows=stems_report(s,b.get('paths') or b.get('path',''),b.get('profile'),progress,b.get('verify') is True)
             elif kind=='source_insights':summary,rows=source_insights(s,progress)
             elif kind=='backup':summary,rows=backup_manifest(s,b.get('path',''),progress,b.get('verify') is True)
             elif kind=='readiness':summary,rows=export_readiness(working,b.get('profile','generic'),b.get('filesystem','not_checked'))
@@ -148,8 +153,9 @@ def register(owner):
     @app.get('/api/lab/reports/<identity>/download')
     def lab_report(identity):
         result=store().report(identity,request.args.get('offset',0),request.args.get('section',''),request.args.get('q',''),True,
-                              severity=request.args.get('severity',''),validation=request.args.get('validation',''))
-        result=page_result(result,request.args,('section','severity','validation','title','artist','detail','track_id'),full=request.path.endswith('/download'))
+                              severity=request.args.get('severity',''),validation=request.args.get('validation',''),
+                              **{field:request.args.get(field,'') for field in REPORT_FILTERS})
+        result=page_result(result,request.args,('section','severity','validation','title','artist','detail','track_id',*REPORT_FILTERS),full=request.path.endswith('/download'))
         if request.path.endswith('/download'):return download(result,'library-lab-report.json')
         return jsonify(result)
 

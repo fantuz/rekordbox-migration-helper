@@ -77,9 +77,12 @@ def capture_catalog(catalog, scope="all"):
         if scope == "xml" and not source.get("october_xml"):
             continue
         cues = catalog.cue_summary(source["track_id"])
-        tracks.append(track({**source, "id": source["track_id"], "duration": source.get("duration_seconds"),
+        captured=track({**source, "id": source["track_id"], "duration": source.get("duration_seconds"),
                              "manual_cues": cues["other"], "auto_cues": cues["auto"],
-                             "playlists": [names.get(p, str(p)) for p in source.get("playlist_ids", [])]}))
+                             "playlists": [names.get(p, str(p)) for p in source.get("playlist_ids", [])]})
+        captured['source_evidence']={'service_id':source.get('service_id'),'service_id_captured':'service_id' in source,
+                                     'basis':'Captured catalog service identifier; numeric provider mapping is unverified'}
+        tracks.append(captured)
     return {"tracks": tracks, "source_kind": "Loaded XML + ZIP", "scope": scope,
             "version": catalog.metadata.get("version"), "captured": datetime.now(timezone.utc).isoformat(),
             "colour_edit_support":catalog.metadata.get("colour_edit_support"),
@@ -111,7 +114,7 @@ def capture_database(db, columns):
     cue_known = {"ContentID", "Comment"} <= columns.get("djmdCue", set())
     source_fields = ("ID", "Title", "ArtistID", "AlbumID", "GenreID", "LabelID", "ComposerID", "ReleaseYear",
                      "BPM", "Rating", "Length", "DJPlayCount", "StockDate", "Analysed", "BitRate", "SampleRate",
-                     "BitDepth", "FileSize", "FolderPath", "OrgFolderPath", "Commnt", "KeyID", "ColorID",*ROLES.values(),*NATIVE_FIELDS)
+                     "BitDepth", "FileSize", "FolderPath", "OrgFolderPath", "Commnt", "KeyID", "ColorID",'ServiceID',*ROLES.values(),*NATIVE_FIELDS)
     source_fields=tuple(dict.fromkeys(source_fields))
     tracks = []
     for row in rows("djmdContent", source_fields):
@@ -134,6 +137,8 @@ def capture_database(db, columns):
             values[target] = lookups[table].get(str(row[field]), "")
         captured=track(values)
         captured['native_evidence']=native_evidence(row,columns.get('djmdContent',set()),lookups['djmdArtist'])
+        captured['source_evidence']={'service_id':row['ServiceID'],'service_id_captured':'ServiceID' in columns.get('djmdContent',set()),
+                                     'basis':'Captured native ServiceID; numeric provider mapping is unverified'}
         tracks.append(captured)
     return {"tracks": tracks, "source_kind": "Read-only source snapshot", "scope": "all",
             "captured": datetime.now(timezone.utc).isoformat(),

@@ -12,7 +12,8 @@ SOURCES={'faq':'https://rekordbox.com/en/support/faq/rekordbox7/',
 PIONEER_MODEL='435c987855f7ea74ff5f20090541748cbbce5a2e8e501d07b10f4e703453215a'
 ENUMS={'target':('unknown','native','rbstemsplus'),'enabled':('unknown','enabled','disabled'),
        'mode':('unknown','performance','export'),'quality':('unknown','quality','speed'),
-       'parts':('unknown','3','4'),'source_provider':('unknown','local','apple_music','spotify','other_streaming')}
+       'parts':('unknown','3','4'),'source_provider':('unknown','local','apple_music','spotify','other_streaming'),
+       'platform':('unknown','macos','windows','linux'),'architecture':('unknown','arm64','x86_64')}
 TEXT_FIELDS=('app_version','engine_version','runtime_version','model_sha256')
 
 
@@ -44,12 +45,14 @@ def namespace_status(namespace,profile):
 
 def cache_profile(profile):
     if profile.get('target')!='rbstemsplus':return 'unknown'
-    if profile.get('quality')=='speed' or profile.get('mode')=='export' or profile.get('enabled')=='disabled':return 'profile_mismatch'
+    if profile.get('quality')=='speed' or profile.get('mode')=='export' or profile.get('enabled')=='disabled' or profile.get('platform') in ('windows','linux'):return 'profile_mismatch'
+    if profile.get('architecture')=='x86_64':return 'unverified_version'
     known={'app_version':{'7.2.17','7.2.18','7.2.19'},'engine_version':{'0002'}}
     for field,values in known.items():
         if profile.get(field) and profile[field] not in values:return 'unverified_version'
-    if profile.get('runtime_version') and not profile['runtime_version'].startswith('1.18.'):return 'unverified_version'
+    if profile.get('runtime_version') and not re.fullmatch(r'1\.18\.[0-9]+(?:\.[0-9]+)?',profile['runtime_version']):return 'unverified_version'
     required=(profile.get('quality')=='quality' and profile.get('mode')=='performance' and profile.get('enabled')=='enabled'
+              and profile.get('platform')=='macos' and profile.get('architecture')=='arm64'
               and all(profile.get(k) for k in ('app_version','engine_version','runtime_version','model_sha256')))
     return 'matches_declared_profile' if required else 'unknown'
 
@@ -62,7 +65,9 @@ def provider(track,profile):
     service=raw.get('service_id')
     if service not in (None,''):
         normalized=str(service).casefold().replace(' ','')
-        return (names[normalized],'Captured service label') if normalized in names else ('unknown','Unmapped native service identifier')
+        if normalized in names:return names[normalized],'Captured service label'
+        if profile.get('source_provider','unknown')!='unknown':return profile['source_provider'],'User-declared fallback; native service identifier is unmapped'
+        return 'unknown','Unmapped native service identifier'
     path=str(track.get('current_path') or track.get('xml_location') or '')
     try:
         parts=urlsplit(path);host=(parts.hostname or '').casefold()
@@ -88,6 +93,7 @@ def eligibility(snapshot,profile,progress=lambda *_:None,max_rows=10000):
                      'asset_family':'source_eligibility','provider':'rekordbox','source_provider':service,'eligibility':state,
                      'validation':'recognized' if state!='unknown' else 'not_checked','severity':'info' if state=='candidate' else 'review',
                      'provider_basis':basis,'cache_profile_status':cache_profile(profile),'native_stems_readiness':None,
+                     'source_evidence':track.get('source_evidence'),
                      'profile_version':PROFILE_VERSION,'detail':'; '.join(reasons) if reasons else
                      'Local source and declared settings permit a candidate; decoding, plan, model and live readiness remain unverified' if state=='candidate' else
                      'Source or session evidence is incomplete; STEMS eligibility is unknown'})
