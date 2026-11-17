@@ -123,6 +123,13 @@ class ScopeTests(unittest.TestCase):
         def stop(*_):raise OperationCancelled('Synthetic cancellation')
         with self.assertRaises(OperationCancelled):provider_report([{}],[],context(),stop,time.monotonic()+1)
 
+    def test_unread_chunk_metadata_is_unknown_not_an_absent_chunk(self):
+        budget=(self.meta/'test.manifest').stat().st_size+(self.cache/'.rbstemsplus-cache').stat().st_size
+        summary,rows=audit_assets({},list(map(str,(self.meta,self.cache,self.audio))),lambda *_:None,
+                                 inspect=True,max_inspect_bytes=budget)
+        self.assertEqual(self.preparation(rows)['cache_state'],'unknown')
+        self.assertEqual(summary['format_inspection']['provider_cache']['manifest_associations_incomplete'],0)
+
     def test_native_target_does_not_claim_third_party_profile_compatibility(self):
         self.assertEqual(cache_profile(context({'target':'native','quality':'speed'})),'unknown')
         self.assertEqual(cache_profile(context({'target':'rbstemsplus','platform':'windows'})),'profile_mismatch')

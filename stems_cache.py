@@ -53,15 +53,17 @@ def provider_report(rows,roots,profile,progress,deadline,inventory_complete=True
     for index,row in enumerate(rows):
         if index%250==0:progress(85,'Grouping provider cache companions')
         if time.monotonic()>=deadline:partial=True;break
-        if row.get('format') not in ('rbstems_flac','rbstems_descriptor'):continue
         path=PurePosixPath(row['_source'].replace('\\','/'));parts=path.parts
+        kind=row.get('format');suffix=path.suffix.casefold()
+        unchecked=kind=='unknown' and row.get('validation')=='not_checked' and suffix in ('.flac','.desc')
+        if kind not in ('rbstems_flac','rbstems_descriptor') and not unchecked:continue
         if len(parts)<3:continue
         model,prefix=parts[-3:-1];key=path.stem
         if not HEX64.fullmatch(model) or not HEX64.fullmatch(key) or prefix!=key[:2]:
             row.update(cache_state='unknown',detail=row['detail']+'; cache path does not match the inspected model/key layout')
             continue
         identity=root_key(row,path.parents[2]);entry=cache(identity)
-        entry['chunks'][(model,key)]['flac' if row['format']=='rbstems_flac' else 'descriptor'].append(row)
+        entry['chunks'][(model,key)]['flac' if suffix=='.flac' else 'descriptor'].append(row)
     retained={}
     for row in rows:
         if row.get('format')=='rbstems_kept' and row['validation']=='recognized':
