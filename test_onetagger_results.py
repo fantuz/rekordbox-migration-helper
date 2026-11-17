@@ -8,8 +8,8 @@ from unittest.mock import patch
 
 import app
 from metadata_export import payload
-from onetagger_bridge import FIELDS,read_tags,stamp
-from onetagger_results import decode_report,validate_report
+from onetagger_bridge import read_tags,stamp
+from onetagger_results import FIELDS,decode_report,validate_report
 from task_control import OperationCancelled
 import test_onetagger_bridge as bridge_fixtures
 from workbench_store import Store
@@ -295,3 +295,4 @@ class ResultsTests(TestCase):
         scan=self.review(identity);self.assertEqual(reader.call_count,1)
         self.assertEqual(scan['summary']['verified'],1);self.assertEqual(scan['summary']['not_written'],1)
         self.assertTrue(scan['report']['cancelled']);self.assertEqual(scan['rows'][1]['changes'],[])
+

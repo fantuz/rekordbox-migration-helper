@@ -1,9 +1,9 @@
 """Explicit, validated field edits applied only to generated library copies."""
 from datetime import datetime,timezone
 
-FIELDS=('title','artist','year','rating','album','genre','comment','colour')
+FIELDS=('title','artist','year','rating','album','genre','comment','colour','label','composer')
 FREE_FIELDS=('comment','colour','rating')
-XML_FIELDS={'title':'Name','artist':'Artist','year':'Year','rating':'Rating','album':'Album','genre':'Genre','comment':'Comments','colour':'Colour'}
+XML_FIELDS={'title':'Name','artist':'Artist','year':'Year','rating':'Rating','album':'Album','genre':'Genre','comment':'Comments','colour':'Colour','label':'Label','composer':'Composer'}
 
 
 def xml_text(value, *, multiline=False):
@@ -12,7 +12,7 @@ def xml_text(value, *, multiline=False):
 
 
 def validate(field,value):
-    if field not in FIELDS:raise ValueError('Choose title, artist, year, rating, album, genre, comment or colour')
+    if field not in FIELDS:raise ValueError('Choose title, artist, year, rating, album, genre, comment, colour, label or composer')
     if field=='colour':
         from track_tags import PALETTE,rgb
         if value=='':return ''
@@ -41,7 +41,7 @@ def validate(field,value):
 def comparable(field,value):
     if field=='year' and value in (None,'',0):return None
     if field=='rating' and value is None:return 0
-    return value or '' if field in ('title','artist','album','genre','comment') else value
+    return value or '' if field in ('title','artist','album','genre','comment','label','composer') else value
 
 
 def plan(catalog,mapping):
@@ -69,7 +69,8 @@ def apply_native(db,tables,edits,update,timestamp,next_usn):
     """Update only a detached export DB, including exact named lookup rows."""
     from secrets import randbelow
     from uuid import uuid4
-    named={'artist':('djmdArtist','ArtistID'),'album':('djmdAlbum','AlbumID'),'genre':('djmdGenre','GenreID')}
+    named={'artist':('djmdArtist','ArtistID'),'album':('djmdAlbum','AlbumID'),'genre':('djmdGenre','GenreID'),
+           'label':('djmdLabel','LabelID'),'composer':('djmdArtist','ComposerID')}
     columns={'title':'Title','year':'ReleaseYear','rating':'Rating','comment':'Commnt'}
     cache={};created=0
     def colour_id(value,identity):
@@ -151,3 +152,4 @@ def change_summary(edits,evidence=None):
               if evidence and identity in evidence and field in evidence[identity] else {})}
           for identity,fields in edits.items() for field,value in fields.items()]
     return {'tracks':len(edits),'fields':sum(counts.values()),'by_field':{k:v for k,v in counts.items() if v},'changes':rows}
+
