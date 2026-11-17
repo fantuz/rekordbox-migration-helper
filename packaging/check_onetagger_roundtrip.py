@@ -29,8 +29,8 @@ def mp4(path):
     def text(kind,value):return atom(kind,atom(b'data',struct.pack('>II',1,0)+value.encode()))
     header=bytearray(100);header[12:16]=struct.pack('>I',1000);header[16:20]=struct.pack('>I',1000)
     metadata=b''.join(text(k,v) for k,v in [(b'\xa9nam','Original'),(b'\xa9ART','Artist'),(b'\xa9wrt','Composer')])
-    path.write_bytes(atom(b'ftyp',b'M4A \0\0\0\0M4A isom')+atom(b'moov',atom(b'mvhd',header)+
-        atom(b'udta',atom(b'meta',bytes(4)+atom(b'ilst',metadata))))+atom(b'mdat',b'preserve-media-payload')))
+    movie=atom(b'mvhd',header)+atom(b'udta',atom(b'meta',bytes(4)+atom(b'ilst',metadata)))
+    path.write_bytes(atom(b'ftyp',b'M4A \0\0\0\0M4A isom')+atom(b'moov',movie)+atom(b'mdat',b'preserve-media-payload'))
 
 
 class RoundTrip(TestCase):
