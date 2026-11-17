@@ -1,10 +1,12 @@
 """Exercise the OneTagger handoff/review using invented tags and silent WAV."""
 import json
+from pathlib import Path
 import struct
 from urllib.parse import quote,unquote
 import wave
 
 from audio_paths import validate
+from onetagger_bridge import read_tags,FIELDS
 
 CAPTURED_TITLE='<img src=x onerror="window.bridgeInjected=true"> & DJ'
 TAGGED_TITLE='<svg onload="window.bridgeInjected=true">Retagged</svg>'
@@ -52,6 +54,17 @@ def check_onetagger_ui(browser,base,store,root,output):
         assert CAPTURED_TITLE in page.locator('#onetagger-review').inner_text()
         assert page.locator('#onetagger-review img, #onetagger-review svg').count()==0
         assert page.evaluate('window.bridgeInjected') is None
+        # Import a producer-contract report and independently compare it to the
+        # real WAV before exposing the same explicit, initially unchecked review.
+        report=json.loads((Path(__file__).resolve().parents[1]/'docs/fixtures/onetagger-results-v1.json').read_text(encoding='utf-8'))
+        report['selection']={k:manifest[k] for k in ('id','snapshot','snapshot_digest','scope_key','mapping_revision')}
+        row=report['tracks'][0];row.update(track_id='bridge-one',local_path=str(audio.resolve()),final_path=str(audio.resolve()))
+        actual,state,_=read_tags(audio);row['after']={f:actual.get(f) for f in FIELDS}
+        row['file_state']={'size':state[2],'modified_ns':str(state[3])}
+        page.locator('#onetagger-report-file').set_input_files({'name':'results.json','mimeType':'application/json','buffer':json.dumps(report).encode()})
+        page.wait_for_selector('#onetagger-review details')
+        assert 'OneTagger report' in page.locator('#onetagger-review').inner_text()
+        assert store.overrides(scope)=={}
         assert not page.locator('[data-onetagger-field="genre"]').is_checked()
         assert page.locator('#onetagger-stage').is_disabled()
         page.locator('[data-onetagger-field="genre"]').check();page.locator('#onetagger-reviewed').check()
@@ -60,6 +73,7 @@ def check_onetagger_ui(browser,base,store,root,output):
         page.locator('#onetagger-stage').click();page.wait_for_function('document.querySelector("#toast").textContent.includes("Metadata staged locally")')
         edits=store.overrides(scope)['bridge-one'];assert set(edits)=={'genre'},edits
         assert edits['genre']['value']=='Techno';assert store.snapshot(sid)==before
+        assert json.loads(edits['genre']['origin'])['report']['run_id']==report['run_id']
         assert audio.read_bytes()==retagged;assert not errors,errors
         # Selection IDs read from the DOM stay a single URL component, even
         # if a compromised response supplies quotes, markup or separators.
@@ -75,7 +89,8 @@ def check_onetagger_ui(browser,base,store,root,output):
             assert page.locator('#onetagger-'+kind).get_attribute('href')=='/api/onetagger/'+quote(hostile,safe='')+'/'+suffix
         assert page.evaluate('window.bridgeInjected') is None
         assert not errors,errors
-        return {'m3u_roundtrip':True,'original_references_preserved':True,'tag_rescan':True,
+        return {'m3u_roundtrip':True,'original_references_preserved':True,'tag_rescan':True,'results_json_review':True,
                 'explicit_field_selection':True,'snapshot_unchanged':True,'no_audio_writes':True,
                 'metadata_rendered_as_text':True,'selection_urls_encoded':True,'no_page_errors':True}
     finally:context.close()
+

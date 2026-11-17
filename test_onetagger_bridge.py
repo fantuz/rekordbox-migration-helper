@@ -17,6 +17,14 @@ from workbench_store import Store
 
 
 class OneTaggerBridgeTests(TestCase):
+    def test_shared_rust_report_fixture_is_supported(self):
+        from onetagger_results import validate_report
+        report=json.loads((Path(__file__).parent/'docs/fixtures/onetagger-results-v1.json').read_text(encoding='utf-8'))
+        manifest={**report['selection'],'tracks':[{'track_id':r['track_id'],'local_path':r['local_path']} for r in report['tracks']]}
+        parsed=validate_report(report,manifest)
+        self.assertEqual(parsed['rows']['library-1']['after']['title'],'Tagged Café')
+        self.assertEqual(parsed['rows']['library-1']['attempts'][0]['track_id'],'provider-42')
+
     def results_report(self,identity,values=None):
         manifest=self.store.setting('onetagger:'+identity)
         values=values if values is not None else {'title':'Tagged title','genre':'Techno','year':2020}
