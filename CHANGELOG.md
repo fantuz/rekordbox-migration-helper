@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Extend snapshot comparisons to known active-loop switches, captured title/BPM/key/play-count/analyzed values, playlist moves and folder/smart/manual conversions. Resolve parent identities across renumbered IDs and retain unknown evidence without assuming a change.
+- Keep non-PMAI `.3EX` variants Unsupported instead of falsely reporting corruption. Check the observed PQT2 revision's count/body agreement and fractional ranges; retain checksum and unsupported semantics as unverified.
+- Add synthetic regressions and real-server Playwright checks for comparison filters/downloads, duplicate playlist members, folder/ZIP format parity and saved reports across restart. Document the broader [Recordbox integrity review](docs/RECORDBOX-INTEGRITY-REVIEW.md), public fixture evidence and outstanding identity/recovery/backup/STEMS questions.
 - Import version-1 OneTagger tagging-results JSON into the existing field-review workflow. Require the exact saved selection, membership and paths; independently verify final file state and tags. Retain application/run identity, before/after tags, fallback-provider evidence and partial/cancelled outcomes without automatically staging edits.
 - Accept bounded raw JSON files, reject duplicate keys and nonfinite numbers, and read year components from stored release dates. Add review downloads, verification counts and outdated-review notices. Recheck selected files before committing staged fields and roll back changes if files changed during staging.
 - Translate the new controls across all 13 interface languages and extend shared-fixture, API and real-server Playwright checks for report import, stale evidence, explicit field selection, input preservation and restart recovery. Personal stars, cues, grids, BPM, keys, playlist membership and recorded references remain outside this report-import contract.

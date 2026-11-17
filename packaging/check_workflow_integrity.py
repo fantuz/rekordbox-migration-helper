@@ -198,6 +198,8 @@ def main():
             report['migration_readiness']=check_migration_readiness_ui(browser,base,store,root,output)
             from check_format_insights_ui import check_format_insights_ui
             report['format_insights']=check_format_insights_ui(browser,base,store,root,output)
+            from check_snapshot_integrity_ui import check_snapshot_integrity_ui
+            report['snapshot_integrity']=check_snapshot_integrity_ui(browser,base,store,output)
             from check_stems_workflows_ui import check_stems_workflows_ui
             report['stems_workflows']=check_stems_workflows_ui(browser,base,store,root,output)
             stop()
@@ -206,6 +208,10 @@ def main():
             response=context.request.get(base+'/api/lab/reports/'+saved_id+'/download')
             assert response.ok and response.json()['summary']['stems_eligibility']['tracks']==125
             report['stems_workflows']['survives_server_restart']=True
+            saved_id=report['snapshot_integrity']['saved_report_id']
+            response=context.request.get(base+'/api/lab/reports/'+saved_id+'/download')
+            assert response.ok and response.json()['summary']['cue_active_loop']==1
+            report['snapshot_integrity']['survives_server_restart']=True
             from check_onetagger_results_ui import check_onetagger_results_ui
             report['onetagger_results']=check_onetagger_results_ui(browser,base,store,root,output)
             stop()
