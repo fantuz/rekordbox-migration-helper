@@ -141,6 +141,9 @@ class ScopeTests(unittest.TestCase):
         empty=self.root/'empty';empty.mkdir()
         summary,_=stems_report({},[str(empty)],{},lambda *_:None)
         self.assertEqual(summary['format_inspection']['files'],0)
+        summary,rows=stems_report({},[str(self.root/'disconnected')],{},lambda *_:None)
+        self.assertEqual(summary['unavailable_scopes'],1);self.assertEqual(rows[0]['cache_state'],'unavailable')
+        self.assertIsNone(summary['stems']['prepared_tracks'])
         for paths in (['relative/cache'],[str(empty)]*21,[42]):
             with self.assertRaises(ValueError):stems_report({},paths,{},lambda *_:None)
 

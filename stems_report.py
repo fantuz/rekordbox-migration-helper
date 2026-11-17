@@ -23,7 +23,7 @@ def stems_report(snapshot,paths,session,progress,verify=False):
         def advance(value,message):progress(90+min(value,90)/10,message)
     else:
         summary={'source_writes':False,'stems':{'prepared_tracks':None,
-                 'preparation_status':'Native per-track STEMS preparation is unknown; no asset scopes were selected',
+                 'preparation_status':'Native per-track STEMS preparation is unknown; no available asset scopes were inspected',
                  'related_candidate_files':0,'related_candidate_bytes':0,'rbsc_drum_capture_files':0,
                  'note':'Eligibility advisories are separate from native preparation and cache completeness'}}
         rows=[];advance=progress

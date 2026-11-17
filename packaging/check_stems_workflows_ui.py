@@ -72,6 +72,7 @@ def check_stems_workflows_ui(browser,base,store,root,output):
         assert prep['cache_profile_status']=='matches_declared_profile' and prep['source_association']=='metadata_match'
         assert all(r.get('native_stems_readiness') is None for r in result['rows'])
         assert not page.locator('#lab-report-rows img').count()
+        page.locator('#lab-stems-path').evaluate('el=>{el.scrollTop=0;el.scrollLeft=0}')
         page.locator('#lab-panel-stems').screenshot(path=str(output/'stems-workflows.png'))
         filtered=apply_filter('asset_family','preparation_manifest')
         filtered=apply_filter('provider','rbstemsplus');filtered=apply_filter('cache_state','consistent')
@@ -120,8 +121,10 @@ def check_stems_workflows_ui(browser,base,store,root,output):
         messages=json.loads((Path(__file__).resolve().parents[1]/'static/locales.json').read_text())['messages']
         for language in LANGUAGES:
             page.select_option('#language',language)
+            page.wait_for_function("document.documentElement.dataset.languageBusy !== 'true'")
             expect(page.locator('[data-lab-tab="stems"]')).to_have_text(messages['STEMS workflows'].get(language,'STEMS workflows'))
         page.select_option('#language','en')
+        page.wait_for_function("document.documentElement.dataset.languageBusy !== 'true'")
         page.set_viewport_size({'width':390,'height':844})
         page.locator('#lab-stems').scroll_into_view_if_needed();expect(page.locator('#lab-stems')).to_be_in_viewport()
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1')
