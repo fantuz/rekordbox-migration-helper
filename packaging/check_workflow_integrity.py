@@ -196,6 +196,8 @@ def main():
             report['checks'].append('Reset persists across restart; both immutable source snapshots remain identical')
             from check_migration_readiness_ui import check_migration_readiness_ui
             report['migration_readiness']=check_migration_readiness_ui(browser,base,store,root,output)
+            from check_format_insights_ui import check_format_insights_ui
+            report['format_insights']=check_format_insights_ui(browser,base,store,root,output)
             assert not errors, errors
             assert not unexpected_network, unexpected_network
             report.update(status='passed', page_errors=errors, unexpected_network_requests=unexpected_network)

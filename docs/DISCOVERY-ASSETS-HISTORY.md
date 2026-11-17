@@ -38,6 +38,8 @@ The audit reports extension counts and bytes (`.DAT`, `.EXT`, `.2EX`, `.3EX` whe
 
 The [official v7 FAQ](https://rekordbox.com/en/support/faq/rekordbox7/) describes `.rbsc` as captured DRUMS samples and notes same-account playback restrictions. That is useful file-type evidence, not a complete-song STEMS cache. Other filename hints remain unverified. Zero candidates does not mean zero tracks can use STEMS. No analysis/audio asset is modified or deleted.
 
+For binary evidence, open **Library lab → Formats & STEMS**. It validates recognized Recordbox cache headers and logical lengths, ANLZ framing/grids/cue groups, player-settings CRCs and classic catalog headers. New SHA-256 fingerprints, ZIP CRC results, unknown source/model association and native readiness are separate evidence. The [format inspection guide](FORMATS-AND-STEMS.md) documents budgets, filters and unsupported cases.
+
 ## Play history
 
 For supported native schemas, the reader captures active `djmdHistory` session/folder rows and active `djmdSongHistory` membership, including `TrackNo` order. It ignores soft-deleted history rows. History folders are excluded from session counts. Session names/dates remain recorded values; the app does not infer whether a session was a gig, practice or export.

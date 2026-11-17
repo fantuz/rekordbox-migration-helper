@@ -85,19 +85,24 @@ class Store:
     def reports(self):
         with self.connection() as db:return [{**dict(r),'summary':json.loads(r['summary']),'sources':json.loads(r['sources'])} for r in db.execute('SELECT * FROM reports ORDER BY created DESC LIMIT 50')]
 
-    def report(self,identity,offset=0,section='',query='',all_rows=False):
+    def report(self,identity,offset=0,section='',query='',all_rows=False,severity='',validation=''):
+        if severity not in ('','info','review','error'):raise ValueError('Choose a supported finding severity')
+        if validation not in ('','recognized','corrupt','unsupported','not_checked'):raise ValueError('Choose a supported validation state')
         with self.connection() as db:
             report=db.execute('SELECT * FROM reports WHERE id=?',(identity,)).fetchone()
             if not report:raise ValueError('Report not found')
             where='report_id=?';params=[identity]
             if section:where+=' AND section=?';params.append(section)
+            if severity:where+=' AND severity=?';params.append(severity)
+            if validation:where+=" AND json_extract(payload,'$.validation')=?";params.append(validation)
             if query:where+=' AND instr(search_text,?)>0';params.append(query.casefold())
             count=db.execute('SELECT count(*) FROM report_rows WHERE '+where,params).fetchone()[0]
             sql='SELECT payload FROM report_rows WHERE '+where+' ORDER BY ordinal'
             if not all_rows:sql+=' LIMIT 50 OFFSET ?';params.append(max(0,int(offset)))
             rows=[json.loads(r[0]) for r in db.execute(sql,params)]
             facets=[dict(r) for r in db.execute('SELECT section,count(*) AS count FROM report_rows WHERE report_id=? GROUP BY section',(identity,))]
-        return {**dict(report),'summary':json.loads(report['summary']),'sources':json.loads(report['sources']),'rows':rows,'total':count,'offset':max(0,int(offset)),'sections':facets}
+            validations=[dict(r) for r in db.execute("SELECT json_extract(payload,'$.validation') AS validation,count(*) AS count FROM report_rows WHERE report_id=? AND json_extract(payload,'$.validation') IS NOT NULL GROUP BY validation",(identity,))]
+        return {**dict(report),'summary':json.loads(report['summary']),'sources':json.loads(report['sources']),'rows':rows,'total':count,'offset':max(0,int(offset)),'sections':facets,'validations':validations,'severity':severity,'validation':validation}
 
     def overrides(self,scope,db=None):
         if db is None:

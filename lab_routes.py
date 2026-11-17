@@ -15,6 +15,7 @@ from library_checks import compare_snapshots,metadata_consistency,collection_cov
 from analysis_audit import audit_assets
 from backup_manifest import backup_manifest
 from migration_readiness import export_readiness,tempo_key_review
+from source_insights import source_insights
 from result_order import ordered,page_result,scan_statuses,with_status,TRACK_FIELDS
 from history_browser import list_history,history_session
 from metadata_overrides import FIELDS,FREE_FIELDS,comparable,baseline,validate
@@ -132,6 +133,8 @@ def register(owner):
             if kind=='consistency':summary,rows=metadata_consistency(working)
             elif kind=='coverage':summary,rows=collection_coverage(working,b.get('min_cues',1),b.get('min_manual',0),b.get('require_analysis',True) is True)
             elif kind=='assets':summary,rows=audit_assets(s,b.get('paths') or b.get('path',''),progress,b.get('verify') is True)
+            elif kind=='formats':summary,rows=audit_assets(s,b.get('paths') or b.get('path',''),progress,b.get('verify') is True,inspect=True)
+            elif kind=='source_insights':summary,rows=source_insights(s,progress)
             elif kind=='backup':summary,rows=backup_manifest(s,b.get('path',''),progress,b.get('verify') is True)
             elif kind=='readiness':summary,rows=export_readiness(working,b.get('profile','generic'),b.get('filesystem','not_checked'))
             elif kind=='tempo':summary,rows=tempo_key_review(working)
@@ -144,8 +147,9 @@ def register(owner):
     @app.get('/api/lab/reports/<identity>')
     @app.get('/api/lab/reports/<identity>/download')
     def lab_report(identity):
-        result=store().report(identity,request.args.get('offset',0),request.args.get('section',''),request.args.get('q',''),True)
-        result=page_result(result,request.args,('section','severity','title','artist','detail','track_id'),full=request.path.endswith('/download'))
+        result=store().report(identity,request.args.get('offset',0),request.args.get('section',''),request.args.get('q',''),True,
+                              severity=request.args.get('severity',''),validation=request.args.get('validation',''))
+        result=page_result(result,request.args,('section','severity','validation','title','artist','detail','track_id'),full=request.path.endswith('/download'))
         if request.path.endswith('/download'):return download(result,'library-lab-report.json')
         return jsonify(result)
 
@@ -209,7 +213,7 @@ def register(owner):
         fields=('id',*FIELDS,'bpm','duration','tonality','color_name','color_hex','color_status','color_basis','play_count','manual_cues','auto_cues','analysed')
         support=snapshot_colour_support(s);original={f:t.get(f) for f in fields};original['colour']=editable_colour(t)
         state=store().edit_state(s['scope_key'])
-        return jsonify(original=original,edit_revision=state['edit_revision'],overrides=state['overrides'].get(identity,{}),
+        return jsonify(original=original,native_evidence=t.get('native_evidence'),edit_revision=state['edit_revision'],overrides=state['overrides'].get(identity,{}),
                        editable_fields=[f for f in FIELDS if f not in FREE_FIELDS],unlocked=s['scope_key'] in edit_unlocked,
                        scope=s['scope_key'],comment_captured=t.get('comment') is not None,
                        snapshot_label=s.get('label','Library snapshot'),colour_palette=support['palette'],

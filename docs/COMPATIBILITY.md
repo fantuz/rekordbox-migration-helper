@@ -4,7 +4,7 @@ The [format-source catalogue](FORMAT-SOURCES.md) distinguishes the official shar
 
 The analyzer selects its reader using the file format and required schema columns. It does not guess an exact application release from a `master.db` filename. Optional user-supplied version information is labeled as such. Unsupported or incomplete schemas produce explicit messages and unavailable counters.
 
-Rekordbox v5 used a legacy `.edb` desktop database. Version 6 introduced SQLCipher-encrypted SQLite `master.db`; version 7 retains this format family. Native `.edb` and USB/device databases currently receive detection and footprint reports only; their track counts are unavailable. No native old-version record decoder or downgrade conversion is claimed.
+Rekordbox v5 used a legacy `.edb` desktop database. Version 6 introduced SQLCipher-encrypted SQLite `master.db`; version 7 retains this format family. Source analyzer detects native `.edb` and USB/device databases and reports their footprint; their track counts are unavailable. Library lab separately adds bounded classic device-catalog header checks and player-settings CRC checks. No native old-version record decoder or downgrade conversion is claimed.
 
 For global statistics without converting a v5 library, select its standalone collection XML in Source analyzer. The adapter reads exported track counts, title, artist, BPM, duration, album, genre, year, format, playlists and any other supported tags that are present. Unknown/unexported values remain unknown. Quick export provides offline category tables. This is metadata-export support, not native `.edb` decoding. Authentic v5 samples remain needed for broader real-world validation. The fields follow the [official rekordbox XML specification](https://cdn.rekordbox.com/files/20200410160904/xml_format_list.pdf).
 
@@ -24,6 +24,8 @@ Native package CI currently exercises Ubuntu 22.04 (Linux portable), Windows x64
 ## Device-format roadmap
 
 Classic USB Device Library uses `export.pdb`. OneLibrary is the new name for Device Library Plus; AlphaTheta documents full compatibility between them. It is a device-export family separate from the desktop `datafile.edb` → `master.db` transition. Current detection does not imply record decoding or conversion. A future device reader/comparator needs genuine fixtures for both classic and OneLibrary exports, including USBs containing both formats.
+
+The [Formats & STEMS inspector](FORMATS-AND-STEMS.md) recognizes classic catalog headers, checks known settings CRCs and reports OneLibrary filename evidence separately. Recordbox cache structure and ANLZ grids/cues have their own bounded checks. These results do not establish native STEMS preparedness, database record compatibility or physical playback.
 
 - [AlphaTheta: relationship between OneLibrary and Device Library Plus](https://support.alphatheta.com/en-US/articles/51301232380185)
 - [Official USB export guide](https://cdn.rekordbox.com/files/20251021171528/USB_export_guide_en_251007.pdf)

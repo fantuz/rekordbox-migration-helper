@@ -12,6 +12,7 @@ from localization import browser_catalogues
 
 from engine import is_auto
 from track_tags import native_colour,rgb,editable_colour,native_colour_support
+from source_insights import native_evidence,ROLES,NATIVE_FIELDS
 
 
 FIELDS = ("id", "title", "artist", "album", "genre", "year", "bpm", "rating",
@@ -110,7 +111,8 @@ def capture_database(db, columns):
     cue_known = {"ContentID", "Comment"} <= columns.get("djmdCue", set())
     source_fields = ("ID", "Title", "ArtistID", "AlbumID", "GenreID", "LabelID", "ComposerID", "ReleaseYear",
                      "BPM", "Rating", "Length", "DJPlayCount", "StockDate", "Analysed", "BitRate", "SampleRate",
-                     "BitDepth", "FileSize", "FolderPath", "OrgFolderPath", "Commnt", "KeyID", "ColorID")
+                     "BitDepth", "FileSize", "FolderPath", "OrgFolderPath", "Commnt", "KeyID", "ColorID",*ROLES.values(),*NATIVE_FIELDS)
+    source_fields=tuple(dict.fromkeys(source_fields))
     tracks = []
     for row in rows("djmdContent", source_fields):
         identity = str(row["ID"])
@@ -130,7 +132,9 @@ def capture_database(db, columns):
                                      ("album", "djmdAlbum", "AlbumID"), ("genre", "djmdGenre", "GenreID"),
                                      ("label", "djmdLabel", "LabelID")):
             values[target] = lookups[table].get(str(row[field]), "")
-        tracks.append(track(values))
+        captured=track(values)
+        captured['native_evidence']=native_evidence(row,columns.get('djmdContent',set()),lookups['djmdArtist'])
+        tracks.append(captured)
     return {"tracks": tracks, "source_kind": "Read-only source snapshot", "scope": "all",
             "captured": datetime.now(timezone.utc).isoformat(),
             "colour_edit_support":native_colour_support(db,columns,list(colours.values())),

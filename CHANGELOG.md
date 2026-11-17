@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add **Library lab → Formats & STEMS**, with bounded ANLZ framing, grid/tempo and repeated cue-group checks, player-settings CRC validation, classic catalog headers, separate OneLibrary detection and recognized Recordbox STEMS cache structure. Keep source association, unsupported formats and native STEMS readiness explicit.
+- Add **Native source insights** for captured composer/remixer/original-artist/lyricist relationships, raw analysis flags, cue anomalies and bounded smart-playlist definitions. Resolve key and signed MyTag references without executing rules or guessing BPM-rule units.
+- Combine report section, severity, validation and text filters before pagination and full JSON downloads. Expose captured native evidence in single-track details and localize the new controls across all 13 interface languages.
+- Correct player-settings `.DAT` classification in backup coverage; report device catalogs separately and verify captured `.3EX` members individually. Keep ZIP checksum success separate from invalid settings payloads.
+- Add synthetic format/source regressions and real-server Playwright checks for the new sections, filters, source preservation, saved reports, native details and mobile controls in the existing CI workflow.
+
 ## 1.1.5 — 2026-11-16
 
 This update adds migration-readiness reports and real-server browser checks, strengthens original-input verification, and rejects invalid metadata before it can block an export.
