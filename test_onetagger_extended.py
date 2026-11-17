@@ -9,29 +9,37 @@ from unittest.mock import patch
 from xml.etree.ElementTree import Element
 
 from metadata_overrides import apply_xml,apply_native,validate
+from export_verification import native_state,xml_edits
 from onetagger_bridge import ReadBatch,read_tags
 from onetagger_results import EXTENDED_FIELDS,validate_report
-from test_onetagger_results import ResultsTests,mp3_tags,syncsafe
+import test_onetagger_results as fixtures
 from werkzeug.exceptions import Conflict
 
 
 def extended_mp3(path):
-    mp3_tags(path,{'title':'Tagged title','artist':'Artist','genre':'Techno'})
+    fixtures.mp3_tags(path,{'title':'Tagged title','artist':'Artist','genre':'Techno'})
     data=path.read_bytes()
     original_size=sum((data[6+i]&127) << (21-7*i) for i in range(4))
     frames=data[10:10+original_size]
     for key,value in [('TPUB','Independent label'),('TCOM','Composer')]:
-        body=b'\x03'+value.encode();frames+=key.encode()+syncsafe(len(body))+b'\0\0'+body
-    path.write_bytes(b'ID3\x04\0\0'+syncsafe(len(frames))+frames+bytes(64))
+        body=b'\x03'+value.encode();frames+=key.encode()+fixtures.syncsafe(len(body))+b'\0\0'+body
+    path.write_bytes(b'ID3\x04\0\0'+fixtures.syncsafe(len(frames))+frames+bytes(64))
 
 
 class ExtendedResultsTests(TestCase):
-    setUp=ResultsTests.setUp
-    export=ResultsTests.export
-    results_report=ResultsTests.results_report
-    raw_import=ResultsTests.raw_import
-    review=ResultsTests.review
-    real_stage=ResultsTests.real_stage
+    setUp=fixtures.ResultsTests.setUp
+    export=fixtures.ResultsTests.export
+    results_report=fixtures.ResultsTests.results_report
+    raw_import=fixtures.ResultsTests.raw_import
+    review=fixtures.ResultsTests.review
+    real_stage=fixtures.ResultsTests.real_stage
+
+    def test_shared_version_two_fixture(self):
+        report=json.loads((Path(__file__).parent/'docs/fixtures/onetagger-results-v2.json').read_text(encoding='utf-8'))
+        manifest={**report['selection'],'tracks':[{'track_id':r['track_id'],'local_path':r['local_path']} for r in report['tracks']]}
+        parsed=validate_report(report,manifest)
+        self.assertEqual(parsed['rows']['library-1']['after']['label'],'Independent label')
+        self.assertEqual(parsed['version'],2)
 
     def test_real_extended_tags_and_legacy_report_boundaries(self):
         self.audio=self.root/'extended.mp3';extended_mp3(self.audio)
@@ -72,14 +80,18 @@ class ExtendedResultsTests(TestCase):
         xml=Element('TRACK',{'Rating':'255','AverageBpm':'128','Tonality':'8A'})
         apply_xml(xml,fields)
         self.assertEqual(xml.attrib,{'Rating':'255','AverageBpm':'128','Tonality':'8A','Label':'Independent label','Composer':'Composer'})
+        verified=Element('TRACK',{'Rating':'255','AverageBpm':'128','Tonality':'8A'})
+        xml_edits(verified,fields);self.assertEqual(xml.attrib,verified.attrib)
         db=sqlite3.connect(':memory:');self.addCleanup(db.close)
         db.execute('CREATE TABLE djmdContent (ID TEXT,LabelID TEXT,ComposerID TEXT,ArtistID TEXT,BPM INT,rb_local_deleted INT)')
         db.execute("INSERT INTO djmdContent VALUES ('one',NULL,NULL,'performer',12800,0)")
         for table in ('djmdArtist','djmdLabel'):
             db.execute('CREATE TABLE '+table+' (ID TEXT,Name TEXT,UUID TEXT,rb_local_deleted INT)')
         tables={t:{r[1] for r in db.execute('PRAGMA table_info('+t+')')} for t in ('djmdContent','djmdArtist','djmdLabel')}
+        expected=native_state(db,mapping={},edits={'one':fields})
         def update(table,where,args,values):
             db.execute('UPDATE '+table+' SET '+','.join(k+'=?' for k in values)+' WHERE '+where,(*values.values(),*args))
         self.assertEqual(apply_native(db,tables,{'one':fields},update,'now',lambda:1),2)
         self.assertEqual(db.execute('SELECT a.Name,l.Name,c.ArtistID,c.BPM FROM djmdContent c JOIN djmdArtist a ON a.ID=c.ComposerID JOIN djmdLabel l ON l.ID=c.LabelID').fetchone(),('Composer','Independent label','performer',12800))
+        self.assertEqual(native_state(db,edits={'one':fields}),expected)
         self.assertEqual(apply_native(db,tables,{'one':fields},update,'now',lambda:2),0)

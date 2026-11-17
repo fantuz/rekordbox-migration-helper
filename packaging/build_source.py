@@ -19,7 +19,7 @@ def main():
     files+=list((ROOT/"packaging").glob("*.py"))+list((ROOT/"packaging").glob("*.c"))
     files+=list((ROOT/"docs").glob("*.md"))
     files+=list((ROOT/"docs").glob("*.json"))
-    files+=[ROOT/"docs"/"fixtures"/"onetagger-results-v1.json"]
+    files+=list((ROOT/"docs"/"fixtures").glob("onetagger-results-v*.json"))
     files+=[ROOT/"docs"/"screenshots"/name for name in ("readme-library-insights.png","readme-track-editor.png","readme-playlist-explorer.png",
                                                        "musicbrainz-enrichment-real.webp","library-bubbles-real.webp",
                                                        "formats-stems.png","native-source-insights.png","stems-workflows.png","onetagger-results.png")]
@@ -35,3 +35,4 @@ def main():
 
 
 if __name__=="__main__":main()
+
