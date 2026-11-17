@@ -67,7 +67,7 @@ def capture_private_database(db,scope_key):
     for r in rows('djmdPlaylist',('ID','UUID','Name','ParentID','Attribute','SmartList')):
         entries=sorted(members[str(r['ID'])],key=lambda x:(order(x['TrackNo']),str(x['ID'])))
         snapshot['playlists'].append({'id':str(r['ID']),'uuid':r['UUID'],'name':r['Name'] or '', 'parent':r['ParentID'],
-                                      'folder':r['Attribute']==1,'smart':bool(r['SmartList']),
+                                      'folder':r['Attribute']==1,'smart':bool(r['SmartList']) or r['Attribute'] in (4,'4'),
                                       'smart_definition':r['SmartList'] if isinstance(r['SmartList'],str) and len(r['SmartList'])<=65536 else None,
                                       'smart_definition_status':'oversized' if isinstance(r['SmartList'],str) and len(r['SmartList'])>65536 else 'captured' if 'SmartList' in columns.get('djmdPlaylist',set()) else 'not_captured',
                                       'criteria_sha256':sha256(str(r['SmartList'] or '').encode()).hexdigest(),

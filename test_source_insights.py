@@ -84,6 +84,18 @@ class SourceInsightTests(unittest.TestCase):
         self.assertEqual(inspect_smartlist('<NODE/>')['validation'],'unsupported')
         self.assertEqual(inspect_smartlist('<NODE LogicalOperator="3"><CONDITION PropertyName="genre" Operator="1"/></NODE>')['validation'],'unsupported')
 
+    def test_declared_smart_playlist_with_missing_definition_is_not_silently_omitted(self):
+        for optional_column in ('',',SmartList TEXT'):
+            with self.subTest(optional_column=optional_column),closing(sqlite3.connect(':memory:')) as db:
+                db.executescript('CREATE TABLE djmdContent(ID TEXT,Title TEXT,FolderPath TEXT);'
+                    'CREATE TABLE djmdPlaylist(ID TEXT,Name TEXT,Attribute INTEGER'+optional_column+');'
+                    "INSERT INTO djmdPlaylist(ID,Name,Attribute) VALUES('missing','Missing rule',4);")
+                source=capture_private_database(db,'synthetic:missing-rule')
+                self.assertTrue(source['playlists'][0]['smart'])
+                summary,rows=source_insights(source)
+                self.assertEqual(summary['smart_rules_not_checked'],1)
+                self.assertEqual(next(r['validation'] for r in rows if r['section']=='smart_playlist'),'not_checked')
+
     def test_rule_parser_rejects_entities_excessive_nodes_and_nested_rules(self):
         for xml in ('<!DOCTYPE NODE [<!ENTITY x "hello">]><NODE>&x;</NODE>',
                     '<NODE LogicalOperator="1"><NODE/></NODE>',
