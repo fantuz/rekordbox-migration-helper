@@ -9,6 +9,7 @@ import sqlite3
 from uuid import uuid4
 from metadata_overrides import validate,baseline,comparable
 from metadata_concurrency import revision, require_revision
+from stems_formats import REPORT_FILTERS
 
 _INTERNAL_EDIT = object()
 
@@ -85,9 +86,12 @@ class Store:
     def reports(self):
         with self.connection() as db:return [{**dict(r),'summary':json.loads(r['summary']),'sources':json.loads(r['sources'])} for r in db.execute('SELECT * FROM reports ORDER BY created DESC LIMIT 50')]
 
-    def report(self,identity,offset=0,section='',query='',all_rows=False,severity='',validation=''):
+    def report(self,identity,offset=0,section='',query='',all_rows=False,severity='',validation='',**filters):
         if severity not in ('','info','review','error'):raise ValueError('Choose a supported finding severity')
         if validation not in ('','recognized','corrupt','unsupported','not_checked'):raise ValueError('Choose a supported validation state')
+        if set(filters)-set(REPORT_FILTERS):raise ValueError('Choose supported STEMS report filters')
+        for field,value in filters.items():
+            if value not in ('',*REPORT_FILTERS[field]):raise ValueError('Choose a supported STEMS filter value')
         with self.connection() as db:
             report=db.execute('SELECT * FROM reports WHERE id=?',(identity,)).fetchone()
             if not report:raise ValueError('Report not found')
@@ -95,6 +99,8 @@ class Store:
             if section:where+=' AND section=?';params.append(section)
             if severity:where+=' AND severity=?';params.append(severity)
             if validation:where+=" AND json_extract(payload,'$.validation')=?";params.append(validation)
+            for field,value in filters.items():
+                if value:where+=' AND json_extract(payload,?)=?';params.extend(('$.'+field,value))
             if query:where+=' AND instr(search_text,?)>0';params.append(query.casefold())
             count=db.execute('SELECT count(*) FROM report_rows WHERE '+where,params).fetchone()[0]
             sql='SELECT payload FROM report_rows WHERE '+where+' ORDER BY ordinal'
@@ -102,7 +108,8 @@ class Store:
             rows=[json.loads(r[0]) for r in db.execute(sql,params)]
             facets=[dict(r) for r in db.execute('SELECT section,count(*) AS count FROM report_rows WHERE report_id=? GROUP BY section',(identity,))]
             validations=[dict(r) for r in db.execute("SELECT json_extract(payload,'$.validation') AS validation,count(*) AS count FROM report_rows WHERE report_id=? AND json_extract(payload,'$.validation') IS NOT NULL GROUP BY validation",(identity,))]
-        return {**dict(report),'summary':json.loads(report['summary']),'sources':json.loads(report['sources']),'rows':rows,'total':count,'offset':max(0,int(offset)),'sections':facets,'validations':validations,'severity':severity,'validation':validation}
+            filter_facets={field:[dict(r) for r in db.execute("SELECT json_extract(payload,?) AS value,count(*) AS count FROM report_rows WHERE report_id=? AND json_extract(payload,?) IS NOT NULL GROUP BY value",('$.'+field,identity,'$.'+field)) if r['value'] in choices] for field,choices in REPORT_FILTERS.items()}
+        return {**dict(report),'summary':json.loads(report['summary']),'sources':json.loads(report['sources']),'rows':rows,'total':count,'offset':max(0,int(offset)),'sections':facets,'validations':validations,'severity':severity,'validation':validation,'filter_facets':filter_facets,'filters':filters}
 
     def overrides(self,scope,db=None):
         if db is None:

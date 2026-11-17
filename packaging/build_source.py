@@ -21,7 +21,7 @@ def main():
     files+=list((ROOT/"docs").glob("*.json"))
     files+=[ROOT/"docs"/"screenshots"/name for name in ("readme-library-insights.png","readme-track-editor.png","readme-playlist-explorer.png",
                                                        "musicbrainz-enrichment-real.webp","library-bubbles-real.webp",
-                                                       "formats-stems.png","native-source-insights.png")]
+                                                       "formats-stems.png","native-source-insights.png","stems-workflows.png")]
     with tarfile.open(destination,"w:gz") as archive:
         for file in sorted(files):
             if file.is_file():archive.add(file,arcname="library-workbench/"+str(file.relative_to(ROOT)),recursive=False)

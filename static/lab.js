@@ -13,6 +13,17 @@ function pilotFileStatus(status){
 }
 const labPost=(url,data)=>api('/api/lab/'+url,{method:'POST',body:JSON.stringify(data)});
 const labSnapshot=()=>$('#lab-snapshot').value;
+const labStemsFields=['asset_family','provider','cache_state','eligibility','source_provider'];
+const labReportFilterFields=['severity','validation',...labStemsFields];
+const labStemsLabels={
+  asset_family:{candidate:'Candidate assets',stem_container:'Stem containers',separation_cache:'Separation caches',preparation_manifest:'Preparation manifests',retention_set:'Retention sets',source_eligibility:'STEMS eligibility',analysis:'Analysis',capture:'DRUM CAPTURE',player_settings:'Player settings',device_catalog:'Device catalogs'},
+  provider:{unknown:'Unknown',native_instruments:'Native Instruments',rbstemsplus:'RB Stems Plus',recordbox:'Recordbox',rekordbox:'rekordbox'},
+  cache_state:{unknown:'Unknown',present:'Present',consistent:'Manifest consistent',incomplete:'Incomplete',stale:'Stale',profile_mismatch:'Profile mismatch',unavailable:'Unavailable'},
+  eligibility:{unknown:'Unknown',candidate:'Candidate',blocked:'Blocked'},
+  source_provider:{unknown:'Unknown',local:'Local files',apple_music:'Apple Music',spotify:'Spotify',other_streaming:'Other streaming'}
+};
+const labStemsAll={asset_family:'All asset families',provider:'All asset providers',cache_state:'All cache states',eligibility:'All eligibility states',source_provider:'All source providers'};
+const labReportFilters=()=>Object.fromEntries(labReportFilterFields.map(field=>[field,$('#lab-report-'+field).value]));
 const labSummary=data=>'<div class="lab-summary">'+Object.entries(data || {}).filter(([,v])=>v===null || typeof v!=='object').map(([k,v])=>'<div><span>'+esc(I18n.t(k.replaceAll('_',' ')))+'</span><b>'+esc(v===null?I18n.t("Unknown"):v===true?I18n.t("Yes"):v===false?I18n.t("No"):v)+'</b></div>').join('')+'</div>';
 function labSelect(selector,items,label,empty=I18n.t("Choose a snapshot")) {
   const el=$(selector),old=el.value || window.BrowseState?.value(el.id);el.innerHTML='<option value="">'+esc(empty)+'</option>'+items.map(r=>'<option value="'+esc(r.id)+'">'+esc(label(r))+'</option>').join('');
@@ -45,7 +56,7 @@ async function labSnapshotChanged(clear=true) {
 }
 async function labRun(url,data) {
   const r=await labPost(url,data),result=await poll(r.job);await loadLab();
-  if(result.id && result.summary){$('#lab-report-select').value=result.id;labReportOffset=0;for(const id of ['section','severity','validation'])$('#lab-report-'+id).value='';await labLoadReport();}
+  if(result.id && result.summary){$('#lab-report-select').value=result.id;labReportOffset=0;for(const id of ['section',...labReportFilterFields])$('#lab-report-'+id).value='';await labLoadReport();}
   return result;
 }
 $$('[data-lab-tab]').forEach(b=>b.onclick=()=>{
@@ -62,21 +73,26 @@ for(const kind of ['backup','readiness','tempo'])$('#lab-'+kind).onclick=wrap(()
 }));
 $('#lab-formats').onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind:'formats',paths:pathLines($('#lab-formats-path').value),verify:$('#lab-formats-verify').checked}));
 $('#lab-source-insights').onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind:'source_insights'}));
+$('#lab-stems').onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind:'stems',paths:pathLines($('#lab-stems-path').value),verify:$('#lab-stems-verify').checked,
+  profile:Object.fromEntries(['target','enabled','mode','quality','parts','source_provider','platform','architecture','app_version','engine_version','runtime_version','model_sha256'].map(field=>[field,$('#lab-stems-'+field).value]))}));
 $('#lab-compare-form').onsubmit=wrap(async e=>{e.preventDefault();await labRun('compare',{before:$('#lab-before').value,after:$('#lab-after').value,tolerance_ms:$('#lab-tolerance').value});});
 
 async function labLoadReport() {
   const id=$('#lab-report-select').value;if(!id)return;
-  const section=$('#lab-report-section').value,q=$('#lab-report-search').value,severity=$('#lab-report-severity').value,validation=$('#lab-report-validation').value;
-  labReport=await api('/api/lab/reports/'+encodeURIComponent(id)+'?'+new URLSearchParams({offset:labReportOffset,section,q,severity,validation,...CollectionSort.args('lab-report')}));
+  const section=$('#lab-report-section').value,q=$('#lab-report-search').value,filters=labReportFilters(),{severity,validation}=filters;
+  labReport=await api('/api/lab/reports/'+encodeURIComponent(id)+'?'+new URLSearchParams({offset:labReportOffset,section,q,...filters,...CollectionSort.args('lab-report')}));
   $('#lab-report-summary').innerHTML=labSummary(labReport.summary);
   const summary=labReport.summary;
   if(summary.scopes)$('#lab-report-summary').insertAdjacentHTML('beforeend',("<h4>"+esc(I18n.t("Inspected locations"))+"</h4>")+summary.scopes.map(r=>'<p class="subtle">'+esc(r.kind)+' · <code>'+esc(r.path)+'</code></p>').join('')+("<div class=\"lab-table\"><table><thead><tr><th>"+esc(I18n.t("Analysis extension"))+"</th><th>"+esc(I18n.t("Files"))+"</th><th>"+esc(I18n.t("Logical size"))+"</th></tr></thead><tbody>")+summary.analysis_extensions.map(r=>'<tr><td>'+esc(r.extension)+'</td><td>'+num(r.files)+'</td><td>'+esc(bytes(r.bytes))+'</td></tr>').join('')+'</tbody></table></div>');
   if(summary.stems)$('#lab-report-summary').insertAdjacentHTML('beforeend',("<div class=\"stems-summary\"><h3>"+esc(I18n.t("STEMS evidence"))+"</h3><p>")+esc(summary.stems.preparation_status)+'</p>'+labSummary({prepared_tracks:summary.stems.prepared_tracks,related_candidate_files:summary.stems.related_candidate_files,rbsc_drum_capture_files:summary.stems.rbsc_drum_capture_files})+("<p>"+esc(I18n.t("Related candidate file size:"))+" ")+esc(bytes(summary.stems.related_candidate_bytes))+'. '+esc(summary.stems.note)+'</p></div>');
   if(summary.format_inspection)$('#lab-report-summary').insertAdjacentHTML('beforeend','<div class="stems-summary"><h3>'+esc(I18n.t('Format inspection'))+'</h3>'+labSummary(summary.format_inspection)+'</div>');
+  if(summary.format_inspection?.provider_cache)$('#lab-report-summary').insertAdjacentHTML('beforeend','<div class="stems-summary"><h3>'+esc(I18n.t('Provider cache evidence'))+'</h3>'+labSummary(summary.format_inspection.provider_cache)+'</div>');
+  if(summary.stems_eligibility)$('#lab-report-summary').insertAdjacentHTML('beforeend','<div class="stems-summary"><h3>'+esc(I18n.t('STEMS session evidence'))+'</h3>'+labSummary(summary.stems_eligibility)+'<p>'+esc(I18n.t('Session settings are declared; cache consistency does not establish native preparation.'))+'</p><details><summary>'+esc(I18n.t('Show evidence'))+'</summary><pre>'+esc(JSON.stringify(summary.stems_eligibility.profile,null,2))+'</pre></details></div>');
   if(summary.scope_warnings?.length)$('#lab-report-summary').insertAdjacentHTML('beforeend',summary.scope_warnings.map(w=>'<p class="subtle">'+esc(w)+'</p>').join(''));
   $('#lab-report-section').innerHTML=("<option value=\"\">"+esc(I18n.t("All findings"))+"</option>")+labReport.sections.map(r=>'<option value="'+esc(r.section)+'">'+esc(r.section.replaceAll('_',' '))+' · '+num(r.count)+'</option>').join('');$('#lab-report-section').value=section;
   $('#lab-report-validation').innerHTML='<option value="">'+esc(I18n.t('All validation states'))+'</option>'+(labReport.validations || []).map(r=>'<option value="'+esc(r.validation)+'">'+esc(I18n.t(({recognized:'Recognized',corrupt:'Corrupt',unsupported:'Unsupported',not_checked:'Not checked'})[r.validation] || r.validation))+' · '+num(r.count)+'</option>').join('');$('#lab-report-validation').value=validation;
-  $('#lab-report-download').hidden=false;$('#lab-report-download').href='/api/lab/reports/'+encodeURIComponent(id)+'/download?'+new URLSearchParams({section,q,severity,validation,...CollectionSort.args('lab-report')});
+  for(const field of labStemsFields){const el=$('#lab-report-'+field);el.innerHTML='<option value="">'+esc(I18n.t(labStemsAll[field]))+'</option>'+(labReport.filter_facets?.[field]||[]).map(row=>'<option value="'+esc(row.value)+'">'+esc(I18n.t(labStemsLabels[field][row.value]||row.value))+' · '+num(row.count)+'</option>').join('');el.value=filters[field];}
+  $('#lab-report-download').hidden=false;$('#lab-report-download').href='/api/lab/reports/'+encodeURIComponent(id)+'/download?'+new URLSearchParams({section,q,...filters,...CollectionSort.args('lab-report')});
   $('#lab-report-rows').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Finding"))+"</th><th>"+esc(I18n.t("Track / group"))+"</th><th>"+esc(I18n.t("Evidence"))+"</th></tr></thead><tbody>")+labReport.rows.map((r,i)=>'<tr><td>'+esc(r.section.replaceAll('_',' '))+'</td><td>'+((labReport.sources?.length===1&&r.track_id)?TrackPlayback.button(labReport.sources[0],r.track_id):'')+'<strong>'+esc(r.title || r.playlist || r.name || I18n.t("Group"))+'</strong>'+'<br><span class="subtle">'+esc(r.artist || '')+'</span></td><td>'+esc(r.detail)+("<details><summary>"+esc(I18n.t("Show evidence"))+"</summary><pre>")+esc(JSON.stringify(r,null,2))+'</pre></details>'+(r.section==='variant'?'<button class="button secondary" data-lab-normalize="'+i+("\">"+esc(I18n.t("Stage"))+" "+"")+num(r.track_ids.length)+' as “'+esc(r.canonical)+'”</button>':'')+'</td></tr>').join('')+'</tbody></table>';
   CollectionSort.bind('#lab-report-rows','lab-report',['section',['title','artist'],'detail'],labReport.rows,async()=>{labReportOffset=0;await labLoadReport();});
   $('#lab-report-count').textContent=num(labReport.total)+' findings · '+num(labReport.total?labReportOffset+1:0)+'–'+num(Math.min(labReportOffset+50,labReport.total));
@@ -89,8 +105,8 @@ async function labLoadReport() {
     await labLoadTracks();notify(num(result.count)+" "+I18n.t("field overrides staged; reset individual fields in Metadata editor"));
   }));
 }
-$('#lab-report-select').onchange=wrap(async()=>{labReportOffset=0;for(const id of ['section','severity','validation'])$('#lab-report-'+id).value='';await labLoadReport();});
-for(const id of ['#lab-report-section','#lab-report-severity','#lab-report-validation','#lab-report-find'])$(id)[id.endsWith('find')?'onclick':'onchange']=wrap(async()=>{labReportOffset=0;await labLoadReport();});
+$('#lab-report-select').onchange=wrap(async()=>{labReportOffset=0;for(const id of ['section',...labReportFilterFields])$('#lab-report-'+id).value='';await labLoadReport();});
+for(const id of ['#lab-report-section',...labReportFilterFields.map(field=>'#lab-report-'+field),'#lab-report-find'])$(id)[id.endsWith('find')?'onclick':'onchange']=wrap(async()=>{labReportOffset=0;await labLoadReport();});
 $('#lab-report-prev').onclick=wrap(async()=>{labReportOffset=Math.max(0,labReportOffset-50);await labLoadReport();});
 $('#lab-report-next').onclick=wrap(async()=>{labReportOffset+=50;await labLoadReport();});
 

@@ -154,7 +154,7 @@ class FormatTests(unittest.TestCase):
         self.assertEqual(r['validation'],'unsupported');self.assertEqual(r['catalog_layer'],'OneLibrary')
 
     def test_suffix_container_and_rbsc_are_candidates(self):
-        for name,data in (('a.stems',b'unknown'),('drums.rbsc',b'unknown'),('a.stem.mp4',b'\x00\x00\x00\x18ftypisom')):
+        for name,data in (('a.stems',b'unknown'),('drums.rbsc',b'unknown'),('a.stem.mp4',struct.pack('>I4s4sI',16,b'ftyp',b'M4A ',0))):
             r=self.inspect(name,data);self.assertEqual(r['validation'],'unsupported');self.assertIsNone(r['native_stems_readiness'])
 
     def test_single_byte_mutations_stay_bounded_and_return_evidence(self):
