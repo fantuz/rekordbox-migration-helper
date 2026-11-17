@@ -2,10 +2,17 @@
 
 ## Unreleased
 
+## 1.1.7 — 2026-11-17
+
+This update adds STEMS workflow checks for containers, provider caches and source eligibility, with saved evidence reports and expanded cross-platform validation.
+
 - Add **Library lab → STEMS workflows** with source-only advisories or selected folder/ZIP inspection, declared session/engine/model profiles and provider-specific Apple Music/Spotify restrictions. Preserve private native service evidence without guessing numeric provider IDs; missing evidence stays Unknown.
 - Recognize NI-style `.stem.m4a`/`.stem.mp4` containers using bounded metadata, stereo track/enable flags, sample rates and presentation/edit-list checks. Keep sample-entry types, codec-profile uncertainty, generic multistream files and native acceptance distinct.
 - Inspect RB Stems Plus cache markers, eight-channel FLAC STREAMINFO, RBD1/RBD2 descriptors, preparation manifests and retention sets. Check expected chunks per cache root/ZIP, source metadata changes and declared model/profile mismatches; report unavailable locations and support rechecking after reconnect. Never combine split caches to claim completeness.
 - Add five globally applied report filters, full filtered downloads, translations across all 13 interface languages and a documented evidence profile. Extend unit/API and existing real-server Playwright pipeline checks for STEMS workflows, pagination, stale/missing/split caches, cancellation, scope/privacy boundaries, disconnect/reconnect and saved reports across restart.
+- Correct explicitly selected source-root aliases on macOS and close prefix probes before metadata parsing on Windows so replacement checks can run. Keep budget-limited cache headers Not checked and unread expected chunks Unknown instead of reporting corruption or missing chunks.
+
+Release scope: merged [PR #65](https://github.com/fantuz/rekordbox-migration-helper/pull/65). Native STEMS readiness remains Unknown; consistent manifests and recognized structures do not establish audio identity, separation quality or hardware compatibility. See the [STEMS workflow guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.1.7/docs/STEMS-WORKFLOWS.md) for supported evidence, limits and recovery checks.
 
 ## 1.1.6 — 2026-11-17
 
