@@ -212,6 +212,15 @@ def main():
             response=context.request.get(base+'/api/lab/reports/'+saved_id+'/download')
             assert response.ok and response.json()['summary']['cue_active_loop']==1
             report['snapshot_integrity']['survives_server_restart']=True
+            from check_onetagger_results_ui import check_onetagger_results_ui
+            report['onetagger_results']=check_onetagger_results_ui(browser,base,store,root,output)
+            stop()
+            base=start()
+            bridge=report['onetagger_results']
+            response=context.request.get(base+'/api/onetagger/'+bridge['selection_id']+'/review')
+            assert response.ok and response.json()['scan']['report']['digest']==bridge['report_digest']
+            assert response.json()['scan']['review_revision']==bridge['review_revision']
+            bridge['survives_server_restart']=True
             assert not errors, errors
             assert not unexpected_network, unexpected_network
             report.update(status='passed', page_errors=errors, unexpected_network_requests=unexpected_network)

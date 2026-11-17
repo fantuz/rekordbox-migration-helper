@@ -26790,6 +26790,20 @@
       "ar": "الحقول المقترحة",
       "pt-PT": "Campos propostos",
       "pt-BR": "Campos propostos"
+    },
+    "Review is outdated; import or rescan again.": {
+      "de": "Prüfung ist veraltet; erneut importieren oder einlesen.",
+      "fr": "Vérification périmée ; importez ou analysez à nouveau.",
+      "it": "Revisione obsoleta; importa o analizza di nuovo.",
+      "es": "Revisión desactualizada; importe o analice de nuevo.",
+      "el": "Ο έλεγχος είναι παρωχημένος· εισαγάγετε ή σαρώστε ξανά.",
+      "pl": "Przegląd jest nieaktualny; zaimportuj lub przeskanuj ponownie.",
+      "cs": "Kontrola je zastaralá; importujte nebo načtěte znovu.",
+      "ru": "Проверка устарела; повторите импорт или сканирование.",
+      "ja": "確認内容が古くなっています。再度読み込むか再スキャンしてください。",
+      "ar": "المراجعة قديمة؛ استورد أو افحص مجددًا.",
+      "pt-PT": "A revisão está desatualizada; importe ou analise novamente.",
+      "pt-BR": "A revisão está desatualizada; importe ou examine novamente."
     }
   }
 }

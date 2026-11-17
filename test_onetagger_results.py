@@ -2,6 +2,7 @@
 from copy import deepcopy
 from hashlib import sha256
 import json
+import struct
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -25,6 +26,18 @@ def mp3_tags(path,values):
         data=b'\x03'+str(values[field]).encode('utf-8')
         frames.append(key.encode()+syncsafe(len(data))+b'\0\0'+data)
     data=b''.join(frames);path.write_bytes(b'ID3\x04\0\0'+syncsafe(len(data))+data+bytes(64))
+
+
+def mp4_tags(path,values):
+    """ISO metadata atoms exercise repeated MP4 text values without real audio."""
+    def box(tag,body):return struct.pack('>I',len(body)+8)+tag+body
+    fields=[]
+    for key,field in ((b'\xa9nam','title'),(b'\xa9ART','artist'),(b'\xa9alb','album'),(b'\xa9gen','genre'),(b'\xa9day','year')):
+        raw=values.get(field)
+        if raw is None:continue
+        items=raw if isinstance(raw,list) else [raw]
+        fields.append(box(key,b''.join(box(b'data',struct.pack('>II',1,0)+str(item).encode()) for item in items)))
+    path.write_bytes(box(b'ftyp',b'M4A '+bytes(4))+box(b'moov',box(b'udta',box(b'meta',bytes(4)+box(b'ilst',b''.join(fields))))))
 
 
 class ResultsTests(TestCase):
@@ -224,6 +237,48 @@ class ResultsTests(TestCase):
         identity=self.export();report=self.results_report(identity)
         self.assertEqual(decode_report(b'\xef\xbb\xbf'+json.dumps(report).encode()),report)
         self.assertEqual(decode_report(json.dumps({'report':report}).encode()),report)
+
+    def test_stream_size_is_bounded_even_without_a_content_length(self):
+        identity=self.export();report=self.results_report(identity,{})
+        report['tracks'][0]['after']={field:None for field in FIELDS}
+        data=json.dumps(report).encode()
+        response=self.raw_import(identity,data,environ_overrides={'CONTENT_LENGTH':'','wsgi.input_terminated':True})
+        self.assertEqual(response.status_code,200,response.json)
+        with patch('onetagger_bridge.MAX_BYTES',100),patch('onetagger_bridge.read_tags',side_effect=AssertionError('Oversize upload opened audio')):
+            response=self.raw_import(identity,b' '*101,environ_overrides={'CONTENT_LENGTH':'','wsgi.input_terminated':True})
+        self.assertEqual(response.status_code,400,response.json)
+
+    def test_actual_tag_changes_after_review_block_staging(self):
+        identity,report,_=self.real_selection();self.assertEqual(self.raw_import(identity,json.dumps(report)).status_code,200)
+        scan=self.review(identity);mp3_tags(self.audio,{'title':'Changed outside Workbench','genre':'Other'})
+        response=self.real_stage(identity,scan)
+        self.assertEqual(response.status_code,409,response.json)
+        self.assertEqual(self.store.overrides(self.before['scope_key']),{})
+
+    def test_mp4_repeated_text_atoms_match_the_producer_scalar_representation(self):
+        self.audio=self.root/'100%20 Café.m4a'
+        mp4_tags(self.audio,{'title':'Tagged MP4','artist':['First','Second'],'album':['Album','Edition'],
+                             'genre':'Techno','year':'2020-12-31'})
+        self.track={**self.track,'current_path':'D:/Music/'+self.audio.name}
+        self.sid=self.store.save_snapshot({'scope_key':self.before['scope_key'],'tracks':[self.track]},'MP4 report')['id']
+        self.before=self.store.snapshot(self.sid);identity=self.export()
+        values={'title':'Tagged MP4','artist':'First, Second','album':'Album, Edition','genre':'Techno','year':2020}
+        report=self.results_report(identity,values);original=self.audio.read_bytes()
+        self.assertEqual(self.raw_import(identity,json.dumps(report)).status_code,200)
+        scan=self.review(identity);self.assertEqual(scan['rows'][0]['status'],'read')
+        self.assertEqual(scan['rows'][0]['tags'],values)
+        self.assertEqual(self.real_stage(identity,scan,('artist',)).status_code,200)
+        self.assertEqual(self.store.overrides(self.before['scope_key'])['one']['artist']['value'],'First, Second')
+        self.assertEqual(self.audio.read_bytes(),original);self.assertEqual(self.store.snapshot(self.sid),self.before)
+
+    def test_duplicate_ids_are_rejected_even_when_the_row_count_matches(self):
+        source=deepcopy(self.before);source['tracks'].append({**source['tracks'][0],'id':'two'})
+        self.sid=self.store.save_snapshot(source,'Two selected IDs')['id']
+        identity=self.client.post('/api/onetagger/export',json={'snapshot':self.sid,'track_ids':['one','two']},headers=self.headers).json['id']
+        report=self.results_report(identity);report['tracks'].append(deepcopy(report['tracks'][0]))
+        with patch('onetagger_bridge.read_tags',side_effect=AssertionError('Duplicate IDs opened audio')):
+            response=self.raw_import(identity,json.dumps(report))
+        self.assertEqual(response.status_code,400,response.json)
 
     def test_mixed_cancelled_results_keep_all_rows_and_only_verify_written_files(self):
         identity=self.export();manifest=self.store.setting('onetagger:'+identity)
