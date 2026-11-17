@@ -29,8 +29,10 @@ def inspect_format(name, prefix, size):
         if len(prefix) < 16:
             return finish('corrupt', 'recordbox_stems_v1', 'Truncated Recordbox STEMS header')
         frames = struct.unpack_from('<Q', prefix, 8)[0]
-        if not 0 < frames <= MAX_STEM_FRAMES or size != 16 + frames * 16:
+        if frames == 0 or size != 16 + frames * 16:
             return finish('corrupt', 'recordbox_stems_v1', 'Invalid STEMS frame count or body length', frames=frames)
+        if frames > MAX_STEM_FRAMES:
+            return finish('not_checked', 'recordbox_stems_v1', 'STEMS duration exceeds the bounded inspection policy',frames=frames)
         return finish('recognized', 'recordbox_stems_v1',
                       'Recordbox four-source cache layout recognized; source audio, model and native readiness are unknown',
                       frames=frames, duration_seconds=frames/44100, sample_rate=44100, channels=8,

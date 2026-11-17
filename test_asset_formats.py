@@ -139,6 +139,11 @@ class FormatTests(unittest.TestCase):
         self.assertEqual(self.inspect('name.stems',stems_bytes()[:-1])['validation'],'corrupt')
         self.assertEqual(self.inspect('name.stems',b'PDSTEMS1')['validation'],'corrupt')
 
+    def test_duration_policy_does_not_call_a_consistent_large_cache_corrupt(self):
+        frames=MAX_STEM_FRAMES+1;prefix=b'PDSTEMS1'+struct.pack('<Q',frames)
+        result=self.inspect('name.stems',prefix,16+frames*16)
+        self.assertEqual(result['validation'],'not_checked');self.assertIsNone(result['native_stems_readiness'])
+
     def test_catalog_headers_and_onelibrary_limits_are_distinct(self):
         r=self.inspect('export.pdb',pdb_bytes());self.assertEqual(r['validation'],'recognized');self.assertFalse(r['records_decoded'])
         self.assertEqual(r['page_size'],4096)
