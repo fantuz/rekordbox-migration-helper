@@ -131,7 +131,7 @@ class OneTaggerBridgeTests(TestCase):
     def scan(self,identity,tags=None):
         values=tags or {'title':'Tagged title','genre':'Techno','year':2020}
         def launch(work,*_,**kwargs):work(lambda *_:None);return 'job'
-        with patch.object(app,'launch',side_effect=launch),patch('onetagger_bridge.read_tags',return_value=(values,[1,2,3,4,5],[])):
+        with patch.object(app,'launch',side_effect=launch),patch('onetagger_bridge.read_tags',return_value=(values,stamp(self.audio),[])):
             response=self.client.post('/api/onetagger/'+identity+'/rescan',json={},headers=self.headers)
         self.assertEqual(response.status_code,200,response.json)
         return self.client.get('/api/onetagger/'+identity+'/review').json['scan']

@@ -13,7 +13,7 @@ from audio_paths import mappings_for,signature
 from file_health import local_request
 from metadata_concurrency import require_revision,revision
 from metadata_overrides import comparable,validate
-from onetagger_results import MAX_BYTES,validate_report
+from onetagger_results import MAX_BYTES,decode_report,validate_report
 from track_playback import available_audio
 from workbench_store import Store,encoded,now
 
@@ -37,6 +37,8 @@ def read_tags(path):
         raw=getattr(tag,field,None)
         # Absent tags do not silently erase captured library metadata.
         if raw in (None,''):continue
+        # OneTagger's report reads the year component of stored release dates.
+        if field=='year' and isinstance(raw,str) and re.fullmatch(r'[0-9]{4}(?:-[0-9]{2}(?:-[0-9]{2})?)?(?:T.*)?',raw):raw=raw[:4]
         try:values[field]=validate(field,raw)
         except ValueError as error:warnings.append({'field':field,'reason':str(error)})
     if stamp(path)!=before:raise Conflict('An audio file changed while its tags were being read. Rescan it.')
@@ -127,8 +129,10 @@ def register(owner,unlocked):
             content=json.dumps({k:v for k,v in manifest.items() if k not in ('scan','scan_generation')},ensure_ascii=False,indent=2)
             mime='application/json';filename='onetagger-selection.json'
         elif kind=='review':
-            return jsonify(id=identity,snapshot=manifest['snapshot'],scan=manifest.get('scan'),
+            result=jsonify(id=identity,snapshot=manifest['snapshot'],scan=manifest.get('scan'),
                            edit_revision=store().edit_state(manifest['scope_key'])['edit_revision'])
+            if request.args.get('download')=='1':result.headers['Content-Disposition']='attachment; filename="onetagger-review.json"'
+            return result
         else:raise ValueError('Choose the playlist, manifest or scanned review')
         return owner.app.response_class(content,mimetype=mime,headers={'Content-Disposition':'attachment; filename="'+filename+'"'})
 
@@ -148,7 +152,7 @@ def register(owner,unlocked):
                 try:
                     if evidence and evidence['status']!='written':
                         output.append({'track_id':track['id'],'title':track.get('title'),'status':'reported',
-                                       'report':evidence,'changes':[]});continue
+                                       'verification':'not_written','report':evidence,'changes':[]});continue
                     path=path_for(track,row,mappings);tags,file_stamp,warnings=read_tags(path)
                     if evidence:
                         expected=evidence['after'];state=evidence['file_state']
@@ -165,11 +169,17 @@ def register(owner,unlocked):
                         before=staged['value'] if staged else track.get(field)
                         if comparable(field,before)!=comparable(field,value):
                             changes.append({'field':field,'library_value':track.get(field),'working_value':before,'value':value,'replaces_staged_edit':staged is not None})
-                    output.append({'track_id':track['id'],'title':track.get('title'),'status':'read','tags':tags,'file_stamp':file_stamp,'warnings':warnings,'changes':changes,**({'report':evidence} if evidence else {})})
+                    output.append({'track_id':track['id'],'title':track.get('title'),'status':'read','verification':'verified',
+                                   'tags':tags,'file_stamp':file_stamp,'warnings':warnings,'changes':changes,**({'report':evidence} if evidence else {})})
                 except (OSError,ValueError,Conflict) as error:
-                    output.append({'track_id':track['id'],'title':track.get('title'),'status':'unreadable','error':str(error),'changes':[],**({'report':evidence} if evidence else {})})
+                    output.append({'track_id':track['id'],'title':track.get('title'),'status':'unreadable','verification':'not_verified',
+                                   'error':str(error),'changes':[],**({'report':evidence} if evidence else {})})
             scan={'generation':generation,'created':now(),'rows':output,'edit_revision':edit_state['edit_revision']}
             if imported:scan['report']={k:v for k,v in imported.items() if k!='rows'}
+            scan['summary']={'tracks':len(output),'verified':sum(r['status']=='read' for r in output),
+                             'unreadable':sum(r['status']=='unreadable' for r in output),
+                             'not_written':sum(r['status']=='reported' for r in output),
+                             'changes':sum(len(r['changes']) for r in output)}
             scan['review_revision']=sha256(encoded(scan).encode()).hexdigest()
             with owner.lock:
                 current=record(saved,identity);context(saved,current)
@@ -185,11 +195,16 @@ def register(owner,unlocked):
     @owner.app.post('/api/onetagger/<identity>/import-results',endpoint='onetagger_import_results')
     def import_results(identity):
         local()
-        if request.content_length is None or request.content_length>MAX_BYTES:
+        if not request.is_json:raise ValueError('Choose a OneTagger results JSON report')
+        if request.content_length is not None and request.content_length>MAX_BYTES:
             raise ValueError('Choose a results report smaller than 8 MiB')
-        b=body();saved=store();manifest=record(saved,identity);context(saved,manifest)
-        value=b.get('report');imported=validate_report(value,manifest)
-        imported['digest']=sha256(encoded(value).encode()).hexdigest()
+        data=request.stream.read(MAX_BYTES+1)
+        if len(data)>MAX_BYTES:raise ValueError('Choose a results report smaller than 8 MiB')
+        value=decode_report(data)
+        saved=store();manifest=record(saved,identity);context(saved,manifest)
+        imported=validate_report(value,manifest)
+        imported['digest']=sha256(data).hexdigest()
+        imported['digest_basis']='uploaded_json_bytes'
         return scan_selection(identity,imported)
 
     @owner.app.post('/api/onetagger/<identity>/stage',endpoint='onetagger_stage')
@@ -233,6 +248,11 @@ def register(owner,unlocked):
                 origin=encoded({**report_origin,'provider':'OneTagger bridge','selection_id':identity,'review_revision':scan['review_revision'],'scanned_at':scan['created'],'reviewed_at':now()})
                 db.execute('INSERT INTO override_history VALUES (?,?,?,?,?,?,?)',(uuid4().hex,snapshot['scope_key'],track_id,field,old['value'] if old else None,encoded(value),now()))
                 db.execute('INSERT OR REPLACE INTO overrides VALUES (?,?,?,?,?,?,?)',(snapshot['scope_key'],track_id,field,encoded(value),encoded(baseline),origin,now()))
+            # If files changed while staging, roll back values, history and revisions.
+            for track_id in {i for i,_ in pairs}:
+                path=path_for(tracks[track_id],selected_rows[track_id],mappings)
+                if stamp(path)!=checked[track_id]['file_stamp']:
+                    raise Conflict('Audio tags changed while staging the review. Rescan before staging them.')
             stamp_value=revision(db,snapshot['scope_key'])
         return jsonify(staged=len(pairs),edit_revision=stamp_value,audio_files_modified=False,recorded_references_modified=False)
 
