@@ -75,7 +75,7 @@ Move/rename operations are excluded from Helper-bound tagging runs. Create a new
 
 GitHub Actions covers actual tag read-back, fallback outcomes, cancellation, malformed reports, duplicate IDs, Unicode/percent filenames, changed files/mappings and preservation of unselected library fields. Both repositories check the same JSON contract fixture. Workbench browser acceptance uses real HTTP, SQLite and generated ID3/WAV metadata: selection across pages, raw report upload, cancelled/mixed outcomes, fallback evidence, duplicate JSON rejection, stale reports/reviews, explicit staging, downloads, 13 languages, mobile controls and saved reports through a server restart. The results workflow runs with the existing Chromium/Firefox/WebKit checks; the server-restart check runs in the Chromium workflow-integrity job.
 
-Provider requests are synthetic/offline in these tests. The tests do not certify a live provider match or import into an installed rekordbox application. BPM/key/label editing and broader performance work are follow-ups.
+Provider requests are synthetic/offline in these tests. The tests do not certify a live provider match or import into an installed rekordbox application. BPM/key editing remains outside this bridge. Version-2 label/composer support and the measured read-reuse behavior are described below.
 
 
 ## Version 2 and compatibility
