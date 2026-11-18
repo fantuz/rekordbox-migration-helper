@@ -336,11 +336,11 @@ function showView(view) {
   if (view==="tonality") loadTonalityInsights().catch(error=>notify(error.message,true));
   if (view==="docs" && typeof loadDocumentation==='function') loadDocumentation().catch(error=>notify(error.message,true));
   if (view==="intelligence") Intelligence.load().catch(error=>notify(error.message,true));
-  if (view==="files" && window.Journeys) Journeys.load().catch(error=>notify(error.message,true));
+  if ((view==="files" || view==="start") && window.Journeys) Journeys.load().catch(error=>notify(error.message,true));
   if (view==="files" || view==="exports") loadWorkspace().catch(error=>notify(error.message,true));
-  $("#collection-metrics").hidden=["files","analyzer","storage","quick","lab","musicbrainz","history","insights","bubbles","tonality","intelligence","file-health"].includes(view);
-  $(".dataset-bar").hidden=["analyzer","storage","quick","lab","musicbrainz","history","insights","bubbles","tonality","intelligence","file-health"].includes(view);
-  $("#page-title").textContent={get files(){return I18n.t("Library preparation");},get analyzer(){return I18n.t("Source analysis");},get storage(){return I18n.t("Cloud and local storage");},get quick(){return I18n.t("Offline metadata export");},get review(){return I18n.t("Duplicate review");},get reference(){return I18n.t("File references");},get activity(){return I18n.t("Activity and reports");},get statistics(){return I18n.t("Collection statistics");},get inventory(){return I18n.t("Media inventory");},get exports(){return I18n.t("Library export");}}[view];
+  $("#collection-metrics").hidden=["start","files","analyzer","storage","quick","lab","musicbrainz","history","insights","bubbles","tonality","intelligence","file-health"].includes(view);
+  $(".dataset-bar").hidden=["start","analyzer","storage","quick","lab","musicbrainz","history","insights","bubbles","tonality","intelligence","file-health"].includes(view);
+  $("#page-title").textContent={get start(){return I18n.t("Workflow map");},get files(){return I18n.t("Library preparation");},get analyzer(){return I18n.t("Source analysis");},get storage(){return I18n.t("Cloud and local storage");},get quick(){return I18n.t("Offline metadata export");},get review(){return I18n.t("Duplicate review");},get reference(){return I18n.t("File references");},get activity(){return I18n.t("Activity and reports");},get statistics(){return I18n.t("Collection statistics");},get inventory(){return I18n.t("Media inventory");},get exports(){return I18n.t("Library export");}}[view];
   window.scrollTo(0,0);
   if(view==='musicbrainz')$('#page-title').textContent=I18n.t('MusicBrainz');
   if(view==='file-health')$('#page-title').textContent=I18n.t('File health');
@@ -421,7 +421,7 @@ $("#import-form").onsubmit=wrap(async e=>{
       await uploadFile(file,'/api/upload/'+uploadAttempt.sid+'/'+kind);
     }
     const result=await api("/api/import/"+uploadAttempt.sid+"/analyze",{method:"POST",body:"{}"});
-    await poll(result.job);uploadAttempt=null;selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Input pair checked and loaded"));
+    await poll(result.job);uploadAttempt=null;selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Input pair checked and loaded"));await window.LibraryPreparation?.loaded("workspace");
   } catch(error){
     finishProgress();$("#import-dialog").showModal();throw error;
   } finally {busy=false;finishProgress();}
@@ -430,7 +430,7 @@ $("#local-import-form").onsubmit=wrap(async e=>{
   e.preventDefault();if (busy) return;
   const started=await api("/api/import/local",{method:"POST",body:JSON.stringify({zip:$("#local-zip").value,xml:$("#local-xml").value,resume_session:resumeTarget})});
   $("#import-dialog").close();
-  await poll(started.job);selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Existing files analyzed · no input copy created"));
+  await poll(started.job);selected=null;currentGroup=null;offset=0;await refresh();showView("review");notify(I18n.t("Existing files analyzed · no input copy created"));await window.LibraryPreparation?.loaded("workspace");
 });
 $$("[data-view]").forEach(b=>b.onclick=()=>showView(b.dataset.view));
 $$("[data-filter]").forEach(b=>b.onclick=wrap(async()=>{filter=b.dataset.filter;offset=0;$$(".tab").forEach(t=>t.classList.toggle("active",t===b));await loadPairs();}));
@@ -639,57 +639,6 @@ function renderGroupControls() {
   refreshGroupPlan(group,box).catch(error=>{if(box.isConnected)box.querySelector('#group-plan-summary').textContent=error.message;});
 }
 
-let inventoryOffset=0,inventoryRevision=0;
-function addMediaRoot(root={}) {
-  const row=document.createElement("div");row.className="media-root";
-  row.innerHTML=("<label>"+esc(I18n.t("Folder on this computer"))+"<input class=\"media-folder\" placeholder=\"/home/you/Music or D:\\Music\" value=\"")+esc(root.root || "")+("\"></label><label>"+esc(I18n.t("Recorded prefix · optional"))+"<input class=\"media-prefix\" placeholder=\"C:/Users/you/Music\" value=\"")+esc(root.recorded_prefix || "")+("\"></label><label>"+esc(I18n.t("Exported reference prefix · required for staging"))+"<input class=\"media-export\" placeholder=\"file://localhost/D:/Music\" value=\"")+esc(root.export_uri || "")+'"></label>';
-  $("#media-roots").append(row);
-}
-addMediaRoot();
-$("#add-media-root").onclick=()=>addMediaRoot();
-$("#scan-media").onclick=wrap(async()=>{
-  if (!session) return;
-  const roots=$$(".media-root").map(r=>({root:r.querySelector(".media-folder").value.trim(),recorded_prefix:r.querySelector(".media-prefix").value.trim(),export_uri:r.querySelector(".media-export").value.trim()})).filter(r=>r.root);
-  const workspace=session.id;
-  const result=await api("/api/inventory/scan",{method:"POST",body:JSON.stringify({roots,workspace,advanced:$('#media-advanced').checked})});
-  const done=await poll(result.job);
-  if(session?.id!==workspace)return;
-  inventoryOffset=0;await refresh();await loadInventory();
-  notify(num(done.files)+" "+I18n.t("media files indexed")+(done.warnings.length?" "+I18n.t("· some folders need attention"):""));
-});
-async function loadInventory() {
-  if (!session) return;
-  const revision=++inventoryRevision,workspace=session.id;
-  const result=await api("/api/inventory?"+new URLSearchParams({offset:inventoryOffset,status:$("#inventory-status").value,q:$("#inventory-search").value,...CollectionSort.args("inventory")}));
-  if(revision!==inventoryRevision || session?.id!==workspace)return;
-  const labels={found:'Found',available:'Playable',review:'Needs review',ambiguous:'Several candidates',not_found:'Absent from scanned roots',cloud_only:'Cloud placeholder',unverified:'Unverified'};
-  const evidence={mapped_path_and_size:'Mapped path and size',filename_and_size:'Filename and size',tags_and_duration:'Tags and duration'};
-  $('#inventory-counts').innerHTML=Object.entries(result.counts).map(([name,n])=>'<article><span>'+esc(I18n.t(labels[name]||'Unknown'))+'</span><strong>'+num(n)+'</strong></article>').join('');
-  $('#inventory-scan-state').textContent=result.advanced?I18n.t(result.complete?'Complete':'Incomplete search'):'';
-  $('#inventory-warnings').textContent=(result.warnings||[]).join('\n');
-  $('#inventory-report').hidden=!result.scan_id;
-  $('#inventory-list').innerHTML=result.rows.map(r=>{
-    const candidates=r.candidates.map(c=>'<li><code>'+esc(c.path)+'</code><small>'+esc((c.evidence||[r.evidence]).map(k=>I18n.t(evidence[k]||'Unknown')).join(' · '))+'</small>'+(c.tags?'<small>'+esc(c.tags.artist)+' · '+esc(c.tags.title)+' · '+esc(String(Math.round(c.tags.duration)))+' s</small>':'')+'<code>'+esc(c.export_uri||'')+'</code></li>').join('');
-    const staged=r.staged_uri && r.staged_uri===r.candidates[0]?.export_uri;
-    return '<div class="inventory-row"><div>'+TrackPlayback.button('',r.track_id,workspace)+esc(r.title)+'<small>'+esc(r.artist)+'</small></div><span>'+esc(I18n.t(labels[r.status]||'Unknown'))+'</span><div><small>'+num(r.candidate_count)+' '+esc(I18n.t('results'))+'</small><ul class="recovery-candidates">'+candidates+'</ul></div><button class="button secondary small" data-inventory-ref="'+esc(r.track_id)+'" data-undo="'+Boolean(staged)+'" '+(staged||(result.scan_id&&r.status==='found'&&r.candidates[0]?.export_uri)?'':'disabled')+'>'+esc(I18n.t(staged?'Undo':'Stage reference'))+'</button></div>';
-  }).join('') || '<p>'+esc(I18n.t('No inventory items in this view.'))+'</p>';
-  $$('[data-inventory-ref]').forEach(b=>b.onclick=wrap(async()=>{
-    if(session?.id!==workspace)return;
-    const done=await api('/api/inventory/stage',{method:'POST',body:JSON.stringify({track_id:b.dataset.inventoryRef,workspace,scan_id:result.scan_id,undo:b.dataset.undo==='true'})});
-    if(session?.id!==workspace)return;
-    session=done.session;renderSession();await loadInventory();
-  }));
-  CollectionSort.list('#inventory-list','inventory',['title','artist','status','candidate_count'],async()=>{inventoryOffset=0;await loadInventory();});
-  $('#inventory-report').href='/api/inventory/report?'+new URLSearchParams({workspace});
-  $("#inventory-range").textContent=result.total?num(inventoryOffset+1)+"–"+num(Math.min(inventoryOffset+50,result.total))+" "+I18n.t("of")+" "+num(result.total)+(" "+I18n.t("References")+""):I18n.t("No matching references");
-  $("#inventory-more").disabled=inventoryOffset+50>=result.total;
-  $('#inventory-prev').disabled=!inventoryOffset;
-}
-$('#inventory-prev').onclick=wrap(async()=>{inventoryOffset=Math.max(0,inventoryOffset-50);await loadInventory();});
-$("#inventory-more").onclick=wrap(async()=>{inventoryOffset+=50;await loadInventory();});
-$("#inventory-status").onchange=wrap(async()=>{inventoryOffset=0;await loadInventory();});
-$("#inventory-search").onchange=wrap(async()=>{inventoryOffset=0;await loadInventory();});
-window.addEventListener('workbench-language',()=>{if(!$('#view-inventory').hidden)void loadInventory();});
 $('#stop-desktop').onclick=wrap(()=>openCleanupDialog());
 async function loadAnalyzer() {
   const data=await api("/api/analyzer");
@@ -788,7 +737,7 @@ $("#analyzer-form").onsubmit=wrap(async event=>{
   try {
     const started=await api("/api/analyzer",{method:"POST",body:JSON.stringify({path:$("#analyzer-path").value,version:$("#analyzer-version").value,recursive_inventory:$("#analyzer-recursive").checked})});
     const report=await poll(started.job);renderAnalysis(report);await loadAnalyzer();if(report.metadata_available && window.Journeys){await Journeys.load();await Journeys.selectContext('capture:'+report.id,true);}
-    notify(I18n.t("Read-only source report saved"));$("#analyzer-result").scrollIntoView({behavior:"smooth",block:"start"});
+    notify(I18n.t("Read-only source report saved"));if(report.metadata_available)await window.LibraryPreparation?.loaded("capture:"+report.id);$("#analyzer-result").scrollIntoView({behavior:"smooth",block:"start"});
   } finally {button.disabled=false;}
 });
 $("#refresh-source-locations").onclick=wrap(async()=>{await loadAnalyzer();notify(I18n.t("Default locations and saved database paths checked"));});

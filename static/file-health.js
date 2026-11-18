@@ -55,7 +55,7 @@ window.FileHealth=(()=>{
     const old=node('source').value || window.BrowseState?.value('file-health-source');
     const current=window.Journeys?.context?.()?.source;
     node('source').innerHTML='<option value="">'+esc(label('Choose a saved collection snapshot'))+'</option>'+options.map(s=>'<option value="'+esc(s.id)+'">'+esc(s.label)+' · '+esc(snapshotMoment(s.created))+'</option>').join('');
-    const wanted=[old,current].find(v=>options.some(s=>s.id===v)) || options[0]?.id || '';
+    const wanted=[current,old].find(v=>options.some(s=>s.id===v)) || options[0]?.id || '';
     node('source').value=wanted;
     if(source!==wanted)offset=0;await loadResults();
   }

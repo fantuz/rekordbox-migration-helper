@@ -83,7 +83,13 @@ def register(owner):
                 r=json.loads(p.read_text(encoding='utf-8'));sources.append({'id':r['id'],'created':r['created'],'label':str(r.get('source','Source capture'))})
             except (OSError,ValueError,KeyError):continue
         current=owner.sessions.get(owner.active)
-        return jsonify(snapshots=store().snapshots(),reports=store().reports(),sources=sources,
+        saved=store();snapshots=saved.snapshots()
+        selected=saved.setting('collection_context','')
+        if isinstance(selected,str) and selected.startswith('snapshot:') and not any(s['id']==selected[9:] for s in snapshots):
+            with saved.connection() as db:
+                row=db.execute('SELECT id,label,created,source_kind,scope_key,digest FROM snapshots WHERE id=?',(selected[9:],)).fetchone()
+            if row:snapshots.append(dict(row))
+        return jsonify(snapshots=snapshots,reports=saved.reports(),sources=sources,
                        workspace=current['id'] if current else None,musicbrainz_enabled=enabled(),
                        musicbrainz_forced_off=os.environ.get('LIBRARY_WORKBENCH_MUSICBRAINZ')=='0',speeds=SPEEDS,fields=[f for f in FIELDS if f not in FREE_FIELDS])
 

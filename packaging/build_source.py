@@ -23,7 +23,8 @@ def main():
     files+=list((ROOT/"docs"/"fixtures").glob("onetagger-results-v*.json"))
     files+=[ROOT/"docs"/"screenshots"/name for name in ("readme-library-insights.png","readme-track-editor.png","readme-playlist-explorer.png",
                                                        "musicbrainz-enrichment-real.webp","library-bubbles-real.webp",
-                                                       "formats-stems.png","native-source-insights.png","stems-workflows.png","onetagger-results.png")]
+                                                       "formats-stems.png","native-source-insights.png","stems-workflows.png","onetagger-results.png",
+                                                       "workflow-map.png","media-inventory.png","library-preparation.png","bubble-navigation.png")]
     with tarfile.open(destination,"w:gz") as archive:
         for file in sorted(files):
             if file.is_file():archive.add(file,arcname="library-workbench/"+str(file.relative_to(ROOT)),recursive=False)

@@ -9,11 +9,12 @@ window.Journeys=(()=>{
   function button(view,label){return '<button class="button secondary" type="button" data-journey-view="'+esc(view)+'">'+esc(label)+'</button>';}
   function renderContext(){
     const host=$('#collection-context');if(!host || !info)return;
+    host.hidden=!info.sources.length;
     const c=info.context;
     host.innerHTML='<div class="journey-context-row"><label><span>'+esc(I18n.t('Collection context'))+'</span><select id="journey-context-source" aria-label="'+esc(I18n.t('Collection context'))+'"><option value="">'+esc(I18n.t('Choose a snapshot'))+'</option>'+info.sources.map(s=>'<option value="'+esc(s.id)+'" '+(s.id===info.selected?'selected':'')+'>'+esc(s.label)+(s.created?' · '+esc(snapshotMoment(s.created)):'')+'</option>').join('')+'</select></label>'+(c?'<div class="journey-context-detail"><strong>'+num(c.tracks)+' '+esc(I18n.t('tracks'))+'</strong><span>'+esc(I18n.t('Captured metadata'))+' · '+esc(c.scope)+' · '+esc(snapshotMoment(c.captured))+'</span>'+(c.saved_at?'<span>'+esc(I18n.t('Saved snapshot'))+' · '+esc(snapshotMoment(c.saved_at))+'</span>':'')+'<span>'+num(c.working_override_fields)+' '+esc(I18n.t('staged metadata fields'))+' · '+esc(I18n.t('Cleanup decisions are separate'))+'</span>'+(!c.snapshot?'<button type="button" class="button context-snapshot-action" data-journey-context-capture>'+esc(I18n.t('Save a snapshot for insight tools'))+'</button>':'')+'</div>':'<p>'+esc(I18n.t('Load a workspace or save a source snapshot.'))+'</p>')+'</div>';
     if(host.querySelector('[data-journey-context-capture]'))host.querySelector('[data-journey-context-capture]').onclick=wrap(async event=>{
       if(busy)return;const button=event.currentTarget;button.disabled=true;
-      try{const source=c.source==='workspace'?'session':c.source.slice(8);const job=await labPost('snapshots',{source,label:c.label});const saved=await poll(job.job);await load();await selectContext('snapshot:'+saved.id,true);}
+      try{await window.LibraryPreparation.open(c.source);}
       finally{if(button.isConnected)button.disabled=false;}
     });
     $('#journey-context-source').onchange=wrap(async()=>{if(!$('#journey-context-source').value)return;await selectContext($('#journey-context-source').value,true);});
@@ -22,9 +23,9 @@ window.Journeys=(()=>{
     const source=info.selected,detail=info.context,identity=source.startsWith('snapshot:')?source.slice(9):'';
     syncing=true;
     try{
-      for(const id of ['lab-snapshot','dj-snapshot','bubble-snapshot','tonal-snapshot','history-snapshot','intelligence-source','quick-source']){
+      for(const id of ['lab-snapshot','dj-snapshot','bubble-snapshot','tonal-snapshot','history-snapshot','intelligence-source','quick-source','file-health-source']){
         const select=$('#'+id);if(!select || (!activate && window.BrowseState?.value(id)))continue;
-        const wanted=['history-snapshot','intelligence-source'].includes(id) && source.startsWith('capture:')?source:id==='quick-source'?(identity?'lab:'+identity:source==='workspace'?'session':source.startsWith('capture:')?source.slice(8):''):identity;
+        const wanted=id==='file-health-source'?source:['history-snapshot','intelligence-source'].includes(id) && source.startsWith('capture:')?source:id==='quick-source'?(identity?'lab:'+identity:source==='workspace'?'session':source.startsWith('capture:')?source.slice(8):''):identity;
         const supported=[...select.options].some(o=>o.value===wanted),next=supported?wanted:'';
         const changed=select.value!==next;select.value=next;
         if(changed && activate && select.closest('.view')?.hidden===false)select.dispatchEvent(new Event('change',{bubbles:true}));
@@ -89,8 +90,8 @@ window.Journeys=(()=>{
   }
   function init(){
     document.addEventListener('change',event=>{
-      if(syncing || !info || !['lab-snapshot','dj-snapshot','bubble-snapshot','tonal-snapshot','history-snapshot','intelligence-source','quick-source'].includes(event.target.id) || !event.target.value)return;
-      const source=event.target.id==='quick-source'?(event.target.value.startsWith('lab:')?'snapshot:'+event.target.value.slice(4):event.target.value==='session'?'workspace':/^[a-f0-9]{32}$/.test(event.target.value)?'capture:'+event.target.value:''):['history-snapshot','intelligence-source'].includes(event.target.id) && event.target.value.startsWith('capture:')?event.target.value:'snapshot:'+event.target.value;if(!source)return;
+      if(syncing || !info || !['lab-snapshot','dj-snapshot','bubble-snapshot','tonal-snapshot','history-snapshot','intelligence-source','quick-source','file-health-source'].includes(event.target.id) || !event.target.value)return;
+      const source=event.target.id==='file-health-source'?event.target.value:event.target.id==='quick-source'?(event.target.value.startsWith('lab:')?'snapshot:'+event.target.value.slice(4):event.target.value==='session'?'workspace':/^[a-f0-9]{32}$/.test(event.target.value)?'capture:'+event.target.value:''):['history-snapshot','intelligence-source'].includes(event.target.id) && event.target.value.startsWith('capture:')?event.target.value:'snapshot:'+event.target.value;if(!source)return;
       selectContext(source).catch(error=>notify(error.message,true));
     });
     window.addEventListener('workbench-language',()=>{

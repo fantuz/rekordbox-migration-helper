@@ -64,6 +64,29 @@ class ImportReliabilityTests(unittest.TestCase):
         with patch('engine.os.replace',side_effect=OSError('publication failed')):
             with self.assertRaises(OSError):self.run_analysis()
         self.assertEqual((self.output/'catalog.sqlite3').read_bytes(),previous)
+
+    def test_schema_preflight_names_missing_fields_without_publishing_partial_import(self):
+        self.run_analysis();previous=(self.output/'catalog.sqlite3').read_bytes()
+        with closing(sqlite3.connect(self.root/'master.db')) as db:
+            db.execute('ALTER TABLE djmdContent RENAME COLUMN AnalysisDataPath TO RemovedAnalysisPath')
+            db.commit()
+        with zipfile.ZipFile(self.backup,'w') as archive:archive.write(self.root/'master.db','master.db')
+        before=(self.backup.read_bytes(),self.xml.read_bytes())
+        with self.assertRaisesRegex(ValueError,r'Unsupported backup schema.*djmdContent.AnalysisDataPath'):
+            self.run_analysis()
+        self.assertEqual((self.output/'catalog.sqlite3').read_bytes(),previous)
+        self.assertEqual(before,(self.backup.read_bytes(),self.xml.read_bytes()))
+        self.assertEqual(list(self.output.glob('.catalog-*')),[])
+
+    def test_schema_preflight_accepts_case_insensitive_consumed_content_columns(self):
+        with closing(sqlite3.connect(self.root/'master.db')) as db:
+            db.execute('ALTER TABLE djmdContent RENAME COLUMN AnalysisDataPath TO analysisdatapath')
+            db.commit()
+        with zipfile.ZipFile(self.backup,'w') as archive:archive.write(self.root/'master.db','master.db')
+        before=self.backup.read_bytes()
+        result=self.run_analysis()
+        self.assertEqual(len(Catalog(result['source'],{}).tracks),3)
+        self.assertEqual(self.backup.read_bytes(),before)
         self.assertFalse(list(self.output.glob('.catalog-*')))
         self.assertEqual(len(Catalog(self.run_analysis()['source'],{}).tracks),3)
 

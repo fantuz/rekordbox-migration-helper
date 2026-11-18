@@ -346,6 +346,28 @@ def analyze(backup, xml, folder, progress, scratch=None):
         return metadata
 
 
+IMPORT_COLUMNS={
+    'djmdContent':('ID','Title','ArtistID','FileSize','Length','Rating','Commnt','DeviceID','ServiceID',
+                   'FolderPath','OrgFolderPath','AnalysisDataPath','ImagePath','DJPlayCount','rb_local_deleted'),
+    'djmdArtist':('ID','Name'),
+    'djmdCue':('ID','ContentID','rb_local_deleted'),
+    'contentCue':('ContentID','Cues','rb_local_deleted'),
+}
+
+
+def validate_import_schema(database):
+    """Check just the named fields consumed by paired import, before building a catalog."""
+    missing=[]
+    for table,wanted in IMPORT_COLUMNS.items():
+        # All identifiers here are fixed program constants, never request values.
+        have={str(row[1]).casefold() for row in database.execute('PRAGMA table_info("'+table+'")')}
+        if not have:missing.append(table)
+        else:missing.extend(table+'.'+field for field in wanted if field.casefold() not in have)
+    if missing:
+        raise ValueError('Unsupported backup schema; missing required import fields: '+', '.join(missing)+
+                         '. No catalog was imported. Inspect this library with Source analyzer.')
+
+
 def _analyze(backup, xml, folder, progress, scratch=None):
     progress(5, "Reading backup directory")
     scratch=Path(scratch or folder);scratch.mkdir(parents=True,exist_ok=True)
@@ -370,10 +392,13 @@ def _analyze(backup, xml, folder, progress, scratch=None):
         with closing(open_master(master.resolve())) as native:
             if native.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
                 raise ValueError("Database integrity check failed")
+            validate_import_schema(native)
             xml_tracks, playlists, version, xml_hash = parse_xml(xml, progress)
             native.row_factory = __import__("sqlcipher3").Row
             rows = [dict(r) for r in native.execute("""SELECT c.*,a.Name AS artist_name FROM djmdContent c
                 LEFT JOIN djmdArtist a ON a.ID=c.ArtistID WHERE c.rb_local_deleted=0""")]
+            canonical={field.casefold():field for field in IMPORT_COLUMNS['djmdContent']}
+            rows=[{canonical.get(key.casefold(),key):value for key,value in row.items()} for row in rows]
             by_id = {r["ID"]: r for r in rows}
             missing = set(xml_tracks) - by_id.keys()
             if missing:
@@ -419,6 +444,8 @@ def _analyze(backup, xml, folder, progress, scratch=None):
                 seen = set()
                 for r in native.execute("SELECT * FROM djmdCue WHERE rb_local_deleted=0"):
                     c = dict(r)
+                    names={field.casefold():field for field in IMPORT_COLUMNS['djmdCue']}
+                    c={names.get(key.casefold(),key):value for key,value in c.items()}
                     if c["ContentID"] not in by_id:
                         continue
                     c["representation"] = "native"

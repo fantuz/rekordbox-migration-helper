@@ -273,7 +273,10 @@ jobs:
             fi
           done
       - run: python -m playwright install --with-deps ${{ matrix.browser }}
-      - run: python packaging/check_browser_languages.py --browser ${{ matrix.browser }} --output ci-output/languages
+      - name: Check desktop UI, languages and native scrollbars
+        env:
+          GTK_OVERLAY_SCROLLING: '0'
+        run: xvfb-run -a python packaging/check_browser_languages.py --headed --browser ${{ matrix.browser }} --output ci-output/languages
       - name: Check real-server workflows, formats and STEMS evidence
         if: matrix.browser == 'chromium'
         run: python packaging/check_workflow_integrity.py --output ci-output/languages/workflow-integrity

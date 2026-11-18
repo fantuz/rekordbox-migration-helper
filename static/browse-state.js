@@ -16,10 +16,10 @@ window.BrowseState=(()=>{
     if(!restoring){if(location.hash!=='#'+view)history.pushState({view},'', '#'+view);set('view',view);}
   }
   function start(){
-    restore();const view=location.hash.slice(1)||data.view||'files';
+    restore();const view=location.hash.slice(1)||data.view||'start';
     if(document.getElementById('view-'+view)){restoring=true;showView(view);restoring=false;history.replaceState({view},'','#'+view);}
   }
-  addEventListener('popstate',()=>{const view=location.hash.slice(1)||'files';if(!document.getElementById('view-'+view))return;restoring=true;showView(view);restoring=false;set('view',view);});
+  addEventListener('popstate',()=>{const view=location.hash.slice(1)||'start';if(!document.getElementById('view-'+view))return;restoring=true;showView(view);restoring=false;set('view',view);});
   document.addEventListener('change',event=>{if(allowed(event.target.id))set(event.target.id,event.target.value);},true);
   addEventListener('pagehide',remember);
   return {value,set,remember,restore,enter,start};

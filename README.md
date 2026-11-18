@@ -82,6 +82,16 @@ Library bubbles explores metadata categories visually, including unknown genres 
 
 ## Feature inventory
 
+- Start with a clickable **Workflow map** showing inputs, transformation,
+  enrichment, verification and outputs, with direct links to the tools.
+- After loading a native capture, XML or XML+ZIP pair, explicitly prepare or
+  reuse the internal metadata snapshot for bubbles and optionally scan local
+  files. These need no additional manual Rekordbox export. See
+  [workflow and preparation requirements](docs/WORKFLOWS.md).
+- Media inventory names its loaded XML+ZIP workspace, separates optional path
+  mapping, restores saved scan folders and lets you remove folders from the
+  next scan. Changed settings are distinguished from saved scan evidence.
+
 A factual overview of the current source tree. Release downloads may lag behind `main`; the draft items below retain their stated limits.
 
 **Inputs, discovery and compatibility**
@@ -116,6 +126,9 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Follow eight optional saved journeys for both Serato migration directions, consistency checks, duplicate review, enrichment, metadata refinement, sharing, and backup preparation. Serato → rekordbox is a preparation/checklist workflow; no Serato importer is implemented. Every tool remains accessible independently.
 - Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
 - Bubble labels prioritize category names at a consistent 12-pixel size, wrapping up to four lines. Counts remain in the category table and accessible labels; circle areas still represent the chosen metric.
+- Bubble counters precede the filters and breadcrumb navigation. Click or use
+  Enter/Space on the scrolling category legend to drill down; desktop legends
+  show 15 rows with a visible scrollbar, including zero-area categories.
 - A prominent “Use local library” entry opens source selection directly, without requiring XML/ZIP exports.
 - Compact Rekordbox and Serato cards on Files & workflow open local source analysis and the existing experimental Serato export workflow. Serato library import is not implemented.
 - Audit preparation coverage, saved analysis references and STEMS-related evidence.

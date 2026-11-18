@@ -1348,6 +1348,8 @@ from audio_paths import register as register_audio_paths
 register_audio_paths(sys.modules[__name__])
 from file_health import register as register_file_health
 register_file_health(sys.modules[__name__])
+from library_preparation import register as register_library_preparation
+register_library_preparation(sys.modules[__name__])
 
 
 if __name__=="__main__":

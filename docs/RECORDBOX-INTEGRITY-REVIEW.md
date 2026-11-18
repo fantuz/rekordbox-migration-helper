@@ -114,3 +114,90 @@ Existing checkpoint files are skipped by the downloader; `model_ready` checks si
 5. Measure model quality and cache association separately from binary structure and inference speed.
 
 The new Workbench regressions address demonstrated omissions without importing unsupported native writers or assuming that every claim in Recordbox's research ledger has independent verification.
+
+## Update reviewed on 18 November 2026
+
+The fork advanced another 12 commits to [`2b809082`](https://github.com/fantuz/recordbox/tree/2b809082d65173ce32e1f43ff363833ace71e431).
+Most changes implement player audio, effects, mixer, sampler and sequencer behavior.
+They do not establish a new native library or STEMS serialization format.
+
+- The [native importer](https://github.com/fantuz/recordbox/blob/2b809082d65173ce32e1f43ff363833ace71e431/app/src/rbimport.rs)
+  now checks the tables and columns it consumes before import, with history optional.
+  This supports checking capabilities before promising a workflow. Its required schema
+  belongs to its importer; it is not a universal requirement to reject every older
+  rekordbox library. Workbench retains separate core compatibility and optional evidence.
+  The paired importer now also checks its consumed schema before catalog creation,
+  naming missing tables/fields instead of leaking a raw lookup error. Regressions
+  verify retry safety, original-byte preservation and case-insensitive content fields.
+- [Beat-grid half/double operations](https://github.com/fantuz/recordbox/blob/2b809082d65173ce32e1f43ff363833ace71e431/app/src/model.rs)
+  now preserve tempo changes and depend on the first beat's phase. A half/double BPM
+  disagreement alone cannot prove grid or cue equivalence. Workbench continues to
+  report the disagreement for review and preserves the source anchors and cues.
+  No automatic tempo normalization or unverified grid writer was introduced.
+- The [STEMS cache](https://github.com/fantuz/recordbox/blob/2b809082d65173ce32e1f43ff363833ace71e431/app/src/stems/mod.rs)
+  can now remove old `.stems` files to enforce a disk budget, protecting the file just
+  written. A previously present cache may later be evicted. Workbench now includes
+  this lifecycle advisory in recognized `PDSTEMS1` evidence: retention remains unknown,
+  and cache absence cannot establish lost music, a damaged database or missing native
+  preparation. A synthetic regression checks that these distinctions remain explicit.
+- STEMS mute/solo transitions in preferences changed, including three-part instrument
+  grouping and the message shown before analysis is ready. These are runtime player
+  states, not additional proof that a cache belongs to a source, has the right model
+  weights or works in native rekordbox. They do not justify new readiness assumptions.
+
+This is a pinned static source review. The claimed traced vendor addresses, native
+player behavior and inference-quality assertions were not independently executed.
+No third-party implementation code or personal libraries were copied into Workbench.
+
+## Further update reviewed on 18 November 2026
+
+The next five commits through
+[`46157d57`](https://github.com/fantuz/recordbox/tree/46157d576f037e463e7f45b4d6ff9ccd0ca57812)
+change 16 files, primarily FX, sampler/sequencer behavior and player settings.
+The native importer, database schema, export readers/writers, ANLZ handlers,
+beat-grid model and STEMS-cache implementation did not change in this interval.
+This update does not establish another native serialization format or new
+persistent STEMS-readiness evidence.
+
+- [Sampler capture and Sequence Load](https://github.com/fantuz/recordbox/blob/46157d576f037e463e7f45b4d6ff9ccd0ca57812/app/src/sampler_ext.rs)
+  now create ordinary stereo PCM16 WAV files. Loop capture keeps the decoded
+  source rate; Sequence Load renders at 44.1 kHz and inserts the result into
+  Recordbox's own collection with a grid starting at frame zero. These are
+  derived audio assets. Their BPM, title and duration cannot establish identity
+  with an original track, a native backup member or a STEMS cache.
+  A Workbench regression scans generated 48/44.1 kHz WAV references with matching
+  display metadata, retains both records, and checks snapshot/audio preservation.
+- The [sampler renderer](https://github.com/fantuz/recordbox/blob/46157d576f037e463e7f45b4d6ff9ccd0ca57812/app/src/sampler.rs)
+  takes the second of two pattern passes so sound ringing across the boundary
+  is present at the beginning. It includes slot gains but excludes the sampler's
+  output gain/fader. File accessibility and header shape do not certify that
+  render, its musical identity or effect quality. Workbench File health reports
+  accessibility, not header validation or full decoding.
+- The capture-name policy truncates the title to 48 Rust characters and adds
+  collision suffixes. It is this application's naming policy, not independent
+  proof of a universal rekordbox filename limit or portable Windows filename
+  validity. A `_capture` suffix or a `Sampler/Capture` folder is not a durable
+  source identifier. Captures outside the parsed collection require explicit
+  folder selection; collection-only coverage cannot certify auxiliary assets.
+- [Beat position and sampler sync](https://github.com/fantuz/recordbox/blob/46157d576f037e463e7f45b4d6ff9ccd0ca57812/app/src/audio.rs)
+  now use the first grid anchor, local beat spacing and sampler clock phase.
+  Matching scalar BPM is insufficient to establish phase/grid equivalence.
+  The loop capture's conditional 3 ms snapping is a runtime policy, not a
+  general migration-equality tolerance for stored cues.
+- [FX preferences](https://github.com/fantuz/recordbox/blob/46157d576f037e463e7f45b4d6ff9ccd0ca57812/app/src/ui_fx.rs)
+  persist panel choices in Recordbox's own settings. Sampler colours are keyed
+  by file path in its sampler preferences. These do not redefine native
+  `djmdColor`/`ColorID`, library cue fields or the `PDSTEMS1` cache contract.
+  The new synthetic effect/setting tests establish that implementation's behavior;
+  they are not additional vendor-format or licensed-player conformance fixtures.
+
+These observations retain the existing distinction between recorded metadata,
+filesystem availability, byte identity, derived audio and native-format evidence.
+The review was static; the new DSP engine and claimed vendor traces were not run.
+
+The final follow-up at
+[`8e9f30ec`](https://github.com/fantuz/recordbox/commit/8e9f30ec516836739137ff191d89be10549da081)
+adds an ignored, opt-in FX cost benchmark and updates the README source-line count.
+It does not change production behavior, native formats, import/export compatibility
+or STEMS handling. The benchmark's 48 kHz/512-frame inputs are synthetic performance
+parameters, not evidence of a required library sample rate or an asset format.

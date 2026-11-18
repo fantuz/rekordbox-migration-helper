@@ -41,6 +41,7 @@ def check_recovery_queue_ui(browser,base,sid,output):
     context.route('**/api/playback/availability',lambda r:r.fulfill(json={'tracks':{},'statuses':{}}))
     try:
         page.goto(base,wait_until='networkidle')
+        page.locator('.nav[data-view="files"]').click()
         page.locator('.workflow-library-entries').scroll_into_view_if_needed()
         cards=page.locator('.workflow-library-entries>article')
         first,second=cards.nth(0).bounding_box(),cards.nth(1).bounding_box()
