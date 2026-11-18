@@ -22,7 +22,9 @@ def check_regional_languages_ui(browser, base, output):
             page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
             sidebar=page.locator('.sidebar').bounding_box();main=page.locator('main').bounding_box()
             assert sidebar['x']>=main['x']+main['width']-1,(sidebar,main)
-            assert abs(sidebar['x']+sidebar['width']-1440)<2,sidebar
+            # A native desktop scrollbar occupies part of the 1440 px window.
+            edge=page.evaluate('document.documentElement.getBoundingClientRect().right')
+            assert abs(sidebar['x']+sidebar['width']-edge)<2,(sidebar,edge)
             assert page.evaluate("I18n.date('2026-11-15T12:00:00Z',{year:'numeric',month:'numeric',day:'numeric',numberingSystem:'latn',timeZone:'UTC'})")=='15/11/2026'
             page.locator('.nav[data-view="analyzer"]').click()
             page.locator('#analyzer-path').fill('C:\\Music\\日本語\\موسيقى\\faixa.mp3')

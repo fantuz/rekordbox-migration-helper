@@ -93,8 +93,9 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     page.locator('#bubble-empty [data-insight-capture]').click()
     page.wait_for_selector('#preparation-dialog[open]')
     page.locator('#preparation-form button[type="submit"]').click();page.wait_for_selector('#progress[open]')
-    box=page.locator('#progress').bounding_box();viewport=page.viewport_size
-    assert abs(box['x']+box['width']/2-viewport['width']/2)<3
+    box=page.locator('#progress').bounding_box()
+    viewport=page.evaluate('({width:document.documentElement.clientWidth,height:document.documentElement.clientHeight,left:document.documentElement.getBoundingClientRect().left})')
+    assert abs(box['x']+box['width']/2-viewport['left']-viewport['width']/2)<3
     assert abs(box['y']+box['height']/2-viewport['height']/2)<3
     page.keyboard.press('Escape');assert page.locator('#progress').is_visible()
     page.keyboard.press('Tab');assert page.locator('#progress').evaluate('(el)=>el.contains(document.activeElement)')
