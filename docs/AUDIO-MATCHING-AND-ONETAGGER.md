@@ -18,7 +18,7 @@ The approach takes inspiration from [OneTagger MatchingUtils](https://github.com
 
 ## OneTagger handoff
 
-1. Open **MusicBrainz metadata** under **Enrich**, then the **OneTagger bridge** panel. Select a saved snapshot. Use Audio folders first when its recorded paths belong to another computer.
+1. Open **Enrich → OneTagger bridge** in the sidebar, or choose OneTagger on the Workflow map. Expand **Collection snapshot** above the header to select a saved snapshot. Use **Audio folders** on the bridge page when its recorded paths belong to another computer.
 2. Search and select up to 500 accessible tracks. Selections persist across result pages. Click **Create OneTagger selection**.
 3. Download the JSON selection manifest. In a OneTagger build with results support, load it under **Auto tag → Input & Tags → Helper selection manifest (optional)**. Review providers and tag settings, disable file moves, and start tagging. OneTagger edits the selected audio files and saves a results JSON; Workbench itself does not write audio tags or launch OneTagger.
 4. Keep the files at their selected locations. Return to the saved selection and use **Import OneTagger results JSON**. The Helper checks the selection identity and independently compares current files and tags with the report before preparing review. Alternatively, drop the exported M3U into OneTagger's playlist area and use **Rescan tags after OneTagger** afterward. Read failures and invalid tags remain visible. Missing tags do not clear captured library values.

@@ -1,4 +1,5 @@
 """Real HTTP results exchange: synthetic ID3 files, explicit review and persistence."""
+from ui_navigation import select_collection, open_collection_picker
 from copy import deepcopy
 from hashlib import sha256
 import json
@@ -49,9 +50,9 @@ def check_onetagger_results_ui(browser,base,store,root,output):
         return response
     def saved(identity):return store.setting('onetagger:'+identity)['scan']
     try:
-        page.goto(base,wait_until='networkidle');page.locator('.nav[data-view="musicbrainz"]').click()
+        page.goto(base,wait_until='networkidle');page.locator('.nav[data-view="onetagger"]').click()
         page.wait_for_selector('#onetagger-snapshot option[value="'+sid+'"]',state='attached')
-        page.select_option('#onetagger-snapshot',sid)
+        select_collection(page,'#onetagger-snapshot',sid)
         for i in range(4):page.locator('[data-onetagger-track="result-'+str(i)+'"]').check()
         page.locator('#onetagger-next').click();page.locator('[data-onetagger-track="result-51"]').check()
         expect(page.locator('#onetagger-selected')).to_contain_text('5 / 500')
@@ -129,8 +130,8 @@ def check_onetagger_results_ui(browser,base,store,root,output):
         expect(page.locator('#onetagger-report-summary')).to_contain_text('Review is outdated')
         expect(page.locator('#onetagger-stage')).to_be_disabled()
         assert page.locator('#onetagger-review input').evaluate_all('nodes=>nodes.every(n=>n.disabled)')
-        page.reload(wait_until='networkidle');page.locator('.nav[data-view="musicbrainz"]').click()
-        page.select_option('#onetagger-snapshot',sid)
+        page.reload(wait_until='networkidle');page.locator('.nav[data-view="onetagger"]').click()
+        select_collection(page,'#onetagger-snapshot',sid)
         page.wait_for_selector('#onetagger-selections option[value="'+identity+'"]',state='attached')
         page.select_option('#onetagger-selections',identity)
         expect(page.locator('#onetagger-report-summary')).to_contain_text('Review is outdated')

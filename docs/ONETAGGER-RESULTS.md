@@ -6,7 +6,7 @@ The original five-field workflow uses [OneTagger #47](https://github.com/fantuz/
 
 ## Use the bridge
 
-1. In the Helper's **OneTagger bridge**, create a selection of 1–500 accessible tracks and download its JSON manifest.
+1. Open **Enrich → OneTagger bridge** in the Helper. Choose a source using **Collection snapshot** above the header, then create a selection of 1–500 accessible tracks and download its JSON manifest.
 2. In OneTagger, open **Auto tag → Input & Tags → Helper selection manifest (optional)** and choose that file. The manifest supplies the entire input selection and enables **Save tagging results JSON**. Review providers and tags, and disable both success and failure file moves.
 3. Start tagging. The completion panel shows the results JSON path and an **Open results JSON** button. Reports are saved in the application's data directory under `runs/tagging-results-<run_id>.json`.
 4. Return to the same saved Helper selection and use **Import OneTagger results JSON**. The Helper independently reads the selected audio and compares it with the report.
@@ -29,6 +29,13 @@ onetagger-cli autotagger --path . --config config.json --selection-manifest onet
 ```
 
 The CLI still requires `--path`, but the manifest replaces that input with its exact selection. For a normal folder run, add `--report` to save results without a Helper identity. Generic reports cannot be imported into a saved Helper selection.
+
+The bridge has its own sidebar page and direct `#onetagger` link. Navigation
+back from MusicBrainz retains an unfinished selection; reloading restores the
+selected snapshot. **Audio folders** is available on the bridge itself. Saved
+handoffs and reports remain available through **Saved selections**.
+
+![OneTagger bridge as a standalone enrichment page](screenshots/onetagger-page.png)
 
 ## Report contract
 

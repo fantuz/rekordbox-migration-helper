@@ -22,10 +22,3 @@ $('#quick-xml-form').onsubmit=wrap(async event=>{
 });
 Journeys.init();SharingUI.init();Intelligence.init();renderFeaturedTools();
 window.addEventListener('workbench-language',renderFeaturedTools);
-
-document.querySelector('[data-map-onetagger]').onclick=()=>{
-  showView('musicbrainz');
-  const target=document.getElementById('onetagger-bridge');
-  if(target.tagName==='DETAILS')target.open=true;
-  target.scrollIntoView({block:'start'});
-};

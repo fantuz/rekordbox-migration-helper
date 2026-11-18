@@ -2,12 +2,19 @@
 
 ## Unreleased
 
+## 1.1.11 — 2026-11-19
+
+This release makes cloud-file checks safer, streamlines collection exploration, and gives OneTagger bridge its own enrichment page.
+
+- Give OneTagger bridge its own Enrich sidebar page and direct Workflow map entry. Keep its snapshot picker in the compact header controls, provide Audio folders on the bridge, and preserve selections when navigating between enrichment tools.
 - Add colored Dropbox and Google Drive path filters to File health, metadata-only cloud-placeholder evidence, and fresh single-track confirmation before opening cloud-managed audio. Absent cloud paths retain unknown remote availability; scans neither open audio nor query providers.
 - Move Collection context and tool snapshots into two default-collapsed orange/pink controls above the page header, retaining their selectors and actions, including inside expanded Bubble maps.
 - Align every Bubble filter in one responsive panel, keep numeric ranges together, summarize active criteria, and collapse after successful Apply. Preserve unapplied drafts when changing key display.
 - Display recognized musical keys alphabetically, in Camelot or Open Key notation, grouping equivalent tags without rewriting their source values. Share the preference with key filters, tonality tables, File view and Library intelligence sessions; retain source-format counts.
 - Add release-year and saved-genre histograms to Collection statistics and a compact shared Hide unknown choice. Exclusions apply independently per chart, preserve known zero values and show displayed/excluded totals.
 - Extend real-server browser regressions and synthetic cloud-attribute, cache-migration, key-grouping and playback-consent tests. Document Dropbox metadata API and local-client limitations; actual remote presence and hydration remain unverified.
+
+Release scope: [PR #75](https://github.com/fantuz/rekordbox-migration-helper/pull/75) and [PR #76](https://github.com/fantuz/rekordbox-migration-helper/pull/76). Cloud labels and placeholder attributes are local evidence; Dropbox/Google Drive account authorization and remote file-presence checks are not implemented. Scans do not open audio, while opening a cloud-managed track requires fresh individual confirmation. Key display changes preserve original tags. Native rekordbox restoration and actual Windows/macOS cloud hydration remain unverified. Reload open browser tabs after upgrading. See the [cloud file-health guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.1.11/docs/CLOUD-FILE-HEALTH.md), [interface guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.1.11/docs/INTERFACE.md) and [OneTagger handoff guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.1.11/docs/AUDIO-MATCHING-AND-ONETAGGER.md).
 
 ## 1.1.10 — 2026-11-18
 

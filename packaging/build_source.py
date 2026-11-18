@@ -23,7 +23,7 @@ def main():
     files+=list((ROOT/"docs"/"fixtures").glob("onetagger-results-v*.json"))
     files+=[ROOT/"docs"/"screenshots"/name for name in ("readme-library-insights.png","readme-track-editor.png","readme-playlist-explorer.png",
                                                        "musicbrainz-enrichment-real.webp","library-bubbles-real.webp",
-                                                       "formats-stems.png","native-source-insights.png","stems-workflows.png","onetagger-results.png",
+                                                       "formats-stems.png","native-source-insights.png","stems-workflows.png","onetagger-results.png","onetagger-page.png",
                                                        "workflow-map.png","media-inventory.png","library-preparation.png","bubble-navigation.png",
                                                        "compact-bubble-filters.png","collection-statistics-distributions.png",
                                                        "cloud-file-health-filters.png","cloud-track-confirmation.png")]
