@@ -94,7 +94,7 @@ jobs:
       - run: python -m pip install -r requirements.txt
       - name: Use the Ubuntu archive for package downloads
         run: |
-          for apt_source in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources; do
+          for apt_source in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources /etc/apt/apt-mirrors.txt /etc/apt/apt-mirrors-security.txt; do
             if [ -f "$apt_source" ]; then
               sudo sed -i -E 's@https?://[a-z0-9.-]+\.ec2\.archive\.ubuntu\.com/ubuntu@https://archive.ubuntu.com/ubuntu@g' "$apt_source"
             fi
@@ -267,7 +267,7 @@ jobs:
       - run: python -m pip install -r requirements.txt -r requirements-test.txt -r requirements-browser.txt
       - name: Use the Ubuntu archive for package downloads
         run: |
-          for apt_source in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources; do
+          for apt_source in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources /etc/apt/apt-mirrors.txt /etc/apt/apt-mirrors-security.txt; do
             if [ -f "$apt_source" ]; then
               sudo sed -i -E 's@https?://[a-z0-9.-]+\.ec2\.archive\.ubuntu\.com/ubuntu@https://archive.ubuntu.com/ubuntu@g' "$apt_source"
             fi
