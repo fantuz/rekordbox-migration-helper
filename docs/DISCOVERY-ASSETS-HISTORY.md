@@ -24,6 +24,11 @@ Linux users can select a real Windows library on a filesystem they have already 
 
 Search is limited to 15 seconds, 12,000 directories, 200,000 entries and depth 12. Links, junctions, recognized online-only subfolders and common system/cache trees are skipped. Partial results explicitly report limits and errors. Select a narrower root for complete coverage. The JSON discovery report is retained with other reports.
 
+For provider-configured Dropbox roots, team/customer folders, Google Drive
+locations and possible database relocations, see the separate
+[cloud discovery guide](CLOUD-DISCOVERY.md). Automatic cloud suggestions and
+manual folder searches both require explicit selection before capture.
+
 ## Multiple analysis scopes
 
 In Library lab, save/select a native snapshot, then provide up to 20 analysis-folder or backup-ZIP paths, one per line. Add detected USBANLZ trees or use the bounded asset search. ZIPs are inventoried directly, without extracting the analysis tree. A path can also point to a nonstandard folder containing recognizable ANLZ files; ownership there may remain unknown.

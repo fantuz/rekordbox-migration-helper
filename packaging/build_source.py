@@ -19,6 +19,7 @@ def main():
     files+=list((ROOT/"packaging").glob("*.py"))+list((ROOT/"packaging").glob("*.c"))
     files+=list((ROOT/"docs").glob("*.md"))
     files+=list((ROOT/"docs").glob("*.json"))
+    files.append(ROOT/"docs"/"screenshots"/"cloud-library-locations.png")
     files+=list((ROOT/"docs"/"fixtures").glob("onetagger-results-v*.json"))
     files+=[ROOT/"docs"/"screenshots"/name for name in ("readme-library-insights.png","readme-track-editor.png","readme-playlist-explorer.png",
                                                        "musicbrainz-enrichment-real.webp","library-bubbles-real.webp",

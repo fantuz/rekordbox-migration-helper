@@ -48,7 +48,9 @@ def mappings_for(store, snapshot):
 def allowed_roots(owner):
     """Server-selected boundaries, never values supplied by the mapping request."""
     from discovery import mounted_roots
-    roots=[Path.home(),owner.DATA,*(Path(row['path']) for row in mounted_roots())]
+    from platform_paths import discover_cloud_roots
+    roots=[Path.home(),owner.DATA,*(Path(row['path']) for row in mounted_roots()),
+           *(Path(row['root']) for row in discover_cloud_roots())]
     configured=os.environ.get('LIBRARY_WORKBENCH_AUDIO_ROOTS','')
     if configured:
         try:extra=json.loads(configured)

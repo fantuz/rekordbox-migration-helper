@@ -39,8 +39,8 @@ def default_data_directory(app_root,platform_name=None,environ=None,home=None,fr
     return Path(app_root)/".data"
 
 
-def database_names(path):
-    """Bounded name-only probes, preserving case and ambiguous sibling files."""
+def database_names(path,on_entry=None):
+    """Bounded name-only probes; an optional shared budget covers each entry."""
     path=Path(path);wanted={n.casefold() for n in DATABASE_NAMES};found=set()
     try:
         if path.is_symlink() or path.is_junction():return []
@@ -51,7 +51,7 @@ def database_names(path):
         actual=[]
         with os.scandir(path) as entries:
             for index,entry in enumerate(entries):
-                if index>=4096:break
+                if index>=4096 or (on_entry is not None and not on_entry()):break
                 if entry.name.casefold() in wanted and not entry.is_symlink() and entry.is_file(follow_symlinks=False):
                     actual.append(entry.name)
         # Case-insensitive hosts can satisfy several exact probes for one file.
@@ -147,35 +147,17 @@ def discover_sources(platform_name=None,environ=None,home=None):
             if not names:continue
             seen.add(key);found.append({'path':str(path),'origin':origin,'databases':names})
         except OSError:continue
+    from cloud_locations import discover
+    cloud=discover(name,env,user,hints,cache=platform_name is None and environ is None and home is None)
+    for row in cloud['libraries']:
+        key=os.path.normcase(row['path'])
+        if key not in seen:
+            seen.add(key);found.append({k:row[k] for k in ('path','origin','databases')})
     return {'platform':name,'help':help_text,'standard_locations':[str(p) for p in standard],
-            'found':found,'warnings':warnings,'analysis_locations':analysis}
+            'found':found,'warnings':warnings,'analysis_locations':analysis,'cloud_locations':cloud}
 
 
-def discover_cloud_roots():
-    user=Path.home()
-    candidates=[(user/"Dropbox","dropbox"),(user/"Google Drive","google_drive"),(user/"GoogleDrive","google_drive")]
-    configs=[user/".dropbox/info.json",user/"Library/Application Support/Dropbox/info.json"]
-    for name in ("APPDATA","LOCALAPPDATA"):
-        if os.environ.get(name):configs.append(Path(os.environ[name])/"Dropbox/info.json")
-    for path in configs:
-        try:
-            if not path.is_file() or path.stat().st_size>1024**2:continue
-            value=json.loads(path.read_text(encoding="utf-8"))
-            for account in value.values():
-                if isinstance(account,dict) and account.get("path"):candidates.append((Path(account["path"]),"dropbox"))
-        except (OSError,ValueError):continue
-    container=user/"Library/CloudStorage"
-    try:
-        if container.is_dir():
-            for path in container.iterdir():
-                if path.name.casefold().startswith("dropbox"):candidates.append((path,"dropbox"))
-                elif path.name.casefold().startswith("googledrive"):
-                    candidates.append((path/"My Drive" if (path/"My Drive").is_dir() else path,"google_drive"))
-    except OSError:pass
-    result=[];seen=set()
-    for path,kind in candidates:
-        try:
-            if path.is_dir() and str(path.resolve()) not in seen:
-                path=path.resolve();seen.add(str(path));result.append({"root":str(path),"kind":kind})
-        except OSError:continue
-    return result
+def discover_cloud_roots(platform_name=None,environ=None,home=None):
+    from cloud_locations import provider_roots
+    return [{'root':row['root'],'kind':row['kind']}
+            for row in provider_roots(platform_name,environ,home) if row['availability']=='local']
