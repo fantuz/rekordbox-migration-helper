@@ -1,6 +1,7 @@
 """Measured SVG text and interaction checks on invented categories in GitHub CI."""
 from copy import deepcopy
 import json
+import re
 
 
 def check_bubble_labels_ui(page,base,sid,output,store):
@@ -80,8 +81,25 @@ def check_bubble_labels_ui(page,base,sid,output,store):
             page.locator('#library-bubbles').scroll_into_view_if_needed()
             page.screenshot(path=str(output/'bubble-labels-desktop.png'))
     page.set_viewport_size({'width':1366,'height':1050})
+    scrollbar_styles={}
     for selected_theme in ('light','dark'):
         page.select_option('#theme',selected_theme);verify()
+        style=page.locator('#bubble-groups').evaluate('''node=>{
+            const style=getComputedStyle(node);
+            return {width:style.scrollbarWidth,colours:style.scrollbarColor,gutter:node.offsetWidth-node.clientWidth};
+        }''')
+        assert style['width'] in ('auto','thin'),style
+        colours=re.findall(r'rgba?\(([^)]+)\)',style['colours'])
+        assert len(colours)==2,style
+        def luminance(colour):
+            channels=[float(value)/255 for value in re.findall(r'[\d.]+',colour)[:3]]
+            assert len(channels)==3,style
+            linear=[value/12.92 if value<=.04045 else ((value+.055)/1.055)**2.4 for value in channels]
+            return sum(value*weight for value,weight in zip(linear,(.2126,.7152,.0722)))
+        thumb,track=sorted(luminance(colour) for colour in colours)
+        style['contrast']=(track+.05)/(thumb+.05)
+        assert style['contrast']>=3,style
+        scrollbar_styles[selected_theme]=style
         row=page.locator('#bubble-groups [data-bubble-index="1"]');row.focus()
         assert row.evaluate('(el)=>el.classList.contains("is-selected")')
         assert page.locator('#library-bubbles [data-bubble-index="1"]').evaluate('(el)=>el.classList.contains("is-selected")')
@@ -107,7 +125,13 @@ def check_bubble_labels_ui(page,base,sid,output,store):
             scrollbar:getComputedStyle(node).scrollbarWidth};
     }''')
     assert geometry['visible']==15 and geometry['overflow'],geometry
-    assert geometry['gutter']>=8 and geometry['scrollbar']!='none',geometry
+    # Native overlay scrollbars reserve no gutter, even with scrollbar-gutter:
+    # stable. Check actual styles/contrast above and scrolling behavior here.
+    assert geometry['scrollbar']!='none',geometry
+    legend.hover();page.mouse.wheel(0,320)
+    page.wait_for_function('document.querySelector("#bubble-groups").scrollTop>0')
+    legend.evaluate('node=>node.scrollTop=0')
+    (output/'bubble-scrollbars.json').write_text(json.dumps(scrollbar_styles,indent=2)+'\n')
     for code in ('de','ar','en'):
         page.select_option('#language',code)
         page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
@@ -163,6 +187,6 @@ def check_bubble_labels_ui(page,base,sid,output,store):
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',sid)
     return {'category_names_without_counters':True,'measured_text':True,'responsive_fonts':True,
             'circle_areas_preserved':True,'linked_focus':True,'standalone_svg':True,
-            'controls_after_counters':True,'fifteen_visible_legend_rows':True,'visible_scrollbar':True,
+            'controls_after_counters':True,'fifteen_visible_legend_rows':True,'scrollbar_contrast_and_wheel':True,
             'legend_mouse_and_keyboard_drilldown':True,'breadcrumb_navigation':True,
             'zero_weight_categories_accessible':True,'source_snapshot_preserved':True}
