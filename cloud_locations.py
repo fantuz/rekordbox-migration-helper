@@ -180,11 +180,22 @@ def path_parts(value):
     return tuple(part.casefold() for part in parts)
 
 
+def local_library_folder(value):
+    """Canonicalize local settings paths only after rejecting redirected folders."""
+    if not isinstance(value,str) or any(ord(c)<32 for c in value):return None
+    try:
+        path=Path(value.strip().strip('"')).expanduser()
+        if path.name.casefold() in ('master.db','datafile.edb','extdata.edb'):path=path.parent
+        return path.resolve() if safe_directory(path) else None
+    except (OSError,RuntimeError):return None
+
+
 def relocation_evidence(hints,libraries):
     results=[]
     for hint in hints[:64]:
         if hint.get('kind')!='database' or not isinstance(hint.get('value'),str):continue
-        old=path_parts(hint['value'])
+        # macOS /var -> /private/var is an OS alias, not a moved library.
+        old=path_parts(local_library_folder(hint['value']) or hint['value'])
         scored=[]
         for library in libraries:
             new=path_parts(library['path'])
@@ -225,11 +236,9 @@ def discover(platform_name=None,environ=None,home=None,hints=None,registrations=
         if root['availability']!='local':continue
         stack=[(Path(root['root']),0)]
         for hint in (hints or [])[:64]:
-            raw=hint.get('value')
-            if hint.get('kind')!='database' or not isinstance(raw,str) or any(ord(c)<32 for c in raw):continue
-            path=Path(raw.strip().strip('"')).expanduser()
-            if path.name.casefold() in ('master.db','datafile.edb','extdata.edb'):path=path.parent
-            if path.is_absolute() and path.is_relative_to(Path(root['root'])):
+            if hint.get('kind')!='database':continue
+            path=local_library_folder(hint.get('value'))
+            if path is not None and path.is_relative_to(Path(root['root'])):
                 stack.append((path,2))
         while stack:
             if directories>=MAX_DIRECTORIES or entries>=MAX_ENTRIES or clock()-started>=MAX_SECONDS:

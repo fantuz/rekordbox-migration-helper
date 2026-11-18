@@ -25,7 +25,7 @@ class CloudDiscoveryTests(unittest.TestCase):
     def library(self,root,subfolder='rekordbox'):
         folder=root/subfolder;folder.mkdir(parents=True)
         (folder/'master.db').write_bytes(b'NOT SQL: discovery must never read these bytes')
-        return folder
+        return folder.resolve()
 
     def test_custom_team_root_with_customer_namespace_is_discovered_without_sql_reads(self):
         team=self.home/'Club Option DJ team Dropbox';library=self.library(team,'Example Customer/rekordbox')
@@ -182,8 +182,16 @@ class CloudDiscoveryTests(unittest.TestCase):
     def test_saved_custom_deep_location_is_probed_before_the_shallow_search(self):
         root=self.home/'Team Dropbox';library=self.library(root,'Customer/custom/music/Library renamed')
         self.dropbox({'business':{'path':str(root)}})
-        result=discover('win32',self.env,self.home,[{'kind':'database','value':str(library)}],registrations=[])
+        recorded=root/'Customer/custom/music/Library renamed'
+        result=discover('win32',self.env,self.home,[{'kind':'database','value':str(recorded)}],registrations=[])
         self.assertIn(str(library),[row['path'] for row in result['libraries']])
+
+    def test_current_saved_location_is_not_reported_as_a_relocation_through_an_os_alias(self):
+        root=self.home/'Dropbox';library=self.library(root)
+        for recorded in (root/'rekordbox',root/'rekordbox/master.db'):
+            result=discover('win32',self.env,self.home,[{'kind':'database','value':str(recorded)}],registrations=[])
+            self.assertIn(str(library),[row['path'] for row in result['libraries']])
+            self.assertEqual(result['relocations'],[])
 
     def test_metadata_cache_isolated_from_callers_and_explicit_refresh_discovers_changes(self):
         root=self.home/'Dropbox';first=self.library(root)
