@@ -24,6 +24,11 @@ The genre-balance panel compares shares of entries with known usage to shares of
 
 Click a category to narrow the collection. The default path is genre family → saved genre → artist initial → artist → tracks. Choose a different next dimension, including release/addition year, BPM band, personal stars, usage, cue preparation, format, tonality or track colour. Breadcrumbs return to earlier branches.
 
+The collection filter panel uses one aligned responsive grid for all criteria.
+Apply filters collapses it only after a successful response, leaving a compact
+active-filter summary. Errors or further changes while applying keep it open.
+The nested More criteria section remains available in other insight pages.
+
 Branch counters appear before the collection filters, grouping/area controls
 and clickable breadcrumb path. The category legend also opens branches:
 click a row or activate it with Enter/Space. Hover or focus previews its
@@ -48,7 +53,7 @@ Sources: [official rekordbox XML fields](https://cdn.rekordbox.com/files/2020041
 
 Tonality & tempo shows saved-key coverage, a clickable 10-BPM histogram, and per-key usage/mean/median BPM tables. Overall BPM mean, median, range, known/unknown counts and mean/median full track length appear alongside the other insight views. Means weight each entry equally. Missing/zero BPM is excluded from BPM statistics; missing track lengths stay unknown.
 
-Keys come from XML `Tonality` or native `djmdKey.ScaleName` through `KeyID`. Different saved notations remain separate; there is no automatic enharmonic, Camelot or Open Key conversion, audio key detection, harmonic-compatibility guarantee or half/double-time BPM correction. Older Workbench snapshots need a new capture to include fields that were not previously retained.
+Keys come from XML `Tonality` or native `djmdKey.ScaleName` through `KeyID`. Choose **Key notation** to display recognized keys alphabetically, in Camelot notation (8A / 8B) or in Open Key notation (1m / 1d). Recognized enharmonic and notation equivalents share one key group: Am, 8A and 1m count together. Changing display format immediately updates group labels, key filters, breadcrumbs, tonality tables, Library intelligence session rows and the read-only key in File view. Source-format counts and original-tag breakdowns retain the evidence. Missing and unrecognized values remain separate; ambiguous tags are not guessed. This is a display projection: captured tags, working edits, CSV source values and native exports remain unchanged. It does not perform audio key detection, guarantee harmonic compatibility or correct half/double-time BPM. Older Workbench snapshots need a new capture to include fields that were not previously retained.
 
 ## Track comments and responsible edits
 
@@ -70,8 +75,8 @@ Bubble layout uses a bundled, integrity-checked [d3-hierarchy 3.1.2](https://git
 
 ## Starting the colour cloud
 
-Loading XML/ZIP files prepares the review workspace. If no analysis snapshot is selected, choose **Use loaded library** directly inside the graph or its source bar. This captures metadata from the existing local analysis copy, without writing to the source files, and the saved snapshot can be reused by the other insight views. Alternatively, select an existing saved snapshot.
+Loading XML/ZIP files prepares the review workspace. If no analysis snapshot is selected, choose **Use loaded library** directly inside the graph or expand **Collection snapshot** above the page header. This captures metadata from the existing local analysis copy, without writing to the source files, and the saved snapshot can be reused by the other insight views. Alternatively, select an existing saved snapshot.
 
-Grouping choices remain visible before a source is ready. The canvas distinguishes no source, loading, empty results and a failed request. **Colour cloud** starts with track count as area so unplayed tracks still appear; other area metrics can be selected afterward. Unknown and unassigned colours remain counted. Each chart page renders at most 60 categories; detailed group statistics are calculated for those visible groups, while collection totals cover the full branch.
+Grouping choices remain visible before a source is ready. The canvas distinguishes no source, loading, empty results and a failed request. **Colour cloud** starts with track count as area so unplayed tracks still appear; other area metrics can be selected afterward. **Hide unknown** removes uncaptured categories or unknown size-metric values from the map, with an excluded-entry count. It keeps known zero values and explicitly unassigned colours. Branch counters still describe the full matching branch; missing unrelated metadata does not exclude a track. Without this display filter, unknown and unassigned colours remain counted. Each chart page renders at most 60 categories; detailed group statistics are calculated for those visible groups, while collection totals cover the full branch.
 
 Select **Expand map** to use most of the viewport. The fixed category-detail panel stays above the circles and updates on hover or keyboard focus. Category paging remains alongside the map. Stable spacing separates the circles without changing their area ratios.

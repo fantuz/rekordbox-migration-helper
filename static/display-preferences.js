@@ -19,6 +19,7 @@ window.DisplayPreferences=(()=>{
   }
   function update(patch){
     if(patch.key_notation!==undefined&&!['alpha','camelot','open_key'].includes(patch.key_notation))return;
+    if(Object.entries(patch).every(([key,value])=>state[key]===value))return;
     state={...state,...patch};try{localStorage.setItem(storage,JSON.stringify(state));}catch{}
     sync();window.dispatchEvent(new CustomEvent('workbench-display-preferences',{detail:{...state}}));
   }

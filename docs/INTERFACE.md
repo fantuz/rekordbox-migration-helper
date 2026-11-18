@@ -14,9 +14,34 @@ Create an untouched rekordbox Backup Library backup before preparing transformed
 
 Source analyzer can instead inspect a database folder or collection XML. Close rekordbox and pause Cloud Library Sync for capture. Windows and Mac suggestions are optional; manual paths also work on Linux for a user-mounted filesystem. Read [migration](MIGRATION.md), [compatibility](COMPATIBILITY.md) and [capture/asset/history procedures](DISCOVERY-ASSETS-HISTORY.md) for details.
 
-File health includes a **Playable?** column and full-index filters. **Yes** indicates a successful local file inspection; **No** groups Missing and Inaccessible. **Unknown** represents Unverified; records never inspected remain Unchecked and must not be treated as No. The filter and column sort run against the complete indexed scan, before the 50-record page is selected. Playback independently rechecks the local path and readability before opening the default media player. This is not a decoding or audio-integrity test.
+File health includes an **Accessible?** column and full-index filters. **Yes** indicates a successful local file inspection; **No** groups Missing and Inaccessible. **Unknown** represents Unverified; records never inspected remain Unchecked and must not be treated as No. The filter and column sort run against the complete indexed scan, before the 50-record page is selected. Dropbox and Google Drive path filters use colored labels. Cloud-only placeholders and absent cloud paths remain distinct from confirmed local absence. Playback independently rechecks the path and requires a fresh one-track confirmation for cloud-managed audio. See [cloud file health and metadata API findings](CLOUD-FILE-HEALTH.md). This is not a decoding or audio-integrity test.
 
 In saved native snapshot **Duplicate review** and **File references**, click a sortable column heading to order the entire filtered collection, not only the visible 50 rows. Click again to reverse direction; changing the column resets to page one, and Previous/Next retain the chosen sort. The arrows indicate direction, while the Review action column is not sortable. Large requests use the shared Loading / Waiting feedback without locking the page. File health independently sorts its full scanned SQLite index before paging.
+
+## Compact collection navigation and charts
+
+**Collection context** and **Collection snapshot** sit in a slim row above the
+page header, collapsed by default. Orange and pink outlines identify the two
+controls. Their short labels show the current selections. Expand a control to
+change its source, inspect capture times or use the existing snapshot actions.
+Only one group expands at once; click outside or press Escape to close it.
+Snapshot controls follow the active tool, while Collection context remains the
+shared source for collection views. Choosing a tool snapshot retains that
+tool's existing scope rules; it does not silently change the shared context.
+
+**Collection statistics** shows addition-year, track-length, release-year and
+saved-genre distributions. Release dates contribute their year only when a
+valid captured year or ISO release date is available. Genre names retain their
+saved spelling. For very many genres, an explicit Other saved genres bucket
+collects small categories, retaining the complete known total.
+
+The compact **Hide unknown** checkbox is remembered locally and shared with
+Bubble and Tonality views. Statistics exclude unknown values independently for
+each chart, showing displayed/total counts and the number excluded. A missing
+genre does not remove a known release year or duration. Known zero values remain
+visible. Unverified scalar counters can be hidden too, without changing the
+captured collection or source totals. Key notation is another remembered
+display choice; see [key grouping and evidence](DJ-INSIGHTS.md).
 
 ## Review and evidence
 

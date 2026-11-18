@@ -72,7 +72,8 @@ function compactBubbleFilters(){
   const form=$('#bubble-filter-form'),extra=$('#bubble-more-criteria'),panel=form.closest('details'),actions=form.querySelector('.insight-filter-actions');
   panel.id='bubble-filter-panel';form.classList.add('bubble-filter-grid');
   form.append(...extra.querySelector('.insight-extra-grid').children,actions,extra.querySelector('p'));extra.remove();
-  panel.querySelector('summary').innerHTML=I18n.html('Collection filters')+'<span id="bubble-filter-summary"></span>';
+  const summary=panel.querySelector('summary');summary.removeAttribute('data-i18n');
+  summary.innerHTML=I18n.html('Collection filters')+'<span id="bubble-filter-summary"></span>';
   const feedback=document.createElement('p');feedback.id='bubble-filter-feedback';feedback.className='chart-exclusion-note';feedback.setAttribute('role','status');form.append(feedback);
   form.addEventListener('input',()=>bubbleFilterSummary(insightState.bubble.appliedFilters));
   form.addEventListener('change',()=>bubbleFilterSummary(insightState.bubble.appliedFilters));
@@ -97,10 +98,11 @@ async function insightSource(prefix){
 }
 async function insightSnapshotOptions(prefix){
   const state=insightState[prefix],identity=$('#'+prefix+'-snapshot').value;
+  const revision=state.optionsRevision=(state.optionsRevision || 0)+1;
   if(!identity){state.options=null;$('#'+prefix+'-snapshot-note').textContent=I18n.t("Save a collection snapshot in Library lab or capture a loaded XML + ZIP workspace. Saved snapshots remain available after temporary inputs are removed.");return;}
   window.BrowseState?.restore($('#'+prefix+'-filter-form'));
   const options=await api('/api/insights/options?'+new URLSearchParams({snapshot:identity,...DisplayPreferences.args()}));
-  if($('#'+prefix+'-snapshot').value!==identity)return;
+  if($('#'+prefix+'-snapshot').value!==identity || revision!==state.optionsRevision)return false;
   state.options=options;insightLastSnapshot=identity;
   const family=$('#'+prefix+'-family'),oldFamily=family.value,genre=$('#'+prefix+'-genre'),oldGenre=genre.value;
   family.innerHTML=("<option value=\"\">"+esc(I18n.t("All families"))+"</option>")+options.families.map(g=>'<option value="'+esc(g.key)+'">'+esc(g.key)+' · '+num(g.tracks)+'</option>').join('');

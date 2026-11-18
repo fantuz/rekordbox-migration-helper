@@ -38,6 +38,8 @@ def main():
         from check_cloud_locations_ui import cloud_fixture
         cloud=cloud_fixture(root)
         env['APPDATA']=str(cloud['appdata'])
+        from check_display_workflows_ui import fake_player_environment
+        player_env,opener_log=fake_player_environment(root);env.update(player_env)
         log=(args.output/'application.log').open('w',encoding='utf-8')
         process=subprocess.Popen([sys.executable,str(ROOT/'desktop_launcher.py'),'--port','0','--no-browser'],cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT)
         try:
@@ -58,6 +60,9 @@ def main():
                         api_issues.append({'url':response.url,'status':response.status,'content_type':response.headers.get('content-type')})
                 page.on('response',check_api_response)
                 page.goto(base,wait_until='networkidle');page.wait_for_function('typeof loadDJInsights === "function"')
+                from check_display_workflows_ui import check_display_workflows_ui
+                report['display_workflows_ui']=check_display_workflows_ui(browser,base,store,root,args.output,opener_log,sid)
+                page.evaluate('()=>Journeys.load()')
                 page.locator('.nav[data-view="insights"]').click()
                 page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]',state='attached')
                 # Native <option> elements are attached but not visually

@@ -109,6 +109,7 @@ def check_native_collection_ui(browser, base, data, output, root):
         assert page.locator('#history-tracks tbody tr').count() == 5
         page.screenshot(path=str(output / 'native-collection-context.png'))
         # Explicit snapshot action captures the chosen source and updates the shared context.
+        open_collection_picker(page,'[data-journey-context-capture]')
         action.click()
         page.wait_for_selector('#preparation-dialog[open]')
         assert not page.locator('#preparation-scan').is_checked()

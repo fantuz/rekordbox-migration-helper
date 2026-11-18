@@ -10,7 +10,8 @@ The following pages use retained metadata from the selected capture or snapshot:
 Playlist membership is a separate capability from playlist ordering. If a native source lacks the required playlist tables, **outside-playlist counts stay unknown** and the Unfiled lens is unavailable; an actual collection with valid playlist tables but zero playlists correctly reports every track as unfiled. Older captures with insufficient schema evidence remain conservatively unknown and can be recaptured.
 
 - **Collection statistics:** length filters, cue categories, ratings, saved play
-  counts, playlists and library addition dates. Unknown fields remain unverified.
+  counts, playlists, library addition dates, release years and saved genres.
+  Hide unknown excludes missing values independently in each histogram. Unknown fields remain unverified.
   Relationship counts cover the whole captured source, regardless of length filters.
 - **Play history:** native history sessions and recorded entry order, including
   repeats and entries absent from the active collection. An additional Library lab
@@ -66,3 +67,7 @@ This is an initial library-health diagnostic rather than an automatic duplicate-
 Use **Cleanup & migration → File health** for library-wide reachability analysis. Choose a saved snapshot/capture and explicitly start **Scan local files**. The scan runs in a cancellable background job using the local filesystem and stores its results in the private SQLite sidecar. Nothing reads or changes audio bytes; source libraries remain untouched. Results show checked and unchecked counts, Playable/Missing/Inaccessible/Unverified facets, search by artist/title/genre/ID, and stable global sorting across 50-row pages.
 
 **Unchecked** means the track has not been probed in the current scan. **Unverified** means its recorded paths were considered but access could not be established. A missing file under an accessible directory is different from an unavailable volume. A status does not establish duplicate audio identity or authorize deletion. Re-scan explicitly after changing connections or library paths. Paused/cancelled scans can have partial observations; new scans refresh all evidence. Individual playback actions always validate the path again.
+
+Cloud path evidence and single-track playback consent are described in
+[Cloud file health](CLOUD-FILE-HEALTH.md). Choose the saved scan source using the
+collapsed Collection snapshot control above the header.
