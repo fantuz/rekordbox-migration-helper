@@ -194,3 +194,10 @@ persistent STEMS-readiness evidence.
 These observations retain the existing distinction between recorded metadata,
 filesystem availability, byte identity, derived audio and native-format evidence.
 The review was static; the new DSP engine and claimed vendor traces were not run.
+
+The final follow-up at
+[`8e9f30ec`](https://github.com/fantuz/recordbox/commit/8e9f30ec516836739137ff191d89be10549da081)
+adds an ignored, opt-in FX cost benchmark and updates the README source-line count.
+It does not change production behavior, native formats, import/export compatibility
+or STEMS handling. The benchmark's 48 kHz/512-frame inputs are synthetic performance
+parameters, not evidence of a required library sample rate or an asset format.

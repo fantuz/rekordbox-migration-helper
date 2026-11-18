@@ -21,9 +21,10 @@ from workbench_store import Store
 
 def main():
     from playwright.sync_api import sync_playwright
-    parser=argparse.ArgumentParser();parser.add_argument('--browser',choices=['chromium','firefox','webkit'],default='chromium');parser.add_argument('--output',type=Path,required=True);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--browser',choices=['chromium','firefox','webkit'],default='chromium');parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--headed',action='store_true',help='Use a desktop display to check native scrollbar appearance');args=parser.parse_args()
     args.output.mkdir(parents=True,exist_ok=True)
-    errors=[];requests=[];api_issues=[];report={'browser':args.browser,'synthetic':True,'languages':[],'status':'running'}
+    errors=[];requests=[];api_issues=[];report={'browser':args.browser,'headed':args.headed,'synthetic':True,'languages':[],'status':'running'}
     messages=catalogues(ROOT/'static')
     with tempfile.TemporaryDirectory(prefix='workbench-language-') as tmp:
         root=Path(tmp);data=root/'data';data.mkdir();store=Store(data/'workbench-sidecar.sqlite3')
@@ -45,7 +46,9 @@ def main():
                 time.sleep(.15)
             base=json.loads((data/'instance.json').read_text())['url']
             with sync_playwright() as p:
-                browser=getattr(p,args.browser).launch()
+                # Headless Firefox injects a UA rule hiding every scrollbar;
+                # CI uses a virtual desktop to verify their actual appearance.
+                browser=getattr(p,args.browser).launch(headless=not args.headed)
                 context=browser.new_context(locale='en-US',viewport={'width':1440,'height':1000})
                 page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
                 page.on('request',lambda request:requests.append({'url':request.url,'method':request.method}))
