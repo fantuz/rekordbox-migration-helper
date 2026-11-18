@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 1.1.10 — 2026-11-18
+
+This release makes library preparation and recovery easier to follow, adds local cloud-location discovery, and improves Library bubbles navigation.
+
+- Start new sessions on a clickable workflow map connecting inputs, transformation, enrichment, verification and outputs. Returning views and direct links remain available, with guidance about the evidence each feature needs.
+- Offer metadata preparation after native, XML-only or paired XML+ZIP loading. Reuse the matching saved collection snapshot, preserve the selected source for queued work, and keep optional file-availability scanning unchecked. Bubbles and File health require no additional manual Rekordbox export.
+- Clarify which loaded XML+ZIP workspace Media inventory searches. Remove incorrect search folders without deleting files, group optional path mappings, restore successful search roots, identify previous results after settings change, and keep drafts separate by workspace. Checking a restored destination requires loading that destination.
+- Put bubble counters before filters, grouping controls and clickable breadcrumbs. Open legend categories with a click or Enter/Space, preview evidence on hover/focus, and show 15 complete desktop rows with contrasting scrollbars and a translated scroll hint. Keep zero-area categories accessible and preserve source metadata and circle-area ratios. Let shared header controls wrap at intermediate desktop widths.
+- Discover Dropbox and Google Drive locations from bounded local configuration and operating-system registrations, including custom Dropbox team/customer folders and multiple accounts. Skip unavailable or online-only roots and links; do not sign in, mount drives, move music or start a scan automatically. Users can inspect locations and explicitly select search roots or a library folder.
+- Suggest possible relocated library folders from recorded database paths and matching trailing directory components, retaining ambiguity and unknown identity. No old path means no relocation claim; path similarity does not verify database or audio identity. Library discovery remains separate from audio-reference relocation. Keep detected roots within the existing server-selected audio-access boundaries and handle Windows path casing and macOS system aliases.
+- Check the paired importer's consumed tables/columns before catalog creation, with readable errors, case-insensitive content fields and safe retry/source-preservation regressions. Incorporate the latest pinned Recordbox findings: `PDSTEMS1` caches may be evicted, sampler/sequence WAV files are derived audio, and runtime FX/preferences do not establish native fields, STEMS readiness or migration equivalence.
+- Extend real-server Chromium, Firefox and WebKit coverage for preparation, inventory, cloud discovery, keyboard/mouse bubble navigation, responsive/RTL layouts and unchanged source bytes. Check scrollbar contrast and wheel scrolling across native scrollbar policies. Keep new controls translated across all 13 interface languages and refresh synthetic workflow screenshots.
+- Use the standard Ubuntu archive for browser/compiler dependency downloads, including hosted-runner mirror-list files, to avoid regional mirror stalls while retaining all source, native-package and security gates.
+
+Release scope: merged [PR #72](https://github.com/fantuz/rekordbox-migration-helper/pull/72) and [PR #73](https://github.com/fantuz/rekordbox-migration-helper/pull/73), together with prior improvements. File health checks accessibility of nonempty readable audio files; Advanced Media inventory separately reads tags/duration. Neither establishes full decoding, audio identity or native STEMS readiness. See the [workflow guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.1.10/docs/WORKFLOWS.md), [cloud discovery guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.1.10/docs/CLOUD-DISCOVERY.md) and [Recordbox integrity review](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.1.10/docs/RECORDBOX-INTEGRITY-REVIEW.md). Reload open browser tabs after upgrading to receive the updated interface.
+
 ## 1.1.9 — 2026-11-17
 
 This release adds reviewed label/composer imports and a real OneTagger producer-to-importer test, and includes the report-review and integrity improvements shipped in 1.1.8.
