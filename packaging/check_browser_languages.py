@@ -33,6 +33,9 @@ def main():
         saved=store.save_snapshot(snapshot,'Synthetic Unicode fixture');sid=saved['id'];before=deepcopy(store.snapshot(sid))
         offline=export_metadata(snapshot,root/'offline','a'*32,ROOT/'static',lambda *_:None,title='Synthetic Unicode fixture')
         env={**os.environ,'LIBRARY_WORKBENCH_DATA_DIR':str(data),'LIBRARY_WORKBENCH_NO_BROWSER':'1','LIBRARY_WORKBENCH_DISABLE_MUSICBRAINZ':'1'}
+        from check_cloud_locations_ui import cloud_fixture
+        cloud=cloud_fixture(root)
+        env['APPDATA']=str(cloud['appdata'])
         log=(args.output/'application.log').open('w',encoding='utf-8')
         process=subprocess.Popen([sys.executable,str(ROOT/'desktop_launcher.py'),'--port','0','--no-browser'],cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT)
         try:
@@ -116,6 +119,8 @@ def main():
                 page.select_option('#language','en');page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
                 from check_regional_languages_ui import check_regional_languages_ui
                 report['regional_languages_ui']=check_regional_languages_ui(browser,base,args.output)
+                from check_cloud_locations_ui import check_cloud_locations_ui
+                report['cloud_locations_ui']=check_cloud_locations_ui(browser,base,args.output,cloud)
                 from check_journeys_ui import check_journeys_ui
                 report['journeys_ui']=check_journeys_ui(page,base,sid,args.output)
                 from check_guided_journeys_ui import check_guided_journeys_ui

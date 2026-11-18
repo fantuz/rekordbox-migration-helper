@@ -46,3 +46,14 @@ Download the `language-validation-chromium` artifact and review these three file
 - `readme-playlist-explorer.png`
 
 Keep synthetic labels visible. Update the README captions and this description if fixture size or contents change. Never replace them with a personal library capture.
+
+## Cloud location discovery
+
+`cloud-library-locations.png` is a reviewed Chromium capture from
+`packaging/check_cloud_locations_ui.py`, included in the same browser workflow.
+It shows an invented Dropbox team/customer layout in a temporary directory,
+with an opaque synthetic `master.db` filename and synthetic provider config.
+The database bytes are not opened by discovery. No user path, provider account,
+music file or real database is included. The existing 12-track synthetic
+snapshot is visible in the collection selector and is independent of the
+discovered folder. The screenshot is documentation, not bundled demo data.
