@@ -30,7 +30,8 @@ window.LibraryPreparation=(()=>{
     if(!node('dialog').open)node('dialog').showModal();
   }
   async function loaded(source){
-    await Journeys.load();await Journeys.selectContext(source,true);await load();await open(source);
+    try{await Journeys.load();await Journeys.selectContext(source,true);await load();await open(source);}
+    catch(error){notify(error.message,true);await load();}
   }
   node('open').onclick=wrap(()=>open());
   node('later').onclick=()=>node('dialog').close();
