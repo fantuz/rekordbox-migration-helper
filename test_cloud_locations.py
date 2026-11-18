@@ -213,7 +213,8 @@ class CloudDiscoveryTests(unittest.TestCase):
         self.assertIsNone(small_json(config))
 
     def test_relative_network_and_system_root_configuration_are_not_probed(self):
-        self.dropbox({'personal':{'path':'../outside'},'business':{'path':'//remote-host/share'},'other':{'path':'/'}})
+        self.dropbox({'personal':{'path':'../outside'},'business':{'path':'//remote-host/share'},
+                      'other':{'path':'/'},'bad_alias':{'path':'~nonexistent-workbench-user-869104/Dropbox'}})
         self.assertEqual(provider_roots('linux',self.env,self.home,[]),[])
 
     def test_provider_disconnected_during_metadata_discovery_is_skipped(self):

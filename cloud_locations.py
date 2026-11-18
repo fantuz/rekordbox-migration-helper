@@ -122,7 +122,7 @@ def provider_roots(platform_name=None,environ=None,home=None,registrations=None)
     candidates=[]
     def add(path,kind,evidence,account='unknown'):
         if isinstance(path,str) and path and len(path)<=4096 and '\0' not in path:
-            candidates.append((Path(path).expanduser(),kind,evidence,account))
+            candidates.append((Path(path),kind,evidence,account))
     configs=[user/'.dropbox/info.json',user/'Library/Application Support/Dropbox/info.json']
     for name in ('APPDATA','LOCALAPPDATA'):
         if isinstance(env.get(name),str):configs.append(Path(env[name])/'Dropbox/info.json')
