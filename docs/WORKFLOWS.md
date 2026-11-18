@@ -58,6 +58,8 @@ quality. A scan cannot reconstruct absent native evidence.
 
 ## Which library does Media inventory check?
 
+![Media inventory with synthetic data](screenshots/media-inventory.png)
+
 **Media inventory checks the loaded XML+ZIP workspace**, named on its card.
 The collection header can select a different snapshot without changing that
 recovery-search input. Use **File health** and **Audio folders** to inspect a
