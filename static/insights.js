@@ -52,9 +52,11 @@ function insightBasisControls(prefix){const saved=$('#'+prefix+'-basis').value==
 async function insightSource(prefix){
   const info=await api('/api/lab'),select=$('#'+prefix+'-snapshot'),shared=window.Journeys?.context(),old=select.value || window.BrowseState?.value(select.id) || shared?.snapshot || insightLastSnapshot;
   labSelect('#'+prefix+'-snapshot',info.snapshots,r=>r.label+' · '+snapshotMoment(r.created),I18n.t("Choose a saved collection snapshot"));
-  if(info.snapshots.some(s=>s.id===old))select.value=old;
-  if(shared)select.value=info.snapshots.some(s=>s.id===old)?old:'';else if(!select.value && info.snapshots.length)select.value=info.snapshots[0].id;
-  $$('[data-insight-capture="'+prefix+'"]').forEach(button=>button.disabled=!info.workspace);
+  const scoped=info.snapshots.filter(s=>!shared || s.scope_key===shared.scope_key);
+  const wanted=shared?.snapshot || (scoped.some(s=>s.id===old)?old:scoped[0]?.id);
+  if(wanted)select.value=wanted;
+  if(shared)select.value=info.snapshots.some(s=>s.id===wanted)?wanted:'';else if(!select.value && info.snapshots.length)select.value=info.snapshots[0].id;
+  $$('[data-insight-capture="'+prefix+'"]').forEach(button=>button.disabled=!shared && !info.workspace);
   await insightSnapshotOptions(prefix);
 }
 async function insightSnapshotOptions(prefix){
@@ -86,9 +88,7 @@ async function loadDJInsights(){await insightSource('dj');await loadDJData();}
 async function loadBubbleExplorer(){await insightSource('bubble');await loadBubbleData();}
 async function loadTonalityInsights(){await insightSource('tonal');await loadTonalData();}
 $$('[data-insight-capture]').forEach(button=>button.onclick=wrap(async()=>{
-  if(busy)return;const prefix=button.dataset.insightCapture;
-  const start=await labPost('snapshots',{source:'session',get label(){return I18n.t("DJ insights · loaded collection");}});const result=await poll(start.job);
-  insightLastSnapshot=result.id;if(window.Journeys){await Journeys.load();await Journeys.selectContext('snapshot:'+result.id);}await insightSource(prefix);$('#'+prefix+'-snapshot').value=result.id;await insightSnapshotOptions(prefix);await applyInsightFilters(prefix);notify(I18n.t("Saved collection snapshot for local insights"));
+  if(busy)return;await LibraryPreparation.open(undefined,{dj:'insights',bubble:'bubbles',tonal:'tonality'}[button.dataset.insightCapture]);
 }));
 function insightArgs(prefix){
   const args={snapshot:$('#'+prefix+'-snapshot').value,basis:$('#'+prefix+'-basis').value};

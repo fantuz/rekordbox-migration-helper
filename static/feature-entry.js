@@ -17,8 +17,13 @@ $('#quick-xml-form').onsubmit=wrap(async event=>{
     const started=await uploadFile(file,'/api/quick-export/xml');await poll(started.job);
     await loadQuickExports();$('#quick-source').value=started.source;updateQuickSource();
     await loadAnalyzer();await loadLab();await Journeys.load();await Journeys.selectContext('capture:'+started.source);updateQuickSource();
-    notify(I18n.t('XML metadata is ready for sharing'));
+    notify(I18n.t('XML metadata is ready for sharing'));await LibraryPreparation.loaded('capture:'+started.source);
   }finally{busy=false;finishProgress();updateQuickSource();}
 });
 Journeys.init();SharingUI.init();Intelligence.init();renderFeaturedTools();
 window.addEventListener('workbench-language',renderFeaturedTools);
+
+document.querySelector('[data-map-onetagger]').onclick=()=>{
+  showView('lab');document.querySelector('[data-lab-tab="editor"]').click();
+  document.getElementById('onetagger-bridge').scrollIntoView({block:'start'});
+};
