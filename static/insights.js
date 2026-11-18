@@ -48,7 +48,7 @@ for(const prefix of ['dj','bubble','tonal']){
   $('#'+prefix+'-filters').innerHTML=insightFilterMarkup(prefix);
   if(prefix==='bubble')compactBubbleFilters();
   $('#'+prefix+'-filter-form').onsubmit=wrap(async event=>{event.preventDefault();await applyInsightFilters(prefix,true);});
-  $('#'+prefix+'-filter-reset').onclick=wrap(async()=>{$('#'+prefix+'-filter-form').reset();insightBasisControls(prefix);await applyInsightFilters(prefix,true);});
+  $('#'+prefix+'-filter-reset').onclick=wrap(async()=>{$('#'+prefix+'-filter-form').reset();insightBasisControls(prefix);window.BrowseState?.remember();await applyInsightFilters(prefix,true);});
   $('#'+prefix+'-basis').onchange=()=>insightBasisControls(prefix);
   $('#'+prefix+'-family').onchange=()=>{$('#'+prefix+'-genre').value='';};
   $('#'+prefix+'-snapshot').onchange=wrap(async()=>{insightLastSnapshot=$('#'+prefix+'-snapshot').value;await insightSnapshotOptions(prefix);await applyInsightFilters(prefix);});
@@ -72,6 +72,12 @@ function compactBubbleFilters(){
   const form=$('#bubble-filter-form'),extra=$('#bubble-more-criteria'),panel=form.closest('details'),actions=form.querySelector('.insight-filter-actions');
   panel.id='bubble-filter-panel';form.classList.add('bubble-filter-grid');
   form.append(...extra.querySelector('.insight-extra-grid').children,actions,extra.querySelector('p'));extra.remove();
+  const pairs=[];
+  for(const [minimum,maximum] of [['bpm-min','bpm-max'],['min','max']]){
+    const first=$('#bubble-'+minimum).closest('label'),last=$('#bubble-'+maximum).closest('label'),pair=document.createElement('div');
+    pair.className='bubble-filter-pair';first.before(pair);pair.append(first,last);pairs.push(pair);
+  }
+  pairs[1].before($('#bubble-rating-min').closest('label'));
   const summary=panel.querySelector('summary');summary.removeAttribute('data-i18n');
   summary.innerHTML=I18n.html('Collection filters')+'<span id="bubble-filter-summary"></span>';
   const feedback=document.createElement('p');feedback.id='bubble-filter-feedback';feedback.className='chart-exclusion-note';feedback.setAttribute('role','status');form.append(feedback);
@@ -96,11 +102,11 @@ async function insightSource(prefix){
   $$('[data-insight-capture="'+prefix+'"]').forEach(button=>button.disabled=!shared && !info.workspace);
   await insightSnapshotOptions(prefix);
 }
-async function insightSnapshotOptions(prefix){
+async function insightSnapshotOptions(prefix,{restore=true}={}){
   const state=insightState[prefix],identity=$('#'+prefix+'-snapshot').value;
   const revision=state.optionsRevision=(state.optionsRevision || 0)+1;
   if(!identity){state.options=null;$('#'+prefix+'-snapshot-note').textContent=I18n.t("Save a collection snapshot in Library lab or capture a loaded XML + ZIP workspace. Saved snapshots remain available after temporary inputs are removed.");return;}
-  window.BrowseState?.restore($('#'+prefix+'-filter-form'));
+  if(restore)window.BrowseState?.restore($('#'+prefix+'-filter-form'));
   const options=await api('/api/insights/options?'+new URLSearchParams({snapshot:identity,...DisplayPreferences.args()}));
   if($('#'+prefix+'-snapshot').value!==identity || revision!==state.optionsRevision)return false;
   state.options=options;insightLastSnapshot=identity;
@@ -114,7 +120,7 @@ async function insightSnapshotOptions(prefix){
   if(oldTone){let selected;try{selected=JSON.parse(oldTone);}catch{}const identity=DisplayPreferences.group(selected);if(options.tonality_options.some(key=>key.key===identity))tone.value=JSON.stringify(identity);}
   colour.innerHTML=("<option value=\"\">"+esc(I18n.t("All colours / unknown"))+"</option>")+options.colours.map(c=>'<option value="'+esc(JSON.stringify(c.key))+'">'+esc(c.status==='unknown'?I18n.t('Colour not captured'):c.status==='unassigned'?I18n.t('No assigned colour'):c.label)+' · '+num(c.tracks)+'</option>').join('');
   if(options.colours.some(c=>JSON.stringify(c.key)===oldColour))colour.value=oldColour;
-  window.BrowseState?.restore($('#'+prefix+'-filter-form'));
+  if(restore)window.BrowseState?.restore($('#'+prefix+'-filter-form'));
   for(const basis of ['history',"sessions"])$('#'+prefix+'-basis option[value="'+basis+'"]').disabled=!options.history_available;
   if(!options.history_available)$('#'+prefix+'-basis').value='saved';insightBasisControls(prefix);
   $('#'+prefix+'-snapshot-note').textContent=num(options.entries)+" "+I18n.t("captured entries ·")+" "+(options.snapshot.captured?I18n.t("Snapshot")+" "+date(options.snapshot.captured):I18n.t("Capture date unavailable"))+' · '+(options.reference_date?I18n.t("Rediscovery reference")+" "+options.reference_date:I18n.t("Rediscovery date unavailable"))+' · '+(options.history_available?num(options.history_sessions)+" "+I18n.t("saved sessions"):I18n.t("Native session history unavailable"))+'. '+I18n.t('Source files stay unchanged')+'.';
@@ -128,14 +134,16 @@ async function loadTonalityInsights(){await insightSource('tonal');await loadTon
 $$('[data-insight-capture]').forEach(button=>button.onclick=wrap(async()=>{
   if(busy)return;await LibraryPreparation.open(undefined,{dj:'insights',bubble:'bubbles',tonal:'tonality'}[button.dataset.insightCapture]);
 }));
-function insightArgs(prefix){
-  const args={snapshot:$('#'+prefix+'-snapshot').value,basis:$('#'+prefix+'-basis').value,...DisplayPreferences.args()};
+function insightArgs(prefix,values=null){
+  const fields=values?new Map(values.map(row=>[row.id,row.value])):null;
+  const get=name=>fields?.has(prefix+'-'+name)?fields.get(prefix+'-'+name):$('#'+prefix+'-'+name).value;
+  const args={snapshot:$('#'+prefix+'-snapshot').value,basis:get('basis'),...DisplayPreferences.args()};
   for(const [name,key] of [['search','q'],['family','family'],['usage','usage_filter'],['preparation','preparation'],['bpm-min','bpm_min'],['bpm-max','bpm_max'],['min','min'],['max','max'],['rating-min','rating_min']]){
-    const value=$('#'+prefix+'-'+name).value;if(value!=='')args[key]=value;
+    const value=get(name);if(value!=='')args[key]=value;
   }
-  if($('#'+prefix+'-genre').value!=='')args.genre=JSON.parse($('#'+prefix+'-genre').value);
-  for(const name of ['tone','colour'])if($('#'+prefix+'-'+name).value!=='')args[name]=JSON.parse($('#'+prefix+'-'+name).value);
-  if(args.basis!=='saved')for(const name of ['from','to'])if($('#'+prefix+'-'+name).value)args[name]=$('#'+prefix+'-'+name).value;
+  if(get('genre')!=='')args.genre=JSON.parse(get('genre'));
+  for(const name of ['tone','colour'])if(get(name)!=='')args[name]=JSON.parse(get(name));
+  if(args.basis!=='saved')for(const name of ['from','to'])if(get(name))args[name]=get(name);
   if(prefix==='dj')for(const [name,key] of [['perspective','perspective'],['quality','quality'],['stars','stars'],['max-plays','max_plays'],['days','days'],['random-mode','random_mode'],['sample','sample'],['seed','seed']])args[key]=$('#dj-'+name).value;
   else {if(prefix==='bubble')args.path=JSON.stringify(insightState.bubble.path);args.perspective='all';}
   return {...args,...CollectionSort.args(prefix+'-tracks')};
@@ -232,11 +240,11 @@ bubbleDimensionOptions();bubbleSourceAvailability(false);
 $('#bubble-choose-source')?.addEventListener('click',()=>{
   const group=$('#collection-snapshot-toggle');if(group)group.open=true;const select=$('#bubble-snapshot');select.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});select.focus({preventScroll:true});
 });
-async function loadBubbleData(){
+async function loadBubbleData({applied=false}={}){
   const state=insightState.bubble,revision=++state.revision;
   bubbleDimensionOptions();bubbleSourceAvailability(Boolean(state.options));
   if(!state.options){state.result=null;$('#bubble-evidence').textContent=I18n.t("Save or choose a collection snapshot to draw the map.");$('#bubble-svg').disabled=true;const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state='no-source';for(const id of ['bubble-groups','bubble-summary','bubble-tracks','bubble-breadcrumbs','bubble-group-count','bubble-track-count','bubble-selected','bubble-map-note','bubble-color-note','bubble-key-sources'])$('#'+id).innerHTML='';for(const id of ['bubble-groups-prev','bubble-groups-next','bubble-tracks-prev','bubble-tracks-next'])$('#'+id).disabled=true;$('#bubble-csv').hidden=true;$('#bubble-colour-meanings').hidden=true;return;}
-  const args=insightArgs('bubble'),filterValues=bubbleFilterValues();$('#library-bubbles').setAttribute('aria-busy','true');$('#bubble-groups').classList.add('insight-loading');$('#bubble-svg').disabled=true;
+  const filterValues=applied&&state.appliedFilters?state.appliedFilters:bubbleFilterValues(),args=insightArgs('bubble',filterValues);$('#library-bubbles').setAttribute('aria-busy','true');$('#bubble-groups').classList.add('insight-loading');$('#bubble-svg').disabled=true;
   state.result=null;
   bubblePlaceholder(I18n.t('Loading'),'loading');
   try{
@@ -470,7 +478,7 @@ async function loadTonalData(){
 }
 window.addEventListener('workbench-display-preferences',()=>{
   const view=document.querySelector('.view:not([hidden])')?.id,prefix={'view-bubbles':'bubble','view-insights':'dj','view-tonality':'tonal'}[view];
-  if(prefix)(async()=>{await insightSnapshotOptions(prefix);if(prefix==='bubble')await loadBubbleData();else if(prefix==='tonal')await loadTonalData();else await loadDJData();})().catch(error=>notify(error.message,true));
+  if(prefix)(async()=>{if(await insightSnapshotOptions(prefix,{restore:false})===false)return;if(prefix==='bubble')await loadBubbleData({applied:true});else if(prefix==='tonal')await loadTonalData();else await loadDJData();})().catch(error=>notify(error.message,true));
 });
 $('#tonal-prev').onclick=wrap(async()=>{insightState.tonal.offset=Math.max(0,insightState.tonal.offset-50);await loadTonalData();});
 $('#tonal-next').onclick=wrap(async()=>{insightState.tonal.offset+=50;await loadTonalData();});

@@ -102,8 +102,14 @@ def check_display_workflows_ui(browser,base,store,root,output,opener_log,origina
         page.wait_for_function('!document.querySelector("#bubble-filter-form").hasAttribute("aria-busy")')
         expect(panel).to_have_attribute('open','')
         expect(page.locator('#bubble-filter-feedback')).to_contain_text('Changes not applied')
+        page.select_option('#view-bubbles [data-key-notation]','open_key')
+        page.wait_for_function('insightState.bubble.result?.key_notation==="open_key"')
+        expect(page.locator('#bubble-search')).to_have_value('Changed while applying')
+        assert page.evaluate('insightState.bubble.result.summary.entries')==7
+        expect(page.locator('#bubble-filter-feedback')).to_contain_text('Changes not applied')
         page.locator('#bubble-filter-reset').click();expect(panel).not_to_have_attribute('open','')
         panel.locator('summary').click()
+        expect(page.locator('#toast')).to_be_hidden(timeout=12000)
         page.screenshot(path=str(output/'compact-bubble-filters.png'))
         for width in (1440,820,430):
             page.set_viewport_size({'width':width,'height':1050})
@@ -129,7 +135,7 @@ def check_display_workflows_ui(browser,base,store,root,output,opener_log,origina
         page.select_option('#view-tonality [data-key-notation]','open_key')
         page.wait_for_function('insightState.tonal.result?.key_notation==="open_key"')
         expect(page.locator('#tonal-keys')).to_contain_text('1m')
-        page.locator('[data-insight-open="display-0"]').click();page.wait_for_selector('#track-detail-dialog[open]')
+        page.locator('#tonal-tracks [data-insight-open="display-0"]').click();page.wait_for_selector('#track-detail-dialog[open]')
         expect(page.locator('#track-key-value b')).to_have_text('1m')
         page.fill('#track-comment-text','Unsaved local draft')
         page.select_option('#track-key-preferences [data-key-notation]','camelot')
@@ -188,7 +194,7 @@ def check_display_workflows_ui(browser,base,store,root,output,opener_log,origina
                 'navigation_default_closed':True,'snapshot_views':6,'narrow_layout':True,'provider_filters':True,
                 'cancel_and_escape_no_dispatch':True,'one_track_explicit_dispatch':confirmed,'provider_network_requests':0}
     except Exception:
-        print('Display workflow diagnostic:',page.evaluate('''() => ({view:document.querySelector('.nav.active')?.dataset.view,toast:document.querySelector('#toast')?.textContent,source:document.querySelector('#bubble-snapshot')?.value,result:insightState.bubble.result,options:insightState.bubble.options?.key_notation,errors:window.metadataExecuted})'''),flush=True)
+        print('Display workflow diagnostic:',page.evaluate('''() => ({view:document.querySelector('.nav.active')?.dataset.view,toast:document.querySelector('#toast')?.textContent,source:document.querySelector('#bubble-snapshot')?.value,result:insightState.bubble.result?.dimension,options:insightState.bubble.options?.key_notation,errors:window.metadataExecuted})'''),flush=True)
         page.screenshot(path=str(output/'display-workflow-failure.png'))
         raise
     finally:
