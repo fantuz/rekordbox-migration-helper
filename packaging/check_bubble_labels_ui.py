@@ -1,4 +1,5 @@
 """Measured SVG text and interaction checks on invented categories in GitHub CI."""
+from ui_navigation import select_collection, open_collection_picker
 from copy import deepcopy
 import json
 import re
@@ -26,7 +27,7 @@ def check_bubble_labels_ui(page,base,sid,output,store):
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',record)
     page.locator('.nav[data-view="bubbles"]').click()
     page.wait_for_selector('#bubble-snapshot option[value="'+record+'"]',state='attached')
-    page.select_option('#bubble-snapshot',record)
+    select_collection(page,'#bubble-snapshot',record)
     page.wait_for_function('(id)=>insightState.bubble.result?.snapshot.id===id',arg=record)
     page.select_option('#bubble-dimension','artist');page.select_option('#bubble-metric','tracks')
     page.wait_for_function('insightState.bubble.result?.dimension==="artist" && document.querySelectorAll(".bubble-node").length===21')

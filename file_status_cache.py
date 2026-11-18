@@ -46,6 +46,7 @@ def inspect(owner, tracks, refresh=False, mappings=None, details=False, roots=No
         if not isinstance(track, dict):
             statuses[identity] = 'unverified'
             hits[identity] = False
+            evidence[identity] = {}
             continue
         groups.setdefault(fingerprint(track,mappings,roots), {'track': track, 'ids': []})['ids'].append(identity)
 

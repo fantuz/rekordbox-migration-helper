@@ -1,4 +1,5 @@
 """Real HTTP acceptance for format/STEMS inspection, native insights and report filters."""
+from ui_navigation import select_collection, open_collection_picker
 from copy import deepcopy
 from hashlib import sha256
 import re
@@ -49,7 +50,7 @@ def check_format_insights_ui(browser,base,store,root,output):
         return response.json()
     try:
         page.goto(base,wait_until='networkidle');page.locator('.nav[data-view="lab"]').click()
-        page.select_option('#lab-snapshot',sid)
+        select_collection(page,'#lab-snapshot',sid)
         page.locator('[data-lab-tab="formats"]').click()
         expect(page.locator('#lab-formats')).to_be_visible()
         page.fill('#lab-formats-path',str(folder)+'\n'+str(archive)+'\n'+str(folder))

@@ -1,4 +1,5 @@
 """Real HTTP/SQLite STEMS acceptance using generated metadata, without inference."""
+from ui_navigation import select_collection, open_collection_picker
 from hashlib import sha256
 from pathlib import Path
 import json
@@ -51,7 +52,7 @@ def check_stems_workflows_ui(browser,base,store,root,output):
         expect(page.locator('#lab-report-download')).to_have_attribute('href',re.compile(field+'='+value))
         return download()
     try:
-        page.goto(base,wait_until='networkidle');page.locator('.nav[data-view="lab"]').click();page.select_option('#lab-snapshot',sid)
+        page.goto(base,wait_until='networkidle');page.locator('.nav[data-view="lab"]').click();select_collection(page,'#lab-snapshot',sid)
         page.locator('[data-lab-tab="stems"]').click()
         page.select_option('#lab-stems-target','rbstemsplus');page.select_option('#lab-stems-enabled','enabled')
         page.select_option('#lab-stems-mode','performance');page.select_option('#lab-stems-quality','quality')

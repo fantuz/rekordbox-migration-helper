@@ -1,4 +1,5 @@
 """CI-only destination controls and collection-wide metadata flags."""
+from ui_navigation import select_collection, open_collection_picker
 from copy import deepcopy
 import json
 import wave
@@ -29,7 +30,7 @@ def check_reference_flags_ui(browser,base,store,root,output):
     try:
         page.goto(base,wait_until='networkidle')
         page.wait_for_selector('#journey-context-source option[value="snapshot:'+sid+'"]',state='attached')
-        page.select_option('#journey-context-source','snapshot:'+sid)
+        select_collection(page,'#journey-context-source','snapshot:'+sid)
         page.wait_for_function('(sid)=>Journeys.context()?.source==="snapshot:"+sid',arg=sid)
         page.locator('.nav[data-view="review"]').click()
         page.wait_for_function('document.querySelectorAll("#view-review .native-table tbody tr").length===50')
@@ -58,7 +59,7 @@ def check_reference_flags_ui(browser,base,store,root,output):
         page.wait_for_function('document.querySelectorAll(".native-compare-record .native-file-status .file-status-unverified").length===2')
         page.locator('.nav[data-view="insights"]').click()
         page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]',state='attached')
-        page.select_option('#dj-snapshot',sid);page.select_option('#dj-perspective','all')
+        select_collection(page,'#dj-snapshot',sid);page.select_option('#dj-perspective','all')
         page.locator('#dj-filter-form button[type="submit"]').click()
         page.wait_for_selector('#dj-tracks [data-insight-open="000-0"]')
         page.locator('#dj-quality-quick [data-metadata-flag="zero_duration"]').click()

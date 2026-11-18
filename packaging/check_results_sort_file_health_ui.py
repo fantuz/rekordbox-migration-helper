@@ -1,4 +1,5 @@
 """Synthetic browser regressions for result sorting and file-health browsing."""
+from ui_navigation import select_collection, open_collection_picker
 from pathlib import Path
 
 
@@ -11,7 +12,7 @@ def check_results_sort_file_health_ui(browser,base,sid,output):
         page.goto(base,wait_until='networkidle')
         page.locator('.nav[data-view="file-health"]').click()
         page.wait_for_selector('#file-health-source option[value="snapshot:'+sid+'"]',state='attached')
-        page.select_option('#file-health-source','snapshot:'+sid)
+        select_collection(page,'#file-health-source','snapshot:'+sid)
         page.wait_for_function('document.querySelector("#file-health-counts").textContent.includes("Unchecked")')
         before=page.locator('#file-health-counts').inner_text()
         assert 'Unchecked' in before

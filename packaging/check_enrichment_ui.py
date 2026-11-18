@@ -1,4 +1,5 @@
 """GitHub-only synthetic UI verification and reproducible README screenshots."""
+from ui_navigation import select_collection, open_collection_picker
 from copy import deepcopy
 import json
 import wave
@@ -38,7 +39,7 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     page.evaluate('(id)=>Journeys.selectContext("snapshot:"+id,true)',sid)
     page.locator('.nav[data-view="insights"]').click()
     page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]',state='attached')
-    page.select_option('#dj-snapshot',sid);page.select_option('#dj-perspective','all')
+    select_collection(page,'#dj-snapshot',sid);page.select_option('#dj-perspective','all')
     page.locator('#dj-filter-form button[type="submit"]').click()
     page.wait_for_selector('#dj-tracks [data-insight-open="demo0"]')
     page.wait_for_function('()=>{const b=document.querySelector(\'#dj-tracks [data-play-track="demo0"]\');if(!b)return false;b.scrollIntoView({block:"center"});return b.dataset.available==="true";}')
@@ -209,7 +210,7 @@ def check_enrichment_ui(page,base,original_id,output,store,root):
     sorted_batch=create_batch(store,store.snapshot(sort_sid),target='random',sample_size=150,seed='stable-sort')
     with store.connection() as db:
         for identity,status in [('sort-0','missing'),('sort-1','playable'),('sort-2','inaccessible')]:
-            db.execute('INSERT INTO file_health_records VALUES (?,?,?,?,?,?,?,?)',
+            db.execute('INSERT INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text) VALUES (?,?,?,?,?,?,?,?)',
                        ('snapshot:'+sort_sid,identity,'Title','Artist','House',status,123.0,''))
     page.evaluate('(id)=>{labBatch=id;labPilotOffset=0;labPilotSort="sample";labPilotDirection="asc";return labLoadPilot();}',sorted_batch['id'])
     assert page.locator('#lab-pilot-sort option').count()==10

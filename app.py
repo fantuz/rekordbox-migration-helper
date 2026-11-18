@@ -1066,8 +1066,11 @@ def statistics():
                     orphan_analysis_folders=session["metadata"].get("orphan_analysis_folders",0),
                     missing_media=None,orphan_media=None)
     from history_browser import added_years
-    return jsonify(counters=counters,unknown_duration=sum(t['duration_seconds'] is None for t in tracks),histogram=[{"label":label,"count":count} for (_,label),count in zip(bins,hist)],
-                   addition_dates=added_years(tracks),
+    from chart_views import collection_charts,hide_unknown
+    hide=hide_unknown(request.args.get('hide_unknown',False));additions=added_years(tracks)
+    histogram=[{"label":label,"count":count} for (_,label),count in zip(bins,hist)]
+    return jsonify(counters=counters,unknown_duration=sum(t['duration_seconds'] is None for t in tracks),histogram=histogram,
+                   addition_dates=additions,charts=collection_charts(tracks,histogram,additions,hide),hide_unknown=hide,
                    scope=cohort,min_minutes=minimum/60,max_minutes=maximum/60 if maximum!=float("inf") else None,
                    note="Manual categories mean cues without CUE(Auto) or 1.1Bars labels. Zero play count is the saved count.")
 
@@ -1350,6 +1353,8 @@ from file_health import register as register_file_health
 register_file_health(sys.modules[__name__])
 from library_preparation import register as register_library_preparation
 register_library_preparation(sys.modules[__name__])
+from key_notation import register as register_key_notation
+register_key_notation(app)
 
 
 if __name__=="__main__":

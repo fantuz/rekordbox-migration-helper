@@ -1,4 +1,5 @@
 """GitHub browser acceptance: mount mapping, complete sorting and explicit enrichment."""
+from ui_navigation import select_collection, open_collection_picker
 from hashlib import sha256
 import json
 import time
@@ -32,7 +33,7 @@ def check_delivery_ui(browser,base,store,root,output):
         page.goto(base,wait_until='networkidle')
         page.locator('.nav[data-view="file-health"]').click()
         page.wait_for_selector('#file-health-source option[value="snapshot:'+sid+'"]',state='attached')
-        page.select_option('#file-health-source','snapshot:'+sid)
+        select_collection(page,'#file-health-source','snapshot:'+sid)
         page.wait_for_selector('#file-health-audio-paths [data-audio-recorded]',state='attached')
         panel=page.locator('#file-health-audio-paths')
         panel.locator('summary').click()
@@ -48,7 +49,7 @@ def check_delivery_ui(browser,base,store,root,output):
         page.screenshot(path=str(output/'mounted-windows-audio.png'))
         page.locator('.nav[data-view="insights"]').click()
         page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]',state='attached')
-        page.select_option('#dj-snapshot',sid);page.select_option('#dj-perspective','all')
+        select_collection(page,'#dj-snapshot',sid);page.select_option('#dj-perspective','all')
         page.locator('#dj-search').fill('Mapped track');page.locator('#dj-filter-form button[type="submit"]').click()
         page.wait_for_selector('#dj-tracks [data-insight-open="0"]')
         page.locator('#dj-tracks th').first.locator('button').click()

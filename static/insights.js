@@ -7,6 +7,10 @@ const insightValue=value=>insightUnknown(value)?I18n.t("Unknown"):num(value);
 const insightDuration=value=>{if(insightUnknown(value))return I18n.t("Unknown");const seconds=Math.round(value);return Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');};
 const insightOptions=(values)=>Object.entries(values).map(([key,label])=>'<option value="'+esc(key)+'">'+esc(label)+'</option>').join('');
 let insightLastSnapshot='';
+function keySourceSummary(counts){
+  if(!counts)return '';
+  return '<span>'+esc(I18n.t('Saved key formats'))+':</span>'+[['alphabetical','Alphabetical'],['numerical','Numerical'],['unknown','Unknown'],['unrecognized','Unrecognized key']].map(([field,label])=>'<span>'+esc(I18n.t(label))+' · '+num(counts[field]||0)+'</span>').join('');
+}
 
 function insightFilterMarkup(prefix){
   // Only fixed interface keys enter these markers; saved genre/track data stays raw.
@@ -42,11 +46,43 @@ function insightFilterMarkup(prefix){
 }
 for(const prefix of ['dj','bubble','tonal']){
   $('#'+prefix+'-filters').innerHTML=insightFilterMarkup(prefix);
-  $('#'+prefix+'-filter-form').onsubmit=wrap(async event=>{event.preventDefault();await applyInsightFilters(prefix);});
-  $('#'+prefix+'-filter-reset').onclick=wrap(async()=>{$('#'+prefix+'-filter-form').reset();insightBasisControls(prefix);await applyInsightFilters(prefix);});
+  if(prefix==='bubble')compactBubbleFilters();
+  $('#'+prefix+'-filter-form').onsubmit=wrap(async event=>{event.preventDefault();await applyInsightFilters(prefix,true);});
+  $('#'+prefix+'-filter-reset').onclick=wrap(async()=>{$('#'+prefix+'-filter-form').reset();insightBasisControls(prefix);await applyInsightFilters(prefix,true);});
   $('#'+prefix+'-basis').onchange=()=>insightBasisControls(prefix);
   $('#'+prefix+'-family').onchange=()=>{$('#'+prefix+'-genre').value='';};
   $('#'+prefix+'-snapshot').onchange=wrap(async()=>{insightLastSnapshot=$('#'+prefix+'-snapshot').value;await insightSnapshotOptions(prefix);await applyInsightFilters(prefix);});
+}
+function bubbleFilterValues(){return [...$('#bubble-filter-form').querySelectorAll('input,select')].map(node=>({id:node.id,value:node.value,disabled:node.disabled}));}
+function bubbleFilterSummary(values){
+  const current=JSON.stringify(bubbleFilterValues()),applied=JSON.stringify(values || []),items=[];
+  for(const row of values || []){
+    if(row.disabled||!row.value||row.id==='bubble-basis'&&row.value==='saved')continue;
+    const control=document.getElementById(row.id),label=control.closest('label').cloneNode(true);
+    label.querySelectorAll('input,select').forEach(node=>node.remove());
+    const selected=control.tagName==='SELECT'?[...control.options].find(option=>option.value===row.value)?.textContent:row.value;
+    items.push(label.textContent.trim()+': '+(selected || row.value));
+  }
+  const summary=$('#bubble-filter-summary');summary.textContent=items.length?items.slice(0,2).join(' · ')+(items.length>2?' · +'+num(items.length-2):''):I18n.t('All captured tracks');
+  summary.title=items.join(' · ');
+  $('#bubble-filter-feedback').textContent=current!==applied?I18n.t('Changes not applied'):I18n.t('Filters applied');
+  $('#bubble-filter-panel').dataset.dirty=String(current!==applied);
+}
+function compactBubbleFilters(){
+  const form=$('#bubble-filter-form'),extra=$('#bubble-more-criteria'),panel=form.closest('details'),actions=form.querySelector('.insight-filter-actions');
+  panel.id='bubble-filter-panel';form.classList.add('bubble-filter-grid');
+  form.append(...extra.querySelector('.insight-extra-grid').children,actions,extra.querySelector('p'));extra.remove();
+  panel.querySelector('summary').innerHTML=I18n.html('Collection filters')+'<span id="bubble-filter-summary"></span>';
+  const feedback=document.createElement('p');feedback.id='bubble-filter-feedback';feedback.className='chart-exclusion-note';feedback.setAttribute('role','status');form.append(feedback);
+  form.addEventListener('input',()=>bubbleFilterSummary(insightState.bubble.appliedFilters));
+  form.addEventListener('change',()=>bubbleFilterSummary(insightState.bubble.appliedFilters));
+  const preferences=document.createElement('div');preferences.className='bubble-display-preferences';preferences.innerHTML=DisplayPreferences.controls();$('.bubble-toolbar').append(preferences);DisplayPreferences.sync();
+  const sources=document.createElement('p');sources.id='bubble-key-sources';sources.className='key-source-summary';$('#bubble-map-note').after(sources);
+  bubbleFilterSummary([]);
+}
+for(const [view,keysOnly] of [['tonality',false],['insights',true]]){
+  const host=document.createElement('div');host.innerHTML=DisplayPreferences.controls({unknown:!keysOnly});
+  $('#view-'+view+' .section-heading').append(host);DisplayPreferences.sync();if(view==='tonality'){const sources=document.createElement('p');sources.id='tonal-key-sources';sources.className='key-source-summary';$('#tonal-keys').before(sources);}
 }
 function insightBasisControls(prefix){const saved=$('#'+prefix+'-basis').value==='saved';for(const name of ['from','to'])$('#'+prefix+'-'+name).disabled=saved;}
 async function insightSource(prefix){
@@ -63,7 +99,7 @@ async function insightSnapshotOptions(prefix){
   const state=insightState[prefix],identity=$('#'+prefix+'-snapshot').value;
   if(!identity){state.options=null;$('#'+prefix+'-snapshot-note').textContent=I18n.t("Save a collection snapshot in Library lab or capture a loaded XML + ZIP workspace. Saved snapshots remain available after temporary inputs are removed.");return;}
   window.BrowseState?.restore($('#'+prefix+'-filter-form'));
-  const options=await api('/api/insights/options?'+new URLSearchParams({snapshot:identity}));
+  const options=await api('/api/insights/options?'+new URLSearchParams({snapshot:identity,...DisplayPreferences.args()}));
   if($('#'+prefix+'-snapshot').value!==identity)return;
   state.options=options;insightLastSnapshot=identity;
   const family=$('#'+prefix+'-family'),oldFamily=family.value,genre=$('#'+prefix+'-genre'),oldGenre=genre.value;
@@ -72,8 +108,8 @@ async function insightSnapshotOptions(prefix){
   genre.innerHTML=("<option value=\"\">"+esc(I18n.t("All saved tags"))+"</option>")+options.genres.map(g=>'<option value="'+esc(JSON.stringify(g))+'">'+esc(g || I18n.t("(blank tag)"))+'</option>').join('');
   if(options.genres.some(g=>JSON.stringify(g)===oldGenre))genre.value=oldGenre;
   const tone=$('#'+prefix+'-tone'),oldTone=tone.value,colour=$('#'+prefix+'-colour'),oldColour=colour.value;
-  tone.innerHTML=("<option value=\"\">"+esc(I18n.t("All keys / unknown"))+"</option>")+options.tonalities.map(key=>'<option value="'+esc(JSON.stringify(key))+'">'+esc(key || I18n.t("Unknown / not captured"))+'</option>').join('');
-  if(options.tonalities.some(key=>JSON.stringify(key)===oldTone))tone.value=oldTone;
+  tone.innerHTML=("<option value=\"\">"+esc(I18n.t("All keys / unknown"))+"</option>")+options.tonality_options.map(key=>'<option value="'+esc(JSON.stringify(key.key))+'">'+esc(key.known?key.label:I18n.t(key.label))+' · '+num(key.tracks)+'</option>').join('');
+  if(oldTone){let selected;try{selected=JSON.parse(oldTone);}catch{}const identity=DisplayPreferences.group(selected);if(options.tonality_options.some(key=>key.key===identity))tone.value=JSON.stringify(identity);}
   colour.innerHTML=("<option value=\"\">"+esc(I18n.t("All colours / unknown"))+"</option>")+options.colours.map(c=>'<option value="'+esc(JSON.stringify(c.key))+'">'+esc(c.status==='unknown'?I18n.t('Colour not captured'):c.status==='unassigned'?I18n.t('No assigned colour'):c.label)+' · '+num(c.tracks)+'</option>').join('');
   if(options.colours.some(c=>JSON.stringify(c.key)===oldColour))colour.value=oldColour;
   window.BrowseState?.restore($('#'+prefix+'-filter-form'));
@@ -91,7 +127,7 @@ $$('[data-insight-capture]').forEach(button=>button.onclick=wrap(async()=>{
   if(busy)return;await LibraryPreparation.open(undefined,{dj:'insights',bubble:'bubbles',tonal:'tonality'}[button.dataset.insightCapture]);
 }));
 function insightArgs(prefix){
-  const args={snapshot:$('#'+prefix+'-snapshot').value,basis:$('#'+prefix+'-basis').value};
+  const args={snapshot:$('#'+prefix+'-snapshot').value,basis:$('#'+prefix+'-basis').value,...DisplayPreferences.args()};
   for(const [name,key] of [['search','q'],['family','family'],['usage','usage_filter'],['preparation','preparation'],['bpm-min','bpm_min'],['bpm-max','bpm_max'],['min','min'],['max','max'],['rating-min','rating_min']]){
     const value=$('#'+prefix+'-'+name).value;if(value!=='')args[key]=value;
   }
@@ -102,9 +138,15 @@ function insightArgs(prefix){
   else {if(prefix==='bubble')args.path=JSON.stringify(insightState.bubble.path);args.perspective='all';}
   return {...args,...CollectionSort.args(prefix+'-tracks')};
 }
-async function applyInsightFilters(prefix){
+async function applyInsightFilters(prefix,collapse=false){
   const state=insightState[prefix];state.offset=0;
-  if(prefix==='bubble'){state.path=[];state.groupOffset=0;$('#bubble-track-detail').hidden=true;await loadBubbleData();}
+  if(prefix==='bubble'){
+    const form=$('#bubble-filter-form'),submit=form.querySelector('[type=submit]'),values=JSON.stringify(bubbleFilterValues());
+    state.path=[];state.groupOffset=0;$('#bubble-track-detail').hidden=true;
+    form.setAttribute('aria-busy','true');submit.disabled=true;$('#bubble-filter-feedback').textContent=I18n.t('Applying filters…');
+    try{const applied=await loadBubbleData();if(collapse&&applied&&JSON.stringify(bubbleFilterValues())===values){$('#bubble-filter-panel').open=false;$('#bubble-filter-panel>summary').focus({preventScroll:true});}}
+    finally{form.removeAttribute('aria-busy');submit.disabled=false;}
+  }
   else if(prefix==='tonal')await loadTonalData();
   else await loadDJData();
 }
@@ -123,7 +165,7 @@ function insightCards(stats,bubble=false){
 }
 function insightTempoLine(stats){
   const decimal=v=>insightUnknown(v)?I18n.t("Unknown"):Number(v).toLocaleString(I18n.language,{maximumFractionDigits:1});
-  return [[I18n.t("Mean BPM"),decimal(stats.bpm_mean)],[I18n.t("Median BPM"),decimal(stats.bpm_median)],[I18n.t("BPM range"),insightUnknown(stats.bpm_min)?I18n.t("Unknown"):decimal(stats.bpm_min)+'–'+decimal(stats.bpm_max)],[I18n.t("Average length"),insightDuration(stats.duration_mean)],[I18n.t("Median length"),insightDuration(stats.duration_median)]].map(([label,value])=>'<div><span>'+esc(label)+'</span><b>'+esc(value)+'</b></div>').join('')+'<small>'+num(stats.bpm_known)+" "+I18n.t("known BPM ·")+" "+num(stats.bpm_unknown)+(" "+esc(I18n.t("unknown. Each entry has equal weight; full track length is not time played."))+"</small>");
+  return [[I18n.t("Mean BPM"),decimal(stats.bpm_mean)],[I18n.t("Median BPM"),decimal(stats.bpm_median)],[I18n.t("BPM range"),insightUnknown(stats.bpm_min)?I18n.t("Unknown"):decimal(stats.bpm_min)+'–'+decimal(stats.bpm_max)],[I18n.t("Average length"),insightDuration(stats.duration_mean)],[I18n.t("Median length"),insightDuration(stats.duration_median)]].filter(([,value])=>!DisplayPreferences.get().hide_unknown||value!==I18n.t("Unknown")).map(([label,value])=>'<div><span>'+esc(label)+'</span><b>'+esc(value)+'</b></div>').join('')+'<small>'+num(stats.bpm_known)+" "+I18n.t("known BPM ·")+" "+num(stats.bpm_unknown)+(" "+esc(I18n.t("unknown. Each entry has equal weight; full track length is not time played."))+"</small>");
 }
 function insightTrackTable(rows,basis){
   if(!rows.length)return ("<p class=\"subtle\">"+esc(I18n.t("No entries match this perspective and these filters. Unknown usage, dates and preparation are not silently treated as known zero."))+"</p>");
@@ -186,24 +228,27 @@ function bubblePlaceholder(message,state){
 // The grouping selector must contain its choices even before a snapshot exists.
 bubbleDimensionOptions();bubbleSourceAvailability(false);
 $('#bubble-choose-source')?.addEventListener('click',()=>{
-  const select=$('#bubble-snapshot');select.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});select.focus({preventScroll:true});
+  const group=$('#collection-snapshot-toggle');if(group)group.open=true;const select=$('#bubble-snapshot');select.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});select.focus({preventScroll:true});
 });
 async function loadBubbleData(){
   const state=insightState.bubble,revision=++state.revision;
   bubbleDimensionOptions();bubbleSourceAvailability(Boolean(state.options));
-  if(!state.options){state.result=null;$('#bubble-evidence').textContent=I18n.t("Save or choose a collection snapshot to draw the map.");$('#bubble-svg').disabled=true;const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state='no-source';for(const id of ['bubble-groups','bubble-summary','bubble-tracks','bubble-breadcrumbs','bubble-group-count','bubble-track-count','bubble-selected','bubble-map-note','bubble-color-note'])$('#'+id).innerHTML='';for(const id of ['bubble-groups-prev','bubble-groups-next','bubble-tracks-prev','bubble-tracks-next'])$('#'+id).disabled=true;$('#bubble-csv').hidden=true;$('#bubble-colour-meanings').hidden=true;return;}
-  const args=insightArgs('bubble');$('#library-bubbles').setAttribute('aria-busy','true');$('#bubble-groups').classList.add('insight-loading');$('#bubble-svg').disabled=true;
+  if(!state.options){state.result=null;$('#bubble-evidence').textContent=I18n.t("Save or choose a collection snapshot to draw the map.");$('#bubble-svg').disabled=true;const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state='no-source';for(const id of ['bubble-groups','bubble-summary','bubble-tracks','bubble-breadcrumbs','bubble-group-count','bubble-track-count','bubble-selected','bubble-map-note','bubble-color-note','bubble-key-sources'])$('#'+id).innerHTML='';for(const id of ['bubble-groups-prev','bubble-groups-next','bubble-tracks-prev','bubble-tracks-next'])$('#'+id).disabled=true;$('#bubble-csv').hidden=true;$('#bubble-colour-meanings').hidden=true;return;}
+  const args=insightArgs('bubble'),filterValues=bubbleFilterValues();$('#library-bubbles').setAttribute('aria-busy','true');$('#bubble-groups').classList.add('insight-loading');$('#bubble-svg').disabled=true;
   state.result=null;
   bubblePlaceholder(I18n.t('Loading'),'loading');
   try{
     const [r,tracks]=await Promise.all([api('/api/insights/bubbles?'+new URLSearchParams({...args,dimension:state.dimension,metric:$('#bubble-metric').value,group_offset:state.groupOffset})),api('/api/insights/tracks?'+new URLSearchParams({...args,offset:state.offset}))]);
-    if(revision!==state.revision)return;state.result=r;
+    if(revision!==state.revision)return false;state.result=r;
+    state.appliedFilters=filterValues;bubbleFilterSummary(filterValues);
     $('#bubble-summary').innerHTML=insightCards(r.summary,true);$('#bubble-evidence').textContent=insightEvidence(r.context);
     renderBubbleBreadcrumbs(r.context.breadcrumbs);renderColourLegend();renderBubbleMap();
     $('#bubble-tracks').innerHTML=insightTrackTable(tracks.rows,tracks.context.basis_label);$('#bubble-track-count').textContent=num(tracks.total)+(" "+I18n.t("entries")+" \u00b7 ")+(tracks.total?num(state.offset+1)+'–'+num(Math.min(state.offset+50,tracks.total)):'0');
     bindTrackDetails('#bubble-tracks',args.snapshot);CollectionSort.bind('#bubble-tracks','bubble-tracks',[['title','artist'],'genre','plays','rating','preparation',['bpm','duration'],['date_added','evidence_last_date'],'file_status'],tracks.rows,async()=>{insightState.bubble.offset=0;await loadBubbleData();});
     $('#bubble-tracks-prev').disabled=!state.offset;$('#bubble-tracks-next').disabled=state.offset+50>=tracks.total;
     $('#bubble-csv').hidden=false;$('#bubble-csv').href='/api/insights/tracks.csv?'+new URLSearchParams(args);
+    $('#bubble-key-sources').innerHTML=r.dimension==='tone'?keySourceSummary(r.key_source_counts):'';
+    return true;
   }catch(error){
     if(revision===state.revision){state.result=null;$('#bubble-groups').replaceChildren();$('#bubble-selected').replaceChildren();bubblePlaceholder(I18n.t('The action could not be completed'),'error');}
     throw error;
@@ -233,6 +278,7 @@ function bubbleSelected(group){
   const r=insightState.bubble.result,index=r.groups.indexOf(group);
   for(const item of $$('#library-bubbles [data-bubble-index], #bubble-groups [data-bubble-index]'))item.classList.toggle('is-selected',Number(item.dataset.bubbleIndex)===index);
   $('#bubble-selected').innerHTML='<h4>'+esc(group.label)+'</h4><p><b>'+esc(bubbleWeight(group.value,r.metric))+'</b> · '+esc(I18n.t(r.metric_label))+'</p><p>'+num(group.entries)+(" "+I18n.t("entries")+" \u00b7 ")+num(group.unknown_usage)+" "+I18n.t("unknown usage counts ·")+" "+num(group.weight_unknown_entries)+(" "+esc(I18n.t("unknown size inputs"))+"</p><p>"+esc(I18n.t("Mean BPM:"))+" ")+esc(group.bpm_mean===null?I18n.t("Unknown"):group.bpm_mean.toFixed(1))+("</p><small>"+esc(I18n.t("Saved tags behind this category")))+(group.saved_tags_total>8?" "+I18n.t("· first 8 of")+" "+num(group.saved_tags_total):'')+'</small><ul>'+group.saved_tags.map(t=>'<li>'+esc(t.tag)+' · '+num(t.tracks)+'</li>').join('')+'</ul>';
+  if(group.source_keys)$('#bubble-selected').insertAdjacentHTML('beforeend','<section class="bubble-key-evidence"><small>'+esc(I18n.t('Original key tags'))+'</small><ul>'+group.source_keys.map(item=>'<li>'+esc(item.value || I18n.t('Unknown / not captured'))+' · '+num(item.tracks)+'</li>').join('')+'</ul></section>');
 }
 const svgNode=(name,attrs={})=>{const element=document.createElementNS('http://www.w3.org/2000/svg',name);for(const [key,value] of Object.entries(attrs))element.setAttribute(key,value);return element;};
 function bubbleLabelLines(label,characters){
@@ -330,6 +376,7 @@ function bubbleActionLabel(group,result){
 }
 function renderBubbleMap(){
   const state=insightState.bubble,r=state.result;if(!r)return;const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state=r.groups.some(g=>g.value>0)?'ready':'empty';
+  for(const group of r.groups)if(group.label_is_message){group.original_label=group.original_label||group.label;group.label=I18n.t(group.original_label);}
   if(r.dimension==='colour')for(const group of r.groups){group.original_label=group.original_label || group.label;group.label=colourDisplayLabel(group.key,group.original_label);}
   const description=svgNode('desc');description.textContent=I18n.t("Library bubbles ·")+" "+insightDims[r.dimension];svg.append(description);
   const positive=r.groups.filter(g=>g.value>0);
@@ -352,6 +399,7 @@ function renderBubbleMap(){
   $$('#bubble-groups [data-bubble-index]').forEach(button=>{const group=r.groups[Number(button.dataset.bubbleIndex)];button.onclick=wrap(()=>activateBubbleGroup(group));button.onmouseenter=()=>bubbleSelected(group);button.onfocus=()=>bubbleSelected(group);});
   $('#bubble-groups-prev').disabled=!r.group_offset;$('#bubble-groups-next').disabled=r.group_offset+60>=r.groups_total;
   $('#bubble-map-note').textContent=I18n.t("Area:")+" "+I18n.t(r.metric_label)+'. '+I18n.t('Showing')+' '+num(r.groups.length)+" "+I18n.t("of")+" "+num(r.groups_total)+(" "+I18n.t("Categories")+"")+(r.groups_total>60?" "+I18n.t("on this page; use Next groups to see the rest"):'')+'. '+num(r.zero_weight_groups)+" "+I18n.t("categories have zero/unknown weight and remain in the list. Compare circle areas within this page; full track length is not time played.");
+  if(r.excluded_unknown)$('#bubble-map-note').textContent+=' '+I18n.t('{count} unknown hidden',{count:num(r.excluded_unknown)});
   $('#bubble-color-note').textContent={get group(){return I18n.t("Color identifies categories. Exact counts remain in the list.");},preparation:I18n.t("Manual-cue coverage (known entries): blue <25%, cyan 25–74%, green ≥75%. Gray: unknown. Analysis is separate."),rating:I18n.t("Mean saved stars, excluding unrated entries: purple <2; blue 2–3.99; green ≥4. Gray: no ratings."),saved:I18n.t("Saved track colour; gray means no single known colour. Inferred RGB is identified. Cue colours are separate.")}[$('#bubble-color').value];
   if(r.groups.length)bubbleSelected(r.groups[0]);
   layoutBubbleLabels();
@@ -404,19 +452,23 @@ $('#colour-meanings-form').onsubmit=wrap(async event=>{
 $('#bubble-colour-cloud').onclick=wrap(async()=>{const s=insightState.bubble;s.path=[];s.dimension='colour';s.offset=0;s.groupOffset=0;$('#bubble-color').value='saved';$('#bubble-metric').value='tracks';await loadBubbleData();});
 
 async function loadTonalData(){
-  const state=insightState.tonal,revision=++state.revision;if(!state.options){state.result=null;$('#tonal-evidence').textContent=I18n.t("Choose or save a collection snapshot to inspect its keys and tempo.");for(const id of ['tonal-summary','tonal-tempo-stats','tonal-histogram','tonal-keys','tonal-tracks','tonal-count'])$('#'+id).innerHTML='';$('#tonal-csv').hidden=true;$('#tonal-prev').disabled=true;$('#tonal-next').disabled=true;return;}
+  const state=insightState.tonal,revision=++state.revision;if(!state.options){state.result=null;$('#tonal-evidence').textContent=I18n.t("Choose or save a collection snapshot to inspect its keys and tempo.");for(const id of ['tonal-summary','tonal-tempo-stats','tonal-histogram','tonal-keys','tonal-tracks','tonal-count','tonal-key-sources'])$('#'+id).innerHTML='';$('#tonal-csv').hidden=true;$('#tonal-prev').disabled=true;$('#tonal-next').disabled=true;return;}
   const args=insightArgs('tonal'),[r,tracks]=await Promise.all([api('/api/insights/tonality?'+new URLSearchParams(args)),api('/api/insights/tracks?'+new URLSearchParams({...args,offset:state.offset}))]);
   if(revision!==state.revision)return;state.result=r;
   $('#tonal-evidence').textContent=insightEvidence(r.context);$('#tonal-tempo-stats').innerHTML=insightTempoLine(r.summary);
-  $('#tonal-summary').innerHTML=[[I18n.t("Tracks"),r.summary.entries],[I18n.t("Known tonality"),r.summary.tonality_known],[I18n.t("Unknown tonality"),r.summary.tonality_unknown],[I18n.t("Colour tagged"),r.summary.coloured],[I18n.t("Colour not captured"),r.summary.colour_unknown]].map(([label,value])=>'<div><span>'+esc(label)+'</span><strong>'+num(value)+'</strong></div>').join('');
+  $('#tonal-summary').innerHTML=[[I18n.t("Tracks"),r.summary.entries],[I18n.t("Known tonality"),r.summary.tonality_known],[I18n.t("Unknown tonality"),r.summary.tonality_unknown],[I18n.t("Colour tagged"),r.summary.coloured],[I18n.t("Colour not captured"),r.summary.colour_unknown]].filter(([label])=>!DisplayPreferences.get().hide_unknown||![I18n.t("Unknown tonality"),I18n.t("Colour not captured")].includes(label)).map(([label,value])=>'<div><span>'+esc(label)+'</span><strong>'+num(value)+'</strong></div>').join('');
   const max=Math.max(1,...r.bpm_histogram.map(b=>b.tracks));
-  $('#tonal-histogram').innerHTML=r.bpm_histogram.map((b,i)=>'<button class="tempo-band" data-tempo-band="'+i+'"><span>'+esc(b.minimum+'–'+b.maximum)+'</span><span class="hist-bar"><i style="width:'+100*b.tracks/max+'%"></i></span><b>'+num(b.tracks)+'</b></button>').join('')+'<p class="subtle">'+num(r.summary.bpm_unknown)+" "+I18n.t("entries without known BPM.")+(r.bpm_bands_total>200?" "+I18n.t("First 200 bands shown; narrow the BPM range to inspect unusual values."):'')+'</p>';
-  $('#tonal-keys').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Saved tonality"))+"</th><th>"+esc(I18n.t("Entries"))+"</th><th>"+esc(I18n.t("Recorded usage"))+"</th><th>"+esc(I18n.t("Mean / median BPM"))+"</th></tr></thead><tbody>")+r.tonalities.map((key,i)=>'<tr><td><button class="text-button" data-tonality-index="'+i+'">'+esc(key.label)+'</button></td><td>'+num(key.entries)+'</td><td>'+num(key.recorded_plays)+'</td><td>'+esc(key.bpm_mean===null?I18n.t("Unknown"):key.bpm_mean.toFixed(1))+' / '+esc(key.bpm_median===null?I18n.t("Unknown"):Number(key.bpm_median).toFixed(1))+'</td></tr>').join('')+'</tbody></table>';
-  $('#tonal-note').textContent=I18n.t(r.note);$('#tonal-tracks').innerHTML=insightTrackTable(tracks.rows,tracks.context.basis_label);bindTrackDetails('#tonal-tracks',args.snapshot);CollectionSort.bind('#tonal-tracks','tonal-tracks',[['title','artist'],'genre','plays','rating','preparation',['bpm','duration'],['date_added','evidence_last_date'],'file_status'],tracks.rows,async()=>{insightState.tonal.offset=0;await loadTonalData();});
+  $('#tonal-histogram').innerHTML=r.bpm_histogram.map((b,i)=>'<button class="tempo-band" data-tempo-band="'+i+'"><span>'+esc(b.minimum+'–'+b.maximum)+'</span><span class="hist-bar"><i style="width:'+100*b.tracks/max+'%"></i></span><b>'+num(b.tracks)+'</b></button>').join('')+'<p class="subtle">'+(DisplayPreferences.get().hide_unknown?I18n.t('{count} unknown hidden',{count:num(r.summary.bpm_unknown)}):num(r.summary.bpm_unknown)+" "+I18n.t("entries without known BPM."))+(r.bpm_bands_total>200?" "+I18n.t("First 200 bands shown; narrow the BPM range to inspect unusual values."):'')+'</p>';
+  $('#tonal-keys').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Saved tonality"))+"</th><th>"+esc(I18n.t("Entries"))+"</th><th>"+esc(I18n.t("Recorded usage"))+"</th><th>"+esc(I18n.t("Mean / median BPM"))+"</th></tr></thead><tbody>")+r.tonalities.map((key,i)=>'<tr><td><button class="text-button" data-tonality-index="'+i+'">'+esc(key.label_is_message?I18n.t(key.label):key.label)+'</button></td><td>'+num(key.entries)+'</td><td>'+num(key.recorded_plays)+'</td><td>'+esc(key.bpm_mean===null?I18n.t("Unknown"):key.bpm_mean.toFixed(1))+' / '+esc(key.bpm_median===null?I18n.t("Unknown"):Number(key.bpm_median).toFixed(1))+'</td></tr>').join('')+'</tbody></table>';
+  $('#tonal-note').textContent=I18n.t('Key display only; original tags stay unchanged.')+(r.excluded_unknown?' '+I18n.t('{count} unknown hidden',{count:num(r.excluded_unknown)}):'');$('#tonal-key-sources').innerHTML=keySourceSummary(r.key_source_counts);$('#tonal-tracks').innerHTML=insightTrackTable(tracks.rows,tracks.context.basis_label);bindTrackDetails('#tonal-tracks',args.snapshot);CollectionSort.bind('#tonal-tracks','tonal-tracks',[['title','artist'],'genre','plays','rating','preparation',['bpm','duration'],['date_added','evidence_last_date'],'file_status'],tracks.rows,async()=>{insightState.tonal.offset=0;await loadTonalData();});
   $('#tonal-count').textContent=num(tracks.total)+(" "+I18n.t("entries")+" \u00b7 ")+(tracks.total?num(state.offset+1)+'–'+num(Math.min(state.offset+50,tracks.total)):'0');$('#tonal-prev').disabled=!state.offset;$('#tonal-next').disabled=state.offset+50>=tracks.total;
   $('#tonal-csv').hidden=false;$('#tonal-csv').href='/api/insights/tracks.csv?'+new URLSearchParams(args);
   $$('[data-tonality-index]').forEach(b=>b.onclick=wrap(async()=>{$('#tonal-tone').value=JSON.stringify(r.tonalities[Number(b.dataset.tonalityIndex)].tonality);await applyInsightFilters('tonal');}));
   $$('[data-tempo-band]').forEach(b=>b.onclick=wrap(async()=>{const band=r.bpm_histogram[Number(b.dataset.tempoBand)];$('#tonal-bpm-min').value=band.minimum;$('#tonal-bpm-max').value=band.maximum;await applyInsightFilters('tonal');}));
 }
+window.addEventListener('workbench-display-preferences',()=>{
+  const view=document.querySelector('.view:not([hidden])')?.id,prefix={'view-bubbles':'bubble','view-insights':'dj','view-tonality':'tonal'}[view];
+  if(prefix)(async()=>{await insightSnapshotOptions(prefix);if(prefix==='bubble')await loadBubbleData();else if(prefix==='tonal')await loadTonalData();else await loadDJData();})().catch(error=>notify(error.message,true));
+});
 $('#tonal-prev').onclick=wrap(async()=>{insightState.tonal.offset=Math.max(0,insightState.tonal.offset-50);await loadTonalData();});
 $('#tonal-next').onclick=wrap(async()=>{insightState.tonal.offset+=50;await loadTonalData();});

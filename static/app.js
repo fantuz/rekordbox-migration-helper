@@ -313,10 +313,12 @@ async function saveDecision(action) {
   notify(action==="undo"?I18n.t("Decision undone"):I18n.t("Decision saved to this workspace"));
 }
 function showView(view) {
+  window.CollectionNavigation?.restore();
   window.BrowseState?.enter(view);
   if(view!=="review")ReviewWorkspace.closeAll();
   if(view!=="bubbles" && $("#bubble-expanded").open)$("#bubble-expanded").close();
   $$(".view").forEach(v=>v.hidden=v.id!=="view-"+view);
+  window.CollectionNavigation?.enter(view);
   $$(".nav").forEach(n=>{
     const current=n.dataset.view===view;n.classList.toggle("active",current);
     if(current)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');
@@ -496,9 +498,12 @@ matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{if ($
 let statsRevision=0;
 async function renderStatistics() {
   const revision=++statsRevision;
+  const preferences=window.DisplayPreferences;
+  const preferenceHost=$('#stats-display-preferences');
+  if(preferenceHost&&!preferenceHost.children.length){preferenceHost.innerHTML=preferences.controls({keys:false});$('#stats-apply').before(preferenceHost);preferences.sync();}
   const native=window.NativeCollection?.active();
-  if (!session && !native){for(const id of ['stats-cards','length-histogram','added-histogram'])$('#'+id).innerHTML='';if($('#stats-source-note'))$('#stats-source-note').hidden=true;$('#stats-cohort').disabled=false;return;}
-  const params=new URLSearchParams({min:$("#stats-min").value || "0",max:$("#stats-max").value,cohort:$("#stats-cohort").value});
+  if (!session && !native){for(const id of ['stats-cards','length-histogram','added-histogram','release-histogram','genre-histogram','stats-omitted'])$('#'+id).innerHTML='';if($('#stats-source-note'))$('#stats-source-note').hidden=true;$('#stats-cohort').disabled=false;return;}
+  const params=new URLSearchParams({min:$("#stats-min").value || "0",max:$("#stats-max").value,cohort:$("#stats-cohort").value,...preferences.args()});
   const selectedSource=window.NativeCollection?.source();
   if(native)params.set('source',selectedSource);
   $('#stats-cohort').disabled=!!native;
@@ -525,13 +530,18 @@ async function renderStatistics() {
     ["orphan_analysis_folders",I18n.t("Unlinked analysis folders"),I18n.t("Folders with no active native reference")],
     ["missing_media",I18n.t("Missing audio files"),I18n.t("Not established by exports; see Media inventory")],
     ["orphan_media",I18n.t("Confirmed orphaned audio"),I18n.t("Unverified until media inventory")]];
-  $("#stats-cards").innerHTML=labels.map(([key,title,note])=>'<article class="stat-card"><span>'+esc(title)+'</span><strong>'+(data.counters[key]===null?I18n.t("Unverified"):num(data.counters[key]))+'</strong><small>'+esc(note)+'</small></article>').join("");
-  const max=Math.max(1,...data.histogram.map(b=>b.count));
-  $("#length-histogram").innerHTML=data.histogram.map(b=>'<div class="hist-row"><span>'+esc(b.label)+'</span><div class="hist-bar"><i style="width:'+100*b.count/max+'%"></i></div><b>'+num(b.count)+'</b></div>').join("");
-  $('#added-histogram').innerHTML=renderAddedYears(data.addition_dates);
+  const visible=labels.filter(([key])=>!preferences.get().hide_unknown||data.counters[key]!==null&&data.counters[key]!==undefined);
+  $("#stats-cards").innerHTML=visible.map(([key,title,note])=>'<article class="stat-card"><span>'+esc(title)+'</span><strong>'+(data.counters[key]===null?I18n.t("Unverified"):num(data.counters[key]))+'</strong><small>'+esc(note)+'</small></article>').join("");
+  $('#stats-omitted').textContent=visible.length<labels.length?I18n.t('{count} unverified counters hidden',{count:num(labels.length-visible.length)}):'';
+  for(const [name,id] of [['duration','length-histogram'],['added','added-histogram'],['release_year','release-histogram'],['genre','genre-histogram']])$('#'+id).innerHTML=renderCollectionChart(data.charts[name]);
   let note=$('#stats-source-note');if(!note){note=document.createElement('p');note.id='stats-source-note';note.className='callout';$('#stats-cards').before(note);}
   note.hidden=!native;if(native)note.textContent=data.note+' '+num(data.unknown_duration)+' tracks have no captured duration.';
 }
+function renderCollectionChart(chart){
+  const max=Math.max(1,...chart.rows.map(row=>row.count));
+  return chart.rows.map(row=>'<div class="hist-row" data-chart-unknown="'+Boolean(row.unknown)+'"><span>'+esc(row.unknown?I18n.t('Unknown'):row.other?I18n.t('Other saved genres')+' · '+num(row.categories)+' '+I18n.t('Categories'):row.label)+'</span><div class="hist-bar"><i style="width:'+100*row.count/max+'%"></i></div><b>'+num(row.count)+'</b></div>').join('')+'<p class="chart-exclusion-note">'+num(chart.displayed)+' / '+num(chart.total)+' '+I18n.t('entries')+(chart.excluded?' · '+I18n.t('{count} unknown hidden',{count:num(chart.excluded)}):'')+'</p>';
+}
+window.addEventListener('workbench-display-preferences',()=>{if(!$('#view-statistics').hidden)renderStatistics().catch(error=>notify(error.message,true));});
 $("#stats-apply").onclick=wrap(async()=>{await renderStatistics();offset=0;await loadPairs();});
 $("#stats-cohort").onchange=wrap(async()=>{await renderStatistics();offset=0;await loadPairs();});
 $("#stats-preset").onchange=wrap(async e=>{

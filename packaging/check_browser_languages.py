@@ -1,4 +1,5 @@
 """CI-only real browser checks; never load a user's library or query providers."""
+from ui_navigation import select_collection, open_collection_picker
 import argparse
 import csv
 from copy import deepcopy
@@ -53,7 +54,7 @@ def main():
                 page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
                 page.on('request',lambda request:requests.append({'url':request.url,'method':request.method}))
                 def check_api_response(response):
-                    if response.url.startswith(base+'/api/') and (response.status>=400 or ('application/json' not in response.headers.get('content-type','') and '/api/i18n.js' not in response.url)):
+                    if response.url.startswith(base+'/api/') and (response.status>=400 or ('application/json' not in response.headers.get('content-type','') and not any(response.url.endswith(path) for path in ('/api/i18n.js','/api/key-notation.js')))):
                         api_issues.append({'url':response.url,'status':response.status,'content_type':response.headers.get('content-type')})
                 page.on('response',check_api_response)
                 page.goto(base,wait_until='networkidle');page.wait_for_function('typeof loadDJInsights === "function"')
@@ -68,7 +69,7 @@ def main():
                     page.select_option('#language',code)
                     page.wait_for_function('(code)=>document.documentElement.lang===code && document.documentElement.dataset.languageBusy!=="true"',arg=code)
                     page.locator('.nav[data-view="insights"]').click();page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]',state='attached')
-                    page.select_option('#dj-snapshot',sid);page.select_option('#dj-perspective','all');page.locator('#dj-filter-form button[type="submit"]').click();page.wait_for_selector('[data-insight-open="t0"]')
+                    select_collection(page,'#dj-snapshot',sid);page.select_option('#dj-perspective','all');page.locator('#dj-filter-form button[type="submit"]').click();page.wait_for_selector('[data-insight-open="t0"]')
                     assert page.locator('[data-insight-open="t0"]').inner_text()=='Unknown'
                     assert page.locator('[data-insight-open="t8"]').inner_text()==titles[8]
                     assert page.locator('[data-insight-open="t9"]').inner_text()==titles[9]
@@ -97,11 +98,13 @@ def main():
                     report['languages'].append({'code':code,'app':'passed','metadata_unchanged':True})
                     assert page.locator('html').get_attribute('dir')==('rtl' if code=='ar' else 'ltr')
                     assert page.locator('#dj-snapshot').evaluate('(node)=>getComputedStyle(node).direction')=='ltr'
+                    open_collection_picker(page,'#journey-context-source')
                     assert page.evaluate('''() => {
                         const select=document.querySelector('#journey-context-source').getBoundingClientRect();
                         const detail=document.querySelector('.journey-context-detail').getBoundingClientRect();
                         return select.right<=detail.left || detail.right<=select.left || select.bottom<=detail.top || detail.bottom<=select.top;
                     }'''), 'Collection selector overlaps summary: '+code
+                    page.locator('#journey-context-source').press('Escape')
                     if code in ('en','de','el','ru','ar','ja','pt-PT','pt-BR'):page.screenshot(path=str(args.output/(code+'-insights.png')),full_page=False)
                 page.locator('[data-insight-open="t0"]').click();page.wait_for_selector('#track-detail-dialog[open]')
                 assert page.locator('#track-comment-text').is_visible();note='Unsaved comment Σ Ł Č Русский 🎧 {slot0}'

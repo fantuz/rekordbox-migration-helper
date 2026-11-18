@@ -1,4 +1,5 @@
 """Real HTTP preparation, native/paired inputs and scoped inventory; no API stubs."""
+from ui_navigation import select_collection, open_collection_picker
 from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
@@ -162,7 +163,7 @@ def check_preparation_inventory_ui(browser, base, store, root, output):
         page.reload(wait_until='networkidle')
         expect(page.locator('.media-folder')).to_have_value(str(music))
         # The shared snapshot does not silently change the inventory's library.
-        page.select_option('#journey-context-source', 'snapshot:' + saved)
+        select_collection(page,'#journey-context-source', 'snapshot:' + saved)
         page.wait_for_function('(s)=>Journeys.context()?.snapshot===s', arg=saved)
         expect(page.locator('#inventory-library')).to_have_text(name)
         expect(page.locator('#inventory-context-note')).not_to_be_empty()

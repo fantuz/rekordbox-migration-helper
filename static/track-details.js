@@ -92,7 +92,8 @@ async function openTrackDetails(snapshot,trackId){
   const s=trackDetailState={snapshot,trackId,record,saving:false};const t=record.original;
   $('#track-detail-title').innerHTML=TrackPlayback.button(snapshot,trackId)+esc(t.title || I18n.t("Untitled track"));
   $('#track-detail-scope').textContent=record.snapshot_label+' · '+record.scope+' · '+(record.scope.startsWith('session:')?I18n.t("Working edits attach to prepared XML/ZIP copies from this workspace."):I18n.t("Source-snapshot edits remain local to this scope; they do not attach to a different XML/ZIP workspace."));
-  $('#track-detail-metadata').innerHTML=[[I18n.t("Artist"),t.artist || I18n.t("Unknown")],[I18n.t("Album"),t.album || I18n.t("Unknown")],[I18n.t("Saved genre"),t.genre || I18n.t("Unknown")],[I18n.t("Tonality"),t.tonality || I18n.t("Unknown")],['BPM',insightValue(t.bpm)],[I18n.t("Duration"),insightDuration(t.duration)],[I18n.t("Track colour"),t.color_name || (t.color_status==='unassigned'?I18n.t("No assigned colour"):I18n.t("Not captured"))],[I18n.t("Saved play count"),insightValue(t.play_count)]].map(([label,value])=>'<div><span>'+esc(label)+'</span><b>'+esc(value)+'</b></div>').join('');
+  $('#track-detail-metadata').innerHTML=[[I18n.t("Artist"),t.artist || I18n.t("Unknown")],[I18n.t("Album"),t.album || I18n.t("Unknown")],[I18n.t("Saved genre"),t.genre || I18n.t("Unknown")],[I18n.t("Tonality"),t.tonality || I18n.t("Unknown"),true],['BPM',insightValue(t.bpm)],[I18n.t("Duration"),insightDuration(t.duration)],[I18n.t("Track colour"),t.color_name || (t.color_status==='unassigned'?I18n.t("No assigned colour"):I18n.t("Not captured"))],[I18n.t("Saved play count"),insightValue(t.play_count)]].map(([label,value,isKey])=>'<div'+(isKey?' id="track-key-value"':'')+'><span>'+esc(label)+'</span><b>'+esc(isKey?DisplayPreferences.key(value):value)+'</b>'+(isKey?'<small>'+esc(I18n.t('Captured:')+' '+value)+'</small>':'')+'</div>').join('');
+  if(!$('#track-key-preferences')){const preferences=document.createElement('div');preferences.id='track-key-preferences';preferences.innerHTML=DisplayPreferences.controls({unknown:false});$('#track-detail-metadata').before(preferences);}DisplayPreferences.sync();
   $('#track-native-evidence').hidden=!record.native_evidence;
   $('#track-native-evidence pre').textContent=record.native_evidence?JSON.stringify(record.native_evidence,null,2):'';
   $('#track-comments-panel').open=true;$('#track-advanced-panel').open=false;
@@ -162,4 +163,11 @@ $('#track-detail-edit-form').onsubmit=wrap(async event=>{
     if(await trackStoreEdit(s,field,input.value))count++;
   }
   $('#track-detail-edit-state').textContent=num(count)+" "+I18n.t("field changes staged locally. Insights continue to show captured values; working edits remain separate.");notify(num(count)+" "+I18n.t("metadata changes staged"));
+});
+
+window.addEventListener('workbench-display-preferences',()=>{
+  const cell=document.getElementById('track-key-value');if(!cell||!trackDetailState)return;
+  const raw=trackDetailState.record.original.tonality || I18n.t('Unknown');
+  cell.querySelector('b').textContent=DisplayPreferences.key(raw);
+  cell.querySelector('small').textContent=I18n.t('Captured:')+' '+raw;
 });

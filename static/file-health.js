@@ -49,7 +49,7 @@ window.FileHealth=(()=>{
     source=selected;
     await AudioPaths.load(node('audio-paths'),selected);
     node('scan').disabled=!selected;
-    if(!selected){node('results').replaceChildren();node('counts').replaceChildren();node('state').textContent=label('Choose a saved collection snapshot');return;}
+    if(!selected){node('results').replaceChildren();node('counts').replaceChildren();node('providers').replaceChildren();node('legacy').hidden=true;node('state').textContent=label('Choose a saved collection snapshot');return;}
     const args=new URLSearchParams({source:selected,status:node('status').value,provider:node('provider').value,q:node('search').value,sort,direction,offset:String(offset)});
     node('state').textContent=label('Loading');
     try{
@@ -90,7 +90,7 @@ window.FileHealth=(()=>{
       node('scan').disabled=!node('source').value;
     }
   });
-  window.addEventListener('workbench-language',()=>{if(!node('source').closest('.view').hidden)void loadResults();});
-  window.addEventListener('workbench-audio-paths',()=>{if(!node('source').closest('.view').hidden)void loadResults();});
+  window.addEventListener('workbench-language',()=>{if(!node('results').closest('.view').hidden)void loadResults();});
+  window.addEventListener('workbench-audio-paths',()=>{if(!node('results').closest('.view').hidden)void loadResults();});
   return {load};
 })();
