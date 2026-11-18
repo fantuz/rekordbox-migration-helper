@@ -53,6 +53,22 @@ class Store:
               CREATE INDEX IF NOT EXISTS file_health_source_status ON file_health_records(source,status);
               CREATE INDEX IF NOT EXISTS file_health_source_artist ON file_health_records(source,artist,track_id);
             ''')
+            additions={
+                'file_status_cache':{'evidence':'TEXT'},
+                'file_health_records':{'providers':'INTEGER NOT NULL DEFAULT 0',
+                    'provider_checked':'INTEGER NOT NULL DEFAULT 0','cloud_state':"TEXT NOT NULL DEFAULT 'not_checked'",
+                    'logical_size':'INTEGER','filename':"TEXT NOT NULL DEFAULT ''",
+                    'provider_evidence':"TEXT NOT NULL DEFAULT '[]'"},
+            }
+            for table,columns in additions.items():
+                present={row['name'] for row in db.execute('PRAGMA table_info('+table+')')}
+                for name,definition in columns.items():
+                    if name not in present:
+                        try:db.execute('ALTER TABLE '+table+' ADD COLUMN '+name+' '+definition)
+                        except sqlite3.OperationalError as error:
+                            # Another first request may have completed the same migration.
+                            if 'duplicate column name' not in str(error).lower():raise
+            db.execute('CREATE INDEX IF NOT EXISTS file_health_cloud_state ON file_health_records(source,cloud_state)')
 
     @contextmanager
     def connection(self):

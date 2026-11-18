@@ -11,9 +11,9 @@ window.TrackPlayback=(()=>{
   }
   function scope(b){return b.dataset.playWorkspace?{workspace:b.dataset.playWorkspace}:{snapshot:b.dataset.playSnapshot};}
   function key(b){return JSON.stringify([scope(b),b.dataset.playTrack]);}
-  function status(b,available,fileState='unverified'){
-    b.disabled=!available;b.dataset.available=String(available);b.dataset.fileStatus=fileState;b.setAttribute('aria-busy','false');
-    b.title=t(available?'Play in default media player':'Audio file unavailable at the recorded library paths');
+  function status(b,available,fileState='unverified',cloud){
+    b.disabled=!available&&!cloud?.can_open;b.dataset.available=String(available);b.dataset.fileStatus=fileState;b.dataset.cloudOpen=String(Boolean(cloud?.can_open));b.setAttribute('aria-busy','false');
+    b.title=t(cloud?.can_open?'Open cloud-managed audio':available?'Play in default media player':'Audio file unavailable at the recorded library paths');
     b.setAttribute('aria-label',b.title);
     b.dispatchEvent(new CustomEvent('workbench-file-status',{bubbles:true,detail:{status:fileState}}));
   }
@@ -27,7 +27,7 @@ window.TrackPlayback=(()=>{
     try{
       const groups=new Map();
       for(const b of queue){queue.delete(b);if(!b.isConnected)continue;
-        const old=cache.get(key(b));if(!forceRefresh.has(b) && old && Date.now()-old.time<10000){status(b,old.available,old.fileState);continue;}
+        const old=cache.get(key(b));if(!forceRefresh.has(b) && old && Date.now()-old.time<10000){status(b,old.available,old.fileState,old.cloud);continue;}
         const id=JSON.stringify(scope(b));if(!groups.has(id))groups.set(id,[]);groups.get(id).push(b);
       }
       // A focus/visibility refresh bypasses SQLite for every group, including
@@ -38,7 +38,7 @@ window.TrackPlayback=(()=>{
         for(let offset=0;offset<ids.length;offset+=100){
           const r=await api('/api/playback/availability',{feedback:false,method:'POST',body:JSON.stringify({...JSON.parse(source),track_ids:ids.slice(offset,offset+100),...(force?{refresh:true}:{})})});
           for(const b of buttons)if(Object.hasOwn(r.tracks,b.dataset.playTrack)){
-            const available=r.tracks[b.dataset.playTrack],fileState=r.statuses?.[b.dataset.playTrack] || (available?'playable':'unverified');cache.set(key(b),{available,fileState,time:Date.now()});forceRefresh.delete(b);if(b.isConnected)status(b,available,fileState);
+            const available=r.tracks[b.dataset.playTrack],fileState=r.statuses?.[b.dataset.playTrack] || (available?'playable':'unverified'),cloud=r.cloud?.[b.dataset.playTrack];cache.set(key(b),{available,fileState,cloud,time:Date.now()});forceRefresh.delete(b);if(b.isConnected)status(b,available,fileState,cloud);
           }
         }
       }
@@ -60,12 +60,33 @@ window.TrackPlayback=(()=>{
     for(const r of records)for(const n of r.removedNodes)forget(n);
     for(const r of records)for(const n of r.addedNodes)scan(n);
   }).observe(document.body,{childList:true,subtree:true});
+  function confirmCloudOpen(result){
+    const dialog=document.getElementById('cloud-playback-dialog');
+    if(dialog.open)return Promise.resolve(false);
+    document.getElementById('cloud-playback-track').textContent=result.title;
+    const provider=document.getElementById('cloud-playback-provider');
+    provider.textContent=result.cloud_provider==='dropbox'?'Dropbox':result.cloud_provider==='google_drive'?'Google Drive':t('Cloud-managed audio');
+    provider.className='cloud-provider cloud-provider-'+result.cloud_provider;
+    return new Promise(resolve=>{
+      let approved=false;
+      document.getElementById('cloud-playback-confirm').onclick=()=>{approved=true;dialog.close();};
+      document.getElementById('cloud-playback-cancel').onclick=()=>dialog.close();
+      dialog.addEventListener('close',()=>resolve(approved),{once:true});
+      dialog.showModal();document.getElementById('cloud-playback-cancel').focus();
+    });
+  }
   document.addEventListener('click',event=>{
     const b=event.target.closest('[data-play-track]');if(!b)return;
     event.preventDefault();event.stopImmediatePropagation();if(b.disabled)return;
     const source=scope(b),identity=b.dataset.playTrack;b.disabled=true;
-    api('/api/playback/open',{method:'POST',body:JSON.stringify({...source,track_id:identity})})
-      .then(()=>notify(t('Opened in your default media player')))
+    (async()=>{
+      let result=await api('/api/playback/open',{method:'POST',body:JSON.stringify({...source,track_id:identity})});
+      if(result.confirmation_required){
+        if(!await confirmCloudOpen(result))return;
+        result=await api('/api/playback/open',{method:'POST',body:JSON.stringify({...source,track_id:identity,confirm_cloud_open:true,confirmation_token:result.confirmation_token})});
+      }
+      if(result.opened)notify(t('Opened in your default media player'));
+    })()
       .catch(error=>notify(error.message,true))
       .finally(()=>{queue.add(b);cache.delete(key(b));schedule();});
   },true);
@@ -73,7 +94,7 @@ window.TrackPlayback=(()=>{
   document.addEventListener('keydown',event=>{if(event.target.matches('[data-play-track]'))event.stopPropagation();},true);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)recheck();});
   window.addEventListener('focus',recheck);
-  window.addEventListener('workbench-language',()=>{for(const b of document.querySelectorAll('[data-play-track]'))if(b.dataset.available)status(b,b.dataset.available==='true',b.dataset.fileStatus);});
+  window.addEventListener('workbench-language',()=>{for(const b of document.querySelectorAll('[data-play-track]'))if(b.dataset.available)status(b,b.dataset.available==='true',b.dataset.fileStatus,{can_open:b.dataset.cloudOpen==='true'});});
   function recheck(){
     const now=Date.now();
     const forced=now-lastForcedRefresh>=MIN_FORCE_INTERVAL_MS;

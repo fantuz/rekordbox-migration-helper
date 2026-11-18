@@ -344,7 +344,7 @@ class MusicBrainzTests(unittest.TestCase):
                                'candidates':[{'title':f'Candidate {124-i:03}','confidence':i/125}],
                                'proposal':{'community_score':i/25,'year':1900+i}})))
             for i,state in [(0,'missing'),(1,'playable'),(2,'inaccessible'),(3,'unverified')]:
-                db.execute('INSERT INTO file_health_records VALUES (?,?,?,?,?,?,?,?)',
+                db.execute('INSERT INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text) VALUES (?,?,?,?,?,?,?,?)',
                            ('snapshot:'+saved['id'],str(i),'Title','Artist','House',state,123.0,''))
         pages=[batch_record(self.store,batch['id'],offset,'title') for offset in (0,50,100)]
         self.assertEqual([r['title'] for page in pages for r in page['rows']],[f'Title {i:03}' for i in range(125)])

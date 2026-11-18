@@ -4,6 +4,7 @@ This is advisory evidence, separate from user review decisions. A full scan
 runs in the existing cancellable job worker, never during page rendering.
 """
 import ipaddress
+import json
 import re
 import time
 from flask import jsonify,request
@@ -46,12 +47,15 @@ def register(owner):
     def get_file_health():
         source=selected_source(request.args.get('source',''))
         status=request.args.get('status','all')
+        provider=request.args.get('provider','all')
         sorting=request.args.get('sort','artist')
         direction=request.args.get('direction','asc')
         query=request.args.get('q','').strip().casefold()
         try:offset=int(request.args.get('offset',0))
         except (TypeError,ValueError):raise ValueError('Choose a valid offset') from None
-        if status not in ('all','not_playable',*STATUS) or sorting not in ORDER or direction not in ('asc','desc') or not 0<=offset<=10000000 or len(query)>200:
+        if (status not in ('all','not_playable','cloud_only','cloud_not_local',*STATUS)
+                or provider not in ('all','dropbox','google_drive','other','unknown')
+                or sorting not in ORDER or direction not in ('asc','desc') or not 0<=offset<=10000000 or len(query)>200):
             raise ValueError('Choose a supported file-health filter and sort')
         saved=store()
         with saved.connection() as db:
@@ -76,8 +80,14 @@ def register(owner):
                 total_records=len(resolve(owner,source)['tracks'])
             if total_records>250000:raise ValueError('This library exceeds the file-health scan limit')
             where='source=?';params=[source]
-            if status=='not_playable':where+=" AND status IN ('missing','inaccessible')"
+            if status=='not_playable':where+=" AND (status IN ('missing','inaccessible') OR cloud_state IN ('online_only','not_local'))"
+            elif status=='cloud_only':where+=" AND cloud_state='online_only'"
+            elif status=='cloud_not_local':where+=" AND cloud_state='not_local'"
             elif status!='all':where+=' AND status=?';params.append(status)
+            if provider in ('dropbox','google_drive'):
+                where+=' AND provider_checked=1 AND (providers & ?)<>0';params.append(1 if provider=='dropbox' else 2)
+            elif provider=='other':where+=' AND provider_checked=1 AND providers=0'
+            elif provider=='unknown':where+=' AND provider_checked=0'
             if query:where+=' AND instr(search_text,?)>0';params.append(query)
             matched=db.execute('SELECT count(*) FROM file_health_records WHERE '+where,params).fetchone()[0]
             order=ORDER[sorting]
@@ -87,16 +97,29 @@ def register(owner):
             if direction=='desc':
                 first,separator,tail=order.partition(', ')
                 order=first+' DESC'+(separator+tail if separator else '')
-            sql='SELECT track_id,title,artist,genre,status,checked_at FROM file_health_records WHERE '+where+' ORDER BY '+order+' LIMIT ? OFFSET ?'
+            sql='SELECT track_id,title,artist,genre,status,checked_at,providers,provider_checked,cloud_state,logical_size,filename,provider_evidence FROM file_health_records WHERE '+where+' ORDER BY '+order+' LIMIT ? OFFSET ?'
             rows=[dict(r) for r in db.execute(sql,[*params,PAGE_SIZE,offset])]
+            for row in rows:
+                try:row['provider_evidence']=json.loads(row['provider_evidence'])
+                except (TypeError,ValueError):row['provider_evidence']=[]
             counts={r['status']:r['n'] for r in db.execute('SELECT status,count(*) n FROM file_health_records WHERE source=? GROUP BY status',(source,))}
             observed=sum(counts.values())
+            provider_counts=dict.fromkeys(('all','dropbox','google_drive','other','unknown'),0)
+            provider_counts['all']=observed
+            for row in db.execute('SELECT providers,provider_checked,count(*) n FROM file_health_records WHERE source=? GROUP BY providers,provider_checked',(source,)):
+                if not row['provider_checked']:provider_counts['unknown']+=row['n'];continue
+                if row['providers']&1:provider_counts['dropbox']+=row['n']
+                if row['providers']&2:provider_counts['google_drive']+=row['n']
+                if not row['providers']:provider_counts['other']+=row['n']
+            cloud_counts={r['cloud_state']:r['n'] for r in db.execute('SELECT cloud_state,count(*) n FROM file_health_records WHERE source=? GROUP BY cloud_state',(source,))}
+            unavailable=db.execute("SELECT count(*) FROM file_health_records WHERE source=? AND (status IN ('missing','inaccessible') OR cloud_state IN ('online_only','not_local'))",(source,)).fetchone()[0]
         return jsonify(source=source,source_total=total_records,checked=observed,
                        unchecked=max(0,total_records-observed),scan_state=('partial' if record and record['state']=='running' and observed<total_records else record['state']) if record else 'not_started',
                        scan_time=record['checked_at'] if record else None,
                        counts={name:counts.get(name,0) for name in STATUS},
+                       provider=provider,provider_counts=provider_counts,cloud_counts=cloud_counts,unavailable_count=unavailable,
                        rows=rows,total=matched,offset=offset,sort=sorting,direction=direction,
-                       note='File status is local, advisory evidence from the last explicit scan. Unchecked tracks are not Unverified. Re-scan after connecting storage or changing paths.')
+                       note='Local metadata evidence from the last explicit scan. Provider labels match recorded or mapped paths, not a verified cloud inventory. Cloud absence is not proof of deletion. Re-scan after storage or path changes.')
 
     @app.post('/api/file-health/scan')
     def scan_file_health():
@@ -128,9 +151,11 @@ def register(owner):
             with saved.connection() as db:
                 if force:
                     db.execute('DELETE FROM file_health_records WHERE source=?',(source,))
-                prior={row[0] for row in db.execute('SELECT track_id FROM file_health_records WHERE source=?',(source,))}
+                prior={row[0] for row in db.execute('SELECT track_id FROM file_health_records WHERE source=? AND provider_checked=1',(source,))}
                 db.execute('INSERT OR REPLACE INTO file_health_scans (source,total,done,checked_at,state) VALUES (?,?,?,?,?)',
                            (source,len(tracks),len(prior),started,'running'))
+            from cloud_file_status import provider_context
+            roots=provider_context()
             remaining=[t for t in tracks if str(t['id']) not in prior]
             finished=False
             try:
@@ -141,18 +166,21 @@ def register(owner):
                     probes={str(t['id']):t for t in batch}
                     # A scan is an explicit request for current filesystem
                     # evidence, never merely a replay of the status TTL.
-                    states,_=cached_inspect(owner,probes,refresh=True,mappings=mappings)
+                    states,_,details=cached_inspect(owner,probes,refresh=True,mappings=mappings,details=True,roots=roots)
                     with saved.connection() as db:
-                        db.executemany('INSERT OR REPLACE INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text) VALUES (?,?,?,?,?,?,?,?)',
+                        db.executemany('INSERT OR REPLACE INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text,providers,provider_checked,cloud_state,logical_size,filename,provider_evidence) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                             [(source,identity,str(t.get('title') or ''),str(t.get('artist') or ''),
                               str(t.get('genre') or ''),states[identity],time.time(),
-                              ' '.join(str(t.get(k) or '') for k in ('id','title','artist','genre')).casefold())
+                              ' '.join(str(t.get(k) or '') for k in ('id','title','artist','genre')).casefold(),
+                              details[identity]['providers'],1,details[identity]['cloud_state'],
+                              details[identity]['logical_size'],details[identity]['filename'],json.dumps(details[identity]['provider_evidence']))
                              for identity,t in probes.items()])
                         done=len(prior)+index+len(batch)
                         db.execute('UPDATE file_health_scans SET done=?,checked_at=? WHERE source=?',(done,time.time(),source))
                     progress(100*done/max(1,len(tracks)),f'Checking local files: {done:,} / {len(tracks):,}')
                 finished=True
-                return {'source':source,'tracks':len(tracks),'checked':len(tracks),'audio_files_modified':False}
+                return {'source':source,'tracks':len(tracks),'checked':len(tracks),'audio_files_modified':False,
+                        'audio_contents_read':False,'cloud_api_requests':False}
             finally:
                 with saved.connection() as db:
                     db.execute('UPDATE file_health_scans SET state=?,checked_at=? WHERE source=?',
