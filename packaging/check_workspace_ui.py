@@ -67,12 +67,19 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     page.screenshot(path=str(output/'summary-cards.png'))
     # No metadata snapshot yet, despite an XML/ZIP workspace being available.
     ready=False;done=False
+    page.select_option('#journey-context-source','snapshot:'+sid)
+    page.wait_for_function('(id)=>Journeys.context()?.snapshot===id',arg=sid)
+    scope=page.evaluate('Journeys.context().scope_key')
     def library(route):route.fulfill(json={**lab,'workspace':'synthetic-loaded-library','snapshots':lab['snapshots'] if ready else []})
     def capture(route):
-        assert route.request.post_data_json['source']=='session'
-        route.fulfill(json={'job':'synthetic-capture'})
-    def task(route):route.fulfill(json={'status':'complete','result':{'id':sid},'progress':100,'message':'Synthetic capture complete'} if done else {'status':'running','progress':35,'message':'Preparing synthetic metadata'})
-    page.route('**/api/lab',library);page.route('**/api/lab/snapshots',capture);page.route('**/api/tasks/synthetic-capture',task)
+        if route.request.method=='GET':
+            route.fulfill(json={'source':'snapshot:'+sid,'scope':scope,'label':'Synthetic capture',
+                'snapshot':{'id':sid} if ready else None,'file_health':{'state':'not_started','done':0}})
+        else:
+            assert route.request.post_data_json['source']=='snapshot:'+sid
+            route.fulfill(json={'job':'synthetic-capture'})
+    def task(route):route.fulfill(json={'status':'complete','result':{'id':sid,'scope':scope},'progress':100,'message':'Synthetic capture complete'} if done else {'status':'running','progress':35,'message':'Preparing synthetic metadata'})
+    page.route('**/api/lab',library);page.route('**/api/library-preparation*',capture);page.route('**/api/tasks/synthetic-capture',task)
     page.locator('.nav[data-view="bubbles"]').click();page.wait_for_selector('#bubble-empty',state='visible')
     assert page.locator('#bubble-dimension option').count()>10
     assert page.locator('#bubble-dimension').is_disabled()
@@ -83,7 +90,9 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     assert page.locator('#view-lab').is_visible()
     assert page.locator('#view-bubbles').is_hidden()
     page.locator('.nav[data-view="bubbles"]').click();page.wait_for_selector('#bubble-empty',state='visible')
-    page.locator('#bubble-empty [data-insight-capture]').click();page.wait_for_selector('#progress[open]')
+    page.locator('#bubble-empty [data-insight-capture]').click()
+    page.wait_for_selector('#preparation-dialog[open]')
+    page.locator('#preparation-form button[type="submit"]').click();page.wait_for_selector('#progress[open]')
     box=page.locator('#progress').bounding_box();viewport=page.viewport_size
     assert abs(box['x']+box['width']/2-viewport['width']/2)<3
     assert abs(box['y']+box['height']/2-viewport['height']/2)<3
@@ -130,7 +139,7 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     page.keyboard.press('Escape');page.wait_for_selector('#bubble-expanded',state='hidden')
     page.locator('#library-bubbles g.bubble-node').first.click();page.wait_for_function('document.querySelector("#library-bubbles").dataset.state==="ready" && document.querySelectorAll("#bubble-breadcrumbs button").length===2')
     page.locator('#bubble-reset').click();page.wait_for_function('document.querySelectorAll("#bubble-breadcrumbs button").length===1 && document.querySelector("#library-bubbles").dataset.state==="ready"')
-    page.unroute('**/api/lab',library);page.unroute('**/api/lab/snapshots',capture);page.unroute('**/api/tasks/synthetic-capture',task)
+    page.unroute('**/api/lab',library);page.unroute('**/api/library-preparation*',capture);page.unroute('**/api/tasks/synthetic-capture',task)
     duplicate_review=check_duplicate_review_ui(browser,base,output)
     quick_edits=check_track_details_ui(browser,base,output)
     # Browser locale fallback, persistence and blocked local storage must not stop startup.

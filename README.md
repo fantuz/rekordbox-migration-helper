@@ -82,6 +82,16 @@ Library bubbles explores metadata categories visually, including unknown genres 
 
 ## Feature inventory
 
+- Start with a clickable **Workflow map** showing inputs, transformation,
+  enrichment, verification and outputs, with direct links to the tools.
+- After loading a native capture, XML or XML+ZIP pair, explicitly prepare or
+  reuse the internal metadata snapshot for bubbles and optionally scan local
+  files. These need no additional manual Rekordbox export. See
+  [workflow and preparation requirements](docs/WORKFLOWS.md).
+- Media inventory names its loaded XML+ZIP workspace, separates optional path
+  mapping, restores saved scan folders and lets you remove folders from the
+  next scan. Changed settings are distinguished from saved scan evidence.
+
 A factual overview of the current source tree. Release downloads may lag behind `main`; the draft items below retain their stated limits.
 
 **Inputs, discovery and compatibility**

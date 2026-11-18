@@ -107,6 +107,9 @@ def check_native_collection_ui(browser, base, data, output, root):
         page.screenshot(path=str(output / 'native-collection-context.png'))
         # Explicit snapshot action captures the chosen source and updates the shared context.
         action.click()
+        page.wait_for_selector('#preparation-dialog[open]')
+        assert not page.locator('#preparation-scan').is_checked()
+        page.locator('#preparation-form button[type="submit"]').click()
         page.wait_for_function('Boolean(window.Journeys.context()?.snapshot)')
         assert page.locator('[data-journey-context-capture]').count() == 0
         page.locator('.nav[data-view=investigations]').click()

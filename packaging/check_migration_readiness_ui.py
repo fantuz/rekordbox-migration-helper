@@ -120,6 +120,8 @@ def check_migration_readiness_ui(browser,base,store,root,output):
         page.locator('#quick-xml-form button[type="submit"]').click()
         page.wait_for_function('!busy && /^[a-f0-9]{32}$/.test(document.querySelector("#quick-source").value) && Journeys.context()?.source==="capture:"+document.querySelector("#quick-source").value')
         capture=page.locator('#quick-source').input_value()
+        page.wait_for_selector('#preparation-dialog[open]')
+        page.locator('#preparation-later').click()
         page.locator('.nav[data-view="lab"]').click()
         page.select_option('#lab-source',capture)
         page.fill('#lab-label','XML-only tempo evidence')

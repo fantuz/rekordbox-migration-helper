@@ -24,6 +24,8 @@ Journeys.init();SharingUI.init();Intelligence.init();renderFeaturedTools();
 window.addEventListener('workbench-language',renderFeaturedTools);
 
 document.querySelector('[data-map-onetagger]').onclick=()=>{
-  showView('lab');document.querySelector('[data-lab-tab="editor"]').click();
-  document.getElementById('onetagger-bridge').scrollIntoView({block:'start'});
+  showView('musicbrainz');
+  const target=document.getElementById('onetagger-bridge');
+  if(target.tagName==='DETAILS')target.open=true;
+  target.scrollIntoView({block:'start'});
 };

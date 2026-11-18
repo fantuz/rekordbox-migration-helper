@@ -114,3 +114,37 @@ Existing checkpoint files are skipped by the downloader; `model_ready` checks si
 5. Measure model quality and cache association separately from binary structure and inference speed.
 
 The new Workbench regressions address demonstrated omissions without importing unsupported native writers or assuming that every claim in Recordbox's research ledger has independent verification.
+
+## Update reviewed on 18 November 2026
+
+The fork advanced another 12 commits to [`2b809082`](https://github.com/fantuz/recordbox/tree/2b809082d65173ce32e1f43ff363833ace71e431).
+Most changes implement player audio, effects, mixer, sampler and sequencer behavior.
+They do not establish a new native library or STEMS serialization format.
+
+- The [native importer](https://github.com/fantuz/recordbox/blob/2b809082d65173ce32e1f43ff363833ace71e431/app/src/rbimport.rs)
+  now checks the tables and columns it consumes before import, with history optional.
+  This supports checking capabilities before promising a workflow. Its required schema
+  belongs to its importer; it is not a universal requirement to reject every older
+  rekordbox library. Workbench retains separate core compatibility and optional evidence.
+  The paired importer now also checks its consumed schema before catalog creation,
+  naming missing tables/fields instead of leaking a raw lookup error. Regressions
+  verify retry safety, original-byte preservation and case-insensitive content fields.
+- [Beat-grid half/double operations](https://github.com/fantuz/recordbox/blob/2b809082d65173ce32e1f43ff363833ace71e431/app/src/model.rs)
+  now preserve tempo changes and depend on the first beat's phase. A half/double BPM
+  disagreement alone cannot prove grid or cue equivalence. Workbench continues to
+  report the disagreement for review and preserves the source anchors and cues.
+  No automatic tempo normalization or unverified grid writer was introduced.
+- The [STEMS cache](https://github.com/fantuz/recordbox/blob/2b809082d65173ce32e1f43ff363833ace71e431/app/src/stems/mod.rs)
+  can now remove old `.stems` files to enforce a disk budget, protecting the file just
+  written. A previously present cache may later be evicted. Workbench now includes
+  this lifecycle advisory in recognized `PDSTEMS1` evidence: retention remains unknown,
+  and cache absence cannot establish lost music, a damaged database or missing native
+  preparation. A synthetic regression checks that these distinctions remain explicit.
+- STEMS mute/solo transitions in preferences changed, including three-part instrument
+  grouping and the message shown before analysis is ready. These are runtime player
+  states, not additional proof that a cache belongs to a source, has the right model
+  weights or works in native rekordbox. They do not justify new readiness assumptions.
+
+This is a pinned static source review. The claimed traced vendor addresses, native
+player behavior and inference-quality assertions were not independently executed.
+No third-party implementation code or personal libraries were copied into Workbench.

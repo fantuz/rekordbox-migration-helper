@@ -38,7 +38,9 @@ def inspect_format(name, prefix, size,read_at=None,provider_context=False):
                       'Recordbox four-source cache layout recognized; source audio, model and native readiness are unknown',
                       frames=frames, duration_seconds=frames/44100, sample_rate=44100, channels=8,
                       source_order=['drums','bass','other','vocals'], encoding='planar_pcm16_le',
-                      payload_verified=False, association_metadata_present=False)
+                      payload_verified=False, association_metadata_present=False,
+                      cache_retention='unknown', cache_eviction_possible=True,
+                      cache_lifecycle_note='Current Recordbox source can evict caches to enforce a disk budget; retention is not recorded in this header')
     if name in SETTINGS:
         if len(prefix) < 108 or size < 108:
             return finish('corrupt', 'player_settings', 'Truncated player-settings header')

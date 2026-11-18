@@ -4,6 +4,12 @@ Use the language selector for interface labels, short guidance and confirmations
 
 ## Import and source analysis
 
+New browser tabs open a clickable **Workflow map** connecting inputs,
+transformation, enrichment, checks and outputs. Tool links remain in the
+sidebar, and returning tabs retain their selected page. A preparation card and
+post-load prompt explain internal snapshots and optional scans. See
+[workflow requirements and inventory scope](WORKFLOWS.md).
+
 Create an untouched rekordbox Backup Library backup before preparing transformed files. Preserve audio separately if it is excluded. For XML/ZIP review, create matching exports consecutively without intervening library changes. Uploaded files are temporary local analysis copies. The existing-file option reads originals in place and requires them to stay unchanged.
 
 Source analyzer can instead inspect a database folder or collection XML. Close rekordbox and pause Cloud Library Sync for capture. Windows and Mac suggestions are optional; manual paths also work on Linux for a user-mounted filesystem. Read [migration](MIGRATION.md), [compatibility](COMPATIBILITY.md) and [capture/asset/history procedures](DISCOVERY-ASSETS-HISTORY.md) for details.

@@ -180,6 +180,14 @@ class FormatTests(unittest.TestCase):
         self.assertIsNone(r['native_stems_readiness'])
         self.assertEqual(self.inspect('name.stems',stems_bytes()[:16],len(stems_bytes()))['validation'],'recognized')
 
+    def test_recordbox_cache_retention_is_not_a_backup_or_preparation_guarantee(self):
+        result=self.inspect('name.stems',stems_bytes())
+        self.assertEqual(result['cache_retention'],'unknown')
+        self.assertTrue(result['cache_eviction_possible'])
+        self.assertIsNone(result['native_stems_readiness'])
+        self.assertEqual(result['source_association'],'unknown')
+        self.assertIn('disk budget',result['cache_lifecycle_note'])
+
     def test_stems_zero_huge_and_truncated_lengths_are_bounded(self):
         for frames in (0,MAX_STEM_FRAMES+1,2**60,2**64-1):
             raw=b'PDSTEMS1'+struct.pack('<Q',frames)

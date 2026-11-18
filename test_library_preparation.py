@@ -132,3 +132,17 @@ class PreparationTests(unittest.TestCase):
                            (str(index), '9999', 'other:' + str(index), prepared['id']))
         self.assertNotIn(prepared['id'], [s['id'] for s in self.saved.snapshots()])
         self.assertEqual(latest_snapshot(self.saved, 'session:' + self.session['id'])['id'], prepared['id'])
+
+    def test_selected_older_snapshot_remains_available_to_insight_selectors(self):
+        import app as application
+        prepared=self.prepare()
+        with self.saved.connection() as db:
+            for index in range(101):
+                db.execute('INSERT INTO snapshots SELECT ?,label,?,source_kind,?,digest,payload FROM snapshots WHERE id=?',
+                           (str(index),'9999','other:'+str(index),prepared['id']))
+        self.saved.set_setting('collection_context','snapshot:'+prepared['id'])
+        with patch.object(application,'DATA',self.root),patch.object(application,'sessions',{}),patch.object(application,'active',None):
+            response=application.app.test_client().get('/api/lab')
+        self.assertEqual(response.status_code,200)
+        self.assertIn(prepared['id'],[row['id'] for row in response.json['snapshots']])
+        self.assertEqual(len(response.json['snapshots']),101)

@@ -9,7 +9,7 @@ window.LibraryPreparation=(()=>{
   }
   function render(data){
     current=data;
-    node('source').textContent=data?.label || I18n.t('Load a library pair to begin.');
+    node('source').textContent=data?.label || I18n.t('Load a workspace or save a source snapshot.');
     node('metadata').textContent=I18n.t('Snapshot')+' · '+I18n.t(data?.snapshot?'Ready':'Not checked');
     const scan=data?.file_health;
     node('files').textContent=I18n.t('File health')+' · '+I18n.t(scan?.state==='complete'?'Complete':scan?.done?'Partial':'Not checked');
@@ -22,7 +22,7 @@ window.LibraryPreparation=(()=>{
   }
   async function open(source,view){
     const selected=input(source),data=await status(selected);
-    if(!data){notify(I18n.t('Load a library pair to begin.'));return;}
+    if(!data){notify(I18n.t('Load a workspace or save a source snapshot.'));return;}
     dialogSelection={...selected,scope:data.scope,view};
     node('dialog-source').textContent=data.label;
     node('scan').checked=false;
