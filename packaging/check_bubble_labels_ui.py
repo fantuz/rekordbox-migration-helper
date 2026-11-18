@@ -112,6 +112,7 @@ def check_bubble_labels_ui(page,base,sid,output,store):
         page.select_option('#language',code)
         page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
         page.wait_for_function('document.querySelector(".bubble-scroll-hint")?.textContent===I18n.t("Scroll for more categories")')
+        assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),code
         assert page.locator('#bubble-groups [data-bubble-index="1"] span').inner_text()==labels[1]
         verify()
     assert page.locator('#bubble-groups img').count()==0

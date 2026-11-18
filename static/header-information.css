@@ -1,6 +1,6 @@
 /* One restrained, reusable informational notice between the page title and
  * global selectors. It never consumes a full-width row on desktop. */
-.topbar{display:grid;grid-template-columns:minmax(165px,max-content) minmax(210px,1fr) max-content;align-items:center;column-gap:16px;row-gap:10px}
+.topbar{display:grid;grid-template-columns:minmax(165px,max-content) minmax(210px,1fr) minmax(0,max-content);align-items:center;column-gap:16px;row-gap:10px}
 .header-title{min-width:0}
 .header-information{position:relative;display:flex;align-items:center;gap:9px;min-width:0;max-width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);font-size:11px;line-height:1.45;color:var(--muted)}
 .header-information-icon{flex:0 0 auto;align-self:flex-start;font-size:15px;color:var(--accent);line-height:1.2}

@@ -29,7 +29,7 @@ def check_header_information_ui(page,output):
             assert page.locator('#header-information-expanded [data-help-doc="discovery-assets-history"]').is_visible()
             for theme in ('light','dark'):
                 page.select_option('#theme',theme)
-                for width in (1715,1024,768,390):
+                for width in (1715,1366,1280,1024,768,390):
                     page.set_viewport_size({'width':width,'height':980})
                     assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth+1'),(width,theme)
                     assert page.locator('#header-information').evaluate('''e=>{
