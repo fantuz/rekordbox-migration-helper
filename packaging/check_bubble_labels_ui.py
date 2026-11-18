@@ -1,5 +1,6 @@
 """Measured SVG text and interaction checks on invented categories in GitHub CI."""
 from copy import deepcopy
+import json
 
 
 def check_bubble_labels_ui(page,base,sid,output,store):
@@ -48,7 +49,17 @@ def check_bubble_labels_ui(page,base,sid,output,store):
         assert page.locator('.bubble-node circle').evaluate_all('(els)=>els.map(el=>[el.getAttribute("r"),el.parentNode.getAttribute("transform")])')==circles
     for width in (1920,1366,820,430):
         page.set_viewport_size({'width':width,'height':1050});verify()
-        assert not page.evaluate('document.documentElement.scrollWidth>innerWidth')
+        layout=page.evaluate('''()=>{
+            const legend=document.querySelector('#bubble-groups').getBoundingClientRect(),panel=document.querySelector('.bubble-category-panel').getBoundingClientRect();
+            return {viewport:innerWidth,page:document.documentElement.scrollWidth,legend:legend.width,panel:panel.width,
+                outside:[...document.querySelectorAll('body *')].map(node=>{const r=node.getBoundingClientRect();return {tag:node.tagName,id:node.id,classes:node.className?.baseVal??node.className,left:r.left,right:r.right,width:r.width,height:r.height}})
+                    .filter(node=>node.width>0&&node.height>0&&(node.right>innerWidth+1||node.left<-1)).slice(0,40)};
+        }''')
+        (output/f'bubble-layout-{width}.json').write_text(json.dumps(layout,indent=2)+'\n')
+        if layout['page']>width or (width==820 and layout['legend']<layout['panel']-2):
+            page.screenshot(path=str(output/f'bubble-layout-failure-{width}.png'),full_page=True)
+        assert layout['page']<=width,layout
+        if width==820:assert layout['legend']>=layout['panel']-2,layout
         if width==1920:
             assert page.locator('.bubble-label').count()>0
             # Bubble layout order is independent of the category insertion
