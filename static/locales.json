@@ -27182,6 +27182,20 @@
       "ar": "خريطة سير العمل",
       "pt-PT": "Mapa de fluxos",
       "pt-BR": "Mapa de fluxos"
+    },
+    "Scroll for more categories": {
+      "de": "Für weitere Kategorien scrollen",
+      "fr": "Faites défiler pour voir d’autres catégories",
+      "it": "Scorri per vedere altre categorie",
+      "es": "Desplázate para ver más categorías",
+      "el": "Κάντε κύλιση για περισσότερες κατηγορίες",
+      "pl": "Przewiń, aby zobaczyć więcej kategorii",
+      "cs": "Další kategorie zobrazíte posunutím",
+      "ru": "Прокрутите, чтобы увидеть другие категории",
+      "ja": "スクロールして他のカテゴリを表示",
+      "ar": "مرّر لعرض المزيد من الفئات",
+      "pt-PT": "Desloque para ver mais categorias",
+      "pt-BR": "Role para ver mais categorias"
     }
   }
 }

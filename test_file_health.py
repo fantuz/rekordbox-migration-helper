@@ -1,8 +1,10 @@
 from test_support import workspace_client
 """Private file-health index: scoped, opt-in, bounded, read-only and sortable."""
 from pathlib import Path
+from hashlib import sha256
 import tempfile
 import unittest
+import wave
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -87,6 +89,31 @@ class FileHealthTests(unittest.TestCase):
         self.assertEqual(self.scan(force=True).status_code,200)
         self.assertEqual(self.query(status='playable').json['total'],0)
         self.assertEqual(self.query(status='missing').json['total'],2)
+
+    def test_sampler_wav_assets_remain_separate_read_only_accessibility_records(self):
+        # Loop captures can keep the source rate; rendered sequences can use 44.1 kHz.
+        # Matching display metadata is not proof that these are the same recording.
+        folder=self.root/'Sampler'/'Capture';folder.mkdir(parents=True)
+        paths=[]
+        for name,rate,frame in (('Loop_capture(1).wav',48000,b'\x01\x00\x01\x00'),
+                                ('Synthetic pattern.wav',44100,b'\x00\x00\x00\x00')):
+            path=folder/name
+            with wave.open(str(path),'wb') as audio:
+                audio.setnchannels(2);audio.setsampwidth(2);audio.setframerate(rate)
+                audio.writeframes(frame*rate)
+            paths.append(path)
+        saved=self.store.save_snapshot({'schema':1,'scope_key':'synthetic:sampler-wavs','playlists':[],
+            'tracks':[{'id':str(i),'title':'Synthetic pattern','artist':'Test artist','genre':'',
+                       'bpm':120,'duration':1.0,'current_path':str(path)} for i,path in enumerate(paths)]},'Generated WAV assets')
+        self.source='snapshot:'+saved['id'];snapshot=self.store.snapshot(saved['id'])
+        before={path:sha256(path.read_bytes()).hexdigest() for path in paths}
+        self.assertEqual(self.scan().status_code,200)
+        result=self.query().json
+        self.assertEqual(result['counts']['playable'],2)
+        self.assertEqual({row['track_id'] for row in result['rows']},{'0','1'})
+        self.assertFalse(self.result['audio_files_modified'])
+        self.assertEqual(self.store.snapshot(saved['id']),snapshot)
+        self.assertEqual({path:sha256(path.read_bytes()).hexdigest() for path in paths},before)
 
     def test_input_and_remote_guards_and_read_only_scope(self):
         for kwargs in ({'status':'garbage'},{'sort':'status;DELETE'},{'direction':'up'},{'offset':'nope'}):

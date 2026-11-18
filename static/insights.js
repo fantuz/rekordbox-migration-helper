@@ -325,6 +325,9 @@ function fitBubbleViewBox(svg,nodes){
   const right=Math.max(...nodes.map(node=>node.x+node.r))+margin,bottom=Math.max(...nodes.map(node=>node.y+node.r))+margin;
   svg.setAttribute('viewBox',[left,top,right-left,bottom-top].join(' '));svg.setAttribute('preserveAspectRatio','xMidYMid meet');
 }
+function bubbleActionLabel(group,result){
+  return group.label+', '+bubbleWeight(group.value,result.metric)+', '+num(group.entries)+' '+I18n.t('entries')+'. '+(result.dimension==='tracks'?I18n.t('Inspect track'):I18n.t('Drill down'));
+}
 function renderBubbleMap(){
   const state=insightState.bubble,r=state.result;if(!r)return;const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state=r.groups.some(g=>g.value>0)?'ready':'empty';
   if(r.dimension==='colour')for(const group of r.groups){group.original_label=group.original_label || group.label;group.label=colourDisplayLabel(group.key,group.original_label);}
@@ -333,18 +336,20 @@ function renderBubbleMap(){
   if(positive.length){
     const nodes=bubbleLayout(positive,r);fitBubbleViewBox(svg,nodes);
     for(const node of nodes){
-      const group=node.data,g=svgNode('g',{class:'bubble-node',transform:'translate('+node.x+','+node.y+')',role:'button',tabindex:'0','aria-label':group.label+', '+bubbleWeight(group.value,r.metric)+', '+num(group.entries)+' '+I18n.t('entries')+'. '+(r.dimension==='tracks'?I18n.t("Inspect track"):I18n.t("Drill down"))});
+      const group=node.data,g=svgNode('g',{class:'bubble-node',transform:'translate('+node.x+','+node.y+')',role:'button',tabindex:'0','aria-label':bubbleActionLabel(group,r)});
       const circle=svgNode('circle',{r:node.r,fill:bubbleColor(group),stroke:'#ffffff','stroke-width':2});g.append(circle);
       g.dataset.bubbleIndex=String(r.groups.indexOf(group));
       g.addEventListener('mouseenter',()=>bubbleSelected(group));g.addEventListener('focus',()=>bubbleSelected(group));
-      g.addEventListener('click',wrap(()=>drillBubble(group)));
-      g.addEventListener('keydown',wrap(async event=>{if(event.key==='Enter' || event.key===' '){event.preventDefault();await drillBubble(group);$('#bubble-breadcrumbs button:last-child')?.focus();}}));svg.append(g);
+      g.addEventListener('click',wrap(()=>activateBubbleGroup(group)));
+      g.addEventListener('keydown',wrap(async event=>{if(event.key==='Enter' || event.key===' '){event.preventDefault();await activateBubbleGroup(group);}}));svg.append(g);
     }
   }else{const message=svgNode('text',{x:470,y:320,'text-anchor':'middle',fill:'currentColor','font-size':20});message.textContent=r.groups.length?I18n.t("No positive weights · try sizing by track count"):I18n.t("No entries in this branch");svg.append(message);}
   $('#bubble-svg').disabled=!r.groups.length;
   $('#bubble-group-title').textContent=insightDims[r.dimension];$('#bubble-group-count').textContent=num(r.groups_total)+(" "+I18n.t("Categories")+" \u00b7 ")+(r.groups_total?num(r.group_offset+1)+'–'+num(Math.min(r.group_offset+60,r.groups_total)):'0');
-  $('#bubble-groups').innerHTML=r.groups.map((g,i)=>'<button class="bubble-group-button" data-bubble-index="'+i+'"><i class="bubble-swatch" style="background:'+bubbleColor(g)+'"></i><span>'+esc(g.label)+'</span><b>'+esc(bubbleWeight(g.value,r.metric))+'</b></button>').join('');
-  $$('[data-bubble-index]').forEach(button=>{const group=r.groups[Number(button.dataset.bubbleIndex)];button.onclick=wrap(()=>drillBubble(group));button.onmouseenter=()=>bubbleSelected(group);button.onfocus=()=>bubbleSelected(group);});
+  if(r.groups.length>15){const hint=document.createElement('span');hint.className='bubble-scroll-hint';hint.textContent=I18n.t('Scroll for more categories');$('#bubble-group-count').append(hint);}
+  $('#bubble-groups').innerHTML=r.groups.map((g,i)=>'<button type="button" class="bubble-group-button" data-bubble-index="'+i+'" aria-label="'+esc(bubbleActionLabel(g,r))+'" title="'+esc(g.label)+'"><i class="bubble-swatch" style="background:'+bubbleColor(g)+'"></i><span>'+esc(g.label)+'</span><b>'+esc(bubbleWeight(g.value,r.metric))+'</b></button>').join('');
+  // SVG nodes keep their own listeners; each legend button activates once.
+  $$('#bubble-groups [data-bubble-index]').forEach(button=>{const group=r.groups[Number(button.dataset.bubbleIndex)];button.onclick=wrap(()=>activateBubbleGroup(group));button.onmouseenter=()=>bubbleSelected(group);button.onfocus=()=>bubbleSelected(group);});
   $('#bubble-groups-prev').disabled=!r.group_offset;$('#bubble-groups-next').disabled=r.group_offset+60>=r.groups_total;
   $('#bubble-map-note').textContent=I18n.t("Area:")+" "+I18n.t(r.metric_label)+'. '+I18n.t('Showing')+' '+num(r.groups.length)+" "+I18n.t("of")+" "+num(r.groups_total)+(" "+I18n.t("Categories")+"")+(r.groups_total>60?" "+I18n.t("on this page; use Next groups to see the rest"):'')+'. '+num(r.zero_weight_groups)+" "+I18n.t("categories have zero/unknown weight and remain in the list. Compare circle areas within this page; full track length is not time played.");
   $('#bubble-color-note').textContent={get group(){return I18n.t("Color identifies categories. Exact counts remain in the list.");},preparation:I18n.t("Manual-cue coverage (known entries): blue <25%, cyan 25–74%, green ≥75%. Gray: unknown. Analysis is separate."),rating:I18n.t("Mean saved stars, excluding unrated entries: purple <2; blue 2–3.99; green ≥4. Gray: no ratings."),saved:I18n.t("Saved track colour; gray means no single known colour. Inferred RGB is identified. Cue colours are separate.")}[$('#bubble-color').value];
@@ -362,6 +367,11 @@ async function drillBubble(group){
   state.path.push({dimension,key:group.key});const used=new Set(state.path.map(p=>p.dimension));
   const preferred={family:'genre',genre:'initial',initial:'artist',artist:"tracks",year:'genre',added:'genre',bpm:'genre',rating:'genre',usage:'genre',preparation:'genre',format:'genre',tone:'genre',colour:'family'}[dimension];
   state.dimension=[preferred,'family','genre','initial','artist',"tracks"].find(d=>d && !used.has(d)) || "tracks";state.groupOffset=0;state.offset=0;$('#bubble-track-detail').hidden=true;await loadBubbleData();
+}
+async function activateBubbleGroup(group){
+  const opensBranch=insightState.bubble.result?.dimension!=='tracks';
+  await drillBubble(group);
+  if(opensBranch)$('#bubble-breadcrumbs button:last-child')?.focus();
 }
 $('#bubble-dimension').onchange=wrap(async()=>{insightState.bubble.dimension=$('#bubble-dimension').value;insightState.bubble.groupOffset=0;await loadBubbleData();});
 $('#bubble-metric').onchange=wrap(()=>loadBubbleData());$('#bubble-color').onchange=()=>{renderColourLegend();renderBubbleMap();};

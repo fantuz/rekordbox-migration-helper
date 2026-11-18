@@ -24,6 +24,16 @@ The genre-balance panel compares shares of entries with known usage to shares of
 
 Click a category to narrow the collection. The default path is genre family → saved genre → artist initial → artist → tracks. Choose a different next dimension, including release/addition year, BPM band, personal stars, usage, cue preparation, format, tonality or track colour. Breadcrumbs return to earlier branches.
 
+Branch counters appear before the collection filters, grouping/area controls
+and clickable breadcrumb path. The category legend also opens branches:
+click a row or activate it with Enter/Space. Hover or focus previews its
+evidence. Desktop lists show 15 complete rows before scrolling, with a
+contrasting scrollbar; small windows adapt to the available space. Categories
+with zero/unknown area remain reachable through the list. Counts and source
+metadata are retained when navigating back to the collection.
+
+![Bubble navigation and scrolling legend with invented artist groups](screenshots/bubble-navigation.png)
+
 Circle **area**, not radius, represents track count, recorded usage from the selected evidence, or the sum of full track durations. Durations are not actual time played. Up to 60 categories are drawn per page to keep large collections responsive; exact totals, paging and the accessible category list remain available. Zero/unknown weights stay in that list even when a circle cannot be drawn. Compare circle areas within one displayed page. Individual tracks can be inspected from bubbles or tables.
 
 Genre families use explicit word/phrase aliases in saved tags, not a new audio classifier. A tag matching multiple families goes into “Mixed families” once. Unmapped tags, blank/unknown genres and generic electronic labels remain visible. The exact saved tags behind a bubble and the grouping rules can be inspected. No genre is rewritten by these views.

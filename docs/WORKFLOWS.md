@@ -53,8 +53,10 @@ original source, regenerate STEMS, download cloud music or contact providers.
 
 Missing genres/colours become unknown bubble groups; no audio scan is needed.
 XML cannot supply native histories or fields never exported. File health
-checks accessibility and headers, not full decoding, byte identity or STEMS
-quality. A scan cannot reconstruct absent native evidence.
+checks whether nonempty audio files are locally accessible; it does not
+validate audio headers, decoding, byte identity or STEMS quality. Advanced
+Media inventory matching separately reads tags/duration. A scan cannot
+reconstruct absent native evidence.
 
 ## Which library does Media inventory check?
 

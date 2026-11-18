@@ -148,3 +148,49 @@ They do not establish a new native library or STEMS serialization format.
 This is a pinned static source review. The claimed traced vendor addresses, native
 player behavior and inference-quality assertions were not independently executed.
 No third-party implementation code or personal libraries were copied into Workbench.
+
+## Further update reviewed on 18 November 2026
+
+The next five commits through
+[`46157d57`](https://github.com/fantuz/recordbox/tree/46157d576f037e463e7f45b4d6ff9ccd0ca57812)
+change 16 files, primarily FX, sampler/sequencer behavior and player settings.
+The native importer, database schema, export readers/writers, ANLZ handlers,
+beat-grid model and STEMS-cache implementation did not change in this interval.
+This update does not establish another native serialization format or new
+persistent STEMS-readiness evidence.
+
+- [Sampler capture and Sequence Load](https://github.com/fantuz/recordbox/blob/46157d576f037e463e7f45b4d6ff9ccd0ca57812/app/src/sampler_ext.rs)
+  now create ordinary stereo PCM16 WAV files. Loop capture keeps the decoded
+  source rate; Sequence Load renders at 44.1 kHz and inserts the result into
+  Recordbox's own collection with a grid starting at frame zero. These are
+  derived audio assets. Their BPM, title and duration cannot establish identity
+  with an original track, a native backup member or a STEMS cache.
+  A Workbench regression scans generated 48/44.1 kHz WAV references with matching
+  display metadata, retains both records, and checks snapshot/audio preservation.
+- The [sampler renderer](https://github.com/fantuz/recordbox/blob/46157d576f037e463e7f45b4d6ff9ccd0ca57812/app/src/sampler.rs)
+  takes the second of two pattern passes so sound ringing across the boundary
+  is present at the beginning. It includes slot gains but excludes the sampler's
+  output gain/fader. File accessibility and header shape do not certify that
+  render, its musical identity or effect quality. Workbench File health reports
+  accessibility, not header validation or full decoding.
+- The capture-name policy truncates the title to 48 Rust characters and adds
+  collision suffixes. It is this application's naming policy, not independent
+  proof of a universal rekordbox filename limit or portable Windows filename
+  validity. A `_capture` suffix or a `Sampler/Capture` folder is not a durable
+  source identifier. Captures outside the parsed collection require explicit
+  folder selection; collection-only coverage cannot certify auxiliary assets.
+- [Beat position and sampler sync](https://github.com/fantuz/recordbox/blob/46157d576f037e463e7f45b4d6ff9ccd0ca57812/app/src/audio.rs)
+  now use the first grid anchor, local beat spacing and sampler clock phase.
+  Matching scalar BPM is insufficient to establish phase/grid equivalence.
+  The loop capture's conditional 3 ms snapping is a runtime policy, not a
+  general migration-equality tolerance for stored cues.
+- [FX preferences](https://github.com/fantuz/recordbox/blob/46157d576f037e463e7f45b4d6ff9ccd0ca57812/app/src/ui_fx.rs)
+  persist panel choices in Recordbox's own settings. Sampler colours are keyed
+  by file path in its sampler preferences. These do not redefine native
+  `djmdColor`/`ColorID`, library cue fields or the `PDSTEMS1` cache contract.
+  The new synthetic effect/setting tests establish that implementation's behavior;
+  they are not additional vendor-format or licensed-player conformance fixtures.
+
+These observations retain the existing distinction between recorded metadata,
+filesystem availability, byte identity, derived audio and native-format evidence.
+The review was static; the new DSP engine and claimed vendor traces were not run.
