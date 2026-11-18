@@ -96,7 +96,7 @@ window.OneTaggerBridge=(()=>{
     $('stage').disabled=busy || reviewStale || !scan || !$('reviewed').checked || !$('review').querySelector('input:checked');
   }
   async function load(){
-    const revision=++sequence,chosen=$('snapshot').value||snapshot;
+    const revision=++sequence,chosen=$('snapshot').value||snapshot||window.BrowseState?.value('onetagger-snapshot')||'';
     const data=await api('/api/onetagger?'+new URLSearchParams({snapshot:chosen,q:$('search').value,offset:String(offset)}),{feedback:false});
     if(revision!==sequence)return;
     $('snapshot').replaceChildren(new Option(t('Choose a saved collection snapshot'),''),...data.snapshots.map(s=>new Option(s.label+' · '+snapshotMoment(s.created),s.id)));
@@ -108,6 +108,7 @@ window.OneTaggerBridge=(()=>{
     $('playlist').hidden=$('manifest').hidden=!selection;
     $('playlist').href='/api/onetagger/'+encodeURIComponent(selection)+'/playlist';$('manifest').href='/api/onetagger/'+encodeURIComponent(selection)+'/manifest';controls();
     $('evidence').href='/api/onetagger/'+encodeURIComponent(selection)+'/review?download=1';
+    await AudioPaths.load($('audio-paths'),snapshot?'snapshot:'+snapshot:'');
   }
   async function review(){
     const generation=++reviewSequence,id=selection;
@@ -154,3 +155,5 @@ window.OneTaggerBridge=(()=>{
   window.addEventListener('workbench-audio-paths',()=>{reviewSequence++;scan=null;$('review').replaceChildren();reportSummary();controls();});
   controls();return {load};
 })();
+
+if(!document.getElementById('view-onetagger').hidden)OneTaggerBridge.load().catch(error=>notify(error.message,true));

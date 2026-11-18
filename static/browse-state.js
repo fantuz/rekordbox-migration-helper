@@ -3,7 +3,7 @@ window.BrowseState=(()=>{
   const key='workbench-browse-v1';let data={},active='',restoring=false;
   try{data=JSON.parse(sessionStorage.getItem(key)||'{}');if(!data||typeof data!=='object')data={};}catch{}
   const allowed=id=>/^(?:dj|bubble|tonal)-(?:snapshot|search|family|genre|tone|colour|basis|from|to|usage|preparation|bpm-min|bpm-max|min|max|rating-min|perspective|quality|stars|max-plays|days|random-mode|sample|seed|metric|dimension)$/.test(id) ||
-    /^(?:history-(?:snapshot|year|search|track-search)|lab-(?:snapshot|report-select|report-section|report-search|track-search|pilot-(?:target|target-value|size|seed|speed|top))|intelligence-(?:source|before|after|playlist|history|lens|search|threshold)|musicbrainz-(?:library|snapshot)|file-health-(?:source|status|provider|search))$/.test(id);
+    /^(?:history-(?:snapshot|year|search|track-search)|lab-(?:snapshot|report-select|report-section|report-search|track-search|pilot-(?:target|target-value|size|seed|speed|top))|intelligence-(?:source|before|after|playlist|history|lens|search|threshold)|musicbrainz-(?:library|snapshot)|onetagger-(?:snapshot|search)|file-health-(?:source|status|provider|search))$/.test(id);
   function save(){try{sessionStorage.setItem(key,JSON.stringify(data));}catch{}}
   function value(id){return data[id];}
   function set(id,v){data[id]=v;save();}

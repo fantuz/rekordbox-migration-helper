@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Give OneTagger bridge its own Enrich sidebar page and direct Workflow map entry. Keep its snapshot picker in the compact header controls, provide Audio folders on the bridge, and preserve selections when navigating between enrichment tools.
+
 - Add colored Dropbox and Google Drive path filters to File health, metadata-only cloud-placeholder evidence, and fresh single-track confirmation before opening cloud-managed audio. Absent cloud paths retain unknown remote availability; scans neither open audio nor query providers.
 - Move Collection context and tool snapshots into two default-collapsed orange/pink controls above the page header, retaining their selectors and actions, including inside expanded Bubble maps.
 - Align every Bubble filter in one responsive panel, keep numeric ranges together, summarize active criteria, and collapse after successful Apply. Preserve unapplied drafts when changing key display.

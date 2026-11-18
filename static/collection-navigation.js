@@ -5,7 +5,7 @@ window.CollectionNavigation=(()=>{
   const content=document.getElementById('collection-snapshot-content');
   const fallback=document.getElementById('collection-snapshot-fallback');
   let moved=null,anchor=null,view='',scheduled=false;
-  const selectors={insights:'dj-snapshot',bubbles:'bubble-snapshot',tonality:'tonal-snapshot',history:'history-snapshot',lab:'lab-snapshot','file-health':'file-health-source'};
+  const selectors={onetagger:'onetagger-snapshot',insights:'dj-snapshot',bubbles:'bubble-snapshot',tonality:'tonal-snapshot',history:'history-snapshot',lab:'lab-snapshot','file-health':'file-health-source'};
   const observer=new MutationObserver(()=>{if(!scheduled){scheduled=true;requestAnimationFrame(()=>{scheduled=false;refresh();});}});
   function setText(id,value){const node=document.getElementById(id);if(node.textContent!==value)node.textContent=value;node.title=value;}
   function refresh(){

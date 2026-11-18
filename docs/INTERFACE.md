@@ -18,6 +18,11 @@ File health includes an **Accessible?** column and full-index filters. **Yes** i
 
 In saved native snapshot **Duplicate review** and **File references**, click a sortable column heading to order the entire filtered collection, not only the visible 50 rows. Click again to reverse direction; changing the column resets to page one, and Previous/Next retain the chosen sort. The arrows indicate direction, while the Review action column is not sortable. Large requests use the shared Loading / Waiting feedback without locking the page. File health independently sorts its full scanned SQLite index before paging.
 
+The **Enrich** sidebar group contains separate **MusicBrainz** and
+**OneTagger bridge** pages. The Workflow map opens OneTagger directly. The
+bridge retains its own snapshot, folder mappings, saved handoffs and report
+review without loading the MusicBrainz page.
+
 ## Compact collection navigation and charts
 
 **Collection context** and **Collection snapshot** sit in a slim row above the

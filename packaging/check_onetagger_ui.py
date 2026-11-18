@@ -1,4 +1,5 @@
 """Exercise the OneTagger handoff/review using invented tags and silent WAV."""
+from ui_navigation import select_collection, open_collection_picker
 import json
 from pathlib import Path
 import struct
@@ -34,10 +35,33 @@ def check_onetagger_ui(browser,base,store,root,output):
     context.add_init_script("localStorage.setItem('library-workbench.language.v1','en')")
     page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
     try:
-        page.goto(base,wait_until='networkidle');page.locator('.nav[data-view="musicbrainz"]').click()
+        page.goto(base,wait_until='networkidle');page.locator('.nav[data-view="onetagger"]').click()
+        assert page.locator('[data-nav-section="enrich"] .nav').evaluate_all('(nodes)=>nodes.map(n=>n.dataset.view)')==['musicbrainz','onetagger']
+        assert page.locator('#view-onetagger').is_visible() and page.locator('#view-musicbrainz').is_hidden()
+        assert page.locator('#view-musicbrainz #onetagger-bridge').count()==0
+        assert page.locator('.nav[data-view="onetagger"]').get_attribute('aria-current')=='page'
+        assert page.locator('#page-title').inner_text()=='OneTagger bridge'
+        # The landing map and direct links reach the same independent view.
+        page.locator('.nav[data-view="start"]').click()
+        page.locator('#view-start [data-view="onetagger"]').click()
+        page.wait_for_selector('#view-onetagger',state='visible')
+        assert page.url.endswith('#onetagger')
         page.wait_for_selector('#onetagger-snapshot option[value="'+sid+'"]',state='attached')
-        page.select_option('#onetagger-snapshot',sid)
+        select_collection(page,'#onetagger-snapshot',sid)
         page.wait_for_selector('[data-onetagger-track="bridge-one"]')
+        page.wait_for_selector('#onetagger-audio-paths summary')
+        # Leaving and returning must preserve an unfinished bridge selection.
+        page.locator('[data-onetagger-track="bridge-one"]').check()
+        page.locator('.nav[data-view="musicbrainz"]').click()
+        assert page.locator('#onetagger-bridge').is_hidden()
+        page.locator('.nav[data-view="onetagger"]').click()
+        page.wait_for_selector('[data-onetagger-track="bridge-one"]:checked')
+        assert page.locator('#onetagger-snapshot').input_value()==sid
+        page.reload(wait_until='networkidle')
+        page.wait_for_selector('#view-onetagger',state='visible')
+        page.wait_for_selector('[data-onetagger-track="bridge-one"]')
+        assert page.locator('#onetagger-snapshot').input_value()==sid
+        page.screenshot(path=str(output/'onetagger-page.png'))
         assert CAPTURED_TITLE in page.locator('#onetagger-tracks').inner_text()
         assert page.locator('#onetagger-tracks img, #onetagger-tracks svg').count()==0
         page.locator('[data-onetagger-track="bridge-one"]').check();page.locator('#onetagger-create').click()
@@ -92,7 +116,8 @@ def check_onetagger_ui(browser,base,store,root,output):
         assert not errors,errors
         from check_onetagger_results_ui import check_onetagger_results_ui
         results=check_onetagger_results_ui(browser,base,store,root,output)
-        return {'m3u_roundtrip':True,'original_references_preserved':True,'tag_rescan':True,'results_json_review':True,'results_workflow':results,
+        return {'sidebar_enrich_entry':True,'standalone_view':True,'map_and_deep_link':True,'navigation_preserves_selection':True,'own_audio_folders':True,
+                'm3u_roundtrip':True,'original_references_preserved':True,'tag_rescan':True,'results_json_review':True,'results_workflow':results,
                 'explicit_field_selection':True,'snapshot_unchanged':True,'no_audio_writes':True,
                 'metadata_rendered_as_text':True,'selection_urls_encoded':True,'no_page_errors':True}
     finally:context.close()
