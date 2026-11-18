@@ -173,7 +173,8 @@ class MountedAudioTests(unittest.TestCase):
                 patch('platform_paths.discover_cloud_roots',return_value=[{'root':str(cloud),'kind':'google_drive'}]),\
                 patch.dict(os.environ,{'LIBRARY_WORKBENCH_AUDIO_ROOTS':''}):
             roots=allowed_roots(owner)
-        self.assertEqual(validate([{'recorded_root':'E:/Music','local_root':str(cloud)}],roots)[0]['local_root'],str(cloud.resolve()))
+        selected=validate([{'recorded_root':'E:/Music','local_root':str(cloud)}],roots)[0]['local_root']
+        self.assertTrue(Path(selected).samefile(cloud))
         with self.assertRaises(ValueError):
             validate([{'recorded_root':'E:/Music','local_root':str(outside)}],roots)
 
