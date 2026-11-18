@@ -207,3 +207,12 @@ class CloudDiscoveryTests(unittest.TestCase):
     def test_relative_network_and_system_root_configuration_are_not_probed(self):
         self.dropbox({'personal':{'path':'../outside'},'business':{'path':'//remote-host/share'},'other':{'path':'/'}})
         self.assertEqual(provider_roots('linux',self.env,self.home,[]),[])
+
+    def test_provider_disconnected_during_metadata_discovery_is_skipped(self):
+        root=self.home/'Dropbox';root.mkdir()
+        resolve=Path.resolve
+        def disconnected(path,*args,**kwargs):
+            if path==root:raise OSError('Provider drive was disconnected')
+            return resolve(path,*args,**kwargs)
+        with patch.object(Path,'resolve',disconnected):
+            self.assertEqual(provider_roots('win32',self.env,self.home,[]),[])

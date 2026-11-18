@@ -158,12 +158,14 @@ def provider_roots(platform_name=None,environ=None,home=None,registrations=None)
         # Existing ordinary paths only; absence is not a provider-install claim.
         if not safe_directory(path):continue
         if path==Path(path.anchor) and (platform_name!='win32' or evidence not in ('windows_registration','volume_label')):continue
-        key=str(path.resolve()).casefold() if platform_name=='win32' else str(path.resolve())
+        try:
+            canonical=str(path.resolve())
+            availability='online_only' if cloud_placeholder(path.stat()) else 'local'
+        except OSError:continue
+        key=canonical.casefold() if platform_name=='win32' else canonical
         if key in seen:continue
         seen.add(key)
-        try:availability='online_only' if cloud_placeholder(path.stat()) else 'local'
-        except OSError:continue
-        roots.append({'root':str(path.resolve()),'kind':kind,'evidence':evidence,'account':account,
+        roots.append({'root':canonical,'kind':kind,'evidence':evidence,'account':account,
                       'availability':availability,'provider_verified':evidence in ('dropbox_config','windows_registration')})
         if len(roots)>=MAX_ROOTS:break
     return roots
