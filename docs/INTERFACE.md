@@ -43,6 +43,10 @@ visible. Unverified scalar counters can be hidden too, without changing the
 captured collection or source totals. Key notation is another remembered
 display choice; see [key grouping and evidence](DJ-INSIGHTS.md).
 
+See the [compact collection controls](screenshots/compact-bubble-filters.png)
+and [four statistics histograms](screenshots/collection-statistics-distributions.png)
+using invented metadata. [Screenshot provenance](SCREENSHOTS.md) describes the fixtures.
+
 ## Review and evidence
 
 Duplicate decisions, reference changes and metadata overrides are staged locally. Cues inferred as manual or mixed take keeper priority; cue origin is inferred from editable labels. Review unresolved conflicts before export. Snapshot statistics describe captured library entries and can include duplicates. A zero play count does not prove a track was never played.

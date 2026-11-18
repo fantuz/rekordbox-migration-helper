@@ -6,8 +6,10 @@
   apply(saved);
   select.addEventListener('change',()=>{apply(select.value);try{localStorage.setItem(key,select.value);}catch{}});
   const expanded=document.getElementById('bubble-expanded'),view=document.getElementById('view-bubbles'),anchor=document.createComment('bubble view position');
+  const navigation=document.getElementById('collection-navigation'),navigationAnchor=document.createComment('collection navigation position');
+  navigation.before(navigationAnchor);
   view.before(anchor);
-  document.getElementById('bubble-expand').addEventListener('click',()=>{expanded.append(view);expanded.showModal();});
+  document.getElementById('bubble-expand').addEventListener('click',()=>{expanded.append(navigation,view);expanded.showModal();});
   document.getElementById('bubble-expand-close').addEventListener('click',()=>expanded.close());
-  expanded.addEventListener('close',()=>{anchor.after(view);if(!view.hidden)document.getElementById('bubble-expand').focus();});
+  expanded.addEventListener('close',()=>{navigationAnchor.after(navigation);anchor.after(view);if(!view.hidden)document.getElementById('bubble-expand').focus();});
 })();

@@ -13,10 +13,10 @@ ALIASES={}
 
 
 def normalized(value):
-    text=unicodedata.normalize('NFKC',str(value or '')).strip().replace('♯','#').replace('♭','b')
+    text=re.sub(r'\s+','',unicodedata.normalize('NFKC',str(value or '')).replace('♯','#').replace('♭','b'))
     # CM means C major; Cm means C minor. Preserve this distinction before folding.
-    if re.fullmatch(r'[A-Ga-g][#b]?M',text):text=text[:-1]+'major'
-    return re.sub(r'\s+','',text).casefold()
+    if re.fullmatch(r'[A-Ga-g][#bB]?M',text):text=text[:-1]+'major'
+    return text.casefold()
 
 
 _MAJOR=(11,6,1,8,3,10,5,0,7,2,9,4)

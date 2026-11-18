@@ -81,6 +81,7 @@ def check_display_workflows_ui(browser,base,store,root,output,opener_log,origina
             assert page.evaluate('Object.fromEntries(insightState.bubble.result.groups.map(g=>[g.key,g.entries]))')==expected_groups
             assert page.evaluate('(label)=>insightState.bubble.result.groups.some(g=>g.label===label&&g.entries===3)',minor_label)
             assert page.evaluate('DisplayPreferences.key("constructor")==="constructor" && DisplayPreferences.key("__proto__")==="__proto__"')
+            assert page.evaluate('DisplayPreferences.keyGroup("C M")===DisplayPreferences.keyGroup("8B") && DisplayPreferences.keyGroup("B♭ M")===DisplayPreferences.keyGroup("6B")')
         expect(page.locator('#bubble-key-sources')).to_contain_text('Numerical · 3')
         page.locator('#view-bubbles [data-hide-unknown]').check()
         page.wait_for_function('insightState.bubble.result?.excluded_unknown===2')
@@ -119,6 +120,14 @@ def check_display_workflows_ui(browser,base,store,root,output,opener_log,origina
             assert page.locator('#bubble-snapshot').bounding_box()['width']>100
             page.locator('#bubble-snapshot').press('Escape')
         page.set_viewport_size({'width':1440,'height':1050})
+        page.locator('#bubble-expand').click();page.wait_for_selector('#bubble-expanded[open]')
+        assert page.locator('#bubble-expanded #collection-navigation').count()==1
+        open_collection_picker(page,'#bubble-snapshot')
+        expect(page.locator('#bubble-snapshot')).to_have_value(sid)
+        page.locator('#bubble-snapshot').press('Escape')
+        assert page.locator('#bubble-expanded').evaluate('node=>node.open')
+        page.keyboard.press('Escape');page.wait_for_selector('#bubble-expanded',state='hidden')
+        expect(page.locator('main>#collection-navigation')).to_have_count(1)
         panel.locator('summary').click()
         navigate('statistics');page.wait_for_selector('#genre-histogram .hist-row')
         expect(page.locator('#view-statistics [data-hide-unknown]')).to_be_checked()
@@ -130,7 +139,7 @@ def check_display_workflows_ui(browser,base,store,root,output,opener_log,origina
         page.locator('#view-statistics [data-hide-unknown]').uncheck()
         page.wait_for_selector('#release-histogram [data-chart-unknown=true]')
         assert page.locator('#genre-histogram [data-chart-unknown=true]').count()==1
-        page.screenshot(path=str(output/'collection-statistics-distributions.png'))
+        page.locator('.statistics-chart-grid').screenshot(path=str(output/'collection-statistics-distributions.png'))
         navigate('tonality');page.wait_for_function('(id)=>insightState.tonal.result?.snapshot.id===id',arg=sid)
         page.select_option('#view-tonality [data-key-notation]','open_key')
         page.wait_for_function('insightState.tonal.result?.key_notation==="open_key"')

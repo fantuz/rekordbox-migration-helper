@@ -165,6 +165,9 @@ def provider_roots(platform_name=None,environ=None,home=None,registrations=None,
                 try:
                     if (path.is_absolute() and '..' not in path.parts and not str(path).replace('\\','/').startswith('//')
                             and not linked_directory(path) and not path.exists() and path!=Path(path.anchor)):
+                        key=str(path).casefold() if platform_name=='win32' else str(path)
+                        if key in seen:continue
+                        seen.add(key)
                         roots.append({'root':str(path),'kind':kind,'evidence':evidence,'account':account,
                                       'availability':'unknown','provider_verified':True})
                         if len(roots)>=MAX_ROOTS:break

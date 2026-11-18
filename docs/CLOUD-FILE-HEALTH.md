@@ -18,6 +18,8 @@ Filenames and available logical sizes appear alongside track titles. These
 sizes are filesystem metadata, not downloaded bytes or proof of resident audio.
 Old scan rows show **Not classified** until an explicit new scan classifies them.
 
+![File health provider filters using invented paths](screenshots/cloud-file-health-filters.png)
+
 ## Local absence and placeholders
 
 A Dropbox recording can remain available to rekordbox even when selective sync
@@ -48,6 +50,10 @@ Make that single recording available through Dropbox or rekordbox, then refresh.
 Workbench has no account connection with which to request a remote download.
 Google Drive support here is limited to path labels and local attributes;
 provider account integration is deferred.
+
+![Single-track cloud confirmation with Cancel focused by default](screenshots/cloud-track-confirmation.png)
+
+See [screenshot provenance](SCREENSHOTS.md).
 
 ## Can a running Dropbox client supply an `ls` equivalent?
 

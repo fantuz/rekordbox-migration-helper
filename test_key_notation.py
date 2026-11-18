@@ -44,6 +44,9 @@ class KeyNotationTests(unittest.TestCase):
         for alpha,open_key in [('C','1d'),('Am','1m'),('G','2d'),('Em','2m'),('F','12d'),('Dm','12m')]:
             self.assertEqual(keys.parse(alpha),keys.parse(open_key))
         self.assertEqual(keys.parse('CM'),keys.parse('8B'))
+        self.assertEqual(keys.parse('C M'),keys.parse('8B'))
+        self.assertEqual(keys.parse('B♭ M'),keys.parse('6B'))
+        self.assertEqual(keys.parse('BBM'),keys.parse('6B'))
         self.assertEqual(keys.parse('Cm'),keys.parse('5A'))
         self.assertEqual(keys.parse('C♯ MINOR'),keys.parse('D♭m'))
         self.assertEqual(keys.parse('B♯ major'),keys.parse('C'))

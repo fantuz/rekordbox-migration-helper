@@ -535,7 +535,7 @@ async function renderStatistics() {
   $('#stats-omitted').textContent=visible.length<labels.length?I18n.t('{count} unverified counters hidden',{count:num(labels.length-visible.length)}):'';
   for(const [name,id] of [['duration','length-histogram'],['added','added-histogram'],['release_year','release-histogram'],['genre','genre-histogram']])$('#'+id).innerHTML=renderCollectionChart(data.charts[name]);
   let note=$('#stats-source-note');if(!note){note=document.createElement('p');note.id='stats-source-note';note.className='callout';$('#stats-cards').before(note);}
-  note.hidden=!native;if(native)note.textContent=data.note+' '+num(data.unknown_duration)+' tracks have no captured duration.';
+  note.hidden=!native;if(native)note.textContent=data.note;
 }
 function renderCollectionChart(chart){
   const max=Math.max(1,...chart.rows.map(row=>row.count));

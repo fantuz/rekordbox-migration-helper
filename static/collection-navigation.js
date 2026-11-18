@@ -35,7 +35,7 @@ window.CollectionNavigation=(()=>{
   }
   for(const group of [contextGroup,snapshotGroup])group.addEventListener('toggle',()=>{if(group.open){(group===contextGroup?snapshotGroup:contextGroup).open=false;refresh();}});
   document.addEventListener('click',event=>{if(!dock.contains(event.target))close();});
-  dock.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();const group=contextGroup.open?contextGroup:snapshotGroup.open?snapshotGroup:null;if(group){close();group.querySelector('summary').focus();}}});
+  dock.addEventListener('keydown',event=>{if(event.key==='Escape'){const group=contextGroup.open?contextGroup:snapshotGroup.open?snapshotGroup:null;if(group){event.preventDefault();close();group.querySelector('summary').focus();}}});
   dock.addEventListener('change',refresh);
   document.getElementById('context-open-preparation').onclick=()=>{close();showView('files');};
   document.getElementById('context-open-lab').onclick=()=>{close();showView('lab');};

@@ -5,9 +5,9 @@ window.DisplayPreferences=(()=>{
   try{const saved=JSON.parse(localStorage.getItem(storage)||'{}');if(['alpha','camelot','open_key'].includes(saved.key_notation))state.key_notation=saved.key_notation;if(typeof saved.hide_unknown==='boolean')state.hide_unknown=saved.hide_unknown;}catch{}
   const text=key=>I18n.t(key);
   function normalized(value){
-    let raw=String(value??'').normalize('NFKC').trim().replaceAll('♯','#').replaceAll('♭','b');
-    if(/^[A-Ga-g][#b]?M$/.test(raw))raw=raw.slice(0,-1)+'major';
-    return raw.replace(/\s+/gu,'').toLowerCase();
+    let raw=String(value??'').normalize('NFKC').replace(/\s+/gu,'').replaceAll('♯','#').replaceAll('♭','b');
+    if(/^[A-Ga-g][#bB]?M$/.test(raw))raw=raw.slice(0,-1)+'major';
+    return raw.toLowerCase();
   }
   function keyGroup(raw){const value=normalized(raw);return Object.hasOwn(data.aliases,value)?data.aliases[value]:null;}
   function group(raw){if(Object.hasOwn(data.keys,raw)||['key:missing','key:unrecognized'].includes(raw))return raw;return keyGroup(raw)||(data.unknown.includes(String(raw??'').normalize('NFKC').trim().replace(/\s+/gu,' ').toLowerCase())?'key:missing':'key:unrecognized');}

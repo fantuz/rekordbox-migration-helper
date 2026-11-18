@@ -86,6 +86,7 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     assert page.locator('#bubble-dimension').is_disabled()
     assert page.locator('#bubble-empty [data-insight-capture]').is_enabled()
     page.locator('#bubble-expand').click();page.wait_for_selector('#bubble-expanded[open]')
+    open_collection_picker(page,'#bubble-snapshot')
     page.locator('#bubble-expanded [data-view="lab"]').click()
     page.wait_for_selector('#bubble-expanded',state='hidden')
     assert page.locator('#view-lab').is_visible()
