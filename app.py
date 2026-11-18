@@ -285,7 +285,18 @@ def analyzer_info():
 
 
 @app.get('/api/discovery')
-def discovery_suggestions():return jsonify(discover_locations())
+def discovery_suggestions():
+    if request.args.get('fresh')=='true':
+        from cloud_locations import clear_cache
+        clear_cache()
+    return jsonify(discover_locations())
+
+
+@app.get('/api/cloud-locations/report')
+def cloud_locations_report():
+    payload=discover_locations()['cloud_locations']
+    return app.response_class(json.dumps(payload,ensure_ascii=False,indent=2),mimetype='application/json',
+        headers={'Content-Disposition':'attachment; filename="cloud-locations.json"'})
 
 
 @app.post('/api/discovery/scan')

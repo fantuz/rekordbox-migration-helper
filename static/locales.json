@@ -1095,6 +1095,48 @@
       "pt-PT": "Analisar ficheiros existentes",
       "pt-BR": "Analisar arquivos existentes"
     },
+    "Cloud library locations": {
+      "de": "Cloud-Bibliotheksorte",
+      "fr": "Emplacements des bibliothèques cloud",
+      "it": "Posizioni delle librerie cloud",
+      "es": "Ubicaciones de bibliotecas en la nube",
+      "el": "Τοποθεσίες βιβλιοθηκών στο νέφος",
+      "pl": "Lokalizacje bibliotek w chmurze",
+      "cs": "Umístění cloudových knihoven",
+      "ru": "Расположение облачных библиотек",
+      "ja": "クラウドライブラリの場所",
+      "ar": "مواقع المكتبات السحابية",
+      "pt-PT": "Localizações de bibliotecas na nuvem",
+      "pt-BR": "Locais de bibliotecas na nuvem"
+    },
+    "Folder and settings evidence does not verify library identity.": {
+      "de": "Ordner- und Einstellungsdaten bestätigen nicht die Identität der Bibliothek.",
+      "fr": "Les dossiers et paramètres ne prouvent pas l’identité de la bibliothèque.",
+      "it": "Cartelle e impostazioni non verificano l’identità della libreria.",
+      "es": "Las carpetas y la configuración no verifican la identidad de la biblioteca.",
+      "el": "Οι φάκελοι και οι ρυθμίσεις δεν επαληθεύουν την ταυτότητα της βιβλιοθήκης.",
+      "pl": "Foldery i ustawienia nie potwierdzają tożsamości biblioteki.",
+      "cs": "Složky a nastavení neověřují totožnost knihovny.",
+      "ru": "Папки и настройки не подтверждают идентичность библиотеки.",
+      "ja": "フォルダーと設定の情報だけではライブラリの同一性を検証できません。",
+      "ar": "أدلة المجلدات والإعدادات لا تثبت هوية المكتبة.",
+      "pt-PT": "Os dados de pastas e definições não verificam a identidade da biblioteca.",
+      "pt-BR": "Os dados de pastas e configurações não verificam a identidade da biblioteca."
+    },
+    "Folder name only": {
+      "de": "Nur Ordnername",
+      "fr": "Nom du dossier uniquement",
+      "it": "Solo nome della cartella",
+      "es": "Solo nombre de carpeta",
+      "el": "Μόνο όνομα φακέλου",
+      "pl": "Tylko nazwa folderu",
+      "cs": "Pouze název složky",
+      "ru": "Только имя папки",
+      "ja": "フォルダー名のみ",
+      "ar": "اسم المجلد فقط",
+      "pt-PT": "Apenas o nome da pasta",
+      "pt-BR": "Apenas o nome da pasta"
+    },
     "Include subfolders in file inventory (optional)": {
       "de": "Unterordner in die Dateiinventur einbeziehen (optional)",
       "fr": "Inclure les sous-dossiers dans l’inventaire des fichiers (facultatif)",
@@ -7367,6 +7409,20 @@
       "pt-PT": "Baixa · 1–3",
       "pt-BR": "Baixa · 1–3"
     },
+    "Matching directory suffix": {
+      "de": "Übereinstimmendes Pfadende",
+      "fr": "Fin de chemin correspondante",
+      "it": "Parte finale del percorso corrispondente",
+      "es": "Sufijo de carpeta coincidente",
+      "el": "Κοινό τέλος διαδρομής",
+      "pl": "Zgodny koniec ścieżki",
+      "cs": "Shodný konec cesty",
+      "ru": "Совпадающий конец пути",
+      "ja": "ディレクトリ末尾の一致",
+      "ar": "تطابق نهاية مسار المجلد",
+      "pt-PT": "Parte final do caminho correspondente",
+      "pt-BR": "Parte final do caminho correspondente"
+    },
     "METADATA COVERAGE": {
       "de": "METADATENABDECKUNG",
       "fr": "COUVERTURE DES MÉTADONNÉES",
@@ -8516,6 +8572,20 @@
       "pt-PT": "Nenhuma biblioteca carregada",
       "pt-BR": "Nenhuma biblioteca carregada"
     },
+    "No local cloud folders detected. You can enter a path manually.": {
+      "de": "Keine lokalen Cloud-Ordner erkannt. Sie können einen Pfad manuell eingeben.",
+      "fr": "Aucun dossier cloud local détecté. Vous pouvez saisir un chemin manuellement.",
+      "it": "Nessuna cartella cloud locale rilevata. Puoi inserire un percorso manualmente.",
+      "es": "No se detectaron carpetas locales de nube. Puedes escribir una ruta manualmente.",
+      "el": "Δεν εντοπίστηκαν τοπικοί φάκελοι νέφους. Μπορείτε να εισαγάγετε διαδρομή χειροκίνητα.",
+      "pl": "Nie wykryto lokalnych folderów chmury. Możesz wpisać ścieżkę ręcznie.",
+      "cs": "Nebyly nalezeny místní cloudové složky. Cestu můžete zadat ručně.",
+      "ru": "Локальные облачные папки не найдены. Можно ввести путь вручную.",
+      "ja": "ローカルのクラウドフォルダーが見つかりません。パスを手動で入力できます。",
+      "ar": "لم تُكتشف مجلدات سحابية محلية. يمكنك إدخال مسار يدوياً.",
+      "pt-PT": "Não foram detetadas pastas locais da nuvem. Pode introduzir um caminho manualmente.",
+      "pt-BR": "Nenhuma pasta local da nuvem foi detectada. Você pode inserir um caminho manualmente."
+    },
     "No local database was detected in the standard locations. Enter any accessible source-folder path below.": {
       "de": "Keine lokale Datenbank an Standardorten erkannt. Unten einen zugänglichen Quellordnerpfad eingeben.",
       "fr": "Aucune base locale détectée aux emplacements standard. Saisissez ci-dessous un chemin source accessible.",
@@ -8627,6 +8697,20 @@
       "ar": "لا توجد أوزان موجبة · جرّب التحجيم بعدد المقاطع",
       "pt-PT": "Sem pesos positivos · experimente dimensionar pelo número de faixas",
       "pt-BR": "Sem pesos positivos · experimente dimensionar pelo número de faixas"
+    },
+    "No previous location was recorded; relocation is not established.": {
+      "de": "Kein früherer Ort erfasst; ein Umzug ist nicht nachgewiesen.",
+      "fr": "Aucun emplacement précédent enregistré ; le déplacement n’est pas établi.",
+      "it": "Nessuna posizione precedente registrata; lo spostamento non è accertato.",
+      "es": "No hay ubicación anterior registrada; el traslado no está demostrado.",
+      "el": "Δεν καταγράφηκε προηγούμενη τοποθεσία· η μετακίνηση δεν έχει επιβεβαιωθεί.",
+      "pl": "Nie zapisano poprzedniej lokalizacji; przeniesienie nie jest potwierdzone.",
+      "cs": "Předchozí umístění nebylo zaznamenáno; přesunutí není potvrzeno.",
+      "ru": "Предыдущее расположение не записано; перемещение не установлено.",
+      "ja": "以前の場所の記録がないため、移動は確認できません。",
+      "ar": "لم يُسجَّل موقع سابق؛ لم يُثبت النقل.",
+      "pt-PT": "Não foi registada uma localização anterior; a mudança não está comprovada.",
+      "pt-BR": "Nenhum local anterior foi registrado; a mudança não está comprovada."
     },
     "No rating": {
       "de": "Keine Bewertung",
@@ -9245,6 +9329,20 @@
       "pt-PT": "POSSÍVEIS PARES DUPLICADOS",
       "pt-BR": "POSSÍVEIS PARES DUPLICADOS"
     },
+    "Possible library relocation": {
+      "de": "Möglicher Bibliotheksumzug",
+      "fr": "Déplacement possible de la bibliothèque",
+      "it": "Possibile spostamento della libreria",
+      "es": "Posible traslado de la biblioteca",
+      "el": "Πιθανή μετακίνηση βιβλιοθήκης",
+      "pl": "Możliwe przeniesienie biblioteki",
+      "cs": "Možné přesunutí knihovny",
+      "ru": "Возможное перемещение библиотеки",
+      "ja": "ライブラリの移動候補",
+      "ar": "نقل محتمل للمكتبة",
+      "pt-PT": "Possível mudança da biblioteca",
+      "pt-BR": "Possível mudança da biblioteca"
+    },
     "PREPARATION DESK": {
       "de": "VORBEREITUNG",
       "fr": "PRÉPARATION",
@@ -9804,6 +9902,20 @@
       "ar": "مقترح",
       "pt-PT": "Proposto",
       "pt-BR": "Proposto"
+    },
+    "Provider configuration": {
+      "de": "Anbieterkonfiguration",
+      "fr": "Configuration du fournisseur",
+      "it": "Configurazione del provider",
+      "es": "Configuración del proveedor",
+      "el": "Ρύθμιση παρόχου",
+      "pl": "Konfiguracja dostawcy",
+      "cs": "Konfigurace poskytovatele",
+      "ru": "Настройки провайдера",
+      "ja": "プロバイダー設定",
+      "ar": "إعدادات المزوّد",
+      "pt-PT": "Configuração do fornecedor",
+      "pt-BR": "Configuração do provedor"
     },
     "QUICK EXPORT": {
       "de": "SCHNELLEXPORT",
@@ -13169,6 +13281,20 @@
       "pt-PT": "Exemplar sugerido a manter ·",
       "pt-BR": "Exemplar sugerido a manter ·"
     },
+    "Suggestions only. Choosing a folder does not start analysis.": {
+      "de": "Nur Vorschläge. Die Ordnerauswahl startet keine Analyse.",
+      "fr": "Suggestions uniquement. Choisir un dossier ne lance pas l’analyse.",
+      "it": "Solo suggerimenti. Scegliere una cartella non avvia l’analisi.",
+      "es": "Solo sugerencias. Elegir una carpeta no inicia el análisis.",
+      "el": "Μόνο προτάσεις. Η επιλογή φακέλου δεν ξεκινά ανάλυση.",
+      "pl": "To tylko propozycje. Wybranie folderu nie uruchamia analizy.",
+      "cs": "Pouze návrhy. Výběr složky nespouští analýzu.",
+      "ru": "Только предложения. Выбор папки не запускает анализ.",
+      "ja": "候補の表示のみです。フォルダーを選んでも分析は始まりません。",
+      "ar": "هذه اقتراحات فقط. اختيار مجلد لا يبدأ التحليل.",
+      "pt-PT": "São apenas sugestões. Escolher uma pasta não inicia a análise.",
+      "pt-BR": "São apenas sugestões. Escolher uma pasta não inicia a análise."
+    },
     "Sum of available track lengths": {
       "de": "Summe der verfügbaren Titellängen",
       "fr": "Somme des durées de titres disponibles",
@@ -14781,6 +14907,20 @@
       "pt-PT": "Ficheiros visíveis e possíveis cópias",
       "pt-BR": "Arquivos visíveis e possíveis cópias"
     },
+    "Volume label": {
+      "de": "Datenträgerbezeichnung",
+      "fr": "Nom du volume",
+      "it": "Etichetta del volume",
+      "es": "Etiqueta del volumen",
+      "el": "Ετικέτα τόμου",
+      "pl": "Etykieta woluminu",
+      "cs": "Jmenovka svazku",
+      "ru": "Метка тома",
+      "ja": "ボリュームラベル",
+      "ar": "تسمية وحدة التخزين",
+      "pt-PT": "Etiqueta do volume",
+      "pt-BR": "Rótulo do volume"
+    },
     "WHERE YOUR WORK LIVES": {
       "de": "SPEICHERORT IHRER ARBEIT",
       "fr": "EMPLACEMENT DE VOTRE TRAVAIL",
@@ -14881,6 +15021,20 @@
       "ar": "توزيع التشغيل",
       "pt-PT": "Distribuição de reproduções",
       "pt-BR": "Distribuição de reproduções"
+    },
+    "Windows registration": {
+      "de": "Windows-Registrierung",
+      "fr": "Enregistrement Windows",
+      "it": "Registrazione Windows",
+      "es": "Registro de Windows",
+      "el": "Καταχώριση Windows",
+      "pl": "Rejestracja Windows",
+      "cs": "Registrace Windows",
+      "ru": "Регистрация Windows",
+      "ja": "Windows の登録情報",
+      "ar": "تسجيل Windows",
+      "pt-PT": "Registo do Windows",
+      "pt-BR": "Registro do Windows"
     },
     "With personal stars": {
       "de": "Mit persönlichen Sternen",

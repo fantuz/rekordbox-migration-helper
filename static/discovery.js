@@ -10,12 +10,32 @@ function discoveryPanel(prefix,title,kind){
   return '<details class="discovery-panel"><summary>'+esc(title)+("</summary><p>"+esc(I18n.t("Search folders you choose, including an already-mounted Windows volume on Linux. The app does not mount disks. Close rekordbox and pause sync before capturing a discovered database."))+"</p><label>"+esc(I18n.t("Search roots · one absolute folder per line"))+"<textarea id=\"")+prefix+("-roots\" rows=\"2\" placeholder=\""+esc(I18n.t("Full folder path"))+"\"></textarea></label><div id=\"")+prefix+("-mounts\" class=\"discovery-hints\"></div><div class=\"lab-actions\"><label>"+esc(I18n.t("Search depth"))+"<select id=\"")+prefix+("-depth\"><option value=\"5\">"+esc(I18n.t("5 folders deep"))+"</option><option value=\"8\" selected>"+esc(I18n.t("8 folders deep"))+"</option><option value=\"12\">"+esc(I18n.t("12 folders deep"))+"</option></select></label><button class=\"button secondary\" id=\"")+prefix+("-scan\" type=\"button\">"+esc(I18n.t("Search selected folders"))+"</button></div><p class=\"subtle\">"+esc(I18n.t("Names and file metadata only. Limited to 15 seconds, 12,000 folders and 200,000 entries. Links and online-only subfolders are skipped. A narrow root gives better coverage."))+"</p><div id=\"")+prefix+'-results" aria-live="polite"></div></details>';
 }
 $('#refresh-source-locations').insertAdjacentHTML('afterend',discoveryPanel('source-discovery',I18n.t("Find libraries in custom folders or mounted volumes"),'libraries'));
+$('#source-discovery-roots').closest('details').insertAdjacentHTML('beforebegin','<details id="cloud-locations" class="discovery-panel"><summary data-i18n="Cloud library locations">'+esc(I18n.t('Cloud library locations'))+'</summary><p data-i18n="Suggestions only. Choosing a folder does not start analysis.">'+esc(I18n.t('Suggestions only. Choosing a folder does not start analysis.'))+'</p><div id="cloud-location-results" aria-live="polite"></div><div class="action-row"><button type="button" class="button secondary" id="cloud-locations-refresh" data-i18n="Refresh">'+esc(I18n.t('Refresh'))+'</button><a class="button secondary" href="/api/cloud-locations/report" data-i18n="Download JSON report ↓">'+esc(I18n.t('Download JSON report ↓'))+'</a></div></details>');
+const cloudEvidence={dropbox_config:'Provider configuration',windows_registration:'Windows registration',folder_name:'Folder name only',file_provider_folder:'Folder name only',volume_label:'Volume label'};
+function renderCloudLocations(data){
+  const host=$('#cloud-location-results'),roots=data?.roots || [],libraries=data?.libraries || [],moves=data?.relocations || [];
+  host.innerHTML=roots.map((r,i)=>'<div class="detected-source"><div><strong>'+esc(I18n.t(r.kind==='dropbox'?'Dropbox':'Google Drive'))+'</strong><code>'+esc(r.root)+'</code><small>'+esc(I18n.t(cloudEvidence[r.evidence] || 'Unknown'))+' · '+esc(I18n.t(r.availability==='local'?'Accessible':'Cloud placeholder'))+'</small></div><button type="button" class="text-button" data-cloud-root="'+i+'" '+(r.availability==='local'?'':'disabled')+'>'+esc(I18n.t('Add'))+'</button></div>').join('') || '<p>'+esc(I18n.t('No local cloud folders detected. You can enter a path manually.'))+'</p>';
+  host.insertAdjacentHTML('beforeend',libraries.map((r,i)=>'<div class="detected-source"><div><code>'+esc(r.path)+'</code><small>'+esc(r.databases.join(', '))+'</small></div><button type="button" class="button secondary small" data-cloud-library="'+i+'">'+esc(I18n.t('Use this library'))+'</button></div>').join(''));
+  if(moves.length)host.insertAdjacentHTML('beforeend','<h4>'+esc(I18n.t('Possible library relocation'))+'</h4>'+moves.map((r,i)=>'<div class="detected-source"><div><code>'+esc(r.previous_path)+'</code><span aria-hidden="true">↓</span><code>'+esc(r.candidate_path)+'</code><small>'+esc(I18n.t(r.ambiguous?'Several candidates':'Needs review'))+' · '+esc(I18n.t('Matching directory suffix'))+'</small></div><button class="button secondary small" type="button" data-cloud-move="'+i+'">'+esc(I18n.t('Use this library'))+'</button></div>').join(''));
+  if(!data?.recorded_locations)host.insertAdjacentHTML('beforeend','<p class="subtle">'+esc(I18n.t('No previous location was recorded; relocation is not established.'))+'</p>');
+  host.insertAdjacentHTML('beforeend','<p class="subtle">'+esc(I18n.t('Folder and settings evidence does not verify library identity.'))+(data?.partial?' '+esc(I18n.t('· Partial search')):'')+'</p>');
+  host.querySelectorAll('[data-cloud-root]').forEach(b=>b.onclick=()=>{
+    appendPath('#source-discovery-roots',roots[Number(b.dataset.cloudRoot)].root);
+    $('#source-discovery-roots').closest('details').open=true;$('#source-discovery-roots').focus();
+  });
+  for(const [attribute,items,field] of [['cloudLibrary',libraries,'path'],['cloudMove',moves,'candidate_path']])
+    host.querySelectorAll(attribute==='cloudLibrary'?'[data-cloud-library]':'[data-cloud-move]').forEach(b=>b.onclick=()=>{
+      $('#analyzer-path').value=items[Number(b.dataset[attribute])][field];$('#analyzer-path').focus();
+    });
+}
+$('#cloud-locations-refresh').onclick=wrap(async()=>renderDiscoveryHints(await api('/api/discovery?fresh=true')));
 const assetInput=$('#lab-assets-path');
 assetInput.outerHTML=("<textarea id=\"lab-assets-path\" rows=\"3\" placeholder=\""+esc(I18n.t("One absolute folder or ZIP path per line"))+"\"></textarea>");
 $('#lab-assets-path').closest('label').firstChild.textContent=I18n.t("Analysis folders or backup ZIPs · up to 20 paths");
 $('#lab-assets-path').closest('label').insertAdjacentHTML('afterend','<div id="asset-location-hints" class="discovery-hints"></div>'+discoveryPanel('asset-discovery',I18n.t("Find analysis and STEMS-related asset locations"),'assets'));
 async function renderDiscoveryHints(data){
   locationHints=data || await api('/api/discovery');
+  renderCloudLocations(locationHints.cloud_locations);
   for(const prefix of ['source-discovery','asset-discovery']){
     $('#'+prefix+'-mounts').innerHTML=(locationHints.mounted_roots || []).map((r,i)=>'<button class="text-button" type="button" data-mount-root="'+prefix+'" data-mount-index="'+i+("\">"+esc(I18n.t("Add"))+" "+"")+esc(r.path)+'</button>').join('');
   }

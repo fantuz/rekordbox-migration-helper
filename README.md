@@ -87,6 +87,10 @@ A factual overview of the current source tree. Release downloads may lag behind 
 **Inputs, discovery and compatibility**
 
 - Discover likely rekordbox data folders from platform defaults, saved application settings and selected search roots.
+- Discover custom Dropbox team/customer layouts and local Google Drive locations,
+  with provider/OS evidence, bounded searches and explicit source selection.
+  Review possible relocation against saved paths; missing prior evidence stays
+  unknown. See [cloud-folder discovery](docs/CLOUD-DISCOVERY.md).
 - Inspect `master.db` directly or through its containing folder, including differently cased filenames.
 - Capture modern databases and their journals into private copies before querying them; detect changing sources.
 - Report database integrity, required schema fields, track counts, cues, playlists and reference issues.
