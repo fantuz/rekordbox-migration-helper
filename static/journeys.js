@@ -28,7 +28,7 @@ window.Journeys=(()=>{
         const wanted=id==='file-health-source'?source:['history-snapshot','intelligence-source'].includes(id) && source.startsWith('capture:')?source:id==='quick-source'?(identity?'lab:'+identity:source==='workspace'?'session':source.startsWith('capture:')?source.slice(8):''):identity;
         const supported=[...select.options].some(o=>o.value===wanted),next=supported?wanted:'';
         const changed=select.value!==next;select.value=next;
-        if(changed && activate && select.closest('.view')?.hidden===false)select.dispatchEvent(new Event('change',{bubbles:true}));
+        if(changed && activate && (window.CollectionNavigation?.isActive(select) ?? select.closest('.view')?.hidden===false))select.dispatchEvent(new Event('change',{bubbles:true}));
       }
     }finally{syncing=false;}
     window.dispatchEvent(new CustomEvent('workbench-context',{detail}));

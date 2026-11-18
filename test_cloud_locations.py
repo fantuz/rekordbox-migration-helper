@@ -27,6 +27,19 @@ class CloudDiscoveryTests(unittest.TestCase):
         (folder/'master.db').write_bytes(b'NOT SQL: discovery must never read these bytes')
         return folder.resolve()
 
+    def test_unavailable_configured_roots_are_health_evidence_only_and_deduplicated(self):
+        missing=self.home/'Invented custom sync volume'
+        self.dropbox({'business':{'path':str(missing)},'personal':{'path':str(missing)}})
+        self.assertEqual(provider_roots('win32',self.env,self.home,registrations=[]),[])
+        health=provider_roots('win32',self.env,self.home,registrations=[],include_unavailable=True)
+        self.assertEqual(len(health),1)
+        self.assertEqual(health[0]['availability'],'unknown')
+        self.assertTrue(health[0]['provider_verified'])
+        from cloud_file_status import path_providers
+        self.assertEqual(path_providers(str(missing/'one.mp3'),health),{'dropbox':'detected_root'})
+        discovery=discover('win32',self.env,self.home,registrations=[])
+        self.assertEqual(discovery['roots'],[]);self.assertEqual(discovery['libraries'],[])
+
     def test_custom_team_root_with_customer_namespace_is_discovered_without_sql_reads(self):
         team=self.home/'Club Option DJ team Dropbox';library=self.library(team,'Example Customer/rekordbox')
         config=self.dropbox({'business':{'path':str(team),'secret':'must-not-be-returned','email':'private@example.invalid'}})

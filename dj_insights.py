@@ -9,6 +9,8 @@ from statistics import median
 
 from metadata_export import number
 from track_tags import rgb
+import key_notation
+from chart_views import hide_unknown,unknown_text
 
 
 PERSPECTIVES={
@@ -121,7 +123,8 @@ class InsightIndex:
         self.family_counts=Counter(t['family'] for t in self.rows)
         self.color_labels={t['color_key']:t['color_name'] for t in self.rows}
 
-    def options(self):
+    def options(self,notation='source'):
+        notation=key_notation.notation(notation)
         colours=Counter(t['color_key'] for t in self.rows);representatives={t['color_key']:t for t in self.rows}
         return {'snapshot':self.info,'entries':len(self.rows),'reference_date':self.reference.isoformat() if self.reference else None,
                 'history_available':self.history,'history_sessions':len(self.sessions),
@@ -129,6 +132,8 @@ class InsightIndex:
                 'families':[{'key':k,'tracks':n} for k,n in self.family_counts.most_common()],
                 'genres':sorted({t['genre'] for t in self.rows},key=str.casefold),
                 'tonalities':sorted({t['tonality'] for t in self.rows},key=str.casefold),
+                'tonality_options':key_notation.options(self.rows,notation),'key_notation':notation,
+                'key_source_counts':key_notation.source_counts(self.rows),
                 'colours':[{'key':k,'label':representatives[k]['color_name'],'hex':representatives[k]['color_hex'],
                             'status':representatives[k]['color_status'],'tracks':n} for k,n in colours.most_common()],
                 'perspectives':PERSPECTIVES,'dimensions':DIMENSIONS,'bases':BASES,'metrics':METRICS,'preparation':PREPARATION,
@@ -137,6 +142,8 @@ class InsightIndex:
                                'fallback':'Multiple matched families → Mixed families; ambiguous specific tags remain unmapped; generic electronic tags stay unspecific.'},'note':NOTE}
 
     def scope(self,args):
+        notation=key_notation.notation(args.get('key_notation','source'))
+        hidden=hide_unknown(args.get('hide_unknown',False))
         basis=args.get('basis','saved')
         if basis not in BASES:raise ValueError('Choose a supported usage evidence source')
         if basis!='saved' and not self.history:raise ValueError('This snapshot has no decoded session history; choose saved play counts or capture a native library')
@@ -175,7 +182,9 @@ class InsightIndex:
             if search and not any(search in value for value in source['_search']):continue
             if family and source['family']!=family:continue
             if genre is not None and source['genre']!=genre:continue
-            if args.get('tone') is not None and source['tonality']!=args['tone']:continue
+            if args.get('tone') is not None:
+                if notation=='source' and source['tonality']!=args['tone']:continue
+                if notation!='source' and key_notation.group(source['tonality'])!=key_notation.selected_group(args['tone']):continue
             if args.get('colour') is not None and source['color_key']!=args['colour']:continue
             if prep and (source['analysed'] is not True if prep=='analysed' else source['preparation']!=prep):continue
             if any(source.get(field) is None or (source[field]<value if lower else source[field]>value)
@@ -193,19 +202,21 @@ class InsightIndex:
         for item in path:
             if not isinstance(item,dict) or item.get('dimension') not in DIMENSIONS or not isinstance(item.get('key'),str):raise ValueError('Invalid bubble branch')
             dim=item['dimension'];key=item['key']
+            if dim=='tone' and notation!='source':key=key_notation.selected_group(key)
             if dim in used:raise ValueError('A bubble dimension cannot repeat in one branch')
-            used.add(dim);result=[t for t in result if self.key(t,dim)==key]
-            breadcrumbs.append({'dimension':dim,'key':key,'label':self.label(key,dim)})
+            used.add(dim);result=[t for t in result if self.key(t,dim,notation)==key]
+            breadcrumbs.append({'dimension':dim,'key':key,'label':self.label(key,dim,notation)})
         context={'basis':basis,'basis_label':BASES[basis],'selected_sessions':selected_sessions if basis!='saved' else None,
                  'from':start.isoformat() if start else None,'to':end.isoformat() if end else None,
                  'reference_date':self.reference.isoformat() if self.reference else None,'breadcrumbs':breadcrumbs,
-                 'history_unresolved_entries':self.unresolved,'history_undated_entries':self.undated_entries,'note':NOTE}
+                 'history_unresolved_entries':self.unresolved,'history_undated_entries':self.undated_entries,
+                 'key_notation':notation,'hide_unknown':hidden,'note':NOTE}
         return result,context
 
     @staticmethod
-    def key(t,dimension):
+    def key(t,dimension,notation='source'):
         if dimension in ('family','genre','initial','artist','format'):return t[dimension]
-        if dimension=='tone':return t['tonality']
+        if dimension=='tone':return t['tonality'] if notation=='source' else key_notation.group(t['tonality'])
         if dimension=='colour':return t['color_key']
         if dimension=='tracks':return t['id']
         if dimension=='year':return str(int(t['year'])) if t['year'] is not None else ''
@@ -216,7 +227,8 @@ class InsightIndex:
         plays=t['plays']
         return '' if plays is None else '0' if plays==0 else '1–3' if plays<=3 else '4–10' if plays<=10 else '11–30' if plays<=30 else '31+'
 
-    def label(self,key,dimension):
+    def label(self,key,dimension,notation='source'):
+        if dimension=='tone' and notation!='source':return key_notation.label(key,notation)
         if dimension=='colour':return self.color_labels.get(key,'Colour not captured')
         if key=='':return {'genre':'Blank genre tag','artist':'Artist unavailable','initial':'Artist unavailable','usage':'Usage unknown'}.get(dimension,'Unknown / not captured')
         if dimension=='preparation':return PREPARATION.get(key,key)
@@ -338,37 +350,67 @@ def ranking(index,args,all_rows=False,limit=50):
             'rediscovery_date_available':index.reference is not None}
 
 
+def unknown_dimension(track,dimension,notation):
+    if dimension=='tone':return not key_notation.parse(track['tonality']) if notation!='source' else unknown_text(track['tonality'])
+    if dimension=='family':return track['family']=='Unknown genre'
+    if dimension in ('genre','format'):return unknown_text(track[dimension])
+    if dimension=='colour':return track['color_status']=='unknown'
+    if dimension=='preparation':return track['preparation']=='unknown'
+    if dimension=='usage':return track['plays'] is None
+    if dimension=='added':return track['_added'] is None
+    if dimension in ('bpm','year','rating'):return track[dimension] is None
+    if dimension in ('artist','initial'):return not track[dimension]
+    return False
+
+
+def display_statistics(rows,notation):
+    result=statistics(rows)
+    if notation!='source':
+        result['tonality_known']=sum(bool(key_notation.parse(t['tonality'])) for t in rows)
+        result['tonality_unknown']=len(rows)-result['tonality_known']
+    return result
+
+
 def bubbles(index,args):
     rows,context=index.scope(args);dimension=args.get('dimension','family');metric=args.get('metric','tracks')
     if dimension not in DIMENSIONS or metric not in METRICS:raise ValueError('Choose a supported bubble dimension and size metric')
     if dimension in {p['dimension'] for p in context['breadcrumbs']}:raise ValueError('Choose a dimension not already fixed by the current branch')
+    notation=context['key_notation'];hide=context['hide_unknown'];excluded=0
     groups=defaultdict(list)
-    for t in rows:groups[index.key(t,dimension)].append(t)
+    for t in rows:
+        if hide and (unknown_dimension(t,dimension,notation) or metric=='plays' and t['plays'] is None or metric=='duration' and t['duration'] is None):
+            excluded+=1;continue
+        groups[index.key(t,dimension,notation)].append(t)
     # Sort lightweight group summaries first. Expensive medians, tag samples and
     # colour/preparation detail are needed only for the 60 visible categories.
     # A track/artist split can contain tens of thousands of groups.
     result=[]
     for key,group in groups.items():
         value=len(group) if metric=='tracks' else sum(t['plays'] or 0 for t in group) if metric=='plays' else sum(t['duration'] or 0 for t in group)
-        label=(group[0]['title'] or 'Untitled track')+' · '+(group[0]['artist'] or 'Artist unavailable') if dimension=='tracks' else index.label(key,dimension)
+        label=(group[0]['title'] or 'Untitled track')+' · '+(group[0]['artist'] or 'Artist unavailable') if dimension=='tracks' else index.label(key,dimension,notation)
         result.append({'key':key,'label':label,'value':value,'entries':len(group)})
     result.sort(key=lambda g:(-g['value'],-g['entries'],g['label'].casefold(),g['key']))
     offset=max(0,int(args.get('group_offset',0)))
     visible=[]
     for item in result[offset:offset+60]:
-        group=groups[item['key']];s=statistics(group)
+        group=groups[item['key']];s=display_statistics(group,notation)
         unknown=s['unknown_usage'] if metric=='plays' else s['duration_unknown'] if metric=='duration' else 0
         rated=[t['rating'] for t in group if t['rating'] is not None and t['rating']>0]
         preparation_known=[t for t in group if t['preparation']!='unknown']
         tags=Counter(t['genre'] or '(blank)' for t in group)
         visible.append({**item,'weight_unknown_entries':unknown,**s,
+                        **({'source_keys':key_notation.breakdown(group),'source_keys_total':len({t['tonality'] for t in group}),
+                            'key_known':item['key'] in key_notation.KEYS,
+                            'label_is_message':item['key'] not in key_notation.KEYS} if dimension=='tone' and notation!='source' else {}),
                         'color_hex':group[0]['color_hex'] if len({t['color_hex'] for t in group})==1 and all(t['color_status']=='assigned' for t in group) else None,
                         'color_status':group[0]['color_status'] if len({t['color_status'] for t in group})==1 else 'mixed',
                         'mean_personal_rating':sum(rated)/len(rated) if rated else None,
                         'manual_cue_percent':100*sum(t['preparation'] in ('manual','mixed') for t in preparation_known)/len(preparation_known) if preparation_known else None,
                         'cue_status_known':len(preparation_known),'saved_tags':[{'tag':tag,'tracks':n} for tag,n in tags.most_common(8)],'saved_tags_total':len(tags)})
-    return {'snapshot':index.info,'context':context,'summary':statistics(rows),'dimension':dimension,'metric':metric,'metric_label':METRICS[metric],
+    return {'snapshot':index.info,'context':context,'summary':display_statistics(rows,notation),'dimension':dimension,'metric':metric,'metric_label':METRICS[metric],
             'groups':visible,'groups_total':len(result),'group_offset':offset,
+            'key_notation':notation,'key_source_counts':key_notation.source_counts(rows),
+            'excluded_unknown':excluded,'shown_entries':len(rows)-excluded,'hide_unknown':hide,
             'zero_weight_groups':sum(g['value']==0 for g in result),
             'visible_weight':sum(g['value'] for g in visible),'total_weight':sum(g['value'] for g in result),
             'note':'Circle areas encode the selected metric among the categories on this page. Zero/unknown weights remain in the category list. Full track duration is not time played.'}
@@ -376,11 +418,16 @@ def bubbles(index,args):
 
 def tonalities(index,args):
     rows,context=index.scope(args);groups=defaultdict(list);bands=Counter()
+    notation=context['key_notation'];hide=context['hide_unknown'];excluded=0
     for t in rows:
-        groups[t['tonality']].append(t)
+        if hide and unknown_dimension(t,'tone',notation):excluded+=1
+        else:groups[index.key(t,'tone',notation)].append(t)
         if t['bpm'] is not None:bands[int(t['bpm']//10)*10]+=1
-    values=[{'tonality':key,'label':key or 'Unknown / not captured',**statistics(group)} for key,group in groups.items()]
+    values=[{'tonality':key,'label':index.label(key,'tone',notation),**display_statistics(group,notation),
+             **({'source_keys':key_notation.breakdown(group),'key_known':key in key_notation.KEYS,'label_is_message':key not in key_notation.KEYS} if notation!='source' else {})} for key,group in groups.items()]
     values.sort(key=lambda g:(-g['entries'],g['label'].casefold()))
-    return {'snapshot':index.info,'context':context,'summary':statistics(rows),'tonalities':values,
+    return {'snapshot':index.info,'context':context,'summary':display_statistics(rows,notation),'tonalities':values,
+            'key_notation':notation,'key_source_counts':key_notation.source_counts(rows),'excluded_unknown':excluded,
             'bpm_histogram':[{'minimum':key,'maximum':key+9.99,'tracks':n} for key,n in sorted(bands.items())[:200]],
-            'bpm_bands_total':len(bands),'note':'Tonality is the saved tag, not a new key analysis. Different key notations stay separate. BPM means/medians weight each library entry equally; no half/double-time correction is applied.'}
+            'bpm_bands_total':len(bands),'note':('Recognized key aliases share the selected display notation. Original tags remain unchanged; this is not audio key analysis. ' if notation!='source' else 'Tonality is the saved tag, not a new key analysis. Different key notations stay separate. ')+
+            'BPM means/medians weight each library entry equally; no half/double-time correction is applied.'}

@@ -2,6 +2,7 @@
 
 Uses disposable synthetic snapshots; no intercepted API responses or user data.
 """
+from ui_navigation import select_collection, open_collection_picker
 import argparse
 from copy import deepcopy
 from hashlib import sha256
@@ -80,7 +81,7 @@ def main():
         def open_track(page, base, identity=sid):
             page.goto(base, wait_until='networkidle')
             page.locator('.nav[data-view="lab"]').click()
-            page.select_option('#lab-snapshot', identity)
+            select_collection(page,'#lab-snapshot', identity)
             page.locator('[data-lab-tab="editor"]').click()
             page.locator('[data-lab-edit="0"]').click()
             expect(page.locator('#track-detail-dialog')).to_be_visible()

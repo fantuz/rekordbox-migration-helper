@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add colored Dropbox and Google Drive path filters to File health, metadata-only cloud-placeholder evidence, and fresh single-track confirmation before opening cloud-managed audio. Absent cloud paths retain unknown remote availability; scans neither open audio nor query providers.
+- Move Collection context and tool snapshots into two default-collapsed orange/pink controls above the page header, retaining their selectors and actions, including inside expanded Bubble maps.
+- Align every Bubble filter in one responsive panel, keep numeric ranges together, summarize active criteria, and collapse after successful Apply. Preserve unapplied drafts when changing key display.
+- Display recognized musical keys alphabetically, in Camelot or Open Key notation, grouping equivalent tags without rewriting their source values. Share the preference with key filters, tonality tables, File view and Library intelligence sessions; retain source-format counts.
+- Add release-year and saved-genre histograms to Collection statistics and a compact shared Hide unknown choice. Exclusions apply independently per chart, preserve known zero values and show displayed/excluded totals.
+- Extend real-server browser regressions and synthetic cloud-attribute, cache-migration, key-grouping and playback-consent tests. Document Dropbox metadata API and local-client limitations; actual remote presence and hydration remain unverified.
+
 ## 1.1.10 — 2026-11-18
 
 This release makes library preparation and recovery easier to follow, adds local cloud-location discovery, and improves Library bubbles navigation.

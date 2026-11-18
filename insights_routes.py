@@ -43,7 +43,7 @@ def register(owner):
         return args
 
     @app.get('/api/insights/options')
-    def options():return jsonify(**index_for(request.args.get('snapshot','')).options(),colour_meanings=store().setting('colour_meanings',{}))
+    def options():return jsonify(**index_for(request.args.get('snapshot','')).options(request.args.get('key_notation','source')),colour_meanings=store().setting('colour_meanings',{}))
 
     @app.get('/api/insights/tracks')
     def tracks():return jsonify(ranking(index_for(request.args.get('snapshot','')),rank_args(request.args)))

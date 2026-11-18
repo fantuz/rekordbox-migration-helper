@@ -1,6 +1,6 @@
 /* Bounded views: server returns at most 50 rows; metadata never becomes markup. */
 window.Intelligence=(()=>{
-  let choices=null,last=null,offset=0,sourceRevision=0,requestRevision=0;
+  let choices=null,last=null,lastRendered=null,offset=0,sourceRevision=0,requestRevision=0;
   const t=key=>I18n.t(key),e=value=>esc(value),node=id=>document.getElementById(id);
   function select(id,rows,label){const el=node(id),old=el.value || window.BrowseState?.value(id);el.innerHTML='<option value="">'+e(t('Choose a snapshot'))+'</option>'+rows.map(r=>'<option value="'+e(r.id)+'">'+e(label(r))+'</option>').join('');if(rows.some(r=>r.id===old))el.value=old;}
   async function load(){
@@ -43,7 +43,7 @@ window.Intelligence=(()=>{
     if(kind==='playlists')html+=table(['Playlist','Shared tracks','Tracks','Overlap','Same order'],data.rows.map(r=>[r.name,num(r.common_tracks),num(r.tracks),I18n.number(r.jaccard*100,{maximumFractionDigits:1})+'%',r.same_saved_order===null?t('Unknown'):r.same_saved_order?t('Yes'):t('No')]));
     if(kind==='contents')html+='<h3>'+e(data.playlist.name)+'</h3>'+labSummary(data.summary)+table(['Position','Track','Artist','Genre','BPM','Rating'],data.rows.map(r=>[r.sequence,r.title || t('Unknown'),r.artist,r.genre,r.bpm,r.rating]),data.rows,1);
     if(kind==='lenses')html+=labSummary(data.summary)+table(['Track','Artist','Genre','Playlists','Saved sessions','Entries'],data.rows.map(r=>[r.title,r.artist,r.genre,r.playlists,r.saved_sessions,r.saved_entries]),data.rows,0);
-    if(kind==='session')html+=table(['Position','Track','Artist','BPM','BPM change','Tonality','Track colour'],data.rows.map(r=>[r.sequence,r.title || t('Unknown'),r.artist,r.bpm,r.bpm_delta,r.tonality,r.color_name]),data.rows,1);
+    if(kind==='session')html+=DisplayPreferences.controls({unknown:false})+table(['Position','Track','Artist','BPM','BPM change','Tonality','Track colour'],data.rows.map(r=>[r.sequence,r.title || t('Unknown'),r.artist,r.bpm,r.bpm_delta,DisplayPreferences.key(r.tonality),r.color_name]),data.rows,1);
     if(kind==='evolution' || kind==='duplicates'){
       html+='<div class="lab-summary">'+Object.entries(data).filter(([,v])=>typeof v==='number').map(([k,v])=>'<div><span>'+e(t(k.replaceAll('_',' ')))+'</span><b>'+num(v)+'</b></div>').join('')+'</div>';
       if(data.changed_fields)html+=table(['Field','Changed records'],Object.entries(data.changed_fields).map(([k,v])=>[I18n.field(k),num(v)]));
@@ -51,6 +51,7 @@ window.Intelligence=(()=>{
       for(const field of ['genre','artist'])html+='<h3>'+e(I18n.field(field))+'</h3>'+table(['Name','Before','After','Change'],data.distributions[field].map(r=>[r.name || t('Unknown'),num(r.before),num(r.after),num(r.delta)]));
     }
     node('intelligence-results').innerHTML=html;
+    lastRendered=data;DisplayPreferences.sync();
     const fields={playlists:['name','common_tracks','tracks','jaccard','same_saved_order'],
       contents:['sequence','title','artist','genre','bpm','rating','file_status'],
       lenses:['title','artist','genre','playlists','saved_sessions','saved_entries','file_status'],
@@ -80,6 +81,7 @@ window.Intelligence=(()=>{
     }
   }
   function init(){
+    window.addEventListener('workbench-display-preferences',()=>{if(last?.kind==='session' && lastRendered && !node('view-intelligence').hidden)render(lastRendered,'session');});
     node('intelligence-source').onchange=wrap(sourceChanged);
     for(const id of ['intelligence-before','intelligence-after'])node(id).onchange=()=>{requestRevision++;last=null;node('intelligence-results').replaceChildren();node('intelligence-save').disabled=true;node('intelligence-download').hidden=true;node('intelligence-pagination').hidden=true;};
     for(const kind of ['playlists','session','evolution','duplicates','contents','lenses'])node('intelligence-'+kind).onclick=wrap(()=>run(kind));

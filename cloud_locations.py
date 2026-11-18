@@ -115,7 +115,7 @@ def windows_provider_paths():
     return records
 
 
-def provider_roots(platform_name=None,environ=None,home=None,registrations=None):
+def provider_roots(platform_name=None,environ=None,home=None,registrations=None,include_unavailable=False):
     env=os.environ if environ is None else environ
     user=Path.home() if home is None else Path(home)
     platform_name=platform_name or sys.platform
@@ -156,7 +156,23 @@ def provider_roots(platform_name=None,environ=None,home=None,registrations=None)
     roots=[];seen=set()
     for path,kind,evidence,account in candidates:
         # Existing ordinary paths only; absence is not a provider-install claim.
-        if not safe_directory(path):continue
+        if not safe_directory(path):
+            # File-health attribution can retain an explicitly configured root
+            # when its disk/client is offline. Never expose it as a discovery
+            # candidate or an allowed audio-access root through the default API.
+            if include_unavailable and evidence in ('dropbox_config','windows_registration'):
+                from platform_paths import linked_directory
+                try:
+                    if (path.is_absolute() and '..' not in path.parts and not str(path).replace('\\','/').startswith('//')
+                            and not linked_directory(path) and not path.exists() and path!=Path(path.anchor)):
+                        key=str(path).casefold() if platform_name=='win32' else str(path)
+                        if key in seen:continue
+                        seen.add(key)
+                        roots.append({'root':str(path),'kind':kind,'evidence':evidence,'account':account,
+                                      'availability':'unknown','provider_verified':True})
+                        if len(roots)>=MAX_ROOTS:break
+                except OSError:pass
+            continue
         if path==Path(path.anchor) and (platform_name!='win32' or evidence not in ('windows_registration','volume_label')):continue
         try:
             canonical=str(path.resolve())

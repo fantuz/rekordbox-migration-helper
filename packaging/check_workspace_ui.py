@@ -1,4 +1,5 @@
 """Synthetic CI interactions: source readiness, progress, preferences and layout."""
+from ui_navigation import select_collection, open_collection_picker
 import json
 from urllib.parse import urlsplit
 import urllib.request
@@ -67,7 +68,7 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     page.screenshot(path=str(output/'summary-cards.png'))
     # No metadata snapshot yet, despite an XML/ZIP workspace being available.
     ready=False;done=False
-    page.select_option('#journey-context-source','snapshot:'+sid)
+    select_collection(page,'#journey-context-source','snapshot:'+sid)
     page.wait_for_function('(id)=>Journeys.context()?.snapshot===id',arg=sid)
     scope=page.evaluate('Journeys.context().scope_key')
     def library(route):route.fulfill(json={**lab,'workspace':'synthetic-loaded-library','snapshots':lab['snapshots'] if ready else []})
@@ -85,6 +86,7 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     assert page.locator('#bubble-dimension').is_disabled()
     assert page.locator('#bubble-empty [data-insight-capture]').is_enabled()
     page.locator('#bubble-expand').click();page.wait_for_selector('#bubble-expanded[open]')
+    open_collection_picker(page,'#bubble-snapshot')
     page.locator('#bubble-expanded [data-view="lab"]').click()
     page.wait_for_selector('#bubble-expanded',state='hidden')
     assert page.locator('#view-lab').is_visible()

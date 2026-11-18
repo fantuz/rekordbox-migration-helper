@@ -1,0 +1,15 @@
+.cloud-provider-list,#file-health-providers{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+#file-health-providers{margin-block:12px}
+.cloud-provider{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border:1px solid var(--line);border-radius:7px;font-size:12px;font-weight:650;color:var(--text);background:var(--panel2);line-height:1.35}
+.cloud-provider-dropbox{color:#a6d5ff;background:#143752;border-color:#518fc3}
+.cloud-provider-google_drive{color:#a7e7bc;background:#173c2a;border-color:#559b70}
+[data-theme=light] .cloud-provider-dropbox{color:#064b90;background:#e6f2ff;border-color:#5290cd}
+[data-theme=light] .cloud-provider-google_drive{color:#1b6330;background:#e9f6ed;border-color:#548f63}
+#file-health-providers button{cursor:pointer}
+#file-health-providers [aria-pressed=true]{outline:2px solid var(--accent);outline-offset:2px}
+#file-health-providers button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.file-status-cloud{color:var(--accent);background:var(--soft-blue);border:1px solid var(--line)}
+.file-health-filename{overflow-wrap:anywhere;color:var(--muted)}
+#file-health-results td{vertical-align:top}
+#cloud-playback-dialog{max-width:min(460px,calc(100vw - 32px))}
+#cloud-playback-track{display:block;margin-block:12px;overflow-wrap:anywhere}

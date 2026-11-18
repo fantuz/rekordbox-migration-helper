@@ -1,4 +1,5 @@
 """Browser regressions using a tiny, invented native SQLite collection only."""
+from ui_navigation import select_collection, open_collection_picker
 from pathlib import Path
 import json
 
@@ -29,8 +30,8 @@ def check_native_collection_ui(browser, base, data, output, root):
     page.on('response', lambda r: failures.append(r.status) if '/api/' in r.url and r.status >= 400 else None)
     try:
         page.goto(base, wait_until='networkidle')
-        page.wait_for_selector('#journey-context-source')
-        page.select_option('#journey-context-source', 'capture:' + identity)
+        open_collection_picker(page,'#journey-context-source')
+        select_collection(page,'#journey-context-source', 'capture:' + identity)
         page.wait_for_function('(id)=>window.Journeys.context()?.source==="capture:"+id', arg=identity)
         assert page.locator('#session-cleanup-note').inner_text() == 'Analysis copies are temporary. Originals stay unchanged.'
         assert page.locator('#session-cleanup-note summary').count() == 0
@@ -38,9 +39,11 @@ def check_native_collection_ui(browser, base, data, output, root):
         assert action.evaluate('(e)=>getComputedStyle(e).borderStyle') == 'solid'
         for width in (1715, 768, 390):
             page.set_viewport_size({'width':width, 'height':1000})
+            open_collection_picker(page,'#journey-context-source')
             label = page.locator('.journey-context-row>label>span').bounding_box()
             select = page.locator('#journey-context-source').bounding_box()
             assert select['x'] >= label['x'] + label['width'] + 8 or select['y'] >= label['y'] + label['height'] + 8
+        page.locator('#journey-context-source').press('Escape')
         page.set_viewport_size({'width':1715, 'height':1000})
         page.locator('.nav[data-view=intelligence]').click()
         page.wait_for_function('(id)=>document.querySelector("#intelligence-source").value==="capture:"+id',arg=identity)
@@ -106,6 +109,7 @@ def check_native_collection_ui(browser, base, data, output, root):
         assert page.locator('#history-tracks tbody tr').count() == 5
         page.screenshot(path=str(output / 'native-collection-context.png'))
         # Explicit snapshot action captures the chosen source and updates the shared context.
+        open_collection_picker(page,'[data-journey-context-capture]')
         action.click()
         page.wait_for_selector('#preparation-dialog[open]')
         assert not page.locator('#preparation-scan').is_checked()
@@ -142,7 +146,7 @@ def check_native_collection_ui(browser, base, data, output, root):
         # the saved fixture is created while the SPA is already open.
         page.evaluate('() => Journeys.load()')
         page.wait_for_selector('#journey-context-source option[value="snapshot:' + sorted_snapshot['id'] + '"]',state='attached')
-        page.select_option('#journey-context-source', 'snapshot:' + sorted_snapshot['id'])
+        select_collection(page,'#journey-context-source', 'snapshot:' + sorted_snapshot['id'])
         page.wait_for_function('(id)=>window.Journeys.context()?.source==="snapshot:"+id',arg=sorted_snapshot['id'])
         page.locator('.nav[data-view=review]').click()
         page.wait_for_function('document.querySelectorAll("#view-review .native-collection .native-table tbody tr").length===50')

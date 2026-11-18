@@ -1,4 +1,5 @@
 """Real-browser journey interactions using only the CI server's synthetic snapshot."""
+from ui_navigation import select_collection, open_collection_picker
 
 
 def check_journeys_ui(page, base, sid, output):
@@ -11,7 +12,7 @@ def check_journeys_ui(page, base, sid, output):
     page.wait_for_selector('#journey-panel .journey-goal')
     assert page.locator('#journey-panel .journey-goal').count() == 4
     with page.expect_response(lambda r:r.request.method=='POST' and r.url==base+'/api/journeys/context') as selected:
-        page.select_option('#journey-context-source', 'snapshot:' + sid)
+        select_collection(page,'#journey-context-source', 'snapshot:' + sid)
     selected.value.finished()
     page.wait_for_function('(sid)=>window.Journeys.context()?.snapshot===sid', arg=sid)
     page.locator('[data-journey="integrity"]').click()

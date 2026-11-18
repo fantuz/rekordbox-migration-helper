@@ -98,8 +98,12 @@ def check_duplicate_review_ui(browser,base,output):
             body=request.post_data_json;group_stages.append(body)
             route.fulfill(json={'session':deepcopy(session),'count':len(body['track_ids'])-1-len(body.get('excluded',[])),'held':{}});return
         if path=='/api/statistics':
+            from chart_views import collection_charts
+            additions={'years':[{'year':2026,'tracks':2}],'unknown':0}
+            histogram=[{'label':'5–10 min','count':2}]
             route.fulfill(json={'counters':{'total':2,'rated':2,'analysed':2},'histogram':[],
-                                'addition_dates':{'years':[{'year':2026,'tracks':2}],'unknown':0}});return
+                                'addition_dates':additions,
+                                'charts':collection_charts([{'duration':360}]*2,histogram,additions)});return
         if path=='/api/decision':
             assert request.method=='POST'
             decision=request.post_data_json;decisions.append(decision)

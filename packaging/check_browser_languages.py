@@ -1,4 +1,5 @@
 """CI-only real browser checks; never load a user's library or query providers."""
+from ui_navigation import select_collection, open_collection_picker
 import argparse
 import csv
 from copy import deepcopy
@@ -37,6 +38,8 @@ def main():
         from check_cloud_locations_ui import cloud_fixture
         cloud=cloud_fixture(root)
         env['APPDATA']=str(cloud['appdata'])
+        from check_display_workflows_ui import fake_player_environment
+        player_env,opener_log=fake_player_environment(root);env.update(player_env)
         log=(args.output/'application.log').open('w',encoding='utf-8')
         process=subprocess.Popen([sys.executable,str(ROOT/'desktop_launcher.py'),'--port','0','--no-browser'],cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT)
         try:
@@ -53,10 +56,13 @@ def main():
                 page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
                 page.on('request',lambda request:requests.append({'url':request.url,'method':request.method}))
                 def check_api_response(response):
-                    if response.url.startswith(base+'/api/') and (response.status>=400 or ('application/json' not in response.headers.get('content-type','') and '/api/i18n.js' not in response.url)):
+                    if response.url.startswith(base+'/api/') and (response.status>=400 or ('application/json' not in response.headers.get('content-type','') and not any(response.url.endswith(path) for path in ('/api/i18n.js','/api/key-notation.js')))):
                         api_issues.append({'url':response.url,'status':response.status,'content_type':response.headers.get('content-type')})
                 page.on('response',check_api_response)
                 page.goto(base,wait_until='networkidle');page.wait_for_function('typeof loadDJInsights === "function"')
+                from check_display_workflows_ui import check_display_workflows_ui
+                report['display_workflows_ui']=check_display_workflows_ui(browser,base,store,root,args.output,opener_log,sid)
+                page.evaluate('()=>Journeys.load()')
                 page.locator('.nav[data-view="insights"]').click()
                 page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]',state='attached')
                 # Native <option> elements are attached but not visually
@@ -68,7 +74,7 @@ def main():
                     page.select_option('#language',code)
                     page.wait_for_function('(code)=>document.documentElement.lang===code && document.documentElement.dataset.languageBusy!=="true"',arg=code)
                     page.locator('.nav[data-view="insights"]').click();page.wait_for_selector('#dj-snapshot option[value="'+sid+'"]',state='attached')
-                    page.select_option('#dj-snapshot',sid);page.select_option('#dj-perspective','all');page.locator('#dj-filter-form button[type="submit"]').click();page.wait_for_selector('[data-insight-open="t0"]')
+                    select_collection(page,'#dj-snapshot',sid);page.select_option('#dj-perspective','all');page.locator('#dj-filter-form button[type="submit"]').click();page.wait_for_selector('[data-insight-open="t0"]')
                     assert page.locator('[data-insight-open="t0"]').inner_text()=='Unknown'
                     assert page.locator('[data-insight-open="t8"]').inner_text()==titles[8]
                     assert page.locator('[data-insight-open="t9"]').inner_text()==titles[9]
@@ -97,11 +103,13 @@ def main():
                     report['languages'].append({'code':code,'app':'passed','metadata_unchanged':True})
                     assert page.locator('html').get_attribute('dir')==('rtl' if code=='ar' else 'ltr')
                     assert page.locator('#dj-snapshot').evaluate('(node)=>getComputedStyle(node).direction')=='ltr'
+                    open_collection_picker(page,'#journey-context-source')
                     assert page.evaluate('''() => {
                         const select=document.querySelector('#journey-context-source').getBoundingClientRect();
                         const detail=document.querySelector('.journey-context-detail').getBoundingClientRect();
                         return select.right<=detail.left || detail.right<=select.left || select.bottom<=detail.top || detail.bottom<=select.top;
                     }'''), 'Collection selector overlaps summary: '+code
+                    page.locator('#journey-context-source').press('Escape')
                     if code in ('en','de','el','ru','ar','ja','pt-PT','pt-BR'):page.screenshot(path=str(args.output/(code+'-insights.png')),full_page=False)
                 page.locator('[data-insight-open="t0"]').click();page.wait_for_selector('#track-detail-dialog[open]')
                 assert page.locator('#track-comment-text').is_visible();note='Unsaved comment Σ Ł Č Русский 🎧 {slot0}'

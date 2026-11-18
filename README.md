@@ -125,6 +125,10 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Draw reproducible, genre-balanced random selections with a selection seed.
 - Follow eight optional saved journeys for both Serato migration directions, consistency checks, duplicate review, enrichment, metadata refinement, sharing, and backup preparation. Serato → rekordbox is a preparation/checklist workflow; no Serato importer is implemented. Every tool remains accessible independently.
 - Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
+- Switch alphabetical, Camelot and Open Key display across Bubble, Tonality, key filters and File view; recognized equivalents share a group while original tags stay unchanged.
+- Compare release-year and saved-genre histograms alongside addition dates and track length. Hide unknown values independently per chart, with excluded counts and known zero values retained.
+- Use one compact Bubble filter panel for all criteria, with active summaries and automatic collapse after successful Apply.
+- Expand the orange Collection context and pink Collection snapshot controls above the header for their existing selectors and actions; both start collapsed.
 - Bubble labels prioritize category names at a consistent 12-pixel size, wrapping up to four lines. Counts remain in the category table and accessible labels; circle areas still represent the chosen metric.
 - Bubble counters precede the filters and breadcrumb navigation. Click or use
   Enter/Space on the scrolling category legend to drill down; desktop legends
@@ -150,6 +154,7 @@ The objective is long-term library maintainability: distinguish redundant record
 - Cache local file-access evidence in the private SQLite sidecar and display **Accessible**, **Missing**, **Inaccessible**, or **Unverified** in native duplicate comparisons. Accessible requires a nonempty readable file; decoding and playback remain unverified. Playback checks its path live, and the existing `playable` API key remains compatible.
 - Reuse bounded case/Unicode directory lookups for mounted Windows libraries, invalidating indexes when entries change and holding replaced volumes or ambiguous names.
 - Explore **File health** across a saved snapshot with an explicit, cancellable scan, counts and global SQLite search, status filtering and sorting. Unchecked records remain distinct from inconclusive Unverified scans.
+- Filter that full scan by colored Dropbox/Google Drive path evidence. OS-reported placeholders and absent cloud paths remain separate from proven local deletion; scans do not open audio. Opening cloud-managed tracks requires a fresh single-track confirmation. See [cloud file health and metadata API findings](docs/CLOUD-FILE-HEALTH.md).
 - Click result table headings to sort the currently displayed rows. Tables with local playback controls also show a sortable file-status column; server-paged tables do not silently reorder their entire library.
 - Review connected duplicate groups with keeper selection, donor exclusions and cue/rating conflict evidence.
 - Keep duplicate candidates and comparisons in separate scrolling panes, with visible review actions and a keyboard-accessible drawer on narrower screens, for captured databases and XML/ZIP workspaces.
@@ -276,6 +281,10 @@ The major desktop conversion was v5 → v6. AlphaTheta documents that v6 → v7 
 - Connected recording groups show every member with one keeper, donor include/exclude controls and a read-only combined plan. Compatible copies stage together; cue/rating conflicts and indirect-only matches stay held. Batch undo restores earlier choices.
 - Evidence filters include recorded paths, saved preview waveforms, cue/grid agreement, ratings, usage, XML membership and optional local file hashes.
 - Filters cover track length, cue category, album, artist, genre, label, format, BPM, bitrate, playlist and media availability. Saved views and resumable workspaces retain work locally.
+- Collection context and tool snapshots use compact collapsed controls above the header. Bubble filters share one responsive panel that closes after a successful Apply.
+- Key notation can switch between alphabetical, Camelot and Open Key display, grouping recognized equivalents while retaining original tags.
+- Collection statistics adds release-year and saved-genre histograms; a shared Hide unknown choice excludes missing values independently per chart.
+- File health offers colored Dropbox/Google Drive path filters and local placeholder evidence. Cloud-managed playback asks before opening each single track; scans do not open audio or request downloads. See [cloud metadata API findings and limits](docs/CLOUD-FILE-HEALTH.md).
 - Media inventory scans only selected roots. SHA-256 reads audio only on explicit request, and unavailable cloud placeholders are held.
 
 ## Cloud/local storage audit

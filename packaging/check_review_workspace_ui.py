@@ -1,4 +1,5 @@
 """Long-list interaction checks with intercepted, entirely invented native records."""
+from ui_navigation import select_collection, open_collection_picker
 from urllib.parse import urlsplit
 
 
@@ -28,7 +29,7 @@ def check_review_workspace_ui(browser,base,source,output):
     try:
         page.goto(base,wait_until='networkidle')
         page.select_option('#theme','light')
-        page.select_option('#journey-context-source',source)
+        select_collection(page,'#journey-context-source',source)
         page.wait_for_function('(source)=>Journeys.context()?.source===source',arg=source)
         page.locator('.nav[data-view=review]').click();page.wait_for_selector('[data-native-group="g49"]')
         page.locator('.native-review-workspace').scroll_into_view_if_needed()

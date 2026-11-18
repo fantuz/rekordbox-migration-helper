@@ -12,6 +12,7 @@ from flask import jsonify, request
 from collection_sources import resolve, source_report
 from history_browser import added_years
 from workbench_store import Store
+from chart_views import collection_charts,hide_unknown
 
 
 def normalized(value):
@@ -24,7 +25,8 @@ def path_key(value):
     return ntpath.normpath(value).casefold() if re.match(r'^[A-Za-z]:/', value) or value.startswith('//') else value
 
 
-def statistics(snapshot, minimum=0, maximum=math.inf, report=None):
+def statistics(snapshot, minimum=0, maximum=math.inf, report=None, hide=False):
+    hide=hide_unknown(hide)
     if not math.isfinite(minimum) or minimum < 0 or maximum < minimum or math.isnan(maximum):
         raise ValueError('Enter a finite, non-negative length range')
     tracks = [t for t in snapshot['tracks'] if
@@ -63,8 +65,11 @@ def statistics(snapshot, minimum=0, maximum=math.inf, report=None):
             if t['duration'] < limit:
                 counts[n] += 1
                 break
-    return {'counters': counters, 'histogram': [{'label': label, 'count': n} for (_, label), n in zip(bins, counts)],
-            'addition_dates': added_years(tracks), 'unknown_duration': sum(t.get('duration') is None for t in snapshot['tracks']),
+    histogram=[{'label': label, 'count': n} for (_, label), n in zip(bins, counts)]
+    additions=added_years(tracks)
+    return {'counters': counters, 'histogram':histogram,
+            'addition_dates':additions,'charts':collection_charts(tracks,histogram,additions,hide),'hide_unknown':hide,
+            'unknown_duration': sum(t.get('duration') is None for t in tracks),
             'scope': 'captured', 'note': 'Captured metadata; unknown fields stay unverified. Relationship counts cover the full source. Audio availability requires a local scan.'}
 
 
@@ -134,7 +139,7 @@ def register(owner):
         maximum = float(request.args['max']) * 60 if request.args.get('max') else math.inf
         if request.args.get('max') and not math.isfinite(maximum):
             raise ValueError('Enter a finite maximum length')
-        return jsonify(source=key, **statistics(snapshot, minimum, maximum, source_report(owner, snapshot)))
+        return jsonify(source=key, **statistics(snapshot, minimum, maximum, source_report(owner, snapshot),request.args.get('hide_unknown',False)))
 
     @app.get('/api/collection/duplicates')
     @cached_collection(owner)

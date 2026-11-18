@@ -1,4 +1,5 @@
 """Real-server acceptance and bounded-table performance on synthetic snapshots."""
+from ui_navigation import select_collection, open_collection_picker
 from hashlib import sha256
 from time import perf_counter
 import math
@@ -41,7 +42,7 @@ def check_migration_readiness_ui(browser,base,store,root,output):
         page.goto(base,wait_until='networkidle')
         page.locator('.nav[data-view="lab"]').click()
         started=perf_counter()
-        page.select_option('#lab-snapshot',sid)
+        select_collection(page,'#lab-snapshot',sid)
         page.locator('[data-lab-tab="editor"]').click()
         page.wait_for_selector('[data-lab-edit="0"]')
         first_ms=1000*(perf_counter()-started)
