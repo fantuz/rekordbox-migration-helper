@@ -1,5 +1,6 @@
 """Invented provider paths and OS attributes; no account, daemon or audio reads."""
 from copy import deepcopy
+from contextlib import closing
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -71,7 +72,7 @@ class CloudMetadataTests(unittest.TestCase):
     def test_legacy_cache_and_health_rows_migrate_without_trusting_old_positive_evidence(self):
         with TemporaryDirectory() as temp:
             root=Path(temp);dbpath=root/'workbench-sidecar.sqlite3'
-            with sqlite3.connect(dbpath) as db:
+            with closing(sqlite3.connect(dbpath)) as db,db:
                 db.execute('CREATE TABLE file_status_cache (key TEXT PRIMARY KEY,status TEXT,checked_at REAL)')
                 db.execute('CREATE TABLE file_health_records (source TEXT,track_id TEXT,title TEXT,artist TEXT,genre TEXT,status TEXT,checked_at REAL,search_text TEXT,PRIMARY KEY(source,track_id))')
                 db.execute("INSERT INTO file_health_records VALUES ('old','one','Old','','','playable',0,'old')")
