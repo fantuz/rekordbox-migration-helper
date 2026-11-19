@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an optional Dropbox OAuth/PKCE connector with account/folder mapping, explicit remote metadata checks and separately confirmed single-file downloads. Keep library snapshots unchanged, avoid bulk downloads or sync-policy changes, and document app-key registration and credential storage. Live Dropbox client behavior remains unverified.
+
 ## 1.1.11 — 2026-11-19
 
 This release makes cloud-file checks safer, streamlines collection exploration, and gives OneTagger bridge its own enrichment page.

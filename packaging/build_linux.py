@@ -41,7 +41,7 @@ def main():
              '--add-data', str(build/'VERSION')+':.', '--collect-all', 'markdown_it',
              '--collect-all', 'pyrekordbox', '--collect-all', 'sqlcipher3',
              '--copy-metadata', 'sqlcipher3-wheels', '--hidden-import', 'sqlcipher3.dbapi2',
-             '--collect-all', 'tinytag']
+             '--collect-all', 'tinytag', '--collect-all', 'keyring']
     for name in ('LICENSE', 'THIRD-PARTY-NOTICES.txt', 'README.md', 'CHANGELOG.md', 'SECURITY.md', 'CONTRIBUTING.md'):
         command.extend(['--add-data', str(ROOT/name)+':.'])
     command.extend(['--add-data',str(Path(sysconfig.get_path('stdlib'))/'LICENSE.txt')+':licenses'])
