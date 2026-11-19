@@ -142,6 +142,7 @@ def register(owner):
         mapped,key,audio=context(source);profile=owner.DATA.resolve();identity=(profile,source,key)
         task_store=store();client=connected()
         def work(progress):
+            from cloud_file_evidence import size_evidence
             def checkpoint(amount,message):
                 if owner.DATA.resolve()!=profile or context(source)[1]!=key:raise ValueError('Dropbox connection, source or mapping changed. Check metadata again.')
                 progress(amount,message)
@@ -154,7 +155,8 @@ def register(owner):
                 destination=files.target(track,mapped,audio);remote=entries.get(files.path_key(destination['remote_path'])) if destination else None
                 state='unmapped' if not destination else 'present' if remote else 'not_found' if complete else 'unverified'
                 rows.append({'track_id':str(track['id']),'title':str(track.get('title') or ''),'artist':str(track.get('artist') or ''),
-                             'status':state,**(destination or {}),'size':remote.get('size') if remote else None,'remote':remote})
+                             'status':state,**(destination or {}),'size':remote.get('size') if remote else None,
+                             **size_evidence(track,remote),'remote':remote})
             checkpoint(98,'Saving Dropbox metadata evidence');checked=time.time()
             with task_store.connection() as db:
                 db.execute('DELETE FROM dropbox_records WHERE binding=? AND source=?',(key,source))
@@ -195,9 +197,11 @@ def register(owner):
             order="dropbox_casefold(json_extract(payload,'$.artist')),dropbox_casefold(json_extract(payload,'$.title')),track_id"
             values=[json.loads(r[0]) for r in db.execute('SELECT payload FROM dropbox_records WHERE '+where+' ORDER BY '+order+' LIMIT 50 OFFSET ?',(*params,offset))]
             scan=db.execute('SELECT payload FROM dropbox_scans WHERE binding=? AND source=?',(key,source)).fetchone()
+        from cloud_file_evidence import size_evidence
         result=[]
         for r in values:
             remote=r.pop('remote',None);local_path=r.get('local_path')
+            r.update(size_evidence({'size':r.get('expected_size')},remote))
             r['local_available']=bool(local_path) and files.local_available(local_path)
             # lstat only: neither inspect nor open an existing cloud placeholder.
             absent=False;r['local_state']='unmapped'
@@ -245,8 +249,10 @@ def register(owner):
                 if time.monotonic()-intents[old]['created']>120:intents.pop(old,None)
             while len(intents)>=128:intents.pop(next(iter(intents)))
             intents[token]={'created':time.monotonic(),'source':source,'track_id':identity,'binding':key,'destination':destination,'target':target_state,'remote':remote}
+        from cloud_file_evidence import size_evidence
         return jsonify(confirmation_required=True,confirmation_token=token,title=str(track.get('title') or identity),
-                       filename=destination['filename'],local_path=destination['local_path'],size=remote['size'])
+                       filename=destination['filename'],local_path=destination['local_path'],size=remote['size'],
+                       **size_evidence(track,remote))
     @app.post('/api/dropbox/download')
     def dropbox_download():
         from dropbox_download import download_file

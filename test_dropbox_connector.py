@@ -153,6 +153,39 @@ class DropboxConnectorTests(unittest.TestCase):
         self.assertGreaterEqual(self.files(status='unverified').json['total'],61)
         self.connection.download.assert_not_called()
 
+    def test_metadata_check_compares_captured_size_without_asserting_file_identity(self):
+        tracks=deepcopy(self.before['tracks'])
+        tracks[0]['size']=len(self.payload)
+        tracks[1]['size']=len(self.payload)+1
+        tracks[2]['size_bytes']=len(self.payload)
+        for index,value in enumerate((0,None,True,-1,1.5),start=3):tracks[index]['size']=value
+        snapshot=self.store.save_snapshot({'scope_key':'synthetic:cloud-size','tracks':tracks,'playlists':[]},'Size evidence')['id']
+        source='snapshot:'+snapshot;self.map_folder()
+        with patch.object(Path,'open',side_effect=AssertionError('Audio opened during metadata check')):
+            self.check(source)
+            rows={row['track_id']:row for row in self.files(source=source).json['rows']}
+        self.assertEqual(rows['0']['size_comparison'],'match')
+        self.assertEqual(rows['1']['size_comparison'],'mismatch')
+        self.assertEqual(rows['2']['size_comparison'],'match')
+        self.assertEqual(rows['0']['expected_size'],len(self.payload))
+        self.assertEqual(rows['0']['remote_size'],len(self.payload))
+        self.assertTrue(all(rows[str(i)]['size_comparison']=='unknown' for i in range(3,8)))
+        self.assertTrue(all(rows[str(i)]['status']=='present' for i in range(8)))
+        self.connection.download.assert_not_called()
+        self.assertEqual(self.store.snapshot(snapshot)['tracks'],tracks)
+
+    def test_prepared_download_reports_size_disagreement_and_uses_verified_local_destination(self):
+        tracks=deepcopy(self.before['tracks']);tracks[0]['size']=len(self.payload)+1
+        snapshot=self.store.save_snapshot({'scope_key':'synthetic:size-download','tracks':tracks,'playlists':[]},'Size warning')['id']
+        self.map_folder()
+        result=self.post('download/prepare',source='snapshot:'+snapshot,track_id='0')
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertEqual(result.json['local_path'],str(self.album/'Synthetic 000.mp3'))
+        self.assertEqual(result.json['expected_size'],len(self.payload)+1)
+        self.assertEqual(result.json['remote_size'],len(self.payload))
+        self.assertEqual(result.json['size_comparison'],'mismatch')
+        self.connection.download.assert_not_called()
+
     def test_one_unsupported_captured_path_does_not_abort_the_metadata_batch(self):
         self.map_folder()
         tracks=deepcopy(self.before['tracks'])
@@ -258,6 +291,25 @@ class DropboxConnectorTests(unittest.TestCase):
         self.assertEqual(existing.read_bytes(),b'Existing private local bytes');self.connection.download.assert_not_called()
         token=self.prepare('1');self.entries[1]['rev']='different-revision'
         self.assertEqual(self.confirm(token,'1').status_code,400);self.connection.download.assert_not_called()
+
+    def test_one_download_enables_only_that_tracks_fresh_local_playback(self):
+        self.map_folder();self.check()
+        def availability():
+            with patch.object(Path,'open',side_effect=AssertionError('Availability opened audio')):
+                response=self.client.post('/api/playback/availability',headers=self.headers,
+                    json={'snapshot':self.sid,'track_ids':['0','1'],'refresh':True})
+            self.assertEqual(response.status_code,200,response.json)
+            return response.json['tracks']
+        self.assertEqual(availability(),{'0':False,'1':False})
+        result=self.confirm(self.prepare());self.assertEqual(result.status_code,200,result.json)
+        self.assertEqual(availability(),{'0':True,'1':False})
+        row=self.files(q='Invented 000').json['rows'][0]
+        self.assertTrue(row['local_available']);self.assertFalse(row['downloadable'])
+        self.assertEqual(len(self.downloads),1)
+        self.assertEqual(self.store.snapshot(self.sid),self.before)
+        # Residency is rechecked rather than trusted from transfer completion.
+        (self.album/'Synthetic 000.mp3').unlink()
+        self.assertEqual(availability(),{'0':False,'1':False})
 
     def test_interruption_and_hash_mismatch_leave_no_final_or_partial_file(self):
         self.map_folder();self.check();self.interrupt=True

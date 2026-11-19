@@ -2,3 +2,4 @@
 
 #dropbox-authorization-error,#dropbox-cleanup-state{color:var(--red);overflow-wrap:anywhere}
 .dropbox-layout select{display:block;width:100%;max-width:100%;min-width:0;padding:9px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);color:var(--text)}
+.dropbox-size-comparison{display:inline-block;font-size:12px;font-weight:650;line-height:1.5}.dropbox-size-match{color:var(--green)}.dropbox-size-mismatch{color:var(--red)}.dropbox-size-unknown{color:var(--muted)}#dropbox-download-comparison{margin-block:12px}

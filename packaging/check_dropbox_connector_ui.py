@@ -1,6 +1,7 @@
 """Real HTTP Dropbox workflows with a synthetic server-side provider transport.
 
-No application API responses are intercepted and no live account is contacted.
+No application API response data is fabricated and no live account is contacted.
+One real availability response is delayed unchanged to test a download race.
 The synthetic provider models an already authorized account; OAuth/PKCE and
 credential storage are tested separately in test_dropbox_auth.py.
 """
@@ -14,6 +15,7 @@ import logging
 import os
 from pathlib import Path
 import sys
+import time
 from tempfile import TemporaryDirectory
 from threading import Thread
 from unittest.mock import patch
@@ -72,6 +74,7 @@ def main():
     report={'status':'running','browser':args.browser,'synthetic':True,'real_http':True,'mocked_api_responses':False,
             'synthetic_provider_transport':True,'live_dropbox_validated':False}
     from playwright.sync_api import sync_playwright,expect
+    from ui_navigation import select_collection
     from werkzeug.serving import make_server
     from workbench_store import Store
     with TemporaryDirectory(prefix='dropbox-browser-') as temporary,ExitStack() as patches:
@@ -90,6 +93,8 @@ def main():
         store=Store(data/'workbench-sidecar.sqlite3')
         tracks=[{'id':str(i),'title':f'Invented {i:03} <mix>','artist':'Synthetic artist',
                  'current_path':str(album/f'Synthetic {i:03}.mp3')} for i in range(61)]
+        tracks[60]['size']=len(provider.body)
+        tracks[59]['size']=len(provider.body)+1
         tracks.extend([{'id':'missing','title':'Absent mapped path','current_path':str(album/'Absent.mp3')},
                        {'id':'outside','title':'Unmapped path','current_path':str(root/'Elsewhere'/'Other.mp3')}])
         sid=store.save_snapshot({'scope_key':'synthetic:dropbox-browser','tracks':tracks,'playlists':[]},
@@ -105,11 +110,15 @@ def main():
                 context=browser.new_context(locale='en-US',viewport={'width':1440,'height':1050})
                 context.add_init_script("if(location.protocol==='http:')localStorage.setItem('library-workbench.language.v1','en')")
                 context.tracing.start(screenshots=True,snapshots=True,sources=True)
-                page=context.new_page();errors=[];external=[];requests=[]
+                page=context.new_page();errors=[];external=[];requests=[];availability=[];playback_opens=[]
                 page.on('pageerror',lambda error:errors.append(str(error)))
                 context.on('request',lambda request:external.append(request.url) if urlsplit(request.url).scheme not in
                     ('data','blob','file') and urlsplit(request.url).netloc!=urlsplit(base).netloc else None)
                 page.on('request',lambda request:requests.append(request.url) if '/api/dropbox/download' in request.url else None)
+                page.on('request',lambda request:availability.append(request.post_data_json) if
+                    urlsplit(request.url).path=='/api/playback/availability' else None)
+                page.on('request',lambda request:playback_opens.append(request.url) if
+                    urlsplit(request.url).path=='/api/playback/open' else None)
                 try:
                     page.goto(base,wait_until='networkidle');page.locator('.nav[data-view="dropbox"]').click()
                     expect(page.locator('#dropbox-connection-state')).to_contain_text('Invented browser account')
@@ -126,8 +135,24 @@ def main():
                     page.locator('#dropbox-check').click()
                     expect(page.locator('#dropbox-count')).to_contain_text('63')
                     expect(page.locator('#dropbox-results tbody tr')).to_have_count(50)
+                    expect(page.locator('#dropbox-results .dropbox-evidence-present').first).to_have_text('Reachable')
                     page.screenshot(path=str(output/'dropbox-checked.png'),full_page=True)
                     assert not provider.downloads and not list(album.iterdir())
+                    # Reachable is remote path evidence while the same row's
+                    # local access remains unverified. Metadata never hydrates.
+                    calls_before_health=len(provider.calls)
+                    page.locator('.nav[data-view="file-health"]').click()
+                    select_collection(page,'#file-health-source','snapshot:'+sid)
+                    page.fill('#file-health-search','Invented 060');page.locator('#file-health-find').click()
+                    page.locator('#file-health-scan').click()
+                    expect(page.locator('#file-health-state')).to_contain_text('complete',timeout=20000)
+                    expect(page.locator('#file-health-results tbody tr')).to_have_count(1)
+                    expect(page.locator('#file-health-results [data-local-access="unverified"]')).to_have_text('Unknown')
+                    expect(page.locator('#file-health-results [data-cloud-presence]')).to_contain_text('Reachable')
+                    expect(page.locator('#file-health-results [data-cloud-presence]')).to_contain_text('Size matches')
+                    expect(page.locator('#file-health-results [data-play-track="60"]')).to_be_disabled()
+                    assert len(provider.calls)==calls_before_health and not provider.downloads
+                    page.locator('.nav[data-view="dropbox"]').click()
                     evidence_url=base+'/api/dropbox/files?source=snapshot:'+sid
                     checked_at=context.request.get(evidence_url).json()['checked_at']
                     provider.fail_scan=True;page.locator('#dropbox-check').click()
@@ -139,14 +164,31 @@ def main():
                     page.locator('#dropbox-next').click()
                     expect(page.locator('#dropbox-count')).to_contain_text('51–61')
                     expect(page.locator('#dropbox-results tbody tr')).to_have_count(11)
+                    for identity,comparison,label in [('58','unknown','Size unknown'),('59','mismatch','Size differs'),('60','match','Size matches')]:
+                        page.fill('#dropbox-search','Invented 0'+identity);page.locator('#dropbox-find').click()
+                        expect(page.locator('#dropbox-results tbody tr')).to_have_count(1)
+                        expect(page.locator('#dropbox-results [data-size-comparison]')).to_have_attribute('data-size-comparison',comparison)
+                        expect(page.locator('#dropbox-results')).to_contain_text(label)
+                        expect(page.locator('#dropbox-results')).to_contain_text('Library size')
+                        expect(page.locator('#dropbox-results')).to_contain_text('Cloud size')
+                        if comparison=='mismatch':
+                            page.locator('[data-dropbox-download="59"]').click()
+                            expect(page.locator('#dropbox-download-dialog')).to_be_visible()
+                            expect(page.locator('#dropbox-download-comparison')).to_contain_text('Size differs')
+                            page.locator('#dropbox-download-cancel').click()
+                            assert not provider.downloads and not list(album.iterdir())
                     page.fill('#dropbox-search','Invented 060');page.locator('#dropbox-find').click()
                     expect(page.locator('#dropbox-results tbody tr')).to_have_count(1)
                     expect(page.locator('#dropbox-results')).to_contain_text('Invented 060 <mix>')
+                    play=page.locator('#dropbox-results [data-play-track="60"]')
+                    expect(play).to_have_attribute('data-available','false')
+                    expect(play).to_be_disabled()
                     assert not page.locator('#dropbox-results img').count()
                     page.locator('[data-dropbox-download="60"]').click()
                     dialog=page.locator('#dropbox-download-dialog')
                     expect(dialog).to_be_visible();expect(page.locator('#dropbox-download-cancel')).to_be_focused()
                     expect(page.locator('#dropbox-download-path')).to_have_text(str(album/'Synthetic 060.mp3'))
+                    expect(page.locator('#dropbox-download-comparison')).to_contain_text('Size matches')
                     page.screenshot(path=str(output/'dropbox-confirmation.png'),full_page=True)
                     page.locator('#dropbox-download-cancel').click();expect(dialog).to_be_hidden()
                     assert not provider.downloads and not list(album.iterdir())
@@ -154,12 +196,57 @@ def main():
                     page.keyboard.press('Escape');expect(dialog).to_be_hidden()
                     assert not provider.downloads and not list(album.iterdir())
                     page.locator('[data-dropbox-download="60"]').click();expect(dialog).to_be_visible()
+                    # A completed transfer refreshes this track even when a
+                    # focus refresh and its cached negative result are recent.
+                    # Hold a real negative response until after download. An
+                    # existing button in another live renderer can survive the
+                    # Dropbox table rerender, so retain a duplicate here.
+                    held=[]
+                    def delay_availability(route):
+                        if not held and route.request.post_data_json.get('track_ids')==['60']:
+                            response=route.fetch()
+                            assert response.json()['tracks']['60'] is False
+                            held.append((route,response))
+                        else:route.continue_()
+                    page.route('**/api/playback/availability',delay_availability)
+                    page.evaluate('''source=>{
+                      const retained=document.createElement('div');retained.id='retained-playback-renderer';
+                      retained.style.cssText='position:fixed;bottom:12px;right:12px;z-index:100';
+                      retained.innerHTML=TrackPlayback.button(source.slice(9),'60');
+                      document.querySelector('#view-dropbox').append(retained);
+                      TrackPlayback.recheck({force:true,source,track_id:'60'});
+                    }''','snapshot:'+sid)
+                    deadline=time.monotonic()+10
+                    while not held and time.monotonic()<deadline:page.wait_for_timeout(20)
+                    assert held,'Negative availability request was not held'
+                    availability_before=len(availability)
                     page.locator('#dropbox-download-confirm').click()
                     expect(page.locator('#toast')).to_contain_text('One track downloaded',timeout=20000)
+                    held[0][0].fulfill(response=held[0][1])
+                    expect(page.locator('#retained-playback-renderer [data-play-track="60"]')).to_be_enabled()
+                    expect(page.locator('#retained-playback-renderer [data-play-track="60"]')).to_have_attribute('data-available','true')
                     expect(page.locator('[data-dropbox-download="60"]')).to_have_count(0)
+                    expect(page.locator('#dropbox-results [data-play-track="60"]')).to_be_enabled()
+                    expect(page.locator('#dropbox-results [data-play-track="60"]')).to_have_attribute('data-available','true')
+                    assert any(value.get('refresh') is True and value.get('track_ids')==['60']
+                               for value in availability[availability_before:]),availability
+                    page.locator('#retained-playback-renderer').evaluate('element=>element.remove()')
+                    page.unroute('**/api/playback/availability',delay_availability)
                     assert provider.downloads==['id:invented-60']
                     assert (album/'Synthetic 060.mp3').read_bytes()==provider.body
                     assert len(list(album.iterdir()))==1
+                    # The existing local scan is refreshed by the completed
+                    # one-file transfer; returning to File health needs no scan.
+                    page.locator('.nav[data-view="file-health"]').click()
+                    select_collection(page,'#file-health-source','snapshot:'+sid)
+                    page.fill('#file-health-search','Invented 060');page.locator('#file-health-find').click()
+                    expect(page.locator('#file-health-results tbody tr')).to_have_count(1)
+                    expect(page.locator('#file-health-results [data-local-access="playable"]')).to_have_text('Yes')
+                    expect(page.locator('#file-health-results [data-cloud-presence]')).to_contain_text('Reachable')
+                    expect(page.locator('#file-health-results [data-cloud-presence]')).to_contain_text('Size matches')
+                    expect(page.locator('#file-health-results [data-play-track="60"]')).to_be_enabled()
+                    page.screenshot(path=str(output/'dropbox-file-health.png'),full_page=True)
+                    page.locator('.nav[data-view="dropbox"]').click()
                     page.fill('#dropbox-search','');page.select_option('#dropbox-status','not_found')
                     page.locator('#dropbox-find').click()
                     expect(page.locator('#dropbox-results tbody tr')).to_have_count(1)
@@ -182,11 +269,15 @@ def main():
                     assert store.snapshot(sid)==before
                     assert not errors,errors
                     assert not external,external
+                    assert not playback_opens,playback_opens
                     assert sum(url.endswith('/api/dropbox/download') for url in requests)==1,requests
                     report.update(status='passed',metadata_only_check=True,full_scope_pagination=True,
                         explicit_single_download=True,cancel_and_escape_preserve_files=True,snapshot_unchanged=True,
                         remote_files=61,downloaded_files=1,mobile_layout=True,
                         failed_recheck_preserves_evidence=True,credential_cleanup_remains_actionable=True,
+                        reachable_separate_from_local_access=True,captured_size_match_mismatch_unknown=True,
+                        size_warning_before_download=True,download_enables_play_without_autoplay=True,
+                        delayed_availability_response_unchanged=True,stale_negative_cannot_override_download=True,
                         external_requests=external)
                 except Exception:
                     page.screenshot(path=str(output/'dropbox-failure.png'),full_page=True);raise

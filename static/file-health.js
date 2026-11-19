@@ -11,7 +11,15 @@ window.FileHealth=(()=>{
   const statusBadge=value=>'<span class="file-status file-status-'+esc(value)+'">'+esc(label(stateNames[value]||'Unverified'))+'</span>';
   const providerNames={all:'All locations',dropbox:'Dropbox',google_drive:'Google Drive',other:'No cloud match',unknown:'Not classified'};
   function providerBadge(kind){return '<span class="cloud-provider cloud-provider-'+kind+'">'+esc(kind==='dropbox'?'Dropbox':'Google Drive')+'</span>';}
-  const cloudNames={present:'Present',not_found:'Not found',unmapped:'Unmapped',ambiguous:'Ambiguous paths',unverified:'Unverified'};
+  const cloudNames={present:'Reachable',not_found:'Not found',unmapped:'Unmapped',ambiguous:'Ambiguous paths',unverified:'Unverified'};
+  const sizeNames={match:'Size matches',mismatch:'Size differs',unknown:'Size unknown'};
+  function cloudSize(check){
+    if(check.status!=='present'||check.provider!=='dropbox')return '';
+    const comparison=Object.hasOwn(sizeNames,check.size_comparison)?check.size_comparison:'unknown';
+    const value=size=>Number.isSafeInteger(size)&&size>=0?bytes(size):label('Unknown');
+    return '<small class="dropbox-size-comparison dropbox-size-'+comparison+'" data-size-comparison="'+comparison+'">'+esc(label(sizeNames[comparison]))+'</small>'+
+      '<small class="subtle">'+esc(label('Cloud size')+' · '+value(check.remote_size)+' · '+label('Library size')+' · '+value(check.expected_size))+'</small>';
+  }
   const cloudCheckNames={checked:'Checked',not_checked:'Not checked',not_connected:'Not connected',not_attached:'Unmapped',unavailable:'Unverified'};
   const cloudMoment=value=>{const when=Number(value),moment=new Date(when*1000);return when>0&&Number.isFinite(moment.getTime())?snapshotMoment(moment.toISOString()):label('Not checked');};
   function openCloud(view){
@@ -33,7 +41,7 @@ window.FileHealth=(()=>{
     const all=(track.cloud_evidence||[]).filter(check=>check.provider==='dropbox'||check.provider==='google_drive');
     const meaningful=all.filter(check=>check.status!=='unmapped'),checks=meaningful.length?meaningful:all;
     if(!checks.length)return '<span class="subtle">'+esc(label('Not checked'))+'</span>';
-    return checks.map(check=>'<div class="file-health-cloud-evidence"><button type="button" class="text-button" data-file-cloud-view="'+(check.provider==='dropbox'?'dropbox':'google-drive')+'">'+providerBadge(check.provider)+'</button><span class="file-status file-health-cloud-'+(Object.hasOwn(cloudNames,check.status)?check.status:'unverified')+'">'+esc(label(cloudNames[check.status]||'Unverified'))+'</span><small class="subtle">'+esc(label('Last checked'))+' · '+esc(cloudMoment(check.checked_at))+'</small></div>').join('');
+    return checks.map(check=>'<div class="file-health-cloud-evidence"><button type="button" class="text-button" data-file-cloud-view="'+(check.provider==='dropbox'?'dropbox':'google-drive')+'">'+providerBadge(check.provider)+'</button><span class="file-status file-health-cloud-'+(Object.hasOwn(cloudNames,check.status)?check.status:'unverified')+'">'+esc(label(cloudNames[check.status]||'Unverified'))+'</span>'+cloudSize(check)+'<small class="subtle">'+esc(label('Last checked'))+' · '+esc(cloudMoment(check.checked_at))+'</small></div>').join('');
   }
   function renderProviders(data){
     node('providers').innerHTML=Object.entries(providerNames).map(([value,name])=>'<button type="button" class="cloud-provider cloud-provider-'+value+'" data-file-provider="'+value+'" aria-pressed="'+(node('provider').value===value)+'">'+esc(['dropbox','google_drive'].includes(value)?name:label(name))+' · '+num(data.provider_counts?.[value]||0)+'</button>').join('');

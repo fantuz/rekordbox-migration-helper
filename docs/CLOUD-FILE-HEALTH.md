@@ -23,8 +23,14 @@ The **Cloud presence** column shows the saved Dropbox or Google Drive result
 and its check time separately from local access. Opening or filtering File
 health reads that saved evidence without starting another remote scan or
 download. Changed accounts, sources or mappings cannot reuse an unrelated
-check. **Present** establishes remote metadata presence; it does not prove
+check. **Reachable** establishes remote metadata presence; it does not prove
 local residency, byte equality or decodable audio.
+
+Dropbox evidence also compares the remote size with the selected library's
+captured size when both are available. Matching sizes support a path match;
+different sizes call for review, and absent size evidence remains unknown.
+These labels do not hash or download audio. An **Unverified** local result
+can therefore appear beside **Reachable** cloud evidence without conflict.
 
 Progress batches during **Scan local files** describe the local scan's work.
 A provider desktop client may make its own metadata requests while the scan
@@ -75,7 +81,9 @@ A cloud path with no local file or placeholder cannot be opened through the
 local Play action. The optional [Dropbox](DROPBOX-CONNECTOR.md) and
 [Google Drive](GOOGLE-DRIVE-CONNECTOR.md) connectors can check remote existence
 after separate account authorization and download one absent file after fresh
-confirmation. [Cloud connections](CLOUD-CONNECTIONS.md) retains discovery and
+confirmation. After a completed download, Workbench refreshes that track's
+local evidence and playback availability automatically; it never starts
+playing as a side effect. [Cloud connections](CLOUD-CONNECTIONS.md) retains discovery and
 previews the account, collection and destination before attaching them. It also
 covers selected-file destinations outside desktop-managed roots. Alternatively
 make that single recording available through its provider or rekordbox, then

@@ -18,6 +18,35 @@ from workbench_store import Store
 STATUSES=('present','not_found','unmapped','ambiguous','unverified')
 
 
+def _byte_count(value,minimum=0):
+    """Captured/provider byte counts must be exact, finite and JSON-safe.
+
+    A saved zero is not a useful expected media size. Booleans, fractional
+    values and malformed metadata cannot establish a size agreement.
+    """
+    if isinstance(value,str):
+        value=value.strip()
+        if not value or len(value)>16 or not value.isascii() or not value.isdecimal():return None
+        value=int(value)
+    if type(value) is float:
+        if not math.isfinite(value) or not value.is_integer():return None
+        value=int(value)
+    return value if type(value) is int and minimum<=value<=2**53-1 else None
+
+
+def size_evidence(track,remote):
+    """Compare recorded byte counts without opening or downloading any audio.
+
+    Matching size supports a path match; it does not establish file identity.
+    Provider content hashes validate an approved transfer against that remote
+    revision, and are not hashes of the original Rekordbox library recording.
+    """
+    expected=_byte_count(track.get('size',track.get('size_bytes')),1)
+    actual=_byte_count(remote.get('size')) if isinstance(remote,dict) else None
+    comparison='unknown' if expected is None or actual is None else 'match' if expected==actual else 'mismatch'
+    return {'expected_size':expected,'remote_size':actual,'size_comparison':comparison}
+
+
 def provider_context(owner,source,setting,client,files):
     """Use one exact cache binding for provider pages and the File health join."""
     source=selected_source(source)
@@ -123,7 +152,11 @@ def cached_evidence(owner,source,track_ids):
                     status='unverified'
                 item={'provider':provider,'status':status,'checked_at':checked,'complete':complete}
                 if status=='present':
-                    if provider=='dropbox':item['downloadable']=remote.get('is_downloadable',True) is True
+                    if provider=='dropbox':
+                        item['downloadable']=remote.get('is_downloadable',True) is True
+                        # Old scans have no captured expected_size: leave their
+                        # comparison unknown until an explicit metadata recheck.
+                        item.update(size_evidence({'size':payload.get('expected_size')},remote))
                     else:item['downloadable']=isinstance(remote.get('capabilities'),dict) and remote['capabilities'].get('canDownload') is True
                 evidence[identity].append(item)
         except (ValueError,OSError,RuntimeError,KeyError,TypeError,sqlite3.DatabaseError):

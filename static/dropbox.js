@@ -2,7 +2,16 @@
 window.DropboxConnector=(()=>{
   const node=id=>document.getElementById('dropbox-'+id),t=key=>I18n.t(key);
   let connection=null,source='',offset=0,pageRows=0,totalRows=0,revision=0,filesRevision=0,busy=false,pending=null,requestedSource='',mappingDraft=false;
-  const statusNames={present:'Present',not_found:'Not found',unmapped:'Unmapped',unverified:'Unverified'};
+  const statusNames={present:'Reachable',not_found:'Not found',unmapped:'Unmapped',unverified:'Unverified'};
+  const sizeNames={match:'Size matches',mismatch:'Size differs',unknown:'Size unknown'};
+  function sizeEvidence(row){
+    const comparison=Object.hasOwn(sizeNames,row.size_comparison)?row.size_comparison:'unknown';
+    const remote=row.remote_size??row.size,expected=row.expected_size;
+    const value=size=>Number.isSafeInteger(size)&&size>=0?bytes(size):t('Unknown');
+    return '<span class="dropbox-size-comparison dropbox-size-'+comparison+'" data-size-comparison="'+comparison+'">'+esc(t(sizeNames[comparison]))+'</span>'+
+      '<small class="dropbox-path subtle">'+esc(t('Cloud size')+' · '+value(remote))+'</small>'+
+      '<small class="dropbox-path subtle">'+esc(t('Library size')+' · '+value(expected))+'</small>';
+  }
   const post=(path,body={})=>api('/api/dropbox'+path,{method:'POST',body:JSON.stringify(body)});
   function mappingChanged(){
     const local=node('local-root').value.trim(),remote=node('remote-root').value.trim(),namespace=node('namespace').value.trim();
@@ -80,7 +89,7 @@ window.DropboxConnector=(()=>{
       name.append(title);path.className='subtle dropbox-path';path.textContent=row.remote_path||row.filename||'';name.append(path);
       const artist=document.createElement('td');artist.textContent=row.artist||'—';
       const state=document.createElement('td'),badge=document.createElement('span');badge.className='dropbox-evidence dropbox-evidence-'+(Object.hasOwn(statusNames,row.status)?row.status:'unverified');badge.textContent=t(statusNames[row.status]||'Unverified');state.append(badge);
-      const size=document.createElement('td');size.textContent=row.size===null||row.size===undefined?t('Unknown'):bytes(row.size);
+      const size=document.createElement('td');size.innerHTML=sizeEvidence(row);
       const action=document.createElement('td');
       if(row.downloadable===true){const button=document.createElement('button');button.type='button';button.className='button secondary small';button.dataset.dropboxDownload=row.track_id;button.textContent=t('Download this track');button.onclick=wrap(()=>prepareDownload(selected,row.track_id));action.append(button);}
       else if(row.local_state==='online_only')action.textContent=t('Open cloud-managed audio');
@@ -148,6 +157,7 @@ window.DropboxConnector=(()=>{
       node('download-title').textContent=result.title||result.filename||identity;
       node('download-path').textContent=result.local_path||'';
       node('download-size').textContent=result.size===null||result.size===undefined?t('Unknown'):bytes(result.size);
+      node('download-comparison').innerHTML=sizeEvidence(result);
       node('download-dialog').showModal();node('download-cancel').focus();
     });
   }
@@ -156,7 +166,7 @@ window.DropboxConnector=(()=>{
   node('download-dialog').addEventListener('close',()=>{pending=null;});
   node('download-confirm').onclick=wrap(async()=>{
     const intent=pending;if(!intent)return;pending=null;node('download-dialog').close();
-    await action(async()=>{const result=await post('/download',{...intent,confirm:true});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:intent.source,provider:'dropbox',track_id:intent.track_id}}));await loadFiles();TrackPlayback.recheck();notify(t('One track downloaded'));});
+    await action(async()=>{const result=await post('/download',{...intent,confirm:true});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:intent.source,provider:'dropbox',track_id:intent.track_id}}));await loadFiles();TrackPlayback.recheck({force:true,source:intent.source,track_id:intent.track_id});notify(t('One track downloaded'));});
   });
   const visible=()=>!document.getElementById('view-dropbox').hidden;
   window.addEventListener('focus',()=>{if(visible()&&!busy)void load().catch(error=>notify(error.message,true));});

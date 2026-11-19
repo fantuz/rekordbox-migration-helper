@@ -341,7 +341,7 @@ def main():
                 expect(page.locator('#file-health-results tbody tr')).to_have_count(2)
                 expect(page.locator('#file-health-results')).to_contain_text('Local access')
                 expect(page.locator('#file-health-results')).to_contain_text('Cloud presence')
-                expect(page.locator('#file-health-results')).to_contain_text('Present')
+                expect(page.locator('#file-health-results')).to_contain_text('Reachable')
                 assert provider_calls()==calls
                 capture(page.locator('#view-file-health'),'cloud-file-evidence.png')
                 for width in (820,390):

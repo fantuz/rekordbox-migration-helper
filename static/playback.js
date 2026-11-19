@@ -1,6 +1,6 @@
 /* One local playback action shared by every live-library track renderer. */
 window.TrackPlayback=(()=>{
-  const queue=new Set(),cache=new Map();let timer=null,running=false;
+  const queue=new Set(),cache=new Map();let timer=null,running=false,availabilityRevision=0;
   // Per-button force markers survive batched IntersectionObserver callbacks.
   const forceRefresh=new WeakSet();let lastForcedRefresh=0;
   const MIN_FORCE_INTERVAL_MS=5000;
@@ -33,10 +33,14 @@ window.TrackPlayback=(()=>{
       // A focus/visibility refresh bypasses SQLite for every group, including
       // buttons whose visibility callback arrives in a later animation frame.
       for(const [source,buttons] of groups){
-        const force=buttons.some(b=>forceRefresh.has(b));
         const ids=[...new Set(buttons.map(b=>b.dataset.playTrack))];
         for(let offset=0;offset<ids.length;offset+=100){
+          const requestRevision=availabilityRevision,force=buttons.some(b=>forceRefresh.has(b));
           const r=await api('/api/playback/availability',{feedback:false,method:'POST',body:JSON.stringify({...JSON.parse(source),track_ids:ids.slice(offset,offset+100),...(force?{refresh:true}:{})})});
+          // A download/focus refresh may happen while this request is pending.
+          // Its older result must neither refill the cache nor clear the new
+          // force marker; retry the surviving buttons with current attributes.
+          if(requestRevision!==availabilityRevision){for(const b of buttons)if(b.isConnected)queue.add(b);continue;}
           for(const b of buttons)if(Object.hasOwn(r.tracks,b.dataset.playTrack)){
             const available=r.tracks[b.dataset.playTrack],fileState=r.statuses?.[b.dataset.playTrack] || (available?'playable':'unverified'),cloud=r.cloud?.[b.dataset.playTrack];cache.set(key(b),{available,fileState,cloud,time:Date.now()});forceRefresh.delete(b);if(b.isConnected)status(b,available,fileState,cloud);
           }
@@ -95,12 +99,21 @@ window.TrackPlayback=(()=>{
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)recheck();});
   window.addEventListener('focus',recheck);
   window.addEventListener('workbench-language',()=>{for(const b of document.querySelectorAll('[data-play-track]'))if(b.dataset.available)status(b,b.dataset.available==='true',b.dataset.fileStatus,{can_open:b.dataset.cloudOpen==='true'});});
-  function recheck(){
+  function recheck(options={}){
+    availabilityRevision++;
     const now=Date.now();
-    const forced=now-lastForcedRefresh>=MIN_FORCE_INTERVAL_MS;
+    // A completed single-file download must bypass even a recent negative
+    // filesystem result. Focus/visibility refreshes retain their normal limit.
+    const explicit=options.force===true;
+    const forced=explicit||now-lastForcedRefresh>=MIN_FORCE_INTERVAL_MS;
     if(forced)lastForcedRefresh=now;
-    cache.clear();
+    if(!explicit)cache.clear();
     for(const b of document.querySelectorAll('[data-play-track]')){
+      if(explicit&&options.source){
+        const source=options.source.startsWith('snapshot:')?options.source.slice(9):options.source;
+        if(b.dataset.playSnapshot!==source||b.dataset.playTrack!==options.track_id)continue;
+      }
+      cache.delete(key(b));
       if(forced)forceRefresh.add(b);
       observer.unobserve(b);observer.observe(b);
     }
