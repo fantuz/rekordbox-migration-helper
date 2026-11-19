@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Validate detached database/WAL page sizes before recovery, including encrypted libraries. Preserve committed WAL data and tolerate incomplete trailing frames; request a fresh capture for conflicting journals or invalid headers. Strengthen source identity checks while keeping older saved journal reports readable. These checks leave source databases and cloud files unchanged; the bundled SQLCipher engine still needs its own future upgrade.
+
 ## 1.2.1 — 2026-11-19
 
 This release guides Dropbox and Google Drive connections to verified library locations, separates local access from cloud presence, and fixes Dropbox checks that stopped on unsupported paths.

@@ -7,7 +7,6 @@ import json
 import os
 from pathlib import Path
 import re
-import sqlite3
 import time
 import stat as stat_constants
 
@@ -41,7 +40,8 @@ def quoted(name):
 def file_stamp(path):
     try:
         value=path.stat()
-        return {"bytes":value.st_size,"mtime_ns":value.st_mtime_ns,"inode":value.st_ino}
+        return {"bytes":value.st_size,"mtime_ns":value.st_mtime_ns,"inode":value.st_ino,
+                "device":value.st_dev,"ctime_ns":value.st_ctime_ns}
     except FileNotFoundError:
         return None
 
@@ -137,11 +137,8 @@ def footprint(root,progress,recursive=False,max_entries=None,max_seconds=SOURCE_
 
 def inspect_database(path,asset_folders):
     with path.open("rb") as stream:plaintext=stream.read(16)==b"SQLite format 3\x00"
-    if plaintext:
-        db=sqlite3.connect(path)
-    else:
-        from native_export import mutable_copy
-        db=mutable_copy(path)
+    from research_capture import open_capture
+    db=open_capture(path)
     with closing(db):
         # Opening the private copy permits its own journal recovery. No database
         # connection is ever made to the selected source path.

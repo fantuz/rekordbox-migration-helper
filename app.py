@@ -365,8 +365,16 @@ def analyzer_journal_status(report_id):
             return jsonify(supported=False,changed=False,message="Linked database or journal files cannot be monitored")
     current=source_stamps(root,name)
     if current['master.db'] is None:return jsonify(supported=False,changed=False,message='Source master.db is no longer available')
-    baseline={row["name"]:{key:row.get(key) for key in ("bytes","mtime_ns","inode")} for row in report.get("source_files",[])}
-    changed=any(current[key]!=baseline.get(key) for key in current)
+    baseline={row["name"]:{key:row[key] for key in ("bytes","mtime_ns","inode","device","ctime_ns") if key in row}
+              for row in report.get("source_files",[])}
+    # Older captures contain only size/mtime/inode. Compare their recorded
+    # fields; new captures also compare device and change-time metadata where
+    # the platform exposes it. On Windows, ctime can mean creation time.
+    def changed_file(name,stamp):
+        previous=baseline.get(name)
+        if stamp is None or previous is None:return stamp!=previous
+        return any(stamp[key]!=value for key,value in previous.items())
+    changed=any(changed_file(key,stamp) for key,stamp in current.items())
     signature=sha256(json.dumps(current,sort_keys=True).encode()).hexdigest()
     return jsonify(supported=True,changed=changed,signature=signature,
                    wal_present=current.get("master.db-wal") is not None,

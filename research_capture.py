@@ -13,6 +13,8 @@ from metadata_export import capture_database,capture_catalog
 def open_capture(path):
     """Open only a detached app-owned copy, including its private WAL recovery."""
     with path.open('rb') as stream:plaintext=stream.read(16)==b'SQLite format 3\x00'
+    from database_journals import validate_private_wal
+    validate_private_wal(path,plaintext)
     if plaintext:return sqlite3.connect(path)
     from native_export import mutable_copy
     return mutable_copy(path)
