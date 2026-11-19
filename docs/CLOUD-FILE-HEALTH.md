@@ -23,8 +23,14 @@ The **Cloud presence** column shows the saved Dropbox or Google Drive result
 and its check time separately from local access. Opening or filtering File
 health reads that saved evidence without starting another remote scan or
 download. Changed accounts, sources or mappings cannot reuse an unrelated
-check. **Present** establishes remote metadata presence; it does not prove
+check. **Reachable** establishes remote metadata presence; it does not prove
 local residency, byte equality or decodable audio.
+
+Dropbox evidence also compares the remote size with the selected library's
+captured size when both are available. Matching sizes support a path match;
+different sizes call for review, and absent size evidence remains unknown.
+These labels do not hash or download audio. An **Unverified** local result
+can therefore appear beside **Reachable** cloud evidence without conflict.
 
 Progress batches during **Scan local files** describe the local scan's work.
 A provider desktop client may make its own metadata requests while the scan
@@ -71,11 +77,20 @@ then download it. Consent is not saved or reused for the next track. The server
 checks the selected source, track, current path, mappings and file attributes
 again before dispatch. Expired or changed requests need a new Play action.
 
-A cloud path with no local file or placeholder cannot be opened through the
-local Play action. The optional [Dropbox](DROPBOX-CONNECTOR.md) and
-[Google Drive](GOOGLE-DRIVE-CONNECTOR.md) connectors can check remote existence
-after separate account authorization and download one absent file after fresh
-confirmation. [Cloud connections](CLOUD-CONNECTIONS.md) retains discovery and
+A cloud path with no local file or placeholder cannot be opened directly by
+the operating system. For a checked, reachable Dropbox file, **Play** offers
+an explicit **Download and play** confirmation: fetch that one file to its
+verified attached location, wait for the complete resident file, then open the
+default audio player. Cancelling starts neither action. A separate download
+action refreshes availability without opening a player. Google Drive retains
+its individual download and local playback flow; this automatic download/play
+sequence currently applies to Dropbox.
+
+The optional [Dropbox](DROPBOX-CONNECTOR.md) and
+[Google Drive](GOOGLE-DRIVE-CONNECTOR.md) connectors check remote existence
+after separate account authorization. After a completed download, Workbench
+refreshes that track's local evidence and playback availability automatically.
+[Cloud connections](CLOUD-CONNECTIONS.md) retains discovery and
 previews the account, collection and destination before attaching them. It also
 covers selected-file destinations outside desktop-managed roots. Alternatively
 make that single recording available through its provider or rekordbox, then

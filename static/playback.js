@@ -1,19 +1,21 @@
 /* One local playback action shared by every live-library track renderer. */
 window.TrackPlayback=(()=>{
-  const queue=new Set(),cache=new Map();let timer=null,running=false;
+  const queue=new Set(),cache=new Map();let timer=null,running=false,availabilityRevision=0;
   // Per-button force markers survive batched IntersectionObserver callbacks.
   const forceRefresh=new WeakSet();let lastForcedRefresh=0;
   const MIN_FORCE_INTERVAL_MS=5000;
   const t=key=>I18n.t(key);
-  function button(snapshot,identity,workspace=''){
+  function button(snapshot,identity,workspace='',dropboxSource=''){
     if(!identity || (!snapshot && !workspace))return '';
-    return '<button type="button" class="track-play" disabled aria-busy="true" data-play-track="'+esc(identity)+'" data-play-snapshot="'+esc(snapshot || '')+'" data-play-workspace="'+esc(workspace)+'" title="'+esc(t('Play in default media player'))+'" aria-label="'+esc(t('Play in default media player'))+'"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12"><path fill="currentColor" d="M3 1v10l8-5z"/></svg></button>';
+    const remote=/^(?:snapshot|capture):[a-f0-9]{32}$/u.test(dropboxSource)?' data-dropbox-play-source="'+esc(dropboxSource)+'"':'';
+    return '<button type="button" class="track-play" disabled aria-busy="true" data-play-track="'+esc(identity)+'" data-play-snapshot="'+esc(snapshot || '')+'" data-play-workspace="'+esc(workspace)+'"'+remote+' title="'+esc(t('Play in default media player'))+'" aria-label="'+esc(t('Play in default media player'))+'"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12"><path fill="currentColor" d="M3 1v10l8-5z"/></svg></button>';
   }
   function scope(b){return b.dataset.playWorkspace?{workspace:b.dataset.playWorkspace}:{snapshot:b.dataset.playSnapshot};}
   function key(b){return JSON.stringify([scope(b),b.dataset.playTrack]);}
   function status(b,available,fileState='unverified',cloud){
-    b.disabled=!available&&!cloud?.can_open;b.dataset.available=String(available);b.dataset.fileStatus=fileState;b.dataset.cloudOpen=String(Boolean(cloud?.can_open));b.setAttribute('aria-busy','false');
-    b.title=t(cloud?.can_open?'Open cloud-managed audio':available?'Play in default media player':'Audio file unavailable at the recorded library paths');
+    const remote=!available&&!cloud?.can_open&&fileState!=='inaccessible'&&Boolean(b.dataset.dropboxPlaySource);
+    b.disabled=!available&&!cloud?.can_open&&!remote;b.dataset.available=String(available);b.dataset.fileStatus=fileState;b.dataset.cloudOpen=String(Boolean(cloud?.can_open));b.dataset.dropboxDownloadReady=String(remote);b.setAttribute('aria-busy','false');
+    b.title=t(remote?'Download and play this track':cloud?.can_open?'Open cloud-managed audio':available?'Play in default media player':'Audio file unavailable at the recorded library paths');
     b.setAttribute('aria-label',b.title);
     b.dispatchEvent(new CustomEvent('workbench-file-status',{bubbles:true,detail:{status:fileState}}));
   }
@@ -33,10 +35,14 @@ window.TrackPlayback=(()=>{
       // A focus/visibility refresh bypasses SQLite for every group, including
       // buttons whose visibility callback arrives in a later animation frame.
       for(const [source,buttons] of groups){
-        const force=buttons.some(b=>forceRefresh.has(b));
         const ids=[...new Set(buttons.map(b=>b.dataset.playTrack))];
         for(let offset=0;offset<ids.length;offset+=100){
+          const requestRevision=availabilityRevision,force=buttons.some(b=>forceRefresh.has(b));
           const r=await api('/api/playback/availability',{feedback:false,method:'POST',body:JSON.stringify({...JSON.parse(source),track_ids:ids.slice(offset,offset+100),...(force?{refresh:true}:{})})});
+          // A download/focus refresh may happen while this request is pending.
+          // Its older result must neither refill the cache nor clear the new
+          // force marker; retry the surviving buttons with current attributes.
+          if(requestRevision!==availabilityRevision){for(const b of buttons)if(b.isConnected)queue.add(b);continue;}
           for(const b of buttons)if(Object.hasOwn(r.tracks,b.dataset.playTrack)){
             const available=r.tracks[b.dataset.playTrack],fileState=r.statuses?.[b.dataset.playTrack] || (available?'playable':'unverified'),cloud=r.cloud?.[b.dataset.playTrack];cache.set(key(b),{available,fileState,cloud,time:Date.now()});forceRefresh.delete(b);if(b.isConnected)status(b,available,fileState,cloud);
           }
@@ -80,6 +86,10 @@ window.TrackPlayback=(()=>{
     event.preventDefault();event.stopImmediatePropagation();if(b.disabled)return;
     const source=scope(b),identity=b.dataset.playTrack;b.disabled=true;
     (async()=>{
+      if(b.dataset.dropboxDownloadReady==='true'){
+        await window.DropboxConnector.playTrack(b.dataset.dropboxPlaySource,identity);
+        return;
+      }
       let result=await api('/api/playback/open',{method:'POST',body:JSON.stringify({...source,track_id:identity})});
       if(result.confirmation_required){
         if(!await confirmCloudOpen(result))return;
@@ -95,12 +105,21 @@ window.TrackPlayback=(()=>{
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)recheck();});
   window.addEventListener('focus',recheck);
   window.addEventListener('workbench-language',()=>{for(const b of document.querySelectorAll('[data-play-track]'))if(b.dataset.available)status(b,b.dataset.available==='true',b.dataset.fileStatus,{can_open:b.dataset.cloudOpen==='true'});});
-  function recheck(){
+  function recheck(options={}){
+    availabilityRevision++;
     const now=Date.now();
-    const forced=now-lastForcedRefresh>=MIN_FORCE_INTERVAL_MS;
+    // A completed single-file download must bypass even a recent negative
+    // filesystem result. Focus/visibility refreshes retain their normal limit.
+    const explicit=options.force===true;
+    const forced=explicit||now-lastForcedRefresh>=MIN_FORCE_INTERVAL_MS;
     if(forced)lastForcedRefresh=now;
-    cache.clear();
+    if(!explicit)cache.clear();
     for(const b of document.querySelectorAll('[data-play-track]')){
+      if(explicit&&options.source){
+        const source=options.source.startsWith('snapshot:')?options.source.slice(9):options.source;
+        if(b.dataset.playSnapshot!==source||b.dataset.playTrack!==options.track_id)continue;
+      }
+      cache.delete(key(b));
       if(forced)forceRefresh.add(b);
       observer.unobserve(b);observer.observe(b);
     }

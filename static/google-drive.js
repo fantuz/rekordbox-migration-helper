@@ -2,7 +2,7 @@
 window.GoogleDriveConnector=(()=>{
   const node=id=>document.getElementById('google-drive-'+id),t=key=>I18n.t(key);
   let connection=null,source='',offset=0,pageRows=0,totalRows=0,revision=0,filesRevision=0,busy=false,pending=null,requestedSource='';
-  const statusNames={present:'Present',not_found:'Not found',unmapped:'Unmapped',ambiguous:'Ambiguous paths',unverified:'Unverified'};
+  const statusNames={present:'Reachable',not_found:'Not found',unmapped:'Unmapped',ambiguous:'Ambiguous paths',unverified:'Unverified'};
   const post=(path,body={})=>api('/api/google-drive'+path,{method:'POST',body:JSON.stringify(body)});
   function controls(){
     for(const id of ['client-id','client-secret','remember','save','connect','disconnect','source','search','status','find','check','refresh'])node(id).disabled=busy;
@@ -116,7 +116,7 @@ window.GoogleDriveConnector=(()=>{
   node('download-dialog').addEventListener('close',()=>{pending=null;});
   node('download-confirm').onclick=wrap(async()=>{
     const intent=pending;if(!intent)return;pending=null;node('download-dialog').close();
-    await action(async()=>{const result=await post('/download',{...intent,confirm:true});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:intent.source,provider:'google_drive',track_id:intent.track_id}}));await loadFiles();TrackPlayback.recheck();notify(t('One track downloaded'));});
+    await action(async()=>{const result=await post('/download',{...intent,confirm:true});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:intent.source,provider:'google_drive',track_id:intent.track_id}}));await loadFiles();TrackPlayback.recheck({force:true,source:intent.source,track_id:intent.track_id});notify(t('One track downloaded'));});
   });
   const visible=()=>!document.getElementById('view-google-drive').hidden;
   window.addEventListener('focus',()=>{if(visible()&&!busy)void load().catch(error=>notify(error.message,true));});

@@ -29,3 +29,25 @@ Version coverage follows [Compatibility and evidence](COMPATIBILITY.md). Genuine
 The [v6.7 manual](https://cdn.rekordbox.com/files/20230316171900/rekordbox6.7.0_manual_EN.pdf), [v7 manual](https://cdn.rekordbox.com/files/20260409151936/rekordbox7.214_manual_EN.pdf) and [STEMS FAQ](https://rekordbox.com/en/support/faq/stems-7/) explain application features. They do not document a persistent per-track STEMS-ready flag for this reader. Unknown indicators stay unavailable until validated.
 
 The [format/STEMS inspector](FORMATS-AND-STEMS.md) records the new check boundaries and pinned community sources. The current official v7 FAQ describes three- and four-stem modes; this does not establish a compatible persistent cache format. Recordbox open-model caches, phrase/vocal-activity analysis and native rekordbox preparedness remain distinct.
+
+## Focused ANLZ review, 19 November 2026
+
+The following public references informed independently written readers and
+synthetic regressions; no implementation code or private library fixtures were
+copied:
+
+- [PQTZ signed-shift discovery](https://github.com/teknopaul/vdj-ui/commit/7b33c57344c4cb6bb745d8f84dea445c732bc2a1)
+  and its public timing examples support reading a signed big-endian 16-bit
+  shift at section offset `0x12`. Raw and effective timestamps remain distinct.
+- [Pyrekordbox PSSI schema](https://github.com/dylanljones/pyrekordbox/blob/50b4604d98dfd52740aa9e76d80c3a32dfa451ba/pyrekordbox/anlz/structs.py#L246-L260)
+  and [mask handling](https://github.com/dylanljones/pyrekordbox/blob/50b4604d98dfd52740aa9e76d80c3a32dfa451ba/pyrekordbox/anlz/file.py#L123-L142)
+  distinguish version and entry size and rotate the mask for version 1.
+  Workbench checks bounded structure and header values, keeping phrase records
+  opaque and unknown revisions unsupported.
+- [Rekordcrate cue-comment correction](https://github.com/RobinMcCorkell/rekordcrate/blob/85f25448950b8cb665449a305e71eb61d332df5b/src/anlz.rs#L285-L315)
+  corroborates byte counts and final UTF-16 NUL handling. A generated missing-NUL
+  entry reproduced the earlier overpermissive Workbench classification.
+
+These source comparisons establish specific parser behavior, not universal
+player compatibility. No new native STEMS-ready field or non-PMAI `.3EX`
+decoder was established.

@@ -29,6 +29,36 @@ def section(tag,extra=b'',body=b''):
     return tag.encode()+struct.pack('>II',12+len(extra),12+len(extra)+len(body))+extra+body
 
 
+def anlz_file(*sections):
+    body=b''.join(sections)
+    return b'PMAI'+struct.pack('>II',28,28+len(body))+bytes(16)+body
+
+
+def pqtz_section(entries=((1,12800,29),),shift=0,extra=b''):
+    return section('PQTZ',struct.pack('>IHhI',0,8,shift,len(entries))+extra,
+                   b''.join(struct.pack('>HHI',*entry) for entry in entries))
+
+
+def pssi_section(version=0,count=1,mood=3,entry_size=24,masked=False):
+    # Fixed generated headers, independently calculated from the documented format bytes.
+    # count257 has the same mask adjustment as count1 modulo256.
+    if masked:
+        assert count in (1,257) and mood==3 and version in (0,1)
+        header=bytes.fromhex(('cc e1 ef fb e6 ef ae ef ea c3 ea ec e5 ea',
+                              'e2 ec fb e6 ef ae ef ea d3 fa ec e2 ed f4')[version])
+    else:header=struct.pack('>H',mood)+bytes(6)+struct.pack('>H',16)+bytes(2)+bytes((7,0))
+    return section('PSSI',struct.pack('>HHH',version,entry_size,count)+header,
+                   bytes(entry_size*count))
+
+
+def extended_cue_file(comment):
+    entry=bytearray(88+len(comment));entry[:4]=b'PCP2'
+    struct.pack_into('>II',entry,4,16,len(entry));entry[16]=1
+    struct.pack_into('>II',entry,20,1000,0xffffffff)
+    struct.pack_into('>I',entry,40,len(comment));entry[44:44+len(comment)]=comment
+    return anlz_file(section('PCO2',struct.pack('>IHH',0,1,0),entry))
+
+
 def anlz_bytes(bpms=(12800,12800),duplicate_cues=True):
     beats=b''.join(struct.pack('>HHI',i%4+1,bpm,25+i*500) for i,bpm in enumerate(bpms))
     body=section('PQTZ',struct.pack('>III',0,0,len(bpms)),beats)
@@ -129,6 +159,113 @@ class FormatTests(unittest.TestCase):
         self.assertEqual(r['sections'][-1]['tag'],'ZZZZ');self.assertTrue(r['phrase_evidence']);self.assertTrue(r['vocal_activity_evidence'])
         self.assertEqual(r['tempo_evidence'][0]['bpms'],[128,130]);self.assertTrue(r['tempo_evidence'][0]['variable_tempo'])
         self.assertIsNone(r['native_stems_readiness']);self.assertEqual(raw,anlz_bytes((12800,13000)))
+        self.assertEqual(r['phrase_structure_evidence'][0]['validation'],'unsupported')
+        self.assertFalse(r['phrase_structure_evidence'][0]['entry_semantics_decoded'])
+
+    def test_grid_signed_header_shift_reports_effective_times_without_unsigned_wrap(self):
+        for raw_ms,shift,effective_ms in ((29,0,29),(29,414,443),(178,-166,12),(236,-230,6),
+                                          (1,-230,-229),(0,-32768,-32768),(2**32-1,32767,2**32+32766)):
+            with self.subTest(raw_ms=raw_ms,shift=shift):
+                raw=anlz_file(pqtz_section(((1,12800,raw_ms),),shift))
+                before=bytes(raw);result=self.inspect('ANLZ0000.DAT',raw)
+                self.assertEqual(result['validation'],'recognized')
+                grid=result['beat_grid_evidence'][0]
+                self.assertEqual(grid['validation'],'recognized');self.assertEqual(grid['header_shift_ms'],shift)
+                self.assertEqual((grid['raw_first_ms'],grid['raw_last_ms']),(raw_ms,raw_ms))
+                self.assertEqual((grid['effective_first_ms'],grid['effective_last_ms']),(effective_ms,effective_ms))
+                self.assertEqual(grid['has_negative_effective_times'],effective_ms<0)
+                self.assertEqual(result['tempo_evidence'][0]['effective_first_ms'],effective_ms)
+                self.assertEqual(result['tempo_evidence'][0]['bpms'],[128]);self.assertEqual(raw,before)
+                self.assertIsNone(result['native_stems_readiness'])
+
+    def test_grid_empty_repeated_and_unknown_headers_do_not_invent_timing_association(self):
+        result=self.inspect('ANLZ0000.DAT',anlz_file(pqtz_section((),-166),pqtz_section(shift=414)))
+        empty,shifted=result['beat_grid_evidence']
+        self.assertEqual(empty['beats'],0);self.assertIsNone(empty['effective_first_ms'])
+        self.assertFalse(empty['has_negative_effective_times']);self.assertEqual(shifted['effective_first_ms'],443)
+        raw=anlz_file(pqtz_section(extra=bytes(4)))
+        result=self.inspect('ANLZ0000.DAT',raw)
+        self.assertEqual(result['validation'],'recognized');self.assertEqual(result['tempo_evidence'],[])
+        self.assertEqual(result['beat_grid_evidence'][0]['validation'],'unsupported')
+        self.assertNotIn('header_shift_ms',result['beat_grid_evidence'][0])
+
+    def test_grid_signed_shift_respects_prefix_budgets(self):
+        raw=anlz_file(pqtz_section(((1,12800,29),(2,13000,529)),414))
+        for at in range(12,len(raw)):
+            result=self.inspect('ANLZ0000.DAT',raw[:at],len(raw))
+            self.assertIn(result['validation'],('recognized','not_checked'))
+            self.assertEqual(result['tempo_evidence'],[])
+            if result['beat_grid_evidence']:
+                self.assertEqual(result['beat_grid_evidence'][0]['validation'],'not_checked')
+
+    def test_phrase_known_versions_plain_and_rotated_mask_report_only_header_semantics(self):
+        for version in (0,1):
+            for masked in (False,True):
+                for count in (1,257):
+                    with self.subTest(version=version,masked=masked,count=count):
+                        raw=anlz_file(pssi_section(version,count,masked=masked));before=bytes(raw)
+                        result=self.inspect('ANLZ0000.EXT',raw);phrase=result['phrase_structure_evidence'][0]
+                        self.assertEqual(result['validation'],'recognized');self.assertTrue(result['phrase_evidence'])
+                        self.assertEqual(phrase['validation'],'recognized')
+                        self.assertEqual((phrase['version'],phrase['entry_bytes'],phrase['entries']),(version,24,count))
+                        self.assertEqual((phrase['mood'],phrase['mood_name'],phrase['end_beat'],phrase['bank']),(3,'low',16,7))
+                        self.assertEqual(phrase['body_encoding'],'xor_mask_inferred' if masked else 'unmasked')
+                        self.assertFalse(phrase['entry_semantics_decoded']);self.assertIsNone(phrase['native_stems_readiness'])
+                        self.assertIsNone(result['native_stems_readiness']);self.assertEqual(raw,before)
+        for mood in (1,2,3):
+            phrase=self.inspect('ANLZ0000.EXT',anlz_file(pssi_section(mood=mood)))['phrase_structure_evidence'][0]
+            self.assertEqual(phrase['mood'],mood)
+
+    def test_phrase_unknown_profiles_remain_presence_evidence(self):
+        unknown_header=section('PSSI',bytes(24),bytes(24))
+        for phrase_section in (section('PSSI'),unknown_header,pssi_section(version=2,mood=0),
+                               pssi_section(entry_size=32,mood=0)):
+            result=self.inspect('ANLZ0000.EXT',anlz_file(phrase_section))
+            self.assertEqual(result['validation'],'recognized');self.assertTrue(result['phrase_evidence'])
+            phrase=result['phrase_structure_evidence'][0]
+            self.assertEqual(phrase['validation'],'unsupported');self.assertNotIn('mood',phrase)
+            self.assertFalse(phrase['entry_semantics_decoded']);self.assertIsNone(result['native_stems_readiness'])
+
+    def test_phrase_known_profile_rejects_count_and_mood_mismatch_without_following_counts(self):
+        for count in (0,2,65535):
+            phrase=bytearray(pssi_section());struct.pack_into('>H',phrase,16,count)
+            result=self.inspect('ANLZ0000.EXT',anlz_file(phrase))
+            self.assertEqual(result['validation'],'corrupt')
+            self.assertEqual(result['phrase_structure_evidence'][0]['validation'],'corrupt')
+        for mood in (0,4,65535):
+            result=self.inspect('ANLZ0000.EXT',anlz_file(pssi_section(mood=mood)))
+            self.assertEqual(result['validation'],'corrupt')
+            self.assertNotIn('mood',result['phrase_structure_evidence'][0])
+
+    def test_phrase_partial_prefix_keeps_unchecked_distinct_from_corrupt(self):
+        raw=anlz_file(pssi_section(version=1,masked=True))
+        for at in range(12,len(raw)):
+            result=self.inspect('ANLZ0000.EXT',raw[:at],len(raw))
+            self.assertIn(result['validation'],('recognized','not_checked'))
+            if result['phrase_structure_evidence']:
+                phrase=result['phrase_structure_evidence'][0]
+                self.assertEqual(phrase['validation'],'not_checked');self.assertFalse(phrase['entry_semantics_decoded'])
+                self.assertIsNone(phrase['native_stems_readiness'])
+
+    def test_extended_cue_nonempty_comment_requires_its_own_utf16_terminator(self):
+        for comment in ('A'.encode('utf-16-be'),b'\x00',b'\xd8\x00\x00\x00'):
+            raw=extended_cue_file(comment)
+            result=self.inspect('ANLZ0000.EXT',raw)
+            self.assertEqual(result['validation'],'corrupt')
+            self.assertEqual(result['cue_groups'][0]['entry_validation'],'corrupt')
+        # A zero-filled field after the declared comment cannot supply its missing terminator.
+        self.assertIn('terminator',self.inspect('ANLZ0000.EXT',extended_cue_file(b'\x00A'))['detail'])
+
+    def test_extended_cue_empty_unicode_and_literal_nuls_are_preserved(self):
+        for comment in ('','Drop 日本😀','A\x00B','A\x00'):
+            encoded=(comment+'\x00').encode('utf-16-be') if comment else b''
+            raw=extended_cue_file(encoded);before=bytes(raw)
+            result=self.inspect('ANLZ0000.EXT',raw)
+            self.assertEqual(result['validation'],'recognized')
+            self.assertEqual(result['cue_groups'][0]['positions'][0]['comment'],comment)
+            self.assertEqual(raw,before)
+        result=self.inspect('ANLZ0000.EXT',extended_cue_file(b'\x00\x00'))
+        self.assertEqual(result['cue_groups'][0]['positions'][0]['comment'],'')
 
     def test_populated_legacy_and_extended_cues_keep_complementary_evidence(self):
         legacy=bytearray(56);legacy[:4]=b'PCPT';struct.pack_into('>II',legacy,4,28,56)

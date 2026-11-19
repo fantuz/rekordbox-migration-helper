@@ -110,7 +110,7 @@ to the entire checked collection before filtering and pagination.
 
 | Result | Meaning |
 | --- | --- |
-| Present | Dropbox returned a file at the mapped path in the authorized namespace. |
+| Reachable | Dropbox returned file metadata at the mapped path in the authorized namespace. This does not establish audio identity or local access. |
 | Not found | Dropbox did not find that mapped path in the checked namespace; this alone is not proof of deletion. |
 | Unmapped | No verified selected-folder mapping applies to the recorded reference. |
 | Unverified | A bounded metadata listing ended before this mapped path could be conclusively checked. |
@@ -118,8 +118,16 @@ to the entire checked collection before filtering and pagination.
 The account, mapping and checked path determine the result. A wrong account,
 renamed file or different team namespace can produce an unavailable path even
 when another copy exists. Recheck after reconnecting, changing mappings or
-moving cloud files. Logical size and file identity are metadata; they do not
-prove local residency or decodable audio.
+moving cloud files. The API retains its `present` status for compatibility;
+the interface calls this **Reachable**. Local access is checked separately.
+
+Where the selected library captured a positive file size (native `FileSize`
+or XML `Size`), results compare it with Dropbox's remote byte count. **Size
+matches** is useful supporting evidence, while **Size differs** needs review.
+Equal sizes do not establish identical contents. A missing or invalid captured
+size stays **Size unknown**; Workbench does not open the audio to fill that gap.
+These comparisons describe the saved metadata check, so recheck after a cloud
+file changes. The account and selected collection remain part of its scope.
 
 A failed authorization, permission or network request reports a failed check
 and preserves earlier evidence with its original timestamp. It does not turn
@@ -163,9 +171,39 @@ Dropbox itself controls how its desktop client handles newly local files;
 Workbench does not change sync policy or promise that the client will perform
 no additional metadata reconciliation.
 
-After a successful download, the file is an ordinary local file at its mapped
-Dropbox path. Refresh local File health or playback evidence to observe its
-current state. Native library references remain unchanged.
+After a successful download, Workbench refreshes that track's local File health
+evidence and playback controls. Play becomes available when a fresh filesystem
+check finds the ordinary local file; a completed transfer alone does not prove
+that a sync client has kept it resident. The **Download this track** action
+does not open a player. Native library references remain unchanged.
+
+### Play a reachable track
+
+File health and the Dropbox results offer **Play** for a remotely reachable,
+downloadable track even when its local copy is absent. Choose Play and review
+the **Download and play** confirmation, including destination and size evidence.
+Approval covers only that track's download and subsequent opening in the
+computer's default audio player. Cancel or Escape starts neither operation.
+
+Workbench waits for the complete, size- and hash-verified file to be published
+at the attached location, then rechecks the source, mapping and resident file
+before opening it. Play also streams that one approved local file through the
+Dropbox content-hash check again: metadata timestamps alone can miss rapid
+same-size changes, especially on Windows. This extra local read applies only
+to the approved download-and-play action; scans and browsing stay metadata-only.
+The hash confirms the downloaded Dropbox revision, not the identity of the
+original recording expected by the captured library. Changed or unavailable destinations prevent playback. A
+player-launch failure leaves the completed download available for a retry.
+This confirmation does not authorize a queue or another recording. Already
+local files and online-only placeholders retain their existing individual
+cloud-play confirmation flow.
+
+![Single-track download and play confirmation using invented metadata](screenshots/dropbox-play-confirmation.png)
+
+No additional Dropbox permission is needed for this workflow: the existing
+`files.metadata.read` scope supplies path and size information, and
+`files.content.read` permits the one approved transfer. Saving the result on
+this computer uses local filesystem permissions, not a cloud-write scope.
 
 ## Validation limits
 

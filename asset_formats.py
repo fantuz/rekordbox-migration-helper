@@ -9,6 +9,8 @@ SETTINGS = {'mysetting.dat':40, 'mysetting2.dat':40, 'devsetting.dat':32, 'djmmy
 CATALOGS = {'export.pdb', 'exportext.pdb', 'exportlibrary.db'}
 PROBE_LIMIT = 2 * 1024**2
 MAX_STEM_FRAMES = 44100 * 60 * 60 * 12
+# Observed PSSI format bytes, rotated by version and adjusted by the entry count.
+PSSI_MASK = bytes.fromhex('cb e1 ee fa e5 ee ad ee e9 d2 e9 eb e1 e9 f3 e8 e9 f4 e1')
 
 
 def basename(name):
@@ -103,6 +105,7 @@ def inspect_format(name, prefix, size,read_at=None,provider_context=False):
 
 def inspect_anlz(data, size, base):
     result = {**base, 'format':'anlz', 'sections':[], 'cue_groups':[], 'tempo_evidence':[], 'extended_grid_evidence':[],
+              'beat_grid_evidence':[], 'phrase_structure_evidence':[],
               'phrase_evidence':False, 'vocal_activity_evidence':False}
     def finish(state, detail):
         result.update(validation=state, detail=detail)
@@ -160,21 +163,37 @@ def inspect_anlz(data, size, base):
             elif offset+hlen > available:
                 grid.update(validation='not_checked', detail='Extended-grid header exceeds the inspection byte budget')
         if tag == 'PQTZ':
-            if hlen < 24 or length < 24 or offset+24 > available:
-                return finish('corrupt' if offset+24 <= len(data) else 'not_checked', 'Incomplete PQTZ header')
-            n = struct.unpack_from('>I', data, offset+20)[0]
-            if hlen + n*8 != length:
-                return finish('corrupt', 'PQTZ beat count disagrees with section length')
-            if offset+length <= len(data):
+            grid = {'tag':tag, 'validation':'unsupported', 'detail':'Beat-grid header revision is not decoded'}
+            result['beat_grid_evidence'].append(grid)
+            if hlen == 24 and offset+24 <= available:
+                n = struct.unpack_from('>I', data, offset+20)[0]
+                shift = struct.unpack_from('>h', data, offset+18)[0]
+                grid.update(beats=n, header_shift_ms=shift, time_unit='milliseconds')
+                if 24 + n*8 != length:
+                    grid.update(validation='corrupt', detail='PQTZ beat count disagrees with section length')
+                    return finish('corrupt', grid['detail'])
+                grid.update(validation='not_checked', detail='Beat-grid entries exceed the inspection byte budget')
+            elif hlen == 24:
+                grid.update(validation='not_checked', detail='Beat-grid header exceeds the inspection byte budget')
+            if hlen == 24 and offset+length <= len(data):
                 tempos = set();previous = -1
+                first = last = None
                 for at in range(offset+hlen, offset+length, 8):
                     beat, bpm100, ms = struct.unpack_from('>HHI', data, at)
                     if not 1 <= beat <= 4 or bpm100 == 0 or ms < previous:
+                        grid.update(validation='corrupt', detail='PQTZ contains invalid beats, tempo or nonmonotonic times')
                         return finish('corrupt', 'PQTZ contains invalid beats, tempo or nonmonotonic times')
                     tempos.add(bpm100/100);previous = ms
-                result['tempo_evidence'].append({'tag':tag, 'beats':n, 'bpms':sorted(tempos)[:256],
-                                                 'bpms_complete':len(tempos)<=256,'distinct_tempo_count':len(tempos),'unit':'BPM',
-                                                 'variable_tempo':len(tempos)>1})
+                    first = ms if first is None else first;last = ms
+                # Signed shifts can retain preroll before zero; report it without clamping or wrapping.
+                grid.update(validation='recognized', raw_first_ms=first, raw_last_ms=last,
+                            effective_first_ms=None if first is None else first+shift,
+                            effective_last_ms=None if last is None else last+shift,
+                            has_negative_effective_times=first is not None and first+shift<0,
+                            detail='Known beat-grid count, tempo and signed header shift checked; extended-grid association is not inferred')
+                result['tempo_evidence'].append({**grid, 'bpms':sorted(tempos)[:256],
+                                                'bpms_complete':len(tempos)<=256,'distinct_tempo_count':len(tempos),'unit':'BPM',
+                                                'variable_tempo':len(tempos)>1})
         if tag in ('PCOB','PCO2'):
             minimum = 24 if tag == 'PCOB' else 20
             if hlen < minimum or length < minimum:
@@ -188,11 +207,49 @@ def inspect_anlz(data, size, base):
                     group.update(inspect_cues(data,offset+hlen,offset+length,tag,n))
                     if group['entry_validation']=='corrupt':
                         return finish('corrupt',group['entry_detail'])
-        result['phrase_evidence'] |= tag == 'PSSI'
+        if tag == 'PSSI':
+            result['phrase_evidence'] = True
+            phrases = inspect_phrase_structure(data, offset, hlen, length)
+            result['phrase_structure_evidence'].append(phrases)
+            if phrases['validation'] == 'corrupt':return finish('corrupt', phrases['detail'])
         result['vocal_activity_evidence'] |= tag == 'PVDI'
         offset += length
     result['section_counts'] = dict(counts)
     return finish('recognized', 'Analysis section framing recognized; phrase and vocal-activity tags do not establish STEMS readiness')
+
+
+def inspect_phrase_structure(data, start, header, length):
+    """Check known PSSI header semantics without decoding phrase entries or guessing future revisions."""
+    result = {'tag':'PSSI', 'validation':'unsupported', 'detail':'Phrase-structure header revision is not decoded',
+              'entry_semantics_decoded':False, 'native_stems_readiness':None}
+    if header != 32:return result
+    if start+18 > len(data):
+        return {**result, 'validation':'not_checked', 'detail':'Phrase-structure header exceeds the inspection byte budget'}
+    version, entry_size, count = struct.unpack_from('>HHH', data, start+12)
+    result.update(version=version, entry_bytes=entry_size, entries=count)
+    if version not in (0,1) or entry_size != 24:
+        return {**result, 'detail':'Phrase-structure version or entry size is not decoded'}
+    if 32 + count*24 != length:
+        return {**result, 'validation':'corrupt', 'detail':'PSSI entry count disagrees with section length'}
+    if start+32 > len(data):
+        return {**result, 'validation':'not_checked', 'detail':'Phrase-structure header exceeds the inspection byte budget'}
+    body = data[start+18:start+32]
+    mood = struct.unpack_from('>H', body)[0]
+    encoding = 'unmasked'
+    if mood not in (1,2,3):
+        # Only the fixed-size header is decoded. The mask is inferred from mood, not authenticated.
+        body = bytes(value ^ ((PSSI_MASK[(i+version)%len(PSSI_MASK)]+count)&255)
+                     for i,value in enumerate(body))
+        mood = struct.unpack_from('>H', body)[0]
+        encoding = 'xor_mask_inferred'
+    if mood not in (1,2,3):
+        return {**result, 'validation':'corrupt', 'detail':'PSSI mood is invalid for the known plain or masked profile'}
+    result.update(mood=mood, mood_name={1:'high',2:'mid',3:'low'}[mood], body_encoding=encoding,
+                  end_beat=struct.unpack_from('>H', body, 8)[0], bank=body[12])
+    if start+length > len(data):
+        return {**result, 'validation':'not_checked', 'detail':'Phrase entries exceed the inspection byte budget'}
+    return {**result, 'validation':'recognized',
+            'detail':'Known phrase header, count and mood checked; phrase-entry semantics and STEMS readiness are not established'}
 
 
 def inspect_cues(data,start,end,tag,count):
@@ -226,7 +283,10 @@ def inspect_cues(data,start,end,tag,count):
             n=struct.unpack_from('>I',data,cursor+40)[0]
             if n%2 or 44+n>length:
                 return {**result,'entry_validation':'corrupt','entry_detail':'Invalid extended cue comment length'}
-            try:entry['comment']=data[cursor+44:cursor+44+n].decode('utf-16-be').rstrip('\x00')
+            comment=data[cursor+44:cursor+44+n]
+            if n and comment[-2:]!=b'\x00\x00':
+                return {**result,'entry_validation':'corrupt','entry_detail':'Extended cue comment is missing its UTF-16 terminator'}
+            try:entry['comment']=(comment[:-2] if n else comment).decode('utf-16-be')
             except UnicodeError:return {**result,'entry_validation':'corrupt','entry_detail':'Invalid extended cue UTF-16 comment'}
         if len(result['positions'])<64:result['positions'].append(entry)
         cursor+=length

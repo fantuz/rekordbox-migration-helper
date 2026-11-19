@@ -94,11 +94,14 @@ direct-link reload, M3U handoff, report import and explicit field staging.
 
 ## Dropbox metadata connector
 
-`dropbox-setup.png` and `dropbox-confirmation.png` are reviewed Chromium captures
+`dropbox-setup.png`, `dropbox-confirmation.png` and
+`dropbox-play-confirmation.png` are reviewed Chromium captures
 from `packaging/check_dropbox_connector_ui.py`. The first shows connection setup,
 the exact local OAuth redirect URL and an explicit local-to-remote folder mapping.
-The second shows the warning, track name, destination path, size and Cancel option
-before one file can be downloaded.
+The second shows the warning, track name, destination path, size comparison and
+Cancel option before one file can be downloaded. The third shows the separate
+consent to download and then open one reachable track, including a deliberately
+different captured library size.
 
 The browser uses real application HTTP routes and temporary SQLite storage. A
 synthetic server-side Dropbox transport supplies an invented account, public app
@@ -108,8 +111,10 @@ intercepted. No external Dropbox service or actual cloud account is contacted,
 and these captures do not establish live-account compatibility. OAuth and
 credential-store behavior have separate automated tests.
 
-The confirmed download creates one short non-audio test payload in a temporary
-folder. Cancel and Escape create no file; metadata checks download no content.
+The confirmed actions create two short non-audio test payloads in a temporary
+folder. Download-only consent does not open a player. The Play regression waits
+for the verified local file before calling a stand-in for OS dispatch; no real
+audio player runs. Cancel and Escape create no file; metadata checks download no content.
 No actual music, personal paths, credentials or library database is packaged.
 Only the rendered PNG screenshots and test-generator code are included in source
 archives; the temporary metadata, provider inventory and payload are discarded.
@@ -120,7 +125,7 @@ Regenerate the evidence with:
 python packaging/check_dropbox_connector_ui.py --browser chromium --output ci-output/dropbox-connector
 ```
 
-Review `dropbox-setup.png` and `dropbox-confirmation.png` before copying them to
+Review the three Dropbox captures before copying them to
 `docs/screenshots/`. Keep the invented account and metadata labels visible.
 
 ## Guided cloud connections and separate file evidence

@@ -66,6 +66,33 @@ class CloudFileEvidenceTests(unittest.TestCase):
         self.assertTrue(all(row['cloud_evidence']==[] for row in result['rows']))
         self.assertTrue(all(not provider.calls for provider in f.providers.values()))
 
+    def test_cached_dropbox_sizes_remain_advisory_without_provider_or_audio_reads(self):
+        self.ready(('dropbox',));f=self.fixture
+        import dropbox_connector
+        context=dropbox_connector.evidence_context(f.application,f.source)
+        for provider in f.providers.values():provider.calls.clear()
+        def evidence():
+            with patch.object(Path,'open',side_effect=AssertionError('Audio opened')),patch('file_health.resolve',side_effect=AssertionError('Snapshot decoded')):
+                row=next(row for row in self.health()['rows'] if row['track_id']=='db-0')
+            return next(item for item in row['cloud_evidence'] if item['provider']=='dropbox')
+        # Existing installations retain reachability but have no captured size
+        # comparison until they explicitly check remote metadata again.
+        old=evidence();self.assertEqual(old['status'],'present')
+        self.assertEqual(old['size_comparison'],'unknown');self.assertIsNone(old['expected_size'])
+        for expected,comparison in ((len(f.providers['dropbox'].body),'match'),
+                                    (len(f.providers['dropbox'].body)+1,'mismatch'),(True,'unknown'),(0,'unknown')):
+            with f.store.connection() as db:
+                payload=json.loads(db.execute('SELECT payload FROM dropbox_records WHERE binding=? AND source=? AND track_id=?',
+                    (context['key'],f.source,'db-0')).fetchone()[0])
+                payload.update(expected_size=expected,size_comparison='match')
+                db.execute('UPDATE dropbox_records SET payload=? WHERE binding=? AND source=? AND track_id=?',
+                    (json.dumps(payload),context['key'],f.source,'db-0'))
+            item=evidence()
+            self.assertEqual(item['status'],'present');self.assertEqual(item['size_comparison'],comparison)
+            self.assertEqual(item['remote_size'],len(f.providers['dropbox'].body))
+        self.assertTrue(all(not provider.calls and not provider.downloads for provider in f.providers.values()))
+        self.assertEqual(f.store.snapshot(f.sid),f.before)
+
     def test_account_reconnection_and_disconnection_hide_old_cloud_results(self):
         self.ready();f=self.fixture
         f.providers['dropbox'].state['connection_id']='a-new-authorization'
