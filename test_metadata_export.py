@@ -73,6 +73,47 @@ class MetadataExportTests(unittest.TestCase):
             self.assertNotIn('current_path',data['columns'])
         self.assertEqual(list_metadata_exports(self.root)[0]['id'],result['id'])
 
+    def test_private_workspace_capture_preserves_xml_path_for_mapping_without_new_export_field(self):
+        import dropbox_files
+        cat=example_catalog();cat.tracks['a']['current_path']='D:/Old library/Track.mp3'
+        cat.tracks['a']['original_path']='E:/Earlier library/Track.mp3'
+        marker='PRIVATE-XML-REFERENCE'
+        xml='file://localhost/C:/Approved/Dropbox/'+marker+'/Track.mp3'
+        cat.tracks['a']['xml_location']=xml;before=deepcopy(cat.tracks)
+        snapshot=capture_catalog(cat);saved=snapshot['tracks'][0]
+        self.assertEqual(saved['xml_location'],xml)
+        mapping={'local_root':'C:/Approved/Dropbox','remote_root':''}
+        self.assertEqual(dropbox_files.target(saved,mapping)['remote_path'],'/'+marker+'/Track.mp3')
+        self.assertEqual(cat.tracks,before)
+        # Keeping a private evidence field must not silently extend any shared
+        # explorer preset, even when the existing path opt-in is selected.
+        for preset,include_paths in (('private',False),('private',True),('public',False),('public',True)):
+            with self.subTest(preset=preset,include_paths=include_paths):
+                exported=payload(snapshot,'Synthetic',preset=preset,include_paths=include_paths)
+                self.assertNotIn(marker,json.dumps(exported));self.assertNotIn('xml_location',exported['columns'])
+        with self.assertRaises(ValueError):payload(snapshot,'Synthetic',fields=['xml_location'],include_paths=True)
+        for preset in ('private','public'):
+            identity=('1' if preset=='private' else '2')*32
+            result=export_metadata(snapshot,self.root,identity,ASSETS,lambda *_:None,preset=preset)
+            folder=Path(result['directory'])
+            self.assertNotIn(marker,(folder/'library.html').read_text(encoding='utf-8'))
+            with zipfile.ZipFile(folder/'metadata-explorer.zip') as archive:
+                self.assertNotIn(marker,archive.read('library-data.js').decode('utf-8'))
+
+    def test_native_capture_preserves_current_and_original_without_inventing_xml_reference(self):
+        from contextlib import closing
+        import sqlite3
+        from research_capture import capture_private_database
+        with closing(sqlite3.connect(':memory:')) as db:
+            db.execute('CREATE TABLE djmdContent(ID TEXT,Title TEXT,FolderPath TEXT,OrgFolderPath TEXT,FileSize INTEGER)')
+            db.execute('INSERT INTO djmdContent VALUES (?,?,?,?,?)',('a','Invented',r'C:\Old\Track.mp3',
+                                                                  r'D:\Earlier\Track.mp3',1234))
+            snapshot=capture_private_database(db,'synthetic:native-private-paths')
+        saved=snapshot['tracks'][0]
+        self.assertEqual(saved['current_path'],r'C:\Old\Track.mp3')
+        self.assertEqual(saved['original_path'],r'D:\Earlier\Track.mp3')
+        self.assertNotIn('xml_location',saved)
+
     def test_explicit_path_choice_and_invalid_numbers_are_handled(self):
         snapshot=capture_catalog(example_catalog())
         result=export_metadata(snapshot,self.root,'b'*32,ASSETS,lambda *_:None,include_paths=True)

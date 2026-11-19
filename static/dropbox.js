@@ -12,6 +12,18 @@ window.DropboxConnector=(()=>{
       '<small class="dropbox-path subtle">'+esc(t('Cloud size')+' · '+value(remote))+'</small>'+
       '<small class="dropbox-path subtle">'+esc(t('Library size')+' · '+value(expected))+'</small>';
   }
+  function mappingDetails(row){
+    const detail=row.path_diagnostics;if(row.status!=='unmapped'||!detail||typeof detail!=='object')return '';
+    const paths=detail.recorded_paths||{},account=connection?.account||{};
+    const namespace=detail.namespace===account.home_namespace_id?'Member home folder':detail.namespace===account.root_namespace_id?'Team root folder':'Team namespace (optional)';
+    const fields=[['Current path',paths.current_path],['Captured XML path',paths.xml_location],['Original path',paths.original_path],
+      ['Recorded root',detail.mapping_recorded_root],['Dropbox folder on this computer',detail.mapping_local_root],
+      ['Folder in cloud account',t(namespace)+' · '+(detail.mapping_remote_root||'/')]];
+    return '<details class="dropbox-mapping-details"><summary>'+esc(t('Path mapping details'))+'</summary><dl>'+fields.map(([label,value])=>'<dt>'+esc(t(label))+'</dt><dd><code>'+esc(typeof value==='string'&&value?value:'—')+'</code></dd>').join('')+'</dl>'+
+      (detail.truncated_fields?.length?'<small>'+esc(t('Path shortened for display'))+'</small>':'')+
+      (detail.redacted_fields?.length?'<small>'+esc(t('Sensitive URI details omitted'))+'</small>':'')+
+      '<button type="button" class="button secondary small" data-dropbox-review-mapping>'+esc(t('Cloud connections'))+'</button></details>';
+  }
   const post=(path,body={})=>api('/api/dropbox'+path,{method:'POST',body:JSON.stringify(body)});
   function mappingChanged(){
     const local=node('local-root').value.trim(),remote=node('remote-root').value.trim(),namespace=node('namespace').value.trim();
@@ -37,8 +49,25 @@ window.DropboxConnector=(()=>{
     if(identity)lines.push(t('Connected account')+' · '+identity);
     if(effective)lines.push(t(known?.[1]||'Team namespace (optional)')+' · '+effective);
     if(effective)lines.push(t('Folder in cloud account')+' · '+(remote.value.trim()||'/'));
-    if(typeof account.home_path==='string'&&account.home_path)lines.push(t('Member home folder')+' · '+account.home_path);
+    if(typeof account.home_path==='string'&&account.home_path)lines.push(t('Member home location inside team root')+' · '+account.home_path);
     context.textContent=lines.join('\n');context.hidden=!lines.length;
+    const prefix=context.id.replace('namespace-context',''),local=document.getElementById(prefix+'local-root');
+    const localKey=value=>{
+      let path=String(value||'').trim().replace(/\\/gu,'/').replace(/\/+$/u,'');
+      return /^[A-Za-z]:\//u.test(path)||path.startsWith('//')?path.toLowerCase():path;
+    };
+    const homePath=typeof account.home_path==='string'?account.home_path.replace(/^\/+|\/+$/gu,''):'';
+    const roots=[...(state.roots||[]).map(row=>row.root),state.mapping?.managed_root].filter(value=>typeof value==='string');
+    const memberLocal=homePath&&roots.some(value=>localKey(local?.value)===localKey(value+'/'+homePath));
+    let hint=document.getElementById(context.id+'-mapping-hint');
+    if(!hint){
+      hint=document.createElement('aside');hint.id=context.id+'-mapping-hint';hint.className='dropbox-note dropbox-namespace-hint';hint.setAttribute('role','note');
+      hint.append(document.createElement('p'),document.createElement('button'));hint.lastElementChild.type='button';hint.lastElementChild.className='button secondary small';context.after(hint);
+    }
+    hint.hidden=!(state.connected&&home&&root&&home!==root&&effective===root&&!remote.value.trim()&&memberLocal);
+    hint.firstElementChild.textContent=t('This local folder matches the member home folder, but Team root / is selected. Choose Member home folder, or include its path under Team root.');
+    hint.lastElementChild.textContent=t('Use member home folder');hint.lastElementChild.disabled=busy;
+    hint.lastElementChild.onclick=()=>{if(select.disabled)return;select.value=home;select.dispatchEvent(new Event('change',{bubbles:true}));};
   }
   function controls(){
     mappingDraft=mappingChanged();
@@ -77,7 +106,7 @@ window.DropboxConnector=(()=>{
     mappingDraft=mappingChanged();
     const generation=++filesRevision,selected=node('source').value;source=selected;
     if(!selected||mappingDraft||!connection?.connected||!connection?.mapping){offset=pageRows=totalRows=0;node('results').replaceChildren();node('count').textContent='';node('checked').textContent=t('Not checked');controls();return;}
-    const data=await api('/api/dropbox/files?'+new URLSearchParams({source:selected,offset:String(offset),q:node('search').value,status:node('status').value}),{feedback:false});
+    const data=await api('/api/dropbox/files?'+new URLSearchParams({source:selected,offset:String(offset),q:node('search').value,status:node('status').value,...window.DisplayPreferences?.args()}),{feedback:false});
     if(generation!==filesRevision||selected!==node('source').value)return;
     const rows=data.rows||[],table=document.createElement('table'),head=document.createElement('thead'),body=document.createElement('tbody');
     head.innerHTML='<tr>'+['Track','Artist','File status','Size','Actions'].map(key=>'<th>'+esc((key==='File status'?'Dropbox · ':'')+t(key))+'</th>').join('')+'</tr>';
@@ -86,19 +115,24 @@ window.DropboxConnector=(()=>{
       const name=document.createElement('td'),title=document.createElement('strong'),path=document.createElement('small');
       title.textContent=row.title||row.filename||row.track_id;
       name.innerHTML=TrackPlayback.button(selected.startsWith('snapshot:')?selected.slice(9):selected,row.track_id,'',row.status==='present'&&row.downloadable===true?selected:'');
-      name.append(title);path.className='subtle dropbox-path';path.textContent=row.remote_path||row.filename||'';name.append(path);
+      name.append(title);path.className='subtle dropbox-path';path.textContent=row.remote_path||row.filename||'';name.append(path);name.insertAdjacentHTML('beforeend',mappingDetails(row));
       const artist=document.createElement('td');artist.textContent=row.artist||'—';
       const state=document.createElement('td'),badge=document.createElement('span');badge.className='dropbox-evidence dropbox-evidence-'+(Object.hasOwn(statusNames,row.status)?row.status:'unverified');badge.textContent=t(statusNames[row.status]||'Unverified');state.append(badge);
+      if(row.status==='unverified'&&row.unresolved_reason){const note=document.createElement('small');note.className='dropbox-path subtle';note.textContent=t('This file was not covered by the incomplete Dropbox listing. Verify a narrower folder before checking again.');state.append(note);}
       const size=document.createElement('td');size.innerHTML=sizeEvidence(row);
       const action=document.createElement('td');
       if(row.downloadable===true){const button=document.createElement('button');button.type='button';button.className='button secondary small';button.dataset.dropboxDownload=row.track_id;button.textContent=t('Download this track');button.onclick=wrap(()=>prepareDownload(selected,row.track_id));action.append(button);}
       else if(row.local_state==='online_only')action.textContent=t('Open cloud-managed audio');
+      else if(row.status==='unverified'){const note=document.createElement('small');note.className='subtle';note.textContent=t('Remote metadata is not confirmed yet; download is unavailable.');action.append(note);}
       tr.append(name,artist,state,size,action);body.append(tr);
     }
     table.append(head,body);node('results').replaceChildren(table);
+    for(const button of node('results').querySelectorAll('[data-dropbox-review-mapping]'))button.onclick=()=>{window.CloudConnections?.forSource?.(selected,'dropbox');showView('cloud-connect');};
     const total=Number(data.total||0);totalRows=total;pageRows=rows.length;node('count').textContent=num(total)+' · '+(total?num(offset+1)+'–'+num(Math.min(offset+rows.length,total)):'0');
     const checked=data.checked_at?snapshotMoment(typeof data.checked_at==='number'?new Date(data.checked_at*1000).toISOString():data.checked_at):t('Not checked');
-    node('checked').textContent=checked+(data.complete===false?' · '+t('Unverified'):'')+(typeof data.scan_note==='string'&&data.scan_note?' · '+data.scan_note:'');
+    const coverage=data.coverage,counts=coverage&&Number.isSafeInteger(coverage.files_listed)&&Number.isSafeInteger(coverage.pages_read)?' · '+I18n.t('Listed {files} files in {pages} metadata pages.',{files:num(coverage.files_listed),pages:num(coverage.pages_read)}):'';
+    const sidecars=window.DisplayPreferences?.sidecarNote?.(data)||'';
+    node('checked').textContent=checked+(data.complete===false?' · '+t('Unverified'):'')+counts+(typeof data.scan_note==='string'&&data.scan_note?' · '+t(data.scan_note):'')+(sidecars?' · '+sidecars:'');
     controls();
   }
   async function load(){
@@ -183,6 +217,10 @@ window.DropboxConnector=(()=>{
     });
   });
   const visible=()=>!document.getElementById('view-dropbox').hidden;
+  if(window.DisplayPreferences){
+    const preferences=document.createElement('div');preferences.id='dropbox-display-preferences';preferences.innerHTML=DisplayPreferences.controls({keys:false,unknown:false,sidecars:true});node('find').before(preferences);DisplayPreferences.sync();
+  }
+  window.addEventListener('workbench-display-preferences',()=>{if(visible()&&!busy){offset=0;void loadFiles().catch(error=>notify(error.message,true));}});
   window.addEventListener('focus',()=>{if(visible()&&!busy)void load().catch(error=>notify(error.message,true));});
   window.addEventListener('workbench-language',()=>{if(visible()&&!busy)void load().catch(error=>notify(error.message,true));});
   function forSource(value){

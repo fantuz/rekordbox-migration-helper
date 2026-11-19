@@ -12,6 +12,7 @@ from track_tags import rgb
 import key_notation
 from chart_views import hide_unknown,unknown_text
 import cloud_analysis
+import metadata_sidecars
 
 
 PERSPECTIVES={
@@ -96,6 +97,7 @@ class InsightIndex:
         for source in snapshot.get('tracks',[]):
             t={k:source.get(k) for k in TRACK_FIELDS};t['id']=str(t['id'])
             t.update(cloud_analysis.classify(source,cloud_context))
+            t['_metadata_sidecar']=metadata_sidecars.is_sidecar(source)
             if t['id'] in identities:raise ValueError('Snapshot track IDs are not unique')
             identities.add(t['id'])
             for field in ('title','artist','album','genre','format','tonality'):t[field]=str(t.get(field) or '')
@@ -125,18 +127,21 @@ class InsightIndex:
         self.family_counts=Counter(t['family'] for t in self.rows)
         self.color_labels={t['color_key']:t['color_name'] for t in self.rows}
 
-    def options(self,notation='source'):
+    def options(self,notation='source',hide_sidecars=False):
         notation=key_notation.notation(notation)
-        colours=Counter(t['color_key'] for t in self.rows);representatives={t['color_key']:t for t in self.rows}
-        return {'snapshot':self.info,'entries':len(self.rows),'reference_date':self.reference.isoformat() if self.reference else None,
+        hiding=metadata_sidecars.enabled(hide_sidecars)
+        rows=[t for t in self.rows if not (hiding and t['_metadata_sidecar'])]
+        sidecars=metadata_sidecars.summary(len(self.rows),sum(t['_metadata_sidecar'] for t in self.rows),hiding)
+        colours=Counter(t['color_key'] for t in rows);representatives={t['color_key']:t for t in rows}
+        return {'snapshot':self.info,'entries':len(rows),'sidecars':sidecars,'reference_date':self.reference.isoformat() if self.reference else None,
                 'history_available':self.history,'history_sessions':len(self.sessions),
-                'cloud_counts':cloud_analysis.counts(self.rows),
+                'cloud_counts':cloud_analysis.counts(rows),
                 'history_unresolved_entries':self.unresolved,'history_undated_entries':self.undated_entries,
-                'families':[{'key':k,'tracks':n} for k,n in self.family_counts.most_common()],
-                'genres':sorted({t['genre'] for t in self.rows},key=str.casefold),
-                'tonalities':sorted({t['tonality'] for t in self.rows},key=str.casefold),
-                'tonality_options':key_notation.options(self.rows,notation),'key_notation':notation,
-                'key_source_counts':key_notation.source_counts(self.rows),
+                'families':[{'key':k,'tracks':n} for k,n in Counter(t['family'] for t in rows).most_common()],
+                'genres':sorted({t['genre'] for t in rows},key=str.casefold),
+                'tonalities':sorted({t['tonality'] for t in rows},key=str.casefold),
+                'tonality_options':key_notation.options(rows,notation),'key_notation':notation,
+                'key_source_counts':key_notation.source_counts(rows),
                 'colours':[{'key':k,'label':representatives[k]['color_name'],'hex':representatives[k]['color_hex'],
                             'status':representatives[k]['color_status'],'tracks':n} for k,n in colours.most_common()],
                 'perspectives':PERSPECTIVES,'dimensions':DIMENSIONS,'bases':BASES,'metrics':METRICS,'preparation':PREPARATION,
@@ -210,9 +215,12 @@ class InsightIndex:
             if dim in used:raise ValueError('A bubble dimension cannot repeat in one branch')
             used.add(dim);result=[t for t in result if self.key(t,dim,notation)==key]
             breadcrumbs.append({'dimension':dim,'key':key,'label':self.label(key,dim,notation)})
-        provider_counts=cloud_analysis.counts(result)
+        hiding=metadata_sidecars.enabled(args.get('hide_metadata_sidecars',False))
+        provider_counts=cloud_analysis.counts(t for t in result if not (hiding and t['_metadata_sidecar']))
         result=[t for t in result if cloud_analysis.matches(t,provider)]
-        context={'provider':provider,'provider_counts':provider_counts,'cloud_note':cloud_analysis.NOTE,'basis':basis,'basis_label':BASES[basis],'selected_sessions':selected_sessions if basis!='saved' else None,
+        sidecars=metadata_sidecars.summary(len(result),sum(t['_metadata_sidecar'] for t in result),hiding)
+        result=[t for t in result if not (hiding and t['_metadata_sidecar'])]
+        context={'sidecars':sidecars,'provider':provider,'provider_counts':provider_counts,'cloud_note':cloud_analysis.NOTE,'basis':basis,'basis_label':BASES[basis],'selected_sessions':selected_sessions if basis!='saved' else None,
                  'from':start.isoformat() if start else None,'to':end.isoformat() if end else None,
                  'reference_date':self.reference.isoformat() if self.reference else None,'breadcrumbs':breadcrumbs,
                  'history_unresolved_entries':self.unresolved,'history_undated_entries':self.undated_entries,

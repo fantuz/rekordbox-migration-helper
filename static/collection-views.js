@@ -38,7 +38,7 @@ window.NativeCollection=(()=>{
       panel.innerHTML='<p role="status">'+text('Loading')+'</p>';
     let r;
     try{
-      r=await api('/api/collection/'+(view==='review'?'duplicates':'references')+'?'+new URLSearchParams({source:scope,...values}));
+      r=await api('/api/collection/'+(view==='review'?'duplicates':'references')+'?'+new URLSearchParams({source:scope,...values,...DisplayPreferences.args()}));
     }finally{
       if(revision===revisions[view])panel.removeAttribute('aria-busy');
     }
@@ -54,7 +54,8 @@ window.NativeCollection=(()=>{
       filters.querySelectorAll('[data-metadata-flag]').forEach(button=>button.onclick=wrap(async()=>{values.flag=button.dataset.metadataFlag;values.offset=0;BrowseState.set('native-zero-filter',values.flag);await load(view);}));
     }
     const providerControl=panel.querySelector('[data-cloud-analysis-provider]');CloudAnalysis.paint(providerControl,r.cloud?.counts);
-    const cloudNote=document.createElement('p');cloudNote.className='subtle cloud-analysis-note';cloudNote.textContent=I18n.t(CloudAnalysis.note);panel.querySelector('.native-filter').after(cloudNote);
+    const display=document.createElement('div');display.innerHTML=DisplayPreferences.controls({keys:false,unknown:false,sidecars:true});panel.querySelector('.native-filter').append(display);DisplayPreferences.sync();
+    const cloudNote=document.createElement('p');cloudNote.className='subtle cloud-analysis-note';cloudNote.textContent=[I18n.t(CloudAnalysis.note),DisplayPreferences.sidecarNote(r)].filter(Boolean).join(' · ');panel.querySelector('.native-filter').after(cloudNote);
     panel.querySelector('form').onsubmit=wrap(async e=>{e.preventDefault();values.q=e.target.elements.query.value;values.provider=e.target.elements.provider.value;values[view==='review'?'basis':'mode']=e.target.elements.mode.value;values.offset=0;await load(view);});
     panel.querySelectorAll('[data-native-sort]').forEach(button=>button.onclick=wrap(async()=>{
       const field=button.dataset.nativeSort;
@@ -74,7 +75,7 @@ window.NativeCollection=(()=>{
     host.innerHTML='<p>'+text('Loading')+'</p>';
     ReviewWorkspace.refresh(root,host);ReviewWorkspace.present(root,trigger);
     root.querySelectorAll('[data-native-group]').forEach(button=>button.setAttribute('aria-current',String(button.dataset.nativeGroup===id)));
-    const r=await api('/api/collection/duplicates/'+encodeURIComponent(id)+'?'+new URLSearchParams({source:scope,basis,offset}));
+    const r=await api('/api/collection/duplicates/'+encodeURIComponent(id)+'?'+new URLSearchParams({source:scope,basis,offset,...DisplayPreferences.args()}));
     if(scope!==source() || revision!==revisions.review)return;
     const hadFocus=host.contains(document.activeElement);
     const fields=[['duration','Duration'],['size','Recorded size (bytes)'],['rating','Rating'],['play_count','Play count'],['manual_cues','Manual cues'],['auto_cues','Automatic cues']];
@@ -155,6 +156,10 @@ window.NativeCollection=(()=>{
     if(view==='statistics')renderStatistics().catch(e=>notify(e.message,true));
     update(view);
     if(view==='history')loadHistory().catch(e=>notify(e.message,true));
+  });
+  window.addEventListener('workbench-display-preferences',()=>{
+    const view=$('.view:not([hidden])')?.id?.replace('view-','');
+    if(active()&&['review','reference'].includes(view)){state[view].offset=0;void load(view).catch(error=>notify(error.message,true));}
   });
   return {active,source,update};
 })();

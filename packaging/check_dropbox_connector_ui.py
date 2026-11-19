@@ -28,7 +28,7 @@ sys.path.insert(0,str(ROOT))
 class SyntheticProvider:
     def __init__(self,folder):
         self.folder=folder;self.body=b'Invented Dropbox download fixture; not real music.'
-        self.calls=[];self.downloads=[];self.fail_scan=False
+        self.calls=[];self.downloads=[];self.fail_scan=False;self.partial_scan=False
         digest=sha256(sha256(self.body).digest()).hexdigest()
         self.entries=[{'.tag':'file','id':'id:invented-'+str(i),'rev':'rev-'+str(i),
                        'name':f'Synthetic {i:03}.mp3','path_display':f'/Music/Album/Synthetic {i:03}.mp3',
@@ -39,7 +39,8 @@ class SyntheticProvider:
                     'vault_backend':'','credential_cleanup_pending':False,
                     'scopes':['account_info.read','files.metadata.read','files.content.read'],
                     'account':{'account_id':'dbid:invented-browser','display_name':'Invented browser account',
-                               'email':'synthetic@example.invalid','root_namespace_id':'101','home_namespace_id':'102'}}
+                               'email':'synthetic@example.invalid','root_namespace_id':'101','home_namespace_id':'102',
+                               'home_path':'/Invented customer'}}
 
     def status(self):return deepcopy(self.state)
 
@@ -48,6 +49,7 @@ class SyntheticProvider:
         self.calls.append(route)
         if route=='files/list_folder':
             if self.fail_scan:raise DropboxError('Synthetic metadata interruption',tag='network')
+            if self.partial_scan:return {'entries':deepcopy(self.entries[:1]),'has_more':True,'cursor':'invented-partial'}
             return {'entries':deepcopy(self.entries),'has_more':False,'cursor':'invented'}
         if route=='files/get_metadata':
             if payload['path']=='/Music':return {'.tag':'folder','id':'id:folder','name':'Music'}
@@ -130,7 +132,19 @@ def main():
                     expect(page.locator('#dropbox-connection-state')).to_contain_text('Invented browser account')
                     expect(page.locator('#dropbox-remember')).to_be_disabled()
                     expect(page.locator('#dropbox-check')).to_be_disabled()
-                    page.fill('#dropbox-local-root',str(folder));page.fill('#dropbox-remote-root','/Music')
+                    page.fill('#dropbox-local-root',str(folder))
+                    page.select_option('#dropbox-namespace-choice','101')
+                    hint=page.locator('#dropbox-namespace-context-mapping-hint')
+                    expect(hint).to_be_visible()
+                    expect(hint).to_contain_text('This local folder matches the member home folder')
+                    calls_before_hint=len(provider.calls)
+                    hint.locator('button').focus();page.keyboard.press('Enter')
+                    expect(page.locator('#dropbox-namespace')).to_have_value('102')
+                    expect(page.locator('#dropbox-remote-root')).to_have_value('')
+                    expect(hint).to_be_hidden()
+                    assert len(provider.calls)==calls_before_hint and not provider.downloads
+                    page.select_option('#dropbox-namespace-choice','101')
+                    page.fill('#dropbox-remote-root','/Music')
                     with page.expect_response(lambda response:response.url.endswith('/api/dropbox/mapping')) as saved:
                         page.locator('#dropbox-mapping-save').click()
                     assert saved.value.ok,saved.value.text()
@@ -144,6 +158,35 @@ def main():
                     expect(page.locator('#dropbox-results .dropbox-evidence-present').first).to_have_text('Reachable')
                     page.screenshot(path=str(output/'dropbox-checked.png'),full_page=True)
                     assert not provider.downloads and not list(album.iterdir())
+                    page.fill('#dropbox-search','Unmapped path');page.locator('#dropbox-find').click()
+                    expect(page.locator('#dropbox-results .dropbox-evidence-unmapped')).to_have_text('Unmapped')
+                    details=page.locator('#dropbox-results .dropbox-mapping-details')
+                    expect(details).to_be_visible();calls_before_details=len(provider.calls)
+                    details.locator('summary').click()
+                    expect(details).to_contain_text(str(root/'Elsewhere'/'Other.mp3'))
+                    expect(details).to_contain_text(str(folder))
+                    expect(details).to_contain_text('/Music')
+                    assert len(provider.calls)==calls_before_details and not provider.downloads
+                    page.fill('#dropbox-search','');page.locator('#dropbox-find').click()
+                    # A bounded listing must explain why unseen rows have no
+                    # cloud size, without relabelling them as missing files.
+                    import dropbox_files
+                    provider.partial_scan=True
+                    with patch.object(dropbox_files,'MAX_PAGES',1):
+                        page.fill('#dropbox-search','Invented 060');page.locator('#dropbox-find').click()
+                        page.locator('#dropbox-check').click()
+                        expect(page.locator('#dropbox-checked')).to_contain_text('Dropbox metadata listing is incomplete.')
+                        expect(page.locator('#dropbox-checked')).to_contain_text('Listed 1 files in 1 metadata pages.')
+                        expect(page.locator('#dropbox-results .dropbox-evidence-unverified')).to_have_text('Unverified')
+                        expect(page.locator('#dropbox-results')).to_contain_text('This file was not covered by the incomplete Dropbox listing.')
+                        expect(page.locator('#dropbox-results')).to_contain_text('Remote metadata is not confirmed yet; download is unavailable.')
+                        expect(page.locator('#dropbox-results [data-dropbox-download]')).to_have_count(0)
+                        assert not provider.downloads and not list(album.iterdir())
+                    provider.partial_scan=False
+                    page.fill('#dropbox-search','');page.locator('#dropbox-find').click()
+                    page.locator('#dropbox-check').click()
+                    expect(page.locator('#dropbox-checked')).not_to_contain_text('Dropbox metadata listing is incomplete.')
+                    expect(page.locator('#dropbox-results .dropbox-evidence-present').first).to_have_text('Reachable')
                     # Reachable is remote path evidence while the same row's
                     # local access remains unverified. Metadata never hydrates.
                     calls_before_health=len(provider.calls)
@@ -322,6 +365,31 @@ def main():
                         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),width
                         page.locator('#dropbox-check').scroll_into_view_if_needed()
                         expect(page.locator('#dropbox-check')).to_be_in_viewport()
+                    # The shared display choice filters saved evidence only;
+                    # it must not perform a fresh provider check or a transfer.
+                    page.set_viewport_size({'width':1440,'height':1000})
+                    sidecar=deepcopy(provider.entries[0]);sidecar.update(id='id:invented-sidecar',name='._Metadata.mp3',
+                        path_lower='/music/album/._metadata.mp3',path_display='/Music/Album/._Metadata.mp3')
+                    provider.entries.append(sidecar)
+                    sidecar_tracks=[deepcopy(tracks[0]),{'id':'sidecar','title':'Invented metadata sidecar',
+                        'current_path':str(album/'._Metadata.mp3')}]
+                    sidecar_sid=store.save_snapshot({'scope_key':'synthetic:dropbox-sidecar-view',
+                        'tracks':sidecar_tracks,'playlists':[]},'Invented Dropbox sidecar view')['id']
+                    sidecar_before=deepcopy(store.snapshot(sidecar_sid))
+                    page.reload(wait_until='networkidle')
+                    page.select_option('#dropbox-source','snapshot:'+sidecar_sid)
+                    page.locator('#dropbox-check').click()
+                    expect(page.locator('#dropbox-results tbody tr')).to_have_count(2)
+                    sidecar_toggle=page.locator('#dropbox-display-preferences [data-hide-metadata-sidecars]')
+                    expect(sidecar_toggle).not_to_be_checked();calls_before_filter=len(provider.calls)
+                    sidecar_toggle.check()
+                    expect(page.locator('#dropbox-results tbody tr')).to_have_count(1)
+                    expect(page.locator('#dropbox-checked')).to_contain_text('1 metadata sidecars hidden')
+                    assert len(provider.calls)==calls_before_filter
+                    assert provider.downloads==['id:invented-60','id:invented-59']
+                    page.screenshot(path=str(output/'metadata-sidecar-dropbox.png'),full_page=True)
+                    sidecar_toggle.uncheck();expect(page.locator('#dropbox-results tbody tr')).to_have_count(2)
+                    assert store.snapshot(sidecar_sid)==sidecar_before
                     provider.state.update(connected=False,credential_cleanup_pending=True)
                     page.locator('#dropbox-refresh').click()
                     expect(page.locator('#dropbox-cleanup-state')).to_contain_text('Credential removal is pending')
@@ -334,10 +402,11 @@ def main():
                     assert sum(url.endswith('/api/dropbox/download') for url in requests)==2,requests
                     report.update(status='passed',metadata_only_check=True,full_scope_pagination=True,
                         explicit_single_download=True,cancel_and_escape_preserve_files=True,snapshot_unchanged=True,
-                        remote_files=61,downloaded_files=2,mobile_layout=True,
+                        remote_files=len(provider.entries),downloaded_files=2,mobile_layout=True,metadata_sidecar_display_filter=True,
                         failed_recheck_preserves_evidence=True,credential_cleanup_remains_actionable=True,
                         reachable_separate_from_local_access=True,captured_size_match_mismatch_unknown=True,
                         size_warning_before_download=True,download_enables_play_without_autoplay=True,
+                        member_home_namespace_hint=True,incomplete_listing_explained=True,unmapped_path_details=True,
                         delayed_availability_response_unchanged=True,stale_negative_cannot_override_download=True,
                         reachable_play_same_page=True,play_cancel_and_escape_no_transfer=True,
                         download_only_never_opens=True,approved_play_opens_only_published_target=True,

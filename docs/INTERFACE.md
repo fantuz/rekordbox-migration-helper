@@ -94,6 +94,24 @@ visible. Unverified scalar counters can be hidden too, without changing the
 captured collection or source totals. Key notation is another remembered
 display choice; see [key grouping and evidence](DJ-INSIGHTS.md).
 
+**Hide metadata sidecars** is another shared, remembered display choice and
+starts off. It recognizes filename hints for `._*`, `.DS_Store`, `desktop.ini`
+and `Thumbs.db` in statistics, DJ insights, bubbles, tonality, captured
+duplicate/reference views, File health and Dropbox results. Excluded counts
+are shown, and turning the filter off restores the entries. It does not scan
+audio, query a provider, delete files or remove library records.
+
+The observed filename or current path takes precedence over XML and original
+references: a valid current `contents_ABC123/music/Example.mp3` is not hidden
+because an old original reference was `._Earlier.mp3`. A title alone is not
+enough to classify a sidecar, and `contents_*` directories contain real audio,
+not metadata debris. File health and Dropbox use the evidence saved by explicit
+checks; older rows without the filename/classification evidence remain visible.
+Hiding duplicate members does not change saved group identities or review
+notes. This is a reversible display aid, not a cleanup recommendation.
+
+![Optional metadata-sidecar filter with invented records](screenshots/metadata-sidecar-statistics.png)
+
 See the [compact collection controls](screenshots/compact-bubble-filters.png)
 and [four statistics histograms](screenshots/collection-statistics-distributions.png)
 using invented metadata. [Screenshot provenance](SCREENSHOTS.md) describes the fixtures.

@@ -44,6 +44,47 @@ class CloudCandidateTests(unittest.TestCase):
         album=next(row for row in rows if row['path']=='/music/Dropbox/Album')
         self.assertEqual(album['available'],False if os.name=='nt' else None)
 
+    def test_all_reference_fields_reveal_old_provider_root_without_inflating_track_counts(self):
+        old='C:/Users/OLD/Cloud Option DJ team Dropbox/Invented member'
+        tail='electrobuzz_2026/Invented album/Track.mp3'
+        saved={'tracks':[{'current_path':'/'+tail,'original_path':old+'/'+tail,
+                          'xml_location':'file://localhost/'+old+'/'+tail}]}
+        rows=suggestions(saved,[])
+        prefix=next(row for row in rows if row['evidence']=='correlated_cloud_paths' and row['recorded_root'].replace('\\','/')==old)
+        self.assertEqual(prefix['tracks'],1);self.assertEqual(prefix['kind'],'dropbox')
+        self.assertIn('current_path',prefix['reference_fields']);self.assertIn('original_path',prefix['reference_fields'])
+        self.assertTrue(all(row['tracks']==1 for row in rows))
+        logical=next(row for row in rows if row['recorded_library_root'])
+        self.assertEqual(logical['recorded_root'],'/');self.assertTrue(logical['foreign'])
+        self.assertIsNone(logical['available'])
+        self.assertNotIn('local_root',logical)
+
+    def test_mac_original_paths_correlate_only_matching_complete_relative_tails(self):
+        tail='electrobuzz_2026/Invented album/Track.mp3'
+        for old in ('/Users/OLD/Dropbox/Invented member',
+                    '/Users/OLD/Library/CloudStorage/Dropbox-Team/Invented member'):
+            with self.subTest(old=old):
+                source={'tracks':[{'current_path':'/'+tail,'original_path':old+'/'+tail}]}
+                before=source['tracks'][0].copy()
+                rows=suggestions(source,[])
+                correlated=next(row for row in rows if row['evidence']=='correlated_cloud_paths' and row['recorded_root']==old)
+                self.assertEqual(correlated['kind'],'dropbox');self.assertEqual(correlated['tracks'],1)
+                self.assertTrue(any(row['recorded_library_root'] for row in rows))
+                self.assertEqual(source['tracks'][0],before)
+                mismatch={'tracks':[{'current_path':'/Different/Track.mp3','original_path':old+'/'+tail}]}
+                self.assertFalse(any(row['evidence']=='correlated_cloud_paths' for row in suggestions(mismatch,[])))
+
+    def test_contents_root_choice_is_explicit_and_unrelated_drive_does_not_correlate(self):
+        saved={'tracks':[{'current_path':'/contents_invented123/Album/Track.mp3','original_path':'E:/Unrelated/._Different.mp3'},
+                         {'current_path':'Z:/Unknown/Other.mp3'}]}
+        rows=suggestions(saved,[])
+        logical=next(row for row in rows if row['recorded_library_root'])
+        self.assertEqual(logical['kind'],'unknown');self.assertEqual(logical['recorded_root'],'/')
+        self.assertEqual(logical['tracks'],1)
+        self.assertFalse(any(row['evidence']=='correlated_cloud_paths' for row in rows))
+        mismatch={'tracks':[{'current_path':'/Different/Track.mp3','original_path':'C:/Dropbox/Member/Album/Track.mp3'}]}
+        self.assertFalse(any(row['recorded_library_root'] for row in suggestions(mismatch,[])))
+
     def test_unsafe_or_nonabsolute_references_are_not_suggestions(self):
         saved={'tracks':[{'current_path':'../private/One.mp3'},
                          {'xml_location':'file://other-host/music/Two.mp3'},

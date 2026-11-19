@@ -6,6 +6,7 @@ provider desktop application's synchronization policy.
 """
 import json
 from pathlib import Path
+import platform
 import re
 import secrets
 from threading import RLock
@@ -138,6 +139,11 @@ def _audio_proposal(owner,snapshot,mapping,saved):
     return combined,proposed
 
 
+def host_platform():
+    """Coarse host context only; never a filesystem authorization signal."""
+    return {'windows':'windows','darwin':'mac','linux':'linux'}.get(platform.system().lower(),'unknown')
+
+
 def register(owner):
     app=owner.app;guard=RLock();previews={}
     def store():return Store(owner.DATA/'workbench-sidecar.sqlite3')
@@ -204,7 +210,7 @@ def register(owner):
             for provider,configuration in settings.items():
                 if configuration and configuration.get('source')==source:
                     settings[provider]={**configuration,'default_upload':context['default_upload']}
-        return jsonify(providers=providers,roots=roots,attachments=attachments,settings=settings,source=context)
+        return jsonify(providers=providers,roots=roots,attachments=attachments,settings=settings,source=context,host_platform=host_platform())
 
     @app.post('/api/cloud-setup/folders')
     def cloud_setup_folders():

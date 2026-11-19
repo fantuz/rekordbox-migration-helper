@@ -169,6 +169,21 @@ class CloudSetupTests(unittest.TestCase):
         result=self.client.get('/api/cloud-setup/status',query_string={'source':self.source}).json
         self.assertFalse(result['providers']['dropbox']['attachment_active'])
 
+    def test_host_platform_is_coarse_context_and_never_changes_folder_authorization(self):
+        for name,expected in (('Windows','windows'),('Darwin','mac'),('Linux','linux'),('Plan9 private-host-marker','unknown')):
+            with self.subTest(platform=name),patch('cloud_setup.platform.system',return_value=name):
+                response=self.client.get('/api/cloud-setup/status',query_string={'source':self.source})
+                self.assertEqual(response.status_code,200,response.json)
+                self.assertEqual(response.json['host_platform'],expected)
+                self.assertNotIn('private-host-marker',str(response.json))
+        for client in self.clients.values():client.rpc.assert_not_called()
+        # A browser/host hint cannot grant access to a different physical folder.
+        with patch('cloud_setup.platform.system',return_value='Windows'):
+            refused=self.post('preview',provider='dropbox',source=self.source,arrangement='personal',
+                sync_mode='selected',local_root='C:/UNAPPROVED-CLOUD-FOLDER',remote_root='/Music')
+        self.assertEqual(refused.status_code,400,refused.json)
+        for client in self.clients.values():client.rpc.assert_not_called()
+
     def test_status_is_local_only_and_does_not_call_remote_provider(self):
         response=self.client.get('/api/cloud-setup/status',query_string={'source':self.source})
         self.assertEqual(response.status_code,200,response.json)

@@ -71,6 +71,19 @@ Media inventory to review changes for a copy export. Discovery never applies
 an audio mapping automatically. Availability and filename matches are not
 proof that two recordings contain identical bytes.
 
+Cloud connection setup can also correlate a captured cloud-relative path with
+the full matching tail of an older Windows reference, exposing the old profile
+prefix separately from the current local folder. Its explicit logical `/`
+choice is a recorded cloud-library root, not the host filesystem root. Use
+longer Audio folders aliases for subfolders stored at another confirmed
+location, then preview again; see [mixed reference mappings](CLOUD-CONNECTIONS.md#old-windows-profiles-and-cloud-relative-references).
+
+Cloud setup displays the browser's coarse platform hint, the Workbench host
+platform and captured path styles independently. A Windows source can be
+inspected on macOS, and a macOS source on Windows; generic or cloud-relative
+POSIX references do not establish either platform. Select a folder that exists
+on the Workbench host and review the [cross-platform examples](CLOUD-CONNECTIONS.md#moving-between-windows-and-macos).
+
 ## Limits, privacy and reports
 
 Provider configuration reads are limited to 1 MiB each. At most 24 roots are

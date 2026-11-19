@@ -73,6 +73,83 @@ The preview translates its relative paths into the chosen local and remote
 folders. It can propose a source-scoped Audio folders mapping, but it does not
 rewrite the saved collection or overwrite a conflicting mapping.
 
+### Browser, Workbench host and captured paths
+
+The location step shows **Workbench host platform**, **Browser platform** and
+**Captured path styles** separately. The host runs Workbench and accesses the
+chosen filesystem folders. The browser hint is derived locally from available
+browser platform information, with a user-agent fallback. Captured styles
+describe saved reference spellings and can differ from both current platforms.
+Cloud-relative paths and generic POSIX paths remain distinct from recognized
+Windows, macOS or Linux styles; a leading `/` alone does not identify an
+operating system.
+
+This feature stores no raw browser platform/user-agent identifiers and adds no
+telemetry. Its coarse labels can be unknown and do not authorize filesystem
+access or select an account. Detected provider roots, full-path correlations,
+logical recorded roots and other suggestions remain ordered choices, with
+manual entry available. The selected folders must exist on the Workbench host;
+the existing preview, path-boundary checks and explicit attachment still apply.
+
+### Old Windows profiles and cloud-relative references
+
+The recorded root describes the library's saved references, while the local
+folder describes this computer. They need not have the same username. For
+example, an invented collection can record:
+
+- Current reference: `/Music/House/Example.mp3`
+- Original reference:
+  `C:\Users\OLD\Dropbox (Example team)\Alex Example\Music\House\Example.mp3`
+- Current local member folder:
+  `C:\Users\NEW\Dropbox (Example team)\Alex Example`
+
+A suggestion labelled **Matching full relative path in saved references**
+correlates the complete `Music/House/Example.mp3` tail, not just the filename.
+It can propose the precise old member-folder prefix. Current, XML and original
+references contribute evidence, with a track counted once in each suggestion.
+Review the old prefix and chosen current folder before accepting the preview.
+
+**Recorded library root · /** is an explicit logical choice for captured paths
+relative to the selected cloud folder. It does not mean the root of this
+computer's filesystem, and it never authorizes a filesystem-wide search. Use
+it only when the complete relative paths match the selected cloud location.
+There is no automatic attachment or conversion of arbitrary absolute paths.
+
+If several recorded prefixes share one cloud account, keep their common cloud
+folder selected. Expand **Several recorded folders?** and choose **Review Audio
+folders mappings** for that same collection. A longer recorded prefix takes
+priority over a general one. For example, an explicitly confirmed mapping
+from `/contents_ABC123` to
+`C:\Users\NEW\Dropbox (Example team)\Alex Example\Chosen music\contents_ABC123`
+can coexist with `/` mapped to the common member folder. The names and location
+here are invented: select the actual folder rather than assuming every
+`contents_*` directory is beneath `rekordbox` or another fixed subfolder.
+These directories can contain the real music and are not metadata sidecars.
+
+Return to the attachment preview and inspect complete local and remote paths
+for both ordinary and `contents_*` references. A matching basename or an old
+username alone is insufficient. Existing source-scoped mappings remain
+explicit, and attachment still requires the complete preview and confirmation
+below. No source references, provider settings or files are changed by a
+suggestion.
+
+![Multiple cloud-location choices and separate host/browser hints using invented paths](screenshots/cloud-recorded-root-suggestions.png)
+
+#### Moving between Windows and macOS
+
+The same explicit mapping works in either direction. These invented examples
+separate an older recorded root from the current local member folder:
+
+| Move | Recorded root | Current local folder |
+| --- | --- | --- |
+| Windows → macOS | `C:\Users\OLD\Dropbox (Example team)\Alex Example` | `/Users/NEW/Library/CloudStorage/Dropbox-ExampleTeam/Alex Example` |
+| macOS → Windows | `/Users/OLD/Library/CloudStorage/Dropbox-ExampleTeam/Alex Example` | `C:\Users\NEW\Dropbox (Example team)\Alex Example` |
+
+Provider-managed folder names vary. Choose the actual current folder, retain
+the source collection's recorded prefix and preview full relative paths before
+attaching. The browser's platform label does not convert paths, rewrite the
+library, choose a filesystem destination or replace this review.
+
 **Preview** lists remote metadata and matches complete relative paths against
 the selected collection. It does not open audio or download recordings. Review
 the account, folder identities, example tracks, destination paths and counts.

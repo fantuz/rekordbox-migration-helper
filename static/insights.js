@@ -84,12 +84,12 @@ function compactBubbleFilters(){
   const feedback=document.createElement('p');feedback.id='bubble-filter-feedback';feedback.className='chart-exclusion-note';feedback.setAttribute('role','status');form.append(feedback);
   form.addEventListener('input',()=>bubbleFilterSummary(insightState.bubble.appliedFilters));
   form.addEventListener('change',()=>bubbleFilterSummary(insightState.bubble.appliedFilters));
-  const preferences=document.createElement('div');preferences.className='bubble-display-preferences';preferences.innerHTML=DisplayPreferences.controls();$('.bubble-toolbar').append(preferences);DisplayPreferences.sync();
+  const preferences=document.createElement('div');preferences.className='bubble-display-preferences';preferences.innerHTML=DisplayPreferences.controls({sidecars:true});$('.bubble-toolbar').append(preferences);DisplayPreferences.sync();
   const sources=document.createElement('p');sources.id='bubble-key-sources';sources.className='key-source-summary';$('#bubble-map-note').after(sources);
   bubbleFilterSummary([]);
 }
 for(const [view,keysOnly] of [['tonality',false],['insights',true]]){
-  const host=document.createElement('div');host.innerHTML=DisplayPreferences.controls({unknown:!keysOnly});
+  const host=document.createElement('div');host.innerHTML=DisplayPreferences.controls({unknown:!keysOnly,sidecars:true});
   $('#view-'+view+' .section-heading').append(host);DisplayPreferences.sync();if(view==='tonality'){const sources=document.createElement('p');sources.id='tonal-key-sources';sources.className='key-source-summary';$('#tonal-keys').before(sources);}
 }
 function insightBasisControls(prefix){const saved=$('#'+prefix+'-basis').value==='saved';for(const name of ['from','to'])$('#'+prefix+'-'+name).disabled=saved;}
@@ -165,7 +165,8 @@ async function applyInsightFilters(prefix,collapse=false){
 function insightEvidence(context){
   return I18n.t(context.basis_label)+(context.selected_sessions!==null?' · '+num(context.selected_sessions)+" "+I18n.t("sessions")+(context.from?' '+I18n.t('from')+' '+context.from:'')+(context.to?' '+I18n.t('through')+' '+context.to:''):" "+I18n.t("· Lifetime scope of the saved counter; reset history may be incomplete"))+
     (context.history_unresolved_entries && context.basis!=='saved'?' · '+num(context.history_unresolved_entries)+" "+I18n.t("history entries outside the captured collection are excluded"):'')+
-    (context.history_undated_entries && context.basis!=='saved'?' · '+num(context.history_undated_entries)+" "+I18n.t("undated entries are excluded when a session-date filter is active"):'');
+    (context.history_undated_entries && context.basis!=='saved'?' · '+num(context.history_undated_entries)+" "+I18n.t("undated entries are excluded when a session-date filter is active"):'')+
+    (context.sidecars?.enabled?' · '+DisplayPreferences.sidecarNote(context):'');
 }
 function insightCards(stats,bubble=false){
   const cards=bubble?[

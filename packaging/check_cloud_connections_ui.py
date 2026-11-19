@@ -443,6 +443,8 @@ def main():
                     explicit_team_namespace_choices=True,personal_namespace_not_duplicated=True,
                     partial_dropbox_check_note=True,
                     snapshot_unchanged=True,mobile_layout=True,downloaded_files=1,external_requests=external)
+                from check_cloud_root_suggestions_ui import check_cloud_root_suggestions_ui
+                report['cloud_root_suggestions_ui']=check_cloud_root_suggestions_ui(browser,base,fixture,output)
             except Exception:
                 page.screenshot(path=str(output/'cloud-connections-failure.png'),full_page=True);raise
             finally:

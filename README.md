@@ -104,6 +104,8 @@ A factual overview of the current source tree. Release downloads may lag behind 
   Review possible relocation against saved paths; missing prior evidence stays
   unknown. See [cloud-folder discovery](docs/CLOUD-DISCOVERY.md).
 - Use [Cloud connections](docs/CLOUD-CONNECTIONS.md) to authorize Dropbox or Google Drive, retain those detected candidates, and preview account/source/folder matches before explicitly attaching a location. Selected-file download folders can be separate from the provider desktop root; conflicting or incomplete evidence stays unverified.
+- Review full-relative-path suggestions when captured references use an old Windows profile or a cloud-relative library root. An explicit logical `/` choice and longer Audio folders aliases support mixed recorded prefixes; neither discovery nor a filename match attaches a folder automatically.
+- Review separate browser-platform, Workbench-host and captured-path-style hints when moving between Windows, macOS or Linux. Ordered folder choices retain manual entry; filesystem validation runs on the Workbench host and attachment remains explicit.
 - Inspect `master.db` directly or through its containing folder, including differently cased filenames.
 - Capture modern databases and their journals into private copies before querying them; detect changing sources. Check database/WAL page sizes before private recovery, and request a fresh capture when nonempty WAL and rollback journals coexist. See [database capture checks](docs/FORMAT-SOURCES.md#database-and-journal-capture).
 - Report database integrity, required schema fields, track counts, cues, playlists and reference issues.
@@ -130,6 +132,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
 - Switch alphabetical, Camelot and Open Key display across Bubble, Tonality, key filters and File view; recognized equivalents share a group while original tags stay unchanged.
 - Compare release-year and saved-genre histograms alongside addition dates and track length. Hide unknown values independently per chart, with excluded counts and known zero values retained.
+- Optionally **Hide metadata sidecars** by known filename patterns across statistics, DJ insights, bubbles, tonality, captured duplicate/reference views, File health and Dropbox results. The shared display choice starts off, reports excluded counts and never removes files or records. Real `contents_*` audio folders stay visible.
 - Inspect Dropbox and Google Drive path counters in Collection statistics, and reuse cloud-location filters in statistics, DJ insights, bubbles, tonality and captured collection review. These classify recorded or mapped references; cloud presence and local access remain separate checks.
 - Use one compact Bubble filter panel for all criteria, with active summaries and automatic collapse after successful Apply.
 - Use one compact toolbar for the orange Collection context and pink Collection snapshot controls, temporary-copy notice, library input choices, language, saved sessions and theme. Collection controls start collapsed; the toolbar wraps on smaller screens.

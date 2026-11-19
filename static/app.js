@@ -509,7 +509,7 @@ async function renderStatistics() {
   CloudAnalysis.statisticsSetup();
   const preferences=window.DisplayPreferences;
   const preferenceHost=$('#stats-display-preferences');
-  if(preferenceHost&&!preferenceHost.children.length){preferenceHost.innerHTML=preferences.controls({keys:false});$('#stats-apply').before(preferenceHost);preferences.sync();}
+  if(preferenceHost&&!preferenceHost.children.length){preferenceHost.innerHTML=preferences.controls({keys:false,sidecars:true});$('#stats-apply').before(preferenceHost);preferences.sync();}
   const native=window.NativeCollection?.active();
   if (!session && !native){for(const id of ['stats-cards','length-histogram','added-histogram','release-histogram','genre-histogram','stats-omitted'])$('#'+id).innerHTML='';if($('#stats-source-note'))$('#stats-source-note').hidden=true;if($('#statistics-release-order'))$('#statistics-release-order').disabled=true;$('#stats-cohort').disabled=false;return;}
   const params=new URLSearchParams({min:$("#stats-min").value || "0",max:$("#stats-max").value,cohort:$("#stats-cohort").value,provider:$('#stats-provider').value,...preferences.args()});
@@ -542,7 +542,7 @@ async function renderStatistics() {
     ["orphan_media",I18n.t("Confirmed orphaned audio"),I18n.t("Unverified until media inventory")]];
   const visible=labels.filter(([key])=>!preferences.get().hide_unknown||data.counters[key]!==null&&data.counters[key]!==undefined);
   $("#stats-cards").innerHTML=visible.map(([key,title,note])=>'<article class="stat-card"'+(['dropbox_paths','google_drive_paths'].includes(key)?' data-cloud-provider="'+key.replace('_paths','')+'"':'')+'><span>'+esc(title)+'</span><strong>'+(data.counters[key]===null?I18n.t("Unverified"):num(data.counters[key]))+'</strong><small>'+esc(note)+'</small></article>').join("");
-  $('#stats-omitted').textContent=visible.length<labels.length?I18n.t('{count} unverified counters hidden',{count:num(labels.length-visible.length)}):'';
+  $('#stats-omitted').textContent=[visible.length<labels.length?I18n.t('{count} unverified counters hidden',{count:num(labels.length-visible.length)}):'',preferences.sidecarNote(data)].filter(Boolean).join(' · ');
   for(const [name,id] of [['duration','length-histogram'],['added','added-histogram'],['genre','genre-histogram']])$('#'+id).innerHTML=renderCollectionChart(data.charts[name]);
   renderReleaseYearChart(data.charts.release_year);
   let note=$('#stats-source-note');if(!note){note=document.createElement('p');note.id='stats-source-note';note.className='callout';$('#stats-cards').before(note);}
