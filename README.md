@@ -198,6 +198,7 @@ The objective is long-term library maintainability: distinguish redundant record
 - Use compact summary cards, colour-coded navigation and light/dark themes.
 - Switch between 13 interface languages without translating source metadata.
 - Run Python source or packaged applications on Windows, macOS and Linux; GitHub builds and checks the supported packages.
+- Linux source startup repairs missing pip in a valid Python 3.13+ virtual environment and explains missing Debian venv support.
 
 This inventory describes implemented behavior, not a compatibility certification. See [compatibility](docs/COMPATIBILITY.md), [MusicBrainz](docs/COMMUNITY-RATINGS.md), [chart playlists](docs/CHART-PLAYLISTS.md) and [Serato draft limits](docs/SERATO-BRIDGE.md). Feature changes must update this inventory and their detailed guide in the same PR.
 
@@ -237,6 +238,14 @@ The buttons open the latest stable release’s **Downloads** section. New releas
 Linux x86-64 users can extract the complete portable TAR.GZ, open the extracted **Library Workbench** folder and double-click **Library Workbench**. Python and dependencies are bundled. Keep the `_internal` folder beside the executable. The package targets desktop Linux with glibc 2.28+ and a browser; CI checks it on Ubuntu 22.04. ARM and Alpine/musl users can use the source version. Older releases may offer Linux source only; current development binaries are under **Actions → Check and package → Artifacts**.
 
 For the Linux source version, use Python 3.13 or newer and run `./start.sh`. The first launch installs requirements into a local virtual environment. The application opens your browser and binds only to loopback. Use **Stop and clean up** in its footer when finished.
+
+On Debian/Ubuntu, install the venv package matching that Python interpreter. For Debian 13 with Python 3.13:
+
+```bash
+sudo apt install python3.13-venv
+```
+
+The launcher can repair missing pip inside its existing `.venv` using `ensurepip`, without deleting that environment or installing system packages. For an older checkout reporting **No module named pip**, run `./.venv/bin/python -m ensurepip --upgrade`, then `./start.sh`. Debian 12's default Python 3.11 is too old for Workbench; use a supported Python or the Linux portable package with Python included.
 
 Windows users extract the complete portable ZIP and double-click **Library Workbench.exe**. Python and dependencies are included.
 

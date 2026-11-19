@@ -5,14 +5,8 @@ from urllib.parse import urlsplit, parse_qs
 
 def check_recovery_queue_ui(browser,base,sid,output):
     context=browser.new_context(locale='en-US',viewport={'width':1440,'height':1000})
+    context.tracing.start(screenshots=True,snapshots=True,sources=True)
     context.add_init_script("localStorage.setItem('library-workbench.language.v1','en')")
-    context.add_init_script("""(() => {
-        const original=window.fetch;window.recoveryPendingRequests=0;
-        window.fetch=(...args)=>{
-            window.recoveryPendingRequests++;
-            return original(...args).finally(()=>window.recoveryPendingRequests--);
-        };
-    })();""")
     page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
     staged=False;stage_requests=[]
     session={'id':'recovery-fixture','name':'Recovery fixture','metadata':{'name':'Recovery fixture','version':'7','input_check':'synthetic'},
@@ -178,9 +172,19 @@ def check_recovery_queue_ui(browser,base,sid,output):
         assert '3 / 3' in page.locator('[data-pilot-batch="synthetic-batch-1"]').locator('..').inner_text()
         page.locator('[data-pilot-batch="synthetic-batch-3"]').click()
         page.wait_for_function('labBatch==="synthetic-batch-3" && labPilotStatus==="queued"')
-        # The selected batch appears before its context refresh completes.
-        # Wait for that work before reloading, avoiding WebKit unload errors.
-        page.wait_for_function('document.querySelector("#lab-pilot-batches").value==="synthetic-batch-3" && window.recoveryPendingRequests===0')
+        # The selection finishes after its context refresh. Fetch resolving only
+        # proves headers arrived, so a pending-fetch counter cannot establish
+        # that the response body or background refresh has finished. Wait for
+        # the next scheduled poll and its full app promise before reloading;
+        # tick schedules its next poll four seconds after that promise settles.
+        page.wait_for_function('document.querySelector("#lab-pilot-batches").value==="synthetic-batch-3"')
+        background=page.wait_for_event('response',predicate=lambda response:
+            response.url==base+'/api/lab/musicbrainz/batches' and response.request.method=='GET')
+        assert background.ok,background.text()
+        assert background.finished() is None
+        page.evaluate('()=>BackgroundPilot.refresh()')
+        page.wait_for_load_state('networkidle')
+        page.evaluate('console.info("Recovery queue: background response and refresh complete before reload")')
         page.reload(wait_until='networkidle')
         page.locator('.nav[data-view="musicbrainz"]').click()
         page.wait_for_function('document.querySelectorAll("[data-pilot-batch]").length===3')
@@ -197,6 +201,7 @@ def check_recovery_queue_ui(browser,base,sid,output):
                 'stacked_previews':3,'queue_survives_reload':True,'completed_rows_retained':True,
                 'current_library_required':True,'automatic_local_preparation':True,'loading_visible':True,
                 'category_request_deduplication':True,'category_retry':True,'sticky_notice_and_dismissal':True,
-                'playable_default_and_opt_in':True,'workflow_cards':True}
+                'playable_default_and_opt_in':True,'workflow_cards':True,'background_refresh_settled_before_reload':True}
     finally:
-        context.close()
+        try:context.tracing.stop(path=str(output/'recovery-queue-trace.zip'))
+        finally:context.close()

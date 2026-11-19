@@ -97,9 +97,22 @@ def check_delivery_ui(browser,base,store,root,output):
         page.select_option('#musicbrainz-library','capture:'+capture)
         page.locator('.musicbrainz-source details summary').click()
         page.select_option('#musicbrainz-snapshot',sid)
-        page.evaluate('(batch)=>{labBatch=batch;labPilotOffset=0;return labLoadPilot();}',batch)
+        # Snapshot selection queues a context refresh, which reloads the pilot
+        # table. Finish that refresh before injecting the locally seeded batch
+        # so its replacement cannot discard the approval click in WebKit.
+        page.evaluate('(sid)=>Journeys.selectContext("snapshot:"+sid)',sid)
+        page.evaluate('async(batch)=>{await loadMusicBrainz(true);labBatch=batch;labPilotOffset=0;return labLoadPilot();}',batch)
+        assert page.locator('#musicbrainz-library').input_value()=='capture:'+capture
+        assert page.locator('#musicbrainz-snapshot').input_value()==sid
         row=page.locator('[data-mb-track="'+track_id+'"]')
-        row.locator('[data-lab-approve]').click()
+        assert row.locator('[data-lab-approve]').get_attribute('data-approved')=='true'
+        with page.expect_response(lambda response:response.url==base+'/api/lab/musicbrainz/'+batch+'/review' and response.request.method=='POST') as review:
+            row.locator('[data-lab-approve]').click()
+        assert review.value.status==200,review.value.text()
+        assert review.value.request.post_data_json['track_id']==track_id
+        assert review.value.request.post_data_json['approved'] is True
+        assert review.value.request.post_data_json['review_revision']==sha256(encoded(result).encode()).hexdigest()
+        assert review.value.json()['match_approved'] is True
         page.wait_for_function("""(id)=>document.querySelector('[data-lab-approve="'+id+'"]')?.dataset.approved==="false" """,arg=track_id)
         row.locator('details').last.locator('summary').click()
         row.locator('[data-mb-release-choice]').select_option(release)
