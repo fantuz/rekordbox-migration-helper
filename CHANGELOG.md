@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.2.3 — 2026-11-19
+
+Maintenance packaging refresh of the validated 1.2.2 application.
+
+- Set the release version to **1.2.3** for the application, native packages and source archive.
+- Refresh versioned Windows, macOS and Linux downloads, checksums and the complete commit history through the existing validated-build release workflow.
+
+Release scope: version metadata and these release notes. Application behavior, dependencies, cloud permissions and data formats match [1.2.2](https://github.com/fantuz/rekordbox-migration-helper/releases/tag/v1.2.2). The Dropbox download/play, format inspection, journal integrity and browser diagnostics improvements are part of that existing baseline.
+
 ## 1.2.2 — 2026-11-19
 
 This update makes Dropbox file presence and playback clearer, strengthens ANLZ inspection, and validates detached database journals before recovery.
