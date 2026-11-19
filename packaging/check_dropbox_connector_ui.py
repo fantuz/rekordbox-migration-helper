@@ -110,7 +110,13 @@ def main():
                 context=browser.new_context(locale='en-US',viewport={'width':1440,'height':1050})
                 context.add_init_script("if(location.protocol==='http:')localStorage.setItem('library-workbench.language.v1','en')")
                 context.tracing.start(screenshots=True,snapshots=True,sources=True)
-                page=context.new_page();errors=[];external=[];requests=[];availability=[];playback_opens=[]
+                page=context.new_page();errors=[];external=[];requests=[];availability=[];playback_opens=[];opened_paths=[]
+                def open_default(path):
+                    # Replace only OS dispatch; Flask/jobs and file validation
+                    # stay real, including bytes already published before open.
+                    assert path.is_file() and path.read_bytes()==provider.body
+                    opened_paths.append(str(path))
+                patches.enter_context(patch('track_playback.open_audio',side_effect=open_default))
                 page.on('pageerror',lambda error:errors.append(str(error)))
                 context.on('request',lambda request:external.append(request.url) if urlsplit(request.url).scheme not in
                     ('data','blob','file') and urlsplit(request.url).netloc!=urlsplit(base).netloc else None)
@@ -150,7 +156,9 @@ def main():
                     expect(page.locator('#file-health-results [data-local-access="unverified"]')).to_have_text('Unknown')
                     expect(page.locator('#file-health-results [data-cloud-presence]')).to_contain_text('Reachable')
                     expect(page.locator('#file-health-results [data-cloud-presence]')).to_contain_text('Size matches')
-                    expect(page.locator('#file-health-results [data-play-track="60"]')).to_be_disabled()
+                    expect(page.locator('#file-health-results [data-play-track="60"]')).to_be_enabled()
+                    expect(page.locator('#file-health-results [data-play-track="60"]')).to_have_attribute('data-available','false')
+                    expect(page.locator('#file-health-results [data-play-track="60"]')).to_have_attribute('title','Download and play this track')
                     assert len(provider.calls)==calls_before_health and not provider.downloads
                     page.locator('.nav[data-view="dropbox"]').click()
                     evidence_url=base+'/api/dropbox/files?source=snapshot:'+sid
@@ -182,7 +190,8 @@ def main():
                     expect(page.locator('#dropbox-results')).to_contain_text('Invented 060 <mix>')
                     play=page.locator('#dropbox-results [data-play-track="60"]')
                     expect(play).to_have_attribute('data-available','false')
-                    expect(play).to_be_disabled()
+                    expect(play).to_be_enabled()
+                    expect(play).to_have_attribute('title','Download and play this track')
                     assert not page.locator('#dropbox-results img').count()
                     page.locator('[data-dropbox-download="60"]').click()
                     dialog=page.locator('#dropbox-download-dialog')
@@ -233,6 +242,7 @@ def main():
                     page.locator('#retained-playback-renderer').evaluate('element=>element.remove()')
                     page.unroute('**/api/playback/availability',delay_availability)
                     assert provider.downloads==['id:invented-60']
+                    assert not opened_paths,'Download-only must not open a media player'
                     assert (album/'Synthetic 060.mp3').read_bytes()==provider.body
                     assert len(list(album.iterdir()))==1
                     # The existing local scan is refreshed by the completed
@@ -246,6 +256,57 @@ def main():
                     expect(page.locator('#file-health-results [data-cloud-presence]')).to_contain_text('Size matches')
                     expect(page.locator('#file-health-results [data-play-track="60"]')).to_be_enabled()
                     page.screenshot(path=str(output/'dropbox-file-health.png'),full_page=True)
+
+                    # The visible scan still records local access after an
+                    # external eviction. Refreshing attributes alone must retain
+                    # reachable Play, without a scan, remote query or hydration.
+                    resident_path=album/'Synthetic 060.mp3'
+                    resident_path.unlink();calls_before_eviction=len(provider.calls)
+                    page.evaluate('source=>TrackPlayback.recheck({force:true,source,track_id:"60"})','snapshot:'+sid)
+                    resident_play=page.locator('#file-health-results [data-play-track="60"]')
+                    expect(resident_play).to_have_attribute('data-available','false')
+                    expect(resident_play).to_be_enabled()
+                    expect(resident_play).to_have_attribute('title','Download and play this track')
+                    stale_scan=context.request.get(base+'/api/file-health?source=snapshot:'+sid+'&q=Invented+060').json()
+                    assert stale_scan['rows'][0]['status']=='playable'
+                    assert not resident_path.exists() and not opened_paths
+                    assert provider.downloads==['id:invented-60'] and len(provider.calls)==calls_before_eviction
+                    # Restore only the invented fixture so later assertions
+                    # retain their expected file count; the app did no transfer.
+                    resident_path.write_bytes(provider.body)
+                    page.evaluate('source=>TrackPlayback.recheck({force:true,source,track_id:"60"})','snapshot:'+sid)
+                    expect(resident_play).to_have_attribute('data-available','true')
+
+                    # Reachable Play keeps the user on File health and requests
+                    # consent for exactly one download followed by OS dispatch.
+                    page.fill('#file-health-search','Invented 059');page.locator('#file-health-find').click()
+                    expect(page.locator('#file-health-results tbody tr')).to_have_count(1)
+                    remote_play=page.locator('#file-health-results [data-play-track="59"]')
+                    expect(remote_play).to_be_enabled()
+                    expect(remote_play).to_have_attribute('data-available','false')
+                    for close in ('cancel','escape'):
+                        remote_play.click();expect(dialog).to_be_visible()
+                        expect(page.locator('#dropbox-download-heading')).to_have_text('Download and play only this track?')
+                        expect(page.locator('#dropbox-download-confirm')).to_have_text('Download and play this track')
+                        expect(page.locator('#dropbox-download-play-note')).to_be_visible()
+                        expect(page.locator('#dropbox-download-comparison')).to_contain_text('Size differs')
+                        expect(page.locator('#dropbox-download-path')).to_have_text(str(album/'Synthetic 059.mp3'))
+                        expect(page.locator('#dropbox-download-cancel')).to_be_focused()
+                        assert page.locator('#view-file-health').is_visible()
+                        if close=='cancel':page.locator('#dropbox-download-cancel').click()
+                        else:page.keyboard.press('Escape')
+                        expect(dialog).to_be_hidden()
+                        assert provider.downloads==['id:invented-60'] and not opened_paths
+                    remote_play.click();expect(dialog).to_be_visible()
+                    page.screenshot(path=str(output/'dropbox-play-confirmation.png'),full_page=True)
+                    page.locator('#dropbox-download-confirm').click()
+                    expect(page.locator('#toast')).to_contain_text('Opened in your default media player',timeout=20000)
+                    assert provider.downloads==['id:invented-60','id:invented-59']
+                    assert opened_paths==[str(album/'Synthetic 059.mp3')]
+                    assert len(list(album.iterdir()))==2
+                    expect(page.locator('#file-health-results [data-local-access="playable"]')).to_have_text('Yes')
+                    expect(page.locator('#file-health-results [data-play-track="59"]')).to_have_attribute('data-available','true')
+                    assert page.locator('#view-file-health').is_visible()
                     page.locator('.nav[data-view="dropbox"]').click()
                     page.fill('#dropbox-search','');page.select_option('#dropbox-status','not_found')
                     page.locator('#dropbox-find').click()
@@ -270,14 +331,18 @@ def main():
                     assert not errors,errors
                     assert not external,external
                     assert not playback_opens,playback_opens
-                    assert sum(url.endswith('/api/dropbox/download') for url in requests)==1,requests
+                    assert sum(url.endswith('/api/dropbox/download') for url in requests)==2,requests
                     report.update(status='passed',metadata_only_check=True,full_scope_pagination=True,
                         explicit_single_download=True,cancel_and_escape_preserve_files=True,snapshot_unchanged=True,
-                        remote_files=61,downloaded_files=1,mobile_layout=True,
+                        remote_files=61,downloaded_files=2,mobile_layout=True,
                         failed_recheck_preserves_evidence=True,credential_cleanup_remains_actionable=True,
                         reachable_separate_from_local_access=True,captured_size_match_mismatch_unknown=True,
                         size_warning_before_download=True,download_enables_play_without_autoplay=True,
                         delayed_availability_response_unchanged=True,stale_negative_cannot_override_download=True,
+                        reachable_play_same_page=True,play_cancel_and_escape_no_transfer=True,
+                        download_only_never_opens=True,approved_play_opens_only_published_target=True,
+                        evicted_resident_keeps_reachable_play=True,eviction_check_no_provider_request=True,
+                        synthetic_eviction_fixture_restored=True,
                         external_requests=external)
                 except Exception:
                     page.screenshot(path=str(output/'dropbox-failure.png'),full_page=True);raise

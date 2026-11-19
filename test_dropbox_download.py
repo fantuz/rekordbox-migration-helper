@@ -92,6 +92,7 @@ class DropboxDownloadTests(unittest.TestCase):
         state = downloads.prepare_target(self.target, self.root)
         result = self.download(expected_target=state)
         self.assertEqual(self.target.read_bytes(), self.payload)
+        self.assertEqual(result.pop('file_identity'),downloads.resident_file_identity(self.target,self.root,state))
         self.assertEqual(result, {'downloaded': True, 'local_path': str(self.target),
                                  'bytes': len(self.payload), 'content_hash': content_hash(self.payload)})
         self.assertEqual(self.connection.calls,

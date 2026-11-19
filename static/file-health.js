@@ -58,7 +58,10 @@ window.FileHealth=(()=>{
     const columns=[['artist','Artist'],['title','Track'],['','Cloud location'],['playability','Local access'],['','Cloud presence'],['status','File status'],['checked','Last checked']];
     const heads=columns.map(([id,name])=>id?'<th data-file-health-sort="'+id+'" aria-sort="'+(sort===id?(direction==='asc'?'ascending':'descending'):'none')+'"><button type="button" class="result-sort-button" data-file-health-sort="'+id+'" title="'+esc(label('Sort all scanned results'))+'" aria-label="'+esc(label('Sort all scanned results'))+' · '+esc(label(name))+'">'+esc(label(name))+'</button></th>':'<th>'+esc(label(name))+'</th>').join('');
     const rows=data.rows.map(t=>{
-      const playback=TrackPlayback.button(source.startsWith('snapshot:')?source.slice(9):source,t.track_id);
+      // Keep the verified remote hint when a formerly resident file is evicted.
+      // Fresh playback attributes choose local/placeholder/download behavior.
+      const remote=(t.cloud_evidence||[]).some(check=>check.provider==='dropbox'&&check.status==='present'&&check.downloadable===true);
+      const playback=TrackPlayback.button(source.startsWith('snapshot:')?source.slice(9):source,t.track_id,'',remote?source:'');
       const when=t.checked_at?snapshotMoment(new Date(t.checked_at*1000).toISOString()):label('Unknown');
       const playable=t.status==='playable'?label('Yes'):['missing','inaccessible'].includes(t.status)?label('No'):label('Unknown');
       const providers=(t.providers&1?providerBadge('dropbox'):'')+(t.providers&2?providerBadge('google_drive'):'');

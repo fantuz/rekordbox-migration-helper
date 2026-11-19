@@ -240,6 +240,8 @@ def register(owner):
         from dropbox_download import prepare_target
         from cloud_attachments import validate_destination
         value=body();source,identity,mapped,key,destination,track=selected(value)
+        play_after_download=value.get('play_after_download',False)
+        if type(play_after_download) is not bool:raise ValueError('Choose whether to play this one track after downloading it.')
         validate_destination(mapped,destination['local_path'])
         target_state=prepare_target(destination['local_path'],mapped['local_root'])
         remote=remote_file(mapped,destination)
@@ -248,10 +250,12 @@ def register(owner):
             for old in list(intents):
                 if time.monotonic()-intents[old]['created']>120:intents.pop(old,None)
             while len(intents)>=128:intents.pop(next(iter(intents)))
-            intents[token]={'created':time.monotonic(),'source':source,'track_id':identity,'binding':key,'destination':destination,'target':target_state,'remote':remote}
+            intents[token]={'created':time.monotonic(),'source':source,'track_id':identity,'binding':key,
+                           'destination':destination,'target':target_state,'remote':remote,'play_after_download':play_after_download}
         from cloud_file_evidence import size_evidence
         return jsonify(confirmation_required=True,confirmation_token=token,title=str(track.get('title') or identity),
                        filename=destination['filename'],local_path=destination['local_path'],size=remote['size'],
+                       play_after_download=play_after_download,
                        **size_evidence(track,remote))
     @app.post('/api/dropbox/download')
     def dropbox_download():
@@ -262,6 +266,9 @@ def register(owner):
         token=value.get('confirmation_token')
         with guard:intent=intents.pop(token,None) if isinstance(token,str) and len(token)<=128 else None
         if not intent or not 0<=time.monotonic()-intent['created']<=120:raise ValueError('Download confirmation expired. Choose the track again.')
+        if ('play_after_download' in value and (type(value['play_after_download']) is not bool
+                or value['play_after_download'] is not intent['play_after_download'])):
+            raise ValueError('The playback choice changed. Confirm this track again.')
         source,identity,mapped,key,destination,track=selected(value)
         if (source,identity,key,destination)!=(intent['source'],intent['track_id'],intent['binding'],intent['destination']):raise ValueError('Download details changed. Confirm this track again.')
         validate_destination(mapped,destination['local_path'])
@@ -291,9 +298,34 @@ def register(owner):
                                  validate=validate,progress=checkpoint,expected_target=intent['target'],
                                  staging_dir=profile/'dropbox-downloads',managed_root=mapped['managed_root'],
                                  excluded_roots=staging_roots)
+            result.update(play_after_download=intent['play_after_download'],opened=False)
             from cloud_file_evidence import refresh_download
             try:result['local_evidence']=refresh_download(profile,source,identity,track,task_audio)
             except (OSError,ValueError,sqlite3.DatabaseError):result['local_evidence_refreshed']=False
+            if intent['play_after_download']:
+                try:
+                    # Publication remains successful if cancellation arrived
+                    # afterwards, but it must still prevent the separate launch.
+                    progress(99,'Checking the approved track before playback')
+                    validate(force=True)
+                    validate_destination(mapped,destination['local_path'])
+                    from dropbox_download import resident_file_identity
+                    from track_playback import inspect_audio_details,open_audio
+                    details=inspect_audio_details(track,context(source)[2])
+                    target=Path(destination['local_path'])
+                    fresh=resident_file_identity(target,mapped['local_root'],intent['target'])
+                    if (result.get('local_path')!=str(target) or result.get('bytes')!=remote['size']
+                            or not result.get('file_identity') or fresh!=result['file_identity']
+                            or details['status']!='playable' or details['path']!=target):
+                        raise ValueError('The downloaded track changed or is no longer available locally. Choose Play again.')
+                    validate(force=True)
+                    if resident_file_identity(target,mapped['local_root'],intent['target'])!=fresh:
+                        raise ValueError('The downloaded track changed before playback. Choose Play again.')
+                    progress(99,'Opening the approved downloaded track')
+                    open_audio(target)
+                    result['opened']=True
+                except (OSError,ValueError,RuntimeError) as error:
+                    result['playback_error']=str(error)
             return result
-        job=owner.launch(work,'Downloading one approved Dropbox track')
-        return jsonify(job=job,source=source,track_id=identity)
+        job=owner.launch(work,'Downloading and playing one approved Dropbox track' if intent['play_after_download'] else 'Downloading one approved Dropbox track')
+        return jsonify(job=job,source=source,track_id=identity,play_after_download=intent['play_after_download'])

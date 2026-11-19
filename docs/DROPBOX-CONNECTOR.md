@@ -174,9 +174,26 @@ no additional metadata reconciliation.
 After a successful download, Workbench refreshes that track's local File health
 evidence and playback controls. Play becomes available when a fresh filesystem
 check finds the ordinary local file; a completed transfer alone does not prove
-that a sync client has kept it resident. Playback still requires its existing
-single-track cloud confirmation and does not start automatically. Native
-library references remain unchanged.
+that a sync client has kept it resident. The **Download this track** action
+does not open a player. Native library references remain unchanged.
+
+### Play a reachable track
+
+File health and the Dropbox results offer **Play** for a remotely reachable,
+downloadable track even when its local copy is absent. Choose Play and review
+the **Download and play** confirmation, including destination and size evidence.
+Approval covers only that track's download and subsequent opening in the
+computer's default audio player. Cancel or Escape starts neither operation.
+
+Workbench waits for the complete, size- and hash-verified file to be published
+at the attached location, then rechecks the source, mapping and resident file
+before opening it. Changed or unavailable destinations prevent playback. A
+player-launch failure leaves the completed download available for a retry.
+This confirmation does not authorize a queue or another recording. Already
+local files and online-only placeholders retain their existing individual
+cloud-play confirmation flow.
+
+![Single-track download and play confirmation using invented metadata](screenshots/dropbox-play-confirmation.png)
 
 No additional Dropbox permission is needed for this workflow: the existing
 `files.metadata.read` scope supplies path and size information, and

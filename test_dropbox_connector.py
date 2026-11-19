@@ -4,10 +4,12 @@ from contextlib import ExitStack
 from hashlib import sha256
 from io import BytesIO
 import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 import time
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import app as application
@@ -121,10 +123,12 @@ class DropboxConnectorTests(unittest.TestCase):
     def check(self,source=None):
         result=self.post('check',source=source or self.source);self.assertEqual(result.status_code,200,result.json);return result
 
-    def prepare(self,identity='0'):
-        result=self.post('download/prepare',source=self.source,track_id=identity)
+    def prepare(self,identity='0',play_after_download=False):
+        result=self.post('download/prepare',source=self.source,track_id=identity,play_after_download=play_after_download)
         self.assertEqual(result.status_code,200,result.json)
-        self.assertTrue(result.json['confirmation_required']);return result.json['confirmation_token']
+        self.assertTrue(result.json['confirmation_required'])
+        self.assertEqual(result.json['play_after_download'],play_after_download)
+        return result.json['confirmation_token']
 
     def confirm(self,token,identity='0'):
         return self.post('download',source=self.source,track_id=identity,confirmation_token=token,confirm=True)
@@ -310,6 +314,144 @@ class DropboxConnectorTests(unittest.TestCase):
         # Residency is rechecked rather than trusted from transfer completion.
         (self.album/'Synthetic 000.mp3').unlink()
         self.assertEqual(availability(),{'0':False,'1':False})
+
+    def test_play_choice_requires_literal_boolean_and_cannot_upgrade_download_consent(self):
+        self.map_folder()
+        with patch('track_playback.open_audio') as opened:
+            for invalid in ('true',1,None,[],{}):
+                response=self.post('download/prepare',source=self.source,track_id='0',play_after_download=invalid)
+                self.assertEqual(response.status_code,400,response.json)
+            token=self.prepare()
+            response=self.post('download',source=self.source,track_id='0',confirm=True,
+                confirmation_token=token,play_after_download=True)
+            self.assertEqual(response.status_code,400,response.json)
+            token=self.prepare(play_after_download=True)
+            response=self.post('download',source=self.source,track_id='0',confirm=True,
+                confirmation_token=token,play_after_download=False)
+            self.assertEqual(response.status_code,400,response.json)
+            opened.assert_not_called();self.connection.download.assert_not_called()
+
+    def test_approved_download_and_play_opens_only_after_the_exact_file_is_published(self):
+        self.map_folder();target=self.album/'Synthetic 000.mp3'
+        def assert_published(path):
+            self.assertEqual(path,target);self.assertEqual(path.read_bytes(),self.payload)
+            self.assertEqual(len(self.downloads),1);self.assertEqual(list(self.album.iterdir()),[target])
+        with patch('track_playback.open_audio',side_effect=assert_published) as opened:
+            token=self.prepare(play_after_download=True)
+            opened.assert_not_called();self.connection.download.assert_not_called()
+            response=self.confirm(token)
+            self.assertEqual(response.status_code,200,response.json)
+            self.assertTrue(self.result['downloaded']);self.assertTrue(self.result['opened'])
+            self.assertTrue(self.result['play_after_download']);opened.assert_called_once_with(target)
+            self.assertEqual(self.confirm(token).status_code,400)
+            self.assertEqual(opened.call_count,1);self.assertEqual(len(self.downloads),1)
+
+    def test_download_only_consent_does_not_open_a_player(self):
+        self.map_folder()
+        with patch('track_playback.open_audio') as opened:
+            response=self.confirm(self.prepare())
+            self.assertEqual(response.status_code,200,response.json)
+            self.assertTrue(self.result['downloaded']);self.assertFalse(self.result['opened'])
+            self.assertFalse(self.result['play_after_download']);opened.assert_not_called()
+
+    def test_player_launch_failure_keeps_completed_download_visible(self):
+        self.map_folder()
+        with patch('track_playback.open_audio',side_effect=ValueError('Synthetic missing player')):
+            response=self.confirm(self.prepare(play_after_download=True))
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertTrue(self.result['downloaded']);self.assertFalse(self.result['opened'])
+        self.assertEqual(self.result['playback_error'],'Synthetic missing player')
+        self.assertEqual((self.album/'Synthetic 000.mp3').read_bytes(),self.payload)
+
+    def test_removed_or_replaced_download_never_opens_another_file(self):
+        self.map_folder()
+        from cloud_file_evidence import refresh_download
+        for identity,change in (('0','removed'),('1','replaced'),('2','modified')):
+            target=self.album/f'Synthetic {int(identity):03}.mp3'
+            def changed(*args,**kwargs):
+                result=refresh_download(*args,**kwargs)
+                if change=='removed':target.unlink()
+                elif change=='replaced':
+                    other=self.album/'replacement.mp3';other.write_bytes(self.payload);os.replace(other,target)
+                else:
+                    stamp=target.stat();target.write_bytes(b'X'*len(self.payload))
+                    os.utime(target,ns=(stamp.st_atime_ns,stamp.st_mtime_ns))
+                return result
+            with self.subTest(change=change),patch('cloud_file_evidence.refresh_download',side_effect=changed),patch('track_playback.open_audio') as opened:
+                response=self.confirm(self.prepare(identity,play_after_download=True),identity)
+                self.assertEqual(response.status_code,200,response.json)
+                self.assertTrue(self.result['downloaded']);self.assertFalse(self.result['opened'])
+                self.assertIn('playback_error',self.result);opened.assert_not_called()
+
+    def test_placeholder_after_publication_remains_unopened(self):
+        self.map_folder();target=self.album/'Synthetic 000.mp3';placeholder=False
+        from cloud_file_evidence import refresh_download
+        original=Path.lstat
+        def attributes(path,*args,**kwargs):
+            info=original(path,*args,**kwargs)
+            if path!=target or not placeholder:return info
+            return SimpleNamespace(**{name:getattr(info,name) for name in
+                ('st_mode','st_size','st_dev','st_ino','st_mtime_ns','st_ctime_ns')},st_file_attributes=0x1000)
+        def evicted(*args,**kwargs):
+            nonlocal placeholder
+            result=refresh_download(*args,**kwargs);placeholder=True;return result
+        with patch.object(Path,'lstat',attributes),patch('cloud_file_evidence.refresh_download',side_effect=evicted),patch('track_playback.open_audio') as opened:
+            response=self.confirm(self.prepare(play_after_download=True))
+            self.assertEqual(response.status_code,200,response.json)
+            self.assertTrue(self.result['downloaded']);self.assertFalse(self.result['opened'])
+            self.assertIn('playback_error',self.result);opened.assert_not_called()
+        self.assertEqual(target.read_bytes(),self.payload)
+
+    def test_changed_context_after_publication_prevents_play_and_keeps_download(self):
+        self.map_folder()
+        from cloud_file_evidence import refresh_download
+        for identity,change in (('0','mapping'),('1','connection'),('2','profile')):
+            self.map_folder();self.status_data['connection_id']='connection-one'
+            def switched(*args,**kwargs):
+                result=refresh_download(*args,**kwargs)
+                if change=='mapping':
+                    mapping=self.store.setting('dropbox_mapping');mapping['remote_root']='/Another folder'
+                    self.store.set_setting('dropbox_mapping',mapping)
+                elif change=='connection':self.status_data['connection_id']='new-authorization'
+                else:
+                    stub=patch.object(application,'DATA',self.root/'Another profile');stub.start();self.addCleanup(stub.stop)
+                return result
+            with self.subTest(change=change),patch('cloud_file_evidence.refresh_download',side_effect=switched),patch('track_playback.open_audio') as opened:
+                response=self.confirm(self.prepare(identity,play_after_download=True),identity)
+                self.assertEqual(response.status_code,200,response.json)
+                self.assertTrue(self.result['downloaded']);self.assertFalse(self.result['opened'])
+                self.assertIn('playback_error',self.result);opened.assert_not_called()
+                self.assertEqual((self.album/f'Synthetic {int(identity):03}.mp3').read_bytes(),self.payload)
+
+    def test_late_cancellation_after_publication_prevents_play_and_keeps_download(self):
+        from task_control import TaskControl
+        self.map_folder();control=TaskControl()
+        def execute(work,_message,**_kwargs):
+            def progress(amount,_text):
+                if amount==100:control.cancel()
+                control.checkpoint(amount)
+            self.result=work(progress);return 'cancelled-after-transfer'
+        with patch.object(application,'launch',execute),patch('track_playback.open_audio') as opened:
+            response=self.confirm(self.prepare(play_after_download=True))
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertTrue(self.result['downloaded']);self.assertFalse(self.result['opened'])
+        self.assertIn('cancelled',self.result['playback_error'].lower());opened.assert_not_called()
+        self.assertEqual((self.album/'Synthetic 000.mp3').read_bytes(),self.payload)
+
+    def test_cancellation_during_fresh_inspection_is_checked_before_player_launch(self):
+        from task_control import TaskControl
+        from track_playback import inspect_audio_details
+        self.map_folder();control=TaskControl()
+        def execute(work,_message,**_kwargs):
+            self.result=work(lambda amount,_text:control.checkpoint(amount));return 'cancelled-during-inspection'
+        def inspect_then_cancel(*args,**kwargs):
+            result=inspect_audio_details(*args,**kwargs);control.cancel();return result
+        with patch.object(application,'launch',execute),patch('track_playback.inspect_audio_details',side_effect=inspect_then_cancel),patch('track_playback.open_audio') as opened:
+            response=self.confirm(self.prepare(play_after_download=True))
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertTrue(self.result['downloaded']);self.assertFalse(self.result['opened'])
+        self.assertIn('cancelled',self.result['playback_error'].lower());opened.assert_not_called()
+        self.assertEqual((self.album/'Synthetic 000.mp3').read_bytes(),self.payload)
 
     def test_interruption_and_hash_mismatch_leave_no_final_or_partial_file(self):
         self.map_folder();self.check();self.interrupt=True

@@ -5,15 +5,17 @@ window.TrackPlayback=(()=>{
   const forceRefresh=new WeakSet();let lastForcedRefresh=0;
   const MIN_FORCE_INTERVAL_MS=5000;
   const t=key=>I18n.t(key);
-  function button(snapshot,identity,workspace=''){
+  function button(snapshot,identity,workspace='',dropboxSource=''){
     if(!identity || (!snapshot && !workspace))return '';
-    return '<button type="button" class="track-play" disabled aria-busy="true" data-play-track="'+esc(identity)+'" data-play-snapshot="'+esc(snapshot || '')+'" data-play-workspace="'+esc(workspace)+'" title="'+esc(t('Play in default media player'))+'" aria-label="'+esc(t('Play in default media player'))+'"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12"><path fill="currentColor" d="M3 1v10l8-5z"/></svg></button>';
+    const remote=/^(?:snapshot|capture):[a-f0-9]{32}$/u.test(dropboxSource)?' data-dropbox-play-source="'+esc(dropboxSource)+'"':'';
+    return '<button type="button" class="track-play" disabled aria-busy="true" data-play-track="'+esc(identity)+'" data-play-snapshot="'+esc(snapshot || '')+'" data-play-workspace="'+esc(workspace)+'"'+remote+' title="'+esc(t('Play in default media player'))+'" aria-label="'+esc(t('Play in default media player'))+'"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12"><path fill="currentColor" d="M3 1v10l8-5z"/></svg></button>';
   }
   function scope(b){return b.dataset.playWorkspace?{workspace:b.dataset.playWorkspace}:{snapshot:b.dataset.playSnapshot};}
   function key(b){return JSON.stringify([scope(b),b.dataset.playTrack]);}
   function status(b,available,fileState='unverified',cloud){
-    b.disabled=!available&&!cloud?.can_open;b.dataset.available=String(available);b.dataset.fileStatus=fileState;b.dataset.cloudOpen=String(Boolean(cloud?.can_open));b.setAttribute('aria-busy','false');
-    b.title=t(cloud?.can_open?'Open cloud-managed audio':available?'Play in default media player':'Audio file unavailable at the recorded library paths');
+    const remote=!available&&!cloud?.can_open&&fileState!=='inaccessible'&&Boolean(b.dataset.dropboxPlaySource);
+    b.disabled=!available&&!cloud?.can_open&&!remote;b.dataset.available=String(available);b.dataset.fileStatus=fileState;b.dataset.cloudOpen=String(Boolean(cloud?.can_open));b.dataset.dropboxDownloadReady=String(remote);b.setAttribute('aria-busy','false');
+    b.title=t(remote?'Download and play this track':cloud?.can_open?'Open cloud-managed audio':available?'Play in default media player':'Audio file unavailable at the recorded library paths');
     b.setAttribute('aria-label',b.title);
     b.dispatchEvent(new CustomEvent('workbench-file-status',{bubbles:true,detail:{status:fileState}}));
   }
@@ -84,6 +86,10 @@ window.TrackPlayback=(()=>{
     event.preventDefault();event.stopImmediatePropagation();if(b.disabled)return;
     const source=scope(b),identity=b.dataset.playTrack;b.disabled=true;
     (async()=>{
+      if(b.dataset.dropboxDownloadReady==='true'){
+        await window.DropboxConnector.playTrack(b.dataset.dropboxPlaySource,identity);
+        return;
+      }
       let result=await api('/api/playback/open',{method:'POST',body:JSON.stringify({...source,track_id:identity})});
       if(result.confirmation_required){
         if(!await confirmCloudOpen(result))return;

@@ -102,6 +102,24 @@ def prepare_target(local_path, local_root):
         raise ValueError('The Dropbox destination folder is unavailable or changed') from error
 
 
+def resident_file_identity(local_path, local_root, expected_target=None):
+    """Inspect an ordinary published file and its parents without opening it.
+
+    This stamp supports a subsequent, explicitly approved local Play action.
+    It is freshness evidence, not another content-hash or decoding check.
+    """
+    target,root=_paths(local_path,local_root)
+    if expected_target is not None and _snapshot_after_publish(target,root)!=expected_target:
+        raise ValueError('The downloaded track folder changed. Choose Play again')
+    info=target.lstat()
+    if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
+            or getattr(info,'st_file_attributes',0)&0x400 or cloud_placeholder(info)
+            or info.st_size<=0 or not os.access(target,os.R_OK)):
+        raise ValueError('The downloaded track is no longer an ordinary locally available file')
+    return [info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns,info.st_ctime_ns,
+            getattr(info,'st_file_attributes',0),getattr(info,'st_flags',0)]
+
+
 @contextmanager
 def _parent_handle(target, snapshot):
     handles = []
@@ -353,10 +371,19 @@ def download_verified_file(connection, metadata, local_path, local_root, namespa
             finally:
                 if fd is not None:os.close(fd)
                 if 'output_identity' in locals():_remove_ours(temporary_path, stage_fd, output_identity)
+    # Capture identity after removing the staging hardlink: that removal can
+    # itself update ctime. A provider may evict/replace the file at any time;
+    # the caller must recheck this stamp before an approved playback launch.
+    published_identity=None
+    try:
+        info=resident_file_identity(target,root,snapshot)
+        if info[:2]==output_identity and info[2]==size:published_identity=info
+    except (OSError,ValueError,RuntimeError):pass
     if progress is not None:
         try:progress(100, 'The selected '+provider+' track is available locally')
         except Exception:pass  # Late cancellation cannot roll back publication.
-    return {'downloaded': True, 'local_path': str(target), 'bytes': consumed, 'content_hash': actual_hash}
+    return {'downloaded': True, 'local_path': str(target), 'bytes': consumed,
+            'content_hash': actual_hash,'file_identity':published_identity}
 
 
 def _snapshot_after_publish(target, root):
