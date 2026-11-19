@@ -11,5 +11,6 @@
 .file-status-cloud{color:var(--accent);background:var(--soft-blue);border:1px solid var(--line)}
 .file-health-filename{overflow-wrap:anywhere;color:var(--muted)}
 #file-health-results td{vertical-align:top}
+.file-health-cloud-evidence{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:135px;margin-block:0 6px}.file-health-cloud-evidence>.text-button{padding:0}.file-health-cloud-evidence small{flex-basis:100%;line-height:1.4}.file-health-cloud-present{color:var(--green);border:1px solid var(--line);background:var(--soft-green)}.file-health-cloud-not_found{color:var(--accent);border:1px solid var(--line)}.file-health-cloud-unverified,.file-health-cloud-unmapped,.file-health-cloud-ambiguous{color:var(--muted)}#file-health-cloud-state{display:flex;gap:8px 16px;flex-wrap:wrap;font-size:12px;line-height:1.5}.file-health-cloud-summary{overflow-wrap:anywhere}
 #cloud-playback-dialog{max-width:min(460px,calc(100vw - 32px))}
 #cloud-playback-track{display:block;margin-block:12px;overflow-wrap:anywhere}

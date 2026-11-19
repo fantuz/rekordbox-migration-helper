@@ -244,6 +244,14 @@ def bad(error):
     return jsonify(error=str(error)),400
 
 
+from dropbox_http import DropboxError
+@app.errorhandler(DropboxError)
+def dropbox_error(error):
+    # Only allowlisted provider codes and a validated request ID are public.
+    # Authorization headers and raw provider responses never reach the UI.
+    return jsonify(error=str(error),**error.public_fields()),400
+
+
 @app.get("/")
 def home():
     return send_from_directory(ROOT/"static","index.html")
@@ -1353,6 +1361,10 @@ from file_health import register as register_file_health
 register_file_health(sys.modules[__name__])
 from dropbox_connector import register as register_dropbox
 register_dropbox(sys.modules[__name__])
+from google_drive_connector import register as register_google_drive
+register_google_drive(sys.modules[__name__])
+from cloud_setup import register as register_cloud_setup
+register_cloud_setup(sys.modules[__name__])
 from library_preparation import register as register_library_preparation
 register_library_preparation(sys.modules[__name__])
 from key_notation import register as register_key_notation

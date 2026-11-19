@@ -107,9 +107,50 @@ class DropboxFileEvidenceTests(unittest.TestCase):
         current=self.music/'New.mp3';old=self.music/'Old.mp3'
         target=files.target({'current_path':str(current),'original_path':str(old)},self.mapping)
         self.assertEqual(target['remote_path'],'/Music/New.mp3')
+        self.assertEqual(files.remote_path(''), '')
         self.assertEqual(files.remote_path('/'), '')
         for value in ('/Music//','//','/Music/../Other','/Music\\Other'):
             with self.subTest(value=value),self.assertRaises(ValueError):files.remote_path(value)
+
+    def test_blank_and_slash_remote_folder_select_the_namespace_root(self):
+        for root in ('','/'):
+            with self.subTest(root=root),patch.object(files,'detected_roots',return_value=[{'root':str(self.dropbox)}]):
+                mapped=files.mapping_record(self.connection,str(self.music),root)
+                self.assertEqual(mapped['remote_root'],'')
+                self.assertEqual(self.connection.rpc.call_args.args,('files/list_folder',{'path':'','limit':1,'recursive':False}))
+                target=files.target({'current_path':str(self.music/'Track.mp3')},mapped)
+                self.assertEqual(target['remote_path'],'/Track.mp3')
+        with self.assertRaisesRegex(ValueError,'leave it blank'):
+            files.remote_path('relative-folder')
+
+    def test_unsupported_captured_reference_is_unmapped_without_hiding_bad_mapping(self):
+        reference=str(self.music/'Album'/('x'*4096+'.mp3'))
+        self.assertIsNone(files.target({'current_path':reference},self.mapping))
+        mapped={**self.mapping,'provider':'dropbox','recorded_root':'/captured'}
+        self.assertIsNone(files.target({'current_path':'/captured/literal\\name.mp3'},mapped))
+        with self.assertRaisesRegex(ValueError,'Dropbox folder path'):
+            files.target({'current_path':str(self.music/'Track.mp3')},{**self.mapping,'remote_root':'bad-root'})
+
+    def test_unsupported_provider_paths_make_valid_inventory_partial(self):
+        for path in ('/Music/literal\\name.mp3','/Music/control\x01name.mp3','/Music/'+'x'*4096+'.mp3'):
+            with self.subTest(path=path):
+                values,complete=self.inventory([{'entries':[entry(),entry(path,'id:unsupported')],'has_more':False}])
+                self.assertFalse(complete);self.assertEqual(len(values),1)
+                self.assertEqual(values.unsupported_paths,1)
+                self.assertIn('/music/album/track.mp3',values)
+
+    def test_unsupported_provider_names_do_not_relax_confinement_or_identity_checks(self):
+        invalid=[entry('/Other/literal\\name.mp3'),entry('/Music/../literal\\name.mp3'),
+                 entry('/Music//literal\\name.mp3'),
+                 {**entry('/Music/literal\\name.mp3'),'path_display':'/Music/other\\name.mp3'}]
+        for value in invalid:
+            with self.subTest(value=value),self.assertRaises(ValueError) as caught:
+                self.inventory([{'entries':[value],'has_more':False}])
+            self.assertNotIn('Enter a Dropbox',str(caught.exception))
+        duplicate=entry('/Music/literal\\name.mp3')
+        for other in (entry('/Music/other\\name.mp3'),entry('/Music/LITERAL\\NAME.MP3','id:other')):
+            with self.subTest(other=other),self.assertRaisesRegex(ValueError,'ambiguous'):
+                self.inventory([{'entries':[duplicate,other],'has_more':False}])
 
     def test_failed_active_audio_mapping_never_falls_back_to_recorded_path(self):
         from audio_paths import validate

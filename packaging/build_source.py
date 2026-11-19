@@ -27,7 +27,9 @@ def main():
                                                        "workflow-map.png","media-inventory.png","library-preparation.png","bubble-navigation.png",
                                                        "compact-bubble-filters.png","collection-statistics-distributions.png",
                                                        "cloud-file-health-filters.png","cloud-track-confirmation.png",
-                                                       "dropbox-setup.png","dropbox-confirmation.png")]
+                                                       "dropbox-setup.png","dropbox-confirmation.png",
+                                                       "cloud-connection-setup.png","cloud-attachment-preview.png",
+                                                       "cloud-file-evidence.png","release-year-order.png")]
     with tarfile.open(destination,"w:gz") as archive:
         for file in sorted(files):
             if file.is_file():archive.add(file,arcname="library-workbench/"+str(file.relative_to(ROOT)),recursive=False)

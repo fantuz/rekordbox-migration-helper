@@ -153,6 +153,47 @@ class DropboxConnectorTests(unittest.TestCase):
         self.assertGreaterEqual(self.files(status='unverified').json['total'],61)
         self.connection.download.assert_not_called()
 
+    def test_one_unsupported_captured_path_does_not_abort_the_metadata_batch(self):
+        self.map_folder()
+        tracks=deepcopy(self.before['tracks'])
+        tracks.append({'id':'unsupported','title':'Unsupported captured path',
+                       'current_path':str(self.library/('x'*4096+'.mp3'))})
+        snapshot=self.store.save_snapshot({'scope_key':'synthetic:unsupported-reference','tracks':tracks,
+                                          'playlists':[]},'Unsupported captured reference')
+        source='snapshot:'+snapshot['id']
+        with patch.object(Path,'open',side_effect=AssertionError('Audio opened during metadata check')):
+            self.check(source)
+        lstat=Path.lstat
+        def mapped_only(path,*args,**kwargs):
+            if str(path)=='.':raise AssertionError('Unmapped row inspected the current directory')
+            return lstat(path,*args,**kwargs)
+        with patch.object(Path,'lstat',autospec=True,side_effect=mapped_only):
+            result=self.files(source=source,status='unmapped').json
+        self.assertIn('unsupported',{row['track_id'] for row in result['rows']})
+        unsupported=next(row for row in result['rows'] if row['track_id']=='unsupported')
+        self.assertEqual(unsupported['local_state'],'unmapped')
+        self.assertFalse(unsupported['local_available']);self.assertFalse(unsupported['downloadable'])
+        self.assertEqual(self.files(source=source,status='present').json['total'],61)
+        self.assertEqual(self.files(source=source,status='not_found').json['total'],1)
+        self.connection.download.assert_not_called()
+        self.assertEqual(self.store.snapshot(snapshot['id'])['tracks'],tracks)
+
+    def test_unsupported_provider_path_preserves_known_present_and_unseen_uncertainty(self):
+        self.map_folder()
+        unsupported={**self.entries[0],'id':'id:unsupported','path_lower':'/music/literal\\name.mp3',
+                     'path_display':'/Music/literal\\name.mp3'}
+        self.entries=[self.entries[0],unsupported]
+        with patch.object(Path,'open',side_effect=AssertionError('Audio opened during metadata check')):
+            self.check()
+        result=self.files().json
+        self.assertFalse(result['complete'])
+        self.assertEqual(result['unsupported_paths'],1)
+        self.assertIn('Only positive path matches are confirmed',result['scan_note'])
+        self.assertEqual(self.files(status='present').json['total'],1)
+        self.assertEqual(self.files(status='not_found').json['total'],0)
+        self.assertGreaterEqual(self.files(status='unverified').json['total'],61)
+        self.connection.download.assert_not_called();self.assertEqual(self.store.snapshot(self.sid),self.before)
+
     def test_sql_pages_preserve_unicode_casefold_and_full_source_counts(self):
         tracks=deepcopy(self.before['tracks'])
         tracks[59].update(title='STRASSE 東京',artist='österreich')
