@@ -2,7 +2,18 @@
 
 ## Unreleased
 
-- Add an optional Dropbox OAuth/PKCE connector with account/folder mapping, explicit remote metadata checks and separately confirmed single-file downloads. Keep library snapshots unchanged, avoid bulk downloads or sync-policy changes, and document app-key registration and credential storage. Live Dropbox client behavior remains unverified.
+## 1.2.0 — 2026-11-19
+
+This release connects Library Workbench to Dropbox for cloud-file verification and individually approved downloads into the normal local Dropbox folder.
+
+- Add a dedicated Dropbox connector page with browser-based OAuth/PKCE, public app-key setup and registration guidance. Offer supported operating-system credential storage or a session-only connection; Workbench does not collect Dropbox passwords or app secrets.
+- Map a detected local Dropbox folder to an authorized account, remote folder and namespace. Check saved library paths through bounded, paginated metadata listings without reading audio or changing sync settings. Keep unseen entries unverified when a listing is incomplete, and preserve prior evidence after a failed recheck.
+- Browse indexed remote evidence with whole-collection status filters, Unicode search and pagination. Keep local availability separate from remote presence and invalidate evidence when the account, source or folder mappings change.
+- Download one absent file after a short-lived filename, destination and size confirmation. Recheck the account, library, mapping and remote revision; verify byte count and Dropbox content hash; stage outside the Dropbox tree; and publish the complete file without overwriting existing files or placeholders. Existing cloud placeholders retain the individual Play confirmation flow.
+- Add the Dropbox setup and confirmation interface in all 13 supported languages, a File health shortcut, reviewed screenshots and the registration guide. Harden credential cleanup, callback-log redaction, profile isolation and folder-boundary checks.
+- Expand metadata, consent, transfer-failure and filesystem integrity tests, plus real-HTTP Dropbox workflows in Chromium, Firefox and WebKit. Stabilize the existing OneTagger persistence browser test by completing its background poll before a deliberate reload, retaining all error assertions.
+
+Release scope: [PR #77](https://github.com/fantuz/rekordbox-migration-helper/pull/77). Dropbox account access requires a registered public app key and browser authorization on the computer running Workbench. Automated provider responses are synthetic; live account, team-namespace and desktop selective-sync behavior remain unverified. Google Drive account integration remains deferred; its existing local discovery and File health filters remain available. Downloads require existing local parent folders and same-filesystem private staging, and are limited to 8 GiB per file. Dropbox controls reconciliation of the final local file; Workbench does not start bulk downloads or change sync policy. Library snapshots, captured references and original databases remain unchanged. Reload open browser tabs after upgrading. See the [Dropbox setup guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.2.0/docs/DROPBOX-CONNECTOR.md) and [cloud file-health guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.2.0/docs/CLOUD-FILE-HEALTH.md).
 
 ## 1.1.11 — 2026-11-19
 
