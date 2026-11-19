@@ -103,7 +103,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
   unknown. See [cloud-folder discovery](docs/CLOUD-DISCOVERY.md).
 - Use [Cloud connections](docs/CLOUD-CONNECTIONS.md) to authorize Dropbox or Google Drive, retain those detected candidates, and preview account/source/folder matches before explicitly attaching a location. Selected-file download folders can be separate from the provider desktop root; conflicting or incomplete evidence stays unverified.
 - Inspect `master.db` directly or through its containing folder, including differently cased filenames.
-- Capture modern databases and their journals into private copies before querying them; detect changing sources.
+- Capture modern databases and their journals into private copies before querying them; detect changing sources. Check database/WAL page sizes before private recovery, and request a fresh capture when nonempty WAL and rollback journals coexist. See [database capture checks](docs/FORMAT-SOURCES.md#database-and-journal-capture).
 - Report database integrity, required schema fields, track counts, cues, playlists and reference issues.
 - Inspect standalone collection XML without requiring a backup ZIP.
 - Detect legacy v5 `.edb` files and report their footprint and missing companion files; native legacy records remain undecoded.

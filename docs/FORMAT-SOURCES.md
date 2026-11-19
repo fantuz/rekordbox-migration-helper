@@ -24,6 +24,31 @@ The official public XML reference above is the shared interchange reference used
 
 Version coverage follows [Compatibility and evidence](COMPATIBILITY.md). Genuine old-version fixtures remain necessary; an XML file that parses is not evidence of native restore compatibility.
 
+## Database and journal capture
+
+Source analyzer copies the selected `master.db` and any WAL or rollback journal
+into a private workspace before making database connections. It checks file
+size, timestamps and available device/inode identity before and after copying.
+The saved journal monitor uses the fields recorded by each capture, so older
+reports remain readable. Change-time information depends on the platform;
+Windows can report creation time instead. Close rekordbox and pause library
+sync before capture to obtain stable inputs.
+
+Before opening a private copy with a nonempty WAL, the reader checks its header
+and compares its page size with the database. For encrypted databases, a
+read-only immutable connection probes only the detached base file and ignores
+its journals. Matching inputs can then recover committed WAL data on the private
+copy. An incomplete final WAL frame remains eligible for SQLite's ordinary
+committed-prefix recovery. A page-size mismatch, invalid header, or simultaneous
+nonempty WAL and rollback journal requires a fresh capture; the app does not
+guess a recovery order or modify the source.
+
+These checks add a boundary around the current SQLCipher wheel's older SQLite
+reader. They do not upgrade that bundled engine or establish that every damaged
+database is safe or recoverable. SQLite still validates WAL frames and
+transactions. Captures and their retained metadata remain local; no cloud
+download or source checkpoint is triggered by these checks.
+
 ## Operational guides, not native schema contracts
 
 The [v6.7 manual](https://cdn.rekordbox.com/files/20230316171900/rekordbox6.7.0_manual_EN.pdf), [v7 manual](https://cdn.rekordbox.com/files/20260409151936/rekordbox7.214_manual_EN.pdf) and [STEMS FAQ](https://rekordbox.com/en/support/faq/stems-7/) explain application features. They do not document a persistent per-track STEMS-ready flag for this reader. Unknown indicators stay unavailable until validated.
