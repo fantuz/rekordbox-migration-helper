@@ -91,5 +91,21 @@ class CloudCandidateTests(unittest.TestCase):
                          {'original_path':'/music/../private/Three.mp3'}]}
         self.assertEqual(suggestions(saved,[]),[])
 
+    def test_folder_summary_preserves_track_counts_path_spelling_and_first_three_examples(self):
+        for root,album,other_album,common in ((r'C:\Users\DJ\Dropbox','Sets','sets','Sets'),
+                                               ('/Users/DJ/Dropbox','Sets','sets','')):
+            with self.subTest(root=root):
+                first=f'{root}/{album}/First.mp3'
+                second=f'{root}/{other_album}/Second.mp3'
+                tracks=[{'current_path':first,'original_path':first}, {'original_path':first},
+                        {'current_path':second}, {'current_path':f'{root}/{album}/Fourth.mp3'}]
+                row=suggestions({'tracks':tracks},[])[0]
+                portable_root=root.replace('\\','/')
+                self.assertEqual(row['path'].replace('\\','/'),'/'.join(filter(None,(portable_root,common))))
+                self.assertEqual(row['tracks'],4)
+                self.assertEqual(row['reference_fields'],['current_path','original_path'])
+                self.assertEqual([path.replace('\\','/') for path in row['samples']],
+                                 [path.replace('\\','/') for path in (first,first,second)])
+
 
 if __name__=='__main__':unittest.main()

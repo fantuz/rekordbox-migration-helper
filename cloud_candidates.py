@@ -4,6 +4,8 @@ Provider configuration, captured paths and local availability are separate
 evidence. Suggestions never attach a folder or infer an account or sync mode.
 """
 from collections import defaultdict
+from dataclasses import dataclass, field
+from itertools import islice
 import os
 from pathlib import PurePosixPath,PureWindowsPath
 import re
@@ -30,15 +32,35 @@ def _bucket(path):
     return type(path)(*parts[:min(depth,len(parts))])
 
 
-def _common(paths):
-    first=paths[0].parent;parts=list(first.parts)
-    for path in paths[1:]:
-        other=path.parent.parts;limit=min(len(parts),len(other));matched=0
-        for index in range(limit):
-            if type(first)(parts[index])!=type(first)(other[index]):break
-            matched+=1
-        del parts[matched:]
-    return type(first)(*parts) if parts else None
+@dataclass(slots=True)
+class _Candidate:
+    tracks: int = 0
+    last_track: int = -1
+    common_parts: tuple = ()
+    fields: set = field(default_factory=set)
+    samples: list = field(default_factory=list)
+
+    def observe(self, track_index, reference_field, path):
+        # Tracks arrive in order. Multiple references from one track may add
+        # field evidence, but contribute only one to this folder's count.
+        parent = path.parts[:-1]
+        if self.last_track == -1:
+            self.common_parts = parent
+        elif parent[:len(self.common_parts)] != self.common_parts:
+            length = min(len(parent), len(self.common_parts))
+            for index in range(length):
+                first, other = self.common_parts[index], parent[index]
+                if first == other or (isinstance(path, PureWindowsPath) and first.lower() == other.lower()):
+                    continue
+                length = index
+                break
+            self.common_parts = self.common_parts[:length]
+        if self.last_track != track_index:
+            self.tracks += 1
+            self.last_track = track_index
+        self.fields.add(reference_field)
+        if len(self.samples) < 3 and (track_index, path) not in self.samples:
+            self.samples.append((track_index, path))
 
 
 def _suffix_matches(path,tail):
@@ -59,12 +81,8 @@ def suggestions(snapshot,roots):
         base=lexical_path(row.get('root'))
         if base and row.get('kind') in ('dropbox','google_drive'):
             known.append((base,row))
-    groups=defaultdict(dict);reference_fields=defaultdict(set)
-    def add(key,identity,field,path):
-        paths=groups[key].setdefault(identity,[])
-        if path not in paths:paths.append(path)
-        reference_fields[key].add(field)
-    for identity,track in enumerate(snapshot.get('tracks',[])[:250000]):
+    groups=defaultdict(_Candidate)
+    for identity,track in enumerate(islice(snapshot.get('tracks',[]),250000)):
         references=[(field,path) for field in FIELDS if (path:=lexical_path(track.get(field))) is not None]
         for field,path in references:
             candidates=[(base,row) for base,row in known if type(base) is type(path) and path.is_relative_to(base)]
@@ -74,7 +92,7 @@ def suggestions(snapshot,roots):
             else:
                 kind,hint=_hint(path)
                 key=(kind,hint or _bucket(path),'captured_provider_hint' if hint else 'captured_path')
-            add(key,identity,field,path)
+            groups[key].observe(identity,field,path)
         # Some native cloud references start at the cloud library root, while
         # OrgFolderPath retains another computer's complete Dropbox path.
         # Correlate the entire relative tail, never only the basename.
@@ -89,18 +107,19 @@ def suggestions(snapshot,roots):
                 prefix=type(original)(*original.parts[:-len(path.parts[1:])])
                 if not prefix.is_relative_to(hint):continue
                 key=(kind,prefix,'correlated_cloud_paths')
-                add(key,identity,original_field,original);reference_fields[key].add(field)
+                groups[key].observe(identity,original_field,original)
+                groups[key].fields.add(field)
                 correlated.add(kind)
             is_contents=bool(re.fullmatch(r'contents_[A-Za-z0-9_-]+',path.parts[1],re.I))
             for kind in correlated or ({'unknown'} if is_contents else set()):
-                add((kind,PurePosixPath('/'),'cloud_relative_reference'),identity,field,path)
+                groups[kind,PurePosixPath('/'),'cloud_relative_reference'].observe(identity,field,path)
     priority={'correlated_cloud_paths':0,'cloud_relative_reference':1}
-    ordered=sorted(groups.items(),key=lambda item:(priority.get(item[0][2],2),item[0][0]=='unknown',-len(item[1])))
+    ordered=sorted(groups.items(),key=lambda item:(priority.get(item[0][2],2),item[0][0]=='unknown',-item[1].tracks))
     result=[];seen=set()
-    for key,members in ordered[:20]:
-        kind,base,evidence=key;paths=[path for values in members.values() for path in values]
+    for (kind,base,evidence),group in ordered[:20]:
+        common=type(base)(*group.common_parts) if group.common_parts else None
         logical=evidence=='cloud_relative_reference'
-        folders=(base,) if logical else (base,_common(paths)) if evidence=='correlated_cloud_paths' else (_common(paths),base)
+        folders=(base,) if logical else (base,common) if evidence=='correlated_cloud_paths' else (common,base)
         for folder in folders:
             if not folder or (len(folder.parts)<2 and not logical):continue
             identity=(kind,folder)
@@ -111,8 +130,8 @@ def suggestions(snapshot,roots):
             availability=configured.get('availability') if configured else None
             available=False if foreign else True if availability=='available' else None
             result.append({'path':str(folder),'recorded_root':str(folder),'kind':kind,
-                           'evidence':evidence,'tracks':len(members),'available':None if logical else available,
+                           'evidence':evidence,'tracks':group.tracks,'available':None if logical else available,
                            'foreign':True if logical else foreign,'recorded_library_root':logical,
-                           'reference_fields':[field for field in FIELDS if field in reference_fields[key]],
-                           'samples':[str(path) for path in paths[:3]]})
+                           'reference_fields':[field for field in FIELDS if field in group.fields],
+                           'samples':[str(path) for _,path in group.samples]})
     return result[:20]

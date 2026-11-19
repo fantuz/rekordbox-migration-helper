@@ -1,7 +1,7 @@
 .native-collection[hidden],.workspace-collection[hidden]{display:none!important}
 .native-filter{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:16px 0}
 .native-filter label{flex:1;min-width:180px}
-.native-filter select,.native-filter input,.native-status{display:block;width:100%;padding:9px;border-radius:10px;border:1px solid var(--line,#bdcddd);background:var(--panel,#fff);color:inherit}
+.native-filter select,.native-filter input:not([type=checkbox]),.native-status{display:block;width:100%;padding:9px;border-radius:10px;border:1px solid var(--line,#bdcddd);background:var(--panel,#fff);color:inherit}
 .native-table{overflow:auto;max-width:100%;margin:16px 0}
 .native-table table{width:100%;border-collapse:collapse;text-align:left}
 .native-table td,.native-table th{padding:10px;vertical-align:top;border-bottom:1px solid var(--line,#bdcddd)}

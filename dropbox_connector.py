@@ -12,6 +12,7 @@ from urllib.parse import parse_qs,unquote,urlsplit
 from flask import jsonify,redirect,request
 from collection_sources import resolve
 from cloud_locations import provider_roots
+from cloud_oauth import callback_errors
 from file_health import local_request,selected_source
 from workbench_store import Store
 import dropbox_files as files
@@ -53,7 +54,7 @@ class _CallbackLogFilter(logging.Filter):
 
 def register(owner):
     app=owner.app
-    intents={};guard=RLock();authorization_errors={};running={};return_views={}
+    intents={};guard=RLock();authorization_errors=callback_errors(app,'dropbox');running={};return_views={}
     logging.getLogger('werkzeug').addFilter(_CallbackLogFilter())
     def connected():return connection(owner)
     def store():

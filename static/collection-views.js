@@ -55,7 +55,19 @@ window.NativeCollection=(()=>{
     }
     const providerControl=panel.querySelector('[data-cloud-analysis-provider]');CloudAnalysis.paint(providerControl,r.cloud?.counts);
     const display=document.createElement('div');display.innerHTML=DisplayPreferences.controls({keys:false,unknown:false,sidecars:true});panel.querySelector('.native-filter').append(display);DisplayPreferences.sync();
-    const cloudNote=document.createElement('p');cloudNote.className='subtle cloud-analysis-note';cloudNote.textContent=[I18n.t(CloudAnalysis.note),DisplayPreferences.sidecarNote(r)].filter(Boolean).join(' · ');panel.querySelector('.native-filter').after(cloudNote);
+    const cloudHelp=I18n.t(CloudAnalysis.note),sidecarNote=DisplayPreferences.sidecarNote(r);
+    if(view==='review'){
+      const explanation=document.createElement('p');
+      explanation.textContent=cloudHelp;
+      panel.querySelector('.native-review-note').append(explanation);
+    }
+    const noteText=view==='review'?sidecarNote:[cloudHelp,sidecarNote].filter(Boolean).join(' · ');
+    if(noteText){
+      const note=document.createElement('p');
+      note.className='subtle cloud-analysis-note';
+      note.textContent=noteText;
+      panel.querySelector('.native-filter').after(note);
+    }
     panel.querySelector('form').onsubmit=wrap(async e=>{e.preventDefault();values.q=e.target.elements.query.value;values.provider=e.target.elements.provider.value;values[view==='review'?'basis':'mode']=e.target.elements.mode.value;values.offset=0;await load(view);});
     panel.querySelectorAll('[data-native-sort]').forEach(button=>button.onclick=wrap(async()=>{
       const field=button.dataset.nativeSort;

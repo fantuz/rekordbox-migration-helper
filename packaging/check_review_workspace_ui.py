@@ -36,12 +36,14 @@ def check_review_workspace_ui(browser,base,source,output):
         page.locator('.native-review-workspace').scroll_into_view_if_needed()
         density=page.locator('.review-candidates>.native-table').evaluate('''e=>{
             const bounds=e.getBoundingClientRect(),head=e.querySelector('thead').getBoundingClientRect();
+            const label=document.createRange();label.selectNodeContents(e.querySelector('[data-native-sort="count"]').firstChild);
             return {visible:[...e.querySelectorAll('tbody tr')].filter(row=>{const r=row.getBoundingClientRect();return r.top>=head.bottom && r.bottom<=bounds.bottom;}).length,
-                height:e.clientHeight,scrollWidth:e.scrollWidth,width:e.clientWidth,
+                countLabelLines:label.getClientRects().length,height:e.clientHeight,scrollWidth:e.scrollWidth,width:e.clientWidth,
                 rows:[...e.querySelectorAll('tbody tr')].slice(0,2).map(row=>({height:row.getBoundingClientRect().height,cells:[...row.cells].map(cell=>({text:cell.textContent,width:cell.clientWidth,padding:getComputedStyle(cell).padding,font:getComputedStyle(cell).fontSize}))}))};
         }''')
         page.screenshot(path=str(output/'native-duplicate-candidate-density.png'))
         assert density['visible']>=12,density
+        assert density['countLabelLines']==1,density
         assert density['scrollWidth']<=density['width']+1,density
         assert page.locator('.native-review-note').get_attribute('open') is None
         page.locator('[data-native-group="g0"]').click();page.wait_for_selector('.native-compare-record')

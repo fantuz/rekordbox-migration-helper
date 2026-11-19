@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 from flask import jsonify, redirect, request
 
+from cloud_oauth import callback_errors
 from collection_sources import resolve
 from file_health import local_request, selected_source
 from workbench_store import Store
@@ -51,7 +52,7 @@ class _CallbackLogFilter(logging.Filter):
 
 def register(owner):
     app=owner.app
-    intents={};guard=RLock();authorization_errors={};running={};oauth_returns={}
+    intents={};guard=RLock();authorization_errors=callback_errors(app,'google_drive');running={};oauth_returns={}
     logging.getLogger('werkzeug').addFilter(_CallbackLogFilter())
     def connected():return connection(owner)
     def store():

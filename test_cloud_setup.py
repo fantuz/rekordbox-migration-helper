@@ -191,6 +191,32 @@ class CloudSetupTests(unittest.TestCase):
         foreign=self.client.get('/api/cloud-setup/status',environ_overrides={'REMOTE_ADDR':'192.0.2.10'})
         self.assertEqual(foreign.status_code,400)
 
+    def test_refresh_reuses_path_summary_and_reads_current_account_and_settings(self):
+        query={'source':self.source}
+        with patch('cloud_setup.resolve',wraps=cloud_setup.resolve) as read_source:
+            first=self.client.get('/api/cloud-setup/status',query_string=query).get_json()
+            self.states['dropbox']['connected']=False
+            cloud_setup.callback_errors(self.app,'dropbox')[str(self.data)]='Authorization cancelled'
+            self.saved.set_setting('cloud_default_upload:'+self.before['scope_key'],'google_drive')
+            second=self.client.get('/api/cloud-setup/status',query_string=query).get_json()
+            read_source.assert_called_once_with(self.owner,self.source)
+            self.assertEqual(second['source']['suggestions'],first['source']['suggestions'])
+            self.assertEqual(second['source']['default_upload'],'google_drive')
+            self.assertFalse(second['providers']['dropbox']['connected'])
+            self.assertEqual(second['providers']['dropbox']['authorization_error'],'Authorization cancelled')
+            self.assertIsNone(second['providers']['google_drive']['authorization_error'])
+            # Discovering a configured root changes the evidence for the same snapshot.
+            roots=[{'kind':'dropbox','root':'D:/OldDropbox/Music','provider_verified':True,'availability':'available'}]
+            with patch('cloud_setup.provider_roots',return_value=roots):
+                updated=self.client.get('/api/cloud-setup/status',query_string=query).get_json()
+            self.assertTrue(any(row['evidence']=='provider_configuration' for row in updated['source']['suggestions']))
+            self.assertEqual(read_source.call_count,2)
+            with self.saved.connection() as db:
+                db.execute('DELETE FROM snapshots WHERE id=?',(self.snapshot['id'],))
+            self.assertEqual(self.client.get('/api/cloud-setup/status',query_string=query).status_code,400)
+            self.assertEqual(read_source.call_count,2)
+        for client in self.clients.values():client.rpc.assert_not_called()
+
     def test_google_all_mode_and_unconfined_local_folder_rejected(self):
         response=self.post('preview',provider='google_drive',source=self.source,sync_mode='all')
         self.assertEqual(response.status_code,400)

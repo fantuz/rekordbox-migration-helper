@@ -1,5 +1,6 @@
 """Cloud path suggestions remain explicit and preserve the selected source."""
 from copy import deepcopy
+from urllib.parse import parse_qs,urlsplit
 
 
 def check_cloud_root_suggestions_ui(browser,base,fixture,output):
@@ -26,6 +27,18 @@ def check_cloud_root_suggestions_ui(browser,base,fixture,output):
         page.wait_for_function('(source)=>Journeys.context()?.source===source',arg=fixture.source)
         page.evaluate('(source)=>{CloudConnections.forSource(source,"dropbox");showView("cloud-connect");}',source)
         expect(page.locator('#cloud-setup-source')).to_have_value(source)
+        # A refresh reads one authoritative status for the selected collection.
+        requests=[]
+        def record_status(request):
+            url=urlsplit(request.url)
+            if url.path in ('/api/cloud-setup/status','/api/dropbox/status','/api/google-drive/status'):
+                requests.append((url.path,parse_qs(url.query)))
+        page.on('request',record_status)
+        try:
+            page.evaluate('() => CloudConnections.load()')
+        finally:
+            page.remove_listener('request',record_status)
+        assert requests==[('/api/cloud-setup/status',{'source':[source]})],requests
         page.locator('#cloud-setup-next').click();page.locator('#cloud-setup-next').click()
         expect(page.locator('#cloud-setup-local-root')).to_be_visible()
         host=context.request.get(base+'/api/cloud-setup/status').json()['host_platform']

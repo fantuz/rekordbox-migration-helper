@@ -5,6 +5,7 @@ listing happens on Browse/Preview, and never downloads music or changes the
 provider desktop application's synchronization policy.
 """
 import json
+from functools import lru_cache
 from pathlib import Path
 import platform
 import re
@@ -15,7 +16,9 @@ import time
 from flask import jsonify,request
 import audio_paths
 from cloud_attachments import digest,local_presence
+from cloud_candidates import suggestions
 from cloud_locations import provider_roots
+from cloud_oauth import callback_errors
 from collection_sources import resolve
 from file_health import local_request,selected_source
 from workbench_store import Store,encoded
@@ -61,13 +64,17 @@ def _stamp(owner,source,*,saved=None,db=None):
 
 def _source(owner,source):
     stamp=_stamp(owner,source)
+    return _read_source(owner,source),stamp
+
+
+def _read_source(owner,source):
     snapshot=resolve(owner,source)
     tracks=snapshot.get('tracks',[])
     if not isinstance(snapshot.get('scope_key'),str) or not snapshot['scope_key']:
         raise ValueError('Choose a collection with a saved source identity.')
     if len(tracks)>250000 or len({str(t['id']) for t in tracks})!=len(tracks):
         raise ValueError('Choose a collection with at most 250000 unique track IDs.')
-    return snapshot,stamp
+    return snapshot
 
 
 def _configuration(value):
@@ -128,7 +135,7 @@ def _audio_proposal(owner,snapshot,mapping,saved):
     if recorded and prefix_key(recorded)==prefix_key(prefix):return previous,None
     for existing in previous:
         if prefix_key(existing['recorded_root'])==prefix_key(proposed['recorded_root']):
-            same=(existing.get('local_root')==proposed['local_root'] and
+            same=(isinstance(existing.get('local_root'),str) and Path(existing['local_root'])==Path(proposed['local_root']) and
                   (existing.get('device'),existing.get('inode'))==(proposed['device'],proposed['inode']))
             if not same:
                 raise ValueError('This recorded folder already has a different Audio folders mapping. Review it before attaching another destination.')
@@ -157,6 +164,22 @@ def register(owner):
         if not isinstance(value,dict):raise ValueError('Provide a cloud setup request object.')
         return value
 
+    @lru_cache(maxsize=2)
+    def source_summary(profile,source,stamp,roots_json):
+        """Cache only the small path summary. A refresh still checks live connection and folder state."""
+        snapshot = _read_source(owner,source)
+        examples = []
+        for track in snapshot['tracks'][:5]:
+            path = next((track[k] for k in audio_paths.FIELDS if track.get(k)), '')
+            examples.append({'track_id':str(track['id']), 'title':str(track.get('title') or ''), 'recorded_path':path})
+        summary = {'id':source, 'label':str(snapshot.get('label') or source), 'tracks':len(snapshot['tracks']),
+                   'examples':examples, 'suggestions':suggestions(snapshot,json.loads(roots_json))}
+        if owner.DATA.resolve()!=profile or _stamp(owner,source)!=stamp:
+            raise ValueError('The selected collection changed. Refresh the cloud connection page.')
+        return snapshot['scope_key'], summary
+
+    owner.clear_cloud_source_cache = source_summary.cache_clear
+
     @app.after_request
     def private_cloud_setup_response(response):
         if request.path.startswith('/api/cloud-setup/'):
@@ -169,8 +192,11 @@ def register(owner):
         roots=provider_roots(include_unavailable=True)
         from cloud_oauth import authorization_origin
         origin=authorization_origin()
-        source=request.args.get('source');snapshot=None;context=None
-        if source:snapshot,_=_source(owner,source)
+        source=request.args.get('source');scope=None;context=None
+        profile=owner.DATA.resolve()
+        if source:
+            scope,summary=source_summary(profile,source,_stamp(owner,source,saved=saved),encoded(roots))
+            context={**summary,'default_upload':saved.setting('cloud_default_upload:'+scope,'unknown')}
         for provider in PROVIDERS:
             client,files=_provider(owner,provider);state=client.status()
             mapping=saved.setting(MAPPING_KEYS[provider],None);active=False;error=None
@@ -181,7 +207,7 @@ def register(owner):
                         raise ValueError('Preview and confirm this existing location for the selected collection.')
                     if source and mapping.get('source')!=source:
                         raise ValueError('This location is attached to another collection. Preview it for the selected collection.')
-                    if snapshot and mapping.get('scope_key') not in (None,snapshot['scope_key']):
+                    if scope and mapping.get('scope_key') not in (None,scope):
                         raise ValueError('The attached collection identity changed. Preview this location again.')
                     active=True
                 except ValueError as problem:error=str(problem)
@@ -194,22 +220,11 @@ def register(owner):
                                  'credential_storage':{'available':bool(state.get('secure_storage_available',False)),
                                                        'persistent':bool(state.get('persistent',False))},
                                  'mapping':mapping if active else None,
+                                 'authorization_error':callback_errors(app,provider).get(str(profile)),
                                  'attachment_active':active,'attachment_error':error}
-        if source:
-            examples=[]
-            for track in snapshot['tracks'][:5]:
-                path=next((track.get(k) for k in audio_paths.FIELDS if track.get(k)),'')
-                examples.append({'track_id':str(track['id']),'title':str(track.get('title') or ''),'recorded_path':path})
-            try:
-                from cloud_candidates import suggestions
-                candidates=suggestions(snapshot,roots)
-            except ImportError:candidates=[]
-            context={'id':source,'label':str(snapshot.get('label') or source),'tracks':len(snapshot['tracks']),
-                     'examples':examples,'suggestions':candidates,
-                     'default_upload':saved.setting('cloud_default_upload:'+snapshot['scope_key'],'unknown')}
-            for provider,configuration in settings.items():
-                if configuration and configuration.get('source')==source:
-                    settings[provider]={**configuration,'default_upload':context['default_upload']}
+            configuration=settings[provider]
+            if context and configuration and configuration.get('source')==source:
+                settings[provider]={**configuration,'default_upload':context['default_upload']}
         return jsonify(providers=providers,roots=roots,attachments=attachments,settings=settings,source=context,host_platform=host_platform())
 
     @app.post('/api/cloud-setup/folders')

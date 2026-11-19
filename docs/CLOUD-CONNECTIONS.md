@@ -48,6 +48,10 @@ Review the detected folders and their evidence. Provider configuration or OS
 registration is stronger evidence than a folder-name hint. Neither method
 proves the association with a remotely authorized account.
 
+Returning to this page reuses suggestions for the same saved collection and
+detected roots. Changing the collection evidence or detected roots rebuilds
+the suggestions. Account, attachment and upload settings refresh each time.
+
 Choose the existing local folder for downloaded audio and the corresponding
 remote folder. Dropbox also exposes its account namespace. Google Drive uses
 a remote folder identity because names alone are not unique.

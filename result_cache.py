@@ -82,6 +82,6 @@ def clear(owner,providers=False):
         db.execute('DELETE FROM result_cache')
         db.execute('DELETE FROM file_status_cache')
         if providers:db.execute('DELETE FROM mb_cache')
-    for name in ('clear_insight_cache','clear_chart_cache'):
+    for name in ('clear_insight_cache','clear_chart_cache','clear_cloud_source_cache'):
         callback=getattr(owner,name,None)
         if callback:callback()

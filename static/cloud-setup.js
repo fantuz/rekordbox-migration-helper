@@ -176,12 +176,14 @@ window.CloudConnections=(()=>{
   }
   async function load(){
     const generation=++revision,selected=requestedSource||(node('source').options.length?node('source').value:window.BrowseState?.value('cloud-setup-source')||initial.source||window.Journeys?.context?.()?.source);
-    const [base,journeys,active]=await Promise.all([api('/api/cloud-setup/status',{feedback:false}),api('/api/journeys',{feedback:false}),api(endpoint()+'/status',{feedback:false})]);
+    const journeys=await api('/api/journeys',{feedback:false});
+    if(generation!==revision)return;
     const choices=(journeys.sources||[]).filter(row=>/^(?:snapshot|capture):[a-f0-9]{32}$/u.test(row.id));
     const chosen=choices.some(row=>row.id===selected)?selected:'';
-    const status=chosen?await api('/api/cloud-setup/status?'+new URLSearchParams({source:chosen}),{feedback:false}):base;
+    const query=chosen?'?'+new URLSearchParams({source:chosen}):'';
+    const status=await api('/api/cloud-setup/status'+query,{feedback:false});
     if(generation!==revision)return;
-    const oldAccount=accountState().connection_id;model=status;model.providers||={};model.providers[provider()]={...model.providers[provider()],...active};
+    const oldAccount=accountState().connection_id;model=status;
     node('source').replaceChildren(new Option(t('Choose a saved collection snapshot'),''),...choices.map(row=>new Option(row.label+' · '+snapshotMoment(row.created),row.id)));
     node('source').value=chosen;
     requestedSource='';
