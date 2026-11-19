@@ -1,12 +1,63 @@
 """Measured SVG text and interaction checks on invented categories in GitHub CI."""
 from ui_navigation import select_collection, open_collection_picker
 from copy import deepcopy
+from contextlib import nullcontext, suppress
 import json
 import re
 from urllib.parse import parse_qs, urlsplit
 
 
 def check_bubble_labels_ui(page,base,sid,output,store):
+    """Retain the interaction trace and actual view state when navigation fails."""
+    responses=[]
+    def response_seen(response):
+        if '/api/insights/bubbles?' in response.url or '/api/insights/tracks?' in response.url:
+            responses.append({'url':response.url,'status':response.status})
+            del responses[:-60]
+    page.on('response',response_seen)
+    page.context.tracing.start(screenshots=True,snapshots=True,sources=True)
+    page.evaluate('''()=>{
+        const events=[],types=['pointerdown','mousedown','pointerup','mouseup','click','keydown','keyup','focusin','focusout','input','change'];
+        const describe=node=>node?{tag:node.tagName,id:node.id,index:node.dataset?.bubbleIndex,back:node.dataset?.bubbleBack,value:node.value,text:node.textContent?.slice(0,100)}:null;
+        const rect=node=>{const r=node?.getBoundingClientRect();return r?{x:r.x,y:r.y,width:r.width,height:r.height}:null;};
+        const state=(geometry=false)=>{const s=insightState.bubble;return {dimension:s.dimension,path:s.path.map(item=>({...item})),revision:s.revision,
+            view:document.querySelector('.view:not([hidden])')?.id,metric:document.querySelector('#bubble-metric')?.value,
+            snapshot:document.querySelector('#bubble-snapshot')?.value,optionsSnapshot:s.options?.snapshot?.id,
+            languageBusy:document.documentElement.dataset.languageBusy,
+            toast:document.querySelector('#toast')?.textContent?.slice(0,300),
+            result:s.result?{dimension:s.result.dimension,metric:s.result.metric,entries:s.result.summary?.entries,groups:s.result.groups.length,snapshot:s.result.snapshot?.id}:null,
+            busy:document.querySelector('#library-bubbles')?.getAttribute('aria-busy'),active:describe(document.activeElement),
+            breadcrumbFocused:document.activeElement===document.querySelector('#bubble-breadcrumbs button:last-child'),
+            breadcrumb:describe(document.querySelector('#bubble-breadcrumbs button:last-child')),
+            scroll:{x:scrollX,y:scrollY,legend:document.querySelector('#bubble-groups')?.scrollTop},
+            inspector:geometry?rect(document.querySelector('#bubble-selected')):undefined,legend:geometry?rect(document.querySelector('#bubble-groups')):undefined};};
+        const record=(type,event)=>{events.push({type,time:performance.now(),key:event?.key,x:event?.clientX,y:event?.clientY,target:describe(event?.target),state:state()});if(events.length>150)events.shift();};
+        const listener=event=>{if(!document.querySelector('#view-bubbles').hidden)record(event.type,event);};
+        types.forEach(type=>document.addEventListener(type,listener,true));
+        const observer=new MutationObserver(()=>record('inspector-or-breadcrumb-render'));
+        for(const id of ['bubble-selected','bubble-breadcrumbs'])observer.observe(document.getElementById(id),{childList:true});
+        window.bubbleNavigationDiagnostics={events,state,cleanup(){observer.disconnect();types.forEach(type=>document.removeEventListener(type,listener,true));}};
+    }''')
+    status='failed'
+    try:
+        result=_check_bubble_labels_ui(page,base,sid,output,store)
+        status='passed'
+        return result
+    finally:
+        # Diagnostic failures must not replace the original UI assertion.
+        with suppress(Exception) if status=='failed' else nullcontext():
+            captured=page.evaluate('()=>({state:window.bubbleNavigationDiagnostics.state(true),events:window.bubbleNavigationDiagnostics.events})')
+            captured.update(status=status,responses=responses[-60:])
+            (output/'bubble-navigation-diagnostics.json').write_text(json.dumps(captured,ensure_ascii=False,indent=2)+'\n')
+            if status=='failed':page.screenshot(path=str(output/'bubble-navigation-failure.png'))
+        with suppress(Exception) if status=='failed' else nullcontext():
+            page.context.tracing.stop(path=str(output/'bubble-navigation-trace.zip'))
+        page.remove_listener('response',response_seen)
+        with suppress(Exception) if status=='failed' else nullcontext():
+            page.evaluate('()=>{window.bubbleNavigationDiagnostics.cleanup();delete window.bubbleNavigationDiagnostics;}')
+
+
+def _check_bubble_labels_ui(page,base,sid,output,store):
     viewport=page.viewport_size;theme=page.locator('#theme').input_value();colour=page.locator('#bubble-color').input_value()
     source=deepcopy(store.snapshot(sid));source['tracks']=[]
     labels=['Wide WWW collection with a deliberately long category name',
