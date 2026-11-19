@@ -7,10 +7,11 @@ import re
 import secrets
 from threading import RLock
 import time
-from urllib.parse import unquote,urlsplit
+from urllib.parse import parse_qs,unquote,urlsplit
 
 from flask import jsonify,redirect,request
 from collection_sources import resolve
+from cloud_locations import provider_roots
 from file_health import local_request,selected_source
 from workbench_store import Store
 from audio_paths import signature
@@ -31,6 +32,34 @@ def connection(owner):
         return owner.dropbox_connection
 
 
+def evidence_context(owner,source):
+    """Identify cached evidence without remote requests or audio reads."""
+    source=selected_source(source)
+    saved=Store(owner.DATA/'workbench-sidecar.sqlite3')
+    mapped=saved.setting('dropbox_mapping',None)
+    key=files.binding(connection(owner),mapped)
+    if mapped.get('source') and mapped['source']!=source:
+        raise ValueError('Choose the collection attached to this Dropbox folder, or verify a new attachment.')
+    if source.startswith('snapshot:'):
+        with saved.connection() as db:
+            row=db.execute('SELECT scope_key,digest FROM snapshots WHERE id=?',(source[9:],)).fetchone()
+        if not row:raise ValueError('Choose an existing saved library snapshot.')
+        scope,stamp=row['scope_key'],row['digest']
+    else:
+        folder=owner.DATA/'analyzers'/source[8:]
+        if folder.is_symlink() or folder.is_junction():raise ValueError('Choose an ordinary saved source capture.')
+        metadata=folder/'comparison.json'
+        if not metadata.is_file():metadata=folder/'metadata.json'
+        stamps=[]
+        for path in (metadata,folder/'report.json'):
+            if not path.is_file() or path.is_symlink():raise ValueError('Choose an existing saved source capture.')
+            info=path.stat();stamps.append([info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns,info.st_ctime_ns])
+        scope,stamp=source,stamps
+    audio=saved.setting('audio_paths:'+str(scope),[])
+    key=sha256(json.dumps([key,stamp,signature(audio)],sort_keys=True).encode()).hexdigest()
+    return {'store':saved,'mapping':mapped,'key':key,'audio':audio}
+
+
 class _CallbackLogFilter(logging.Filter):
     """OAuth codes and state must not enter Werkzeug access logs."""
     def filter(self,record):
@@ -47,7 +76,7 @@ class _CallbackLogFilter(logging.Filter):
 
 def register(owner):
     app=owner.app
-    intents={};guard=RLock();authorization_errors={};running={}
+    intents={};guard=RLock();authorization_errors={};running={};return_views={}
     logging.getLogger('werkzeug').addFilter(_CallbackLogFilter())
     def connected():return connection(owner)
     def store():
@@ -67,33 +96,14 @@ def register(owner):
         if not isinstance(value,dict):raise ValueError('Provide a Dropbox request object.')
         return value
     def mapping():return store().setting('dropbox_mapping',None)
-    def current():
-        value=mapping();return value,files.binding(connected(),value)
-    def source_state(source):
-        """Check source identity without decoding a large collection per chunk/page."""
-        if source.startswith('snapshot:'):
-            with store().connection() as db:
-                row=db.execute('SELECT scope_key,digest FROM snapshots WHERE id=?',(source[9:],)).fetchone()
-            if not row:raise ValueError('Choose an existing saved library snapshot.')
-            return row['scope_key'],row['digest']
-        folder=owner.DATA/'analyzers'/source[8:]
-        if folder.is_symlink() or folder.is_junction():raise ValueError('Choose an ordinary saved source capture.')
-        metadata=folder/'comparison.json'
-        if not metadata.is_file():metadata=folder/'metadata.json'
-        stamps=[]
-        for path in (metadata,folder/'report.json'):
-            if not path.is_file() or path.is_symlink():raise ValueError('Choose an existing saved source capture.')
-            info=path.stat();stamps.append([info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns,info.st_ctime_ns])
-        return source,stamps
     def context(source):
-        mapped,key=current();scope,stamp=source_state(source)
-        audio=store().setting('audio_paths:'+str(scope),[])
-        key=sha256(json.dumps([key,stamp,signature(audio)],sort_keys=True).encode()).hexdigest()
-        return mapped,key,audio
+        state=evidence_context(owner,source)
+        return state['mapping'],state['key'],state['audio']
     def origin():
         local();parsed=urlsplit(request.host_url)
         if parsed.scheme!='http' or parsed.username or parsed.password:raise ValueError('Use the local HTTP Workbench address for Dropbox authorization.')
-        return request.host_url.rstrip('/')
+        from cloud_oauth import authorization_origin
+        return authorization_origin()
     def status():
         state=connected().status();value=mapping();account=state.get('account') or {}
         if value and value.get('account_id')!=account.get('account_id'):value=None
@@ -117,7 +127,11 @@ def register(owner):
         value=body();connected().configure(value.get('app_key'),value.get('remember',False));return jsonify(status())
     @app.post('/api/dropbox/connect')
     def connect():
-        body();result=connected().begin(origin())
+        value=body();destination=value.get('return_to','dropbox')
+        if destination not in ('dropbox','cloud-connect'):raise ValueError('Choose a supported Dropbox return page.')
+        result=connected().begin(origin())
+        state=parse_qs(urlsplit(result['authorize_url']).query).get('state',[''])[0]
+        return_views[str(owner.DATA.resolve())]={'view':destination,'state':state}
         authorization_errors.pop(str(owner.DATA.resolve()),None)
         return jsonify(**result)
     @app.get('/api/dropbox/callback')
@@ -125,11 +139,14 @@ def register(owner):
         local()
         profile=str(owner.DATA.resolve())
         try:
-            connected().callback(request.args.get('state'),request.args.get('code'),request.args.get('error'),callback_origin=origin())
+            connected().callback(request.args.get('state'),request.args.get('code'),request.args.get('error'),callback_origin=request.host_url.rstrip('/'))
             authorization_errors.pop(profile,None)
         except ValueError as error:
             authorization_errors[profile]=str(error)
-        return redirect('/#dropbox',code=303)
+        pending=return_views.get(profile);destination='dropbox'
+        if pending and isinstance(request.args.get('state'),str) and secrets.compare_digest(request.args['state'],pending['state']):
+            destination=return_views.pop(profile)['view']
+        return redirect('/#'+destination,code=303)
     @app.post('/api/dropbox/disconnect')
     def disconnect():
         body();connected().disconnect()
@@ -235,7 +252,9 @@ def register(owner):
     @app.post('/api/dropbox/download/prepare')
     def prepare():
         from dropbox_download import prepare_target
+        from cloud_attachments import validate_destination
         value=body();source,identity,mapped,key,destination,track=selected(value)
+        validate_destination(mapped,destination['local_path'])
         target_state=prepare_target(destination['local_path'],mapped['local_root'])
         remote=remote_file(mapped,destination)
         token=secrets.token_urlsafe(32)
@@ -249,6 +268,7 @@ def register(owner):
     @app.post('/api/dropbox/download')
     def dropbox_download():
         from dropbox_download import download_file
+        from cloud_attachments import validate_destination
         value=body()
         if value.get('confirm') is not True:raise ValueError('Confirm downloading this one track.')
         token=value.get('confirmation_token')
@@ -256,6 +276,7 @@ def register(owner):
         if not intent or not 0<=time.monotonic()-intent['created']<=120:raise ValueError('Download confirmation expired. Choose the track again.')
         source,identity,mapped,key,destination,track=selected(value)
         if (source,identity,key,destination)!=(intent['source'],intent['track_id'],intent['binding'],intent['destination']):raise ValueError('Download details changed. Confirm this track again.')
+        validate_destination(mapped,destination['local_path'])
         # Revalidate metadata before opening content, including the current path.
         remote=remote_file(mapped,destination)
         if any(remote.get(k)!=intent['remote'].get(k) for k in ('id','rev','size','content_hash')):
@@ -264,6 +285,7 @@ def register(owner):
         if prepare_target(destination['local_path'],mapped['local_root'])!=intent['target']:
             raise ValueError('The download destination changed. Confirm this track again.')
         profile=owner.DATA.resolve();client=connected();generation=client.status()['connection_id'];task_store=store()
+        staging_roots=[row['root'] for row in provider_roots(include_unavailable=True)]
         last_check=[0.0]
         def validate(force=False):
             if owner.DATA.resolve()!=profile or connected().status().get('connection_id')!=generation:
@@ -278,7 +300,8 @@ def register(owner):
             validate(force=True)
             result=download_file(client,remote,destination['local_path'],mapped['local_root'],mapped['namespace'],
                                  validate=validate,progress=checkpoint,expected_target=intent['target'],
-                                 staging_dir=profile/'dropbox-downloads',managed_root=mapped['managed_root'])
+                                 staging_dir=profile/'dropbox-downloads',managed_root=mapped['managed_root'],
+                                 excluded_roots=staging_roots)
             with task_store.connection() as db:db.execute('DELETE FROM file_status_cache')
             return result
         job=owner.launch(work,'Downloading one approved Dropbox track')

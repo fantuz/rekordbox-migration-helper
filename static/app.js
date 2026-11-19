@@ -333,6 +333,8 @@ function showView(view) {
   if(view==='musicbrainz')loadMusicBrainz().catch(error=>notify(error.message,true));
   if(view==='onetagger')window.OneTaggerBridge?.load().catch(error=>notify(error.message,true));
   if(view==='dropbox')window.DropboxConnector?.load().catch(error=>notify(error.message,true));
+  if(view==='google-drive')window.GoogleDriveConnector?.load().catch(error=>notify(error.message,true));
+  if(view==='cloud-connect')window.CloudConnections?.load().catch(error=>notify(error.message,true));
   if (view==="lab") loadLab().catch(error=>notify(error.message,true));
   if (view==="history") loadHistory().catch(error=>notify(error.message,true));
   if (view==="insights") loadDJInsights().catch(error=>notify(error.message,true));
@@ -342,13 +344,15 @@ function showView(view) {
   if (view==="intelligence") Intelligence.load().catch(error=>notify(error.message,true));
   if ((view==="files" || view==="start") && window.Journeys) Journeys.load().catch(error=>notify(error.message,true));
   if (view==="files" || view==="exports") loadWorkspace().catch(error=>notify(error.message,true));
-  $("#collection-metrics").hidden=["start","files","analyzer","storage","quick","lab","musicbrainz","onetagger","dropbox","history","insights","bubbles","tonality","intelligence","file-health"].includes(view);
-  $(".dataset-bar").hidden=["start","analyzer","storage","quick","lab","musicbrainz","onetagger","dropbox","history","insights","bubbles","tonality","intelligence","file-health"].includes(view);
+  $("#collection-metrics").hidden=["start","files","analyzer","storage","quick","lab","musicbrainz","onetagger","dropbox","google-drive","cloud-connect","history","insights","bubbles","tonality","intelligence","file-health"].includes(view);
+  $(".dataset-bar").hidden=["start","analyzer","storage","quick","lab","musicbrainz","onetagger","dropbox","google-drive","cloud-connect","history","insights","bubbles","tonality","intelligence","file-health"].includes(view);
   $("#page-title").textContent={get start(){return I18n.t("Workflow map");},get files(){return I18n.t("Library preparation");},get analyzer(){return I18n.t("Source analysis");},get storage(){return I18n.t("Cloud and local storage");},get quick(){return I18n.t("Offline metadata export");},get review(){return I18n.t("Duplicate review");},get reference(){return I18n.t("File references");},get activity(){return I18n.t("Activity and reports");},get statistics(){return I18n.t("Collection statistics");},get inventory(){return I18n.t("Media inventory");},get exports(){return I18n.t("Library export");}}[view];
   window.scrollTo(0,0);
   if(view==='musicbrainz')$('#page-title').textContent=I18n.t('MusicBrainz');
   if(view==='onetagger')$('#page-title').textContent=I18n.t('OneTagger bridge');
   if(view==='dropbox')$('#page-title').textContent=I18n.t('Dropbox connector');
+  if(view==='google-drive')$('#page-title').textContent=I18n.t('Google Drive connector');
+  if(view==='cloud-connect')$('#page-title').textContent=I18n.t('Cloud connections');
   if(view==='file-health')$('#page-title').textContent=I18n.t('File health');
   if (view==='lab') $('#page-title').textContent=I18n.t("Library lab");
   if (view==='history') $('#page-title').textContent=I18n.t("Play history");
@@ -506,7 +510,7 @@ async function renderStatistics() {
   const preferenceHost=$('#stats-display-preferences');
   if(preferenceHost&&!preferenceHost.children.length){preferenceHost.innerHTML=preferences.controls({keys:false});$('#stats-apply').before(preferenceHost);preferences.sync();}
   const native=window.NativeCollection?.active();
-  if (!session && !native){for(const id of ['stats-cards','length-histogram','added-histogram','release-histogram','genre-histogram','stats-omitted'])$('#'+id).innerHTML='';if($('#stats-source-note'))$('#stats-source-note').hidden=true;$('#stats-cohort').disabled=false;return;}
+  if (!session && !native){for(const id of ['stats-cards','length-histogram','added-histogram','release-histogram','genre-histogram','stats-omitted'])$('#'+id).innerHTML='';if($('#stats-source-note'))$('#stats-source-note').hidden=true;if($('#statistics-release-order'))$('#statistics-release-order').disabled=true;$('#stats-cohort').disabled=false;return;}
   const params=new URLSearchParams({min:$("#stats-min").value || "0",max:$("#stats-max").value,cohort:$("#stats-cohort").value,...preferences.args()});
   const selectedSource=window.NativeCollection?.source();
   if(native)params.set('source',selectedSource);
@@ -537,9 +541,26 @@ async function renderStatistics() {
   const visible=labels.filter(([key])=>!preferences.get().hide_unknown||data.counters[key]!==null&&data.counters[key]!==undefined);
   $("#stats-cards").innerHTML=visible.map(([key,title,note])=>'<article class="stat-card"><span>'+esc(title)+'</span><strong>'+(data.counters[key]===null?I18n.t("Unverified"):num(data.counters[key]))+'</strong><small>'+esc(note)+'</small></article>').join("");
   $('#stats-omitted').textContent=visible.length<labels.length?I18n.t('{count} unverified counters hidden',{count:num(labels.length-visible.length)}):'';
-  for(const [name,id] of [['duration','length-histogram'],['added','added-histogram'],['release_year','release-histogram'],['genre','genre-histogram']])$('#'+id).innerHTML=renderCollectionChart(data.charts[name]);
+  for(const [name,id] of [['duration','length-histogram'],['added','added-histogram'],['genre','genre-histogram']])$('#'+id).innerHTML=renderCollectionChart(data.charts[name]);
+  renderReleaseYearChart(data.charts.release_year);
   let note=$('#stats-source-note');if(!note){note=document.createElement('p');note.id='stats-source-note';note.className='callout';$('#stats-cards').before(note);}
   note.hidden=!native;if(native)note.textContent=data.note;
+}
+function renderReleaseYearChart(chart){
+  const host=$('#release-histogram');let order=$('#statistics-release-order');
+  if(!order){
+    const heading=host.parentElement.querySelector('h3'),toolbar=document.createElement('div');
+    toolbar.className='statistics-chart-heading';heading.replaceWith(toolbar);toolbar.append(heading);
+    order=document.createElement('select');order.id='statistics-release-order';toolbar.append(order);
+  }
+  const saved=window.BrowseState?.value('statistics-release-order');
+  const selected=saved==='count_desc'?'count_desc':'year_desc';
+  order.replaceChildren(new Option(I18n.t('Newest years first'),'year_desc'),new Option(I18n.t('Most tracks first'),'count_desc'));
+  order.value=selected;order.disabled=false;order.setAttribute('aria-label',I18n.t('Release year distribution'));
+  const rows=[...chart.rows].sort((a,b)=>Number(Boolean(a.unknown))-Number(Boolean(b.unknown))||
+    (selected==='count_desc'?Number(b.count)-Number(a.count):0)||Number(b.label)-Number(a.label));
+  host.innerHTML=renderCollectionChart({...chart,rows});
+  order.onchange=()=>{window.BrowseState?.set('statistics-release-order',order.value);renderReleaseYearChart(chart);host.scrollTop=0;};
 }
 function renderCollectionChart(chart){
   const max=Math.max(1,...chart.rows.map(row=>row.count));

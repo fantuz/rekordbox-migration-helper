@@ -43,7 +43,21 @@ def remote_path(value):
 def path_key(value):return unicodedata.normalize('NFC',value).lower()
 
 
-def mapping_record(connection,local_root,remote_root,namespace=None):
+def mapping_record(connection,local_root,remote_root,namespace=None,*,owner=None,sync_mode=None,recorded_root=None):
+    if owner is not None and sync_mode in ('selected','all'):
+        from cloud_attachments import local_mapping
+        result=local_mapping(owner,local_root,'dropbox',sync_mode,recorded_root)
+        state=connection.status();account=state.get('account') or {}
+        if not state.get('connected'):raise ValueError('Connect Dropbox before mapping a folder.')
+        namespace=namespace or account.get('root_namespace_id')
+        if not isinstance(namespace,str) or not re.fullmatch(r'\d{1,40}',namespace):
+            raise ValueError('Choose a valid Dropbox namespace.')
+        remote_root=remote_path(remote_root);root={'.tag':'namespace_id','namespace_id':namespace}
+        if remote_root:
+            remote=connection.rpc('files/get_metadata',{'path':remote_root},path_root=root)
+            if remote.get('.tag')!='folder':raise ValueError('Choose a Dropbox folder, not a file.')
+        else:connection.rpc('files/list_folder',{'path':'','limit':1,'recursive':False},path_root=root)
+        return {**result,'remote_root':remote_root,'namespace':namespace,'account_id':account.get('account_id')}
     if not isinstance(local_root,str) or any(ord(c)<32 for c in local_root):raise ValueError('Choose a detected Dropbox folder.')
     managed=[]
     for row in detected_roots():
@@ -114,6 +128,11 @@ def binding(connection,mapping):
 
 
 def target(track,mapping,audio_mappings=None):
+    if mapping.get('recorded_root') or mapping.get('provider')=='dropbox':
+        from cloud_attachments import track_target
+        target=track_target(track,mapping,audio_mappings)
+        if not target:return None
+        return {**target,'remote_path':remote_path(mapping['remote_root']+'/'+target['relative_path'])}
     from audio_paths import mapped_path,mapping_applies
     root=lexical_path(mapping['local_root'])
     for field in ('current_path','xml_location','original_path'):

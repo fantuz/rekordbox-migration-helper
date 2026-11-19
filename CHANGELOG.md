@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Guide Dropbox and Google Drive authorization through Cloud connections, retaining autodetected locations and requiring a complete account/source/folder preview before explicit attachment. Support selected-file destinations outside provider desktop roots, preserve both providers, and keep ambiguous or changed mappings unverified.
+- Add Google Drive metadata verification and individually confirmed checksum-verified downloads, with browser OAuth/PKCE, optional OS credential storage, folder identities, indexed filtering and failure-preserving evidence. Keep Google selected-file mode separate from provider desktop stream/mirror settings and Rekordbox's default upload preference.
+- Extend real-HTTP browser and filesystem tests for selected-file caches, wrong/ambiguous cloud folders, attachment consent, provider coexistence, and individual download cancellation. Document setup, official Rekordbox account/sync models and live-account validation limits.
+
 ## 1.2.0 — 2026-11-19
 
 This release connects Library Workbench to Dropbox for cloud-file verification and individually approved downloads into the normal local Dropbox folder.

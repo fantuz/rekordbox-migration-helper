@@ -168,27 +168,49 @@ class _DropboxHash:
         return outer.hexdigest()
 
 
-def _connection_id(connection):
+def _connection_id(connection, provider='Dropbox'):
     status = connection.status()
     if not status.get('connected') or not status.get('connection_id'):
-        raise ValueError('Reconnect Dropbox before downloading this track')
+        raise ValueError('Reconnect '+provider+' before downloading this track')
     return status['connection_id']
 
 
 @contextmanager
-def _staging_directory(staging_dir, root, managed_root):
+def _staging_directory(staging_dir, root, managed_root, excluded_roots=None, provider='Dropbox'):
     """Stage outside the sync tree so no partial recording reaches the client."""
     automatic = staging_dir is None
     base = Path(tempfile.gettempdir()).resolve() if automatic else Path(staging_dir).parent
     boundary = Path(managed_root) if managed_root is not None else root
     if (not boundary.is_absolute() or '..' in boundary.parts
             or not root.is_relative_to(boundary)):
-        raise ValueError('Choose a verified Dropbox root')
+        raise ValueError('Choose a verified '+provider+' root')
     candidate = base if automatic else Path(staging_dir)
     if (not candidate.is_absolute() or '..' in candidate.parts
             or candidate == boundary or candidate.is_relative_to(boundary)
             or candidate == root or candidate.is_relative_to(root)):
-        raise ValueError('Download staging must be outside Dropbox')
+        raise ValueError('Download staging must be outside '+provider)
+    # A selected-file cache can live outside its own provider's desktop tree.
+    # Do not let private staging accidentally live inside another account's or
+    # provider's sync tree either. Discovery reads bounded local configuration,
+    # never music contents or a provider API.
+    from cloud_locations import provider_roots
+    boundaries=list(excluded_roots or [])
+    boundaries.extend(row['root'] for row in provider_roots(include_unavailable=True))
+    if len(boundaries)>256:raise ValueError('Too many configured cloud folders to verify download staging')
+    for value in boundaries:
+        if isinstance(value,dict):value=value.get('root')
+        if not isinstance(value,(str,Path)):raise ValueError('Verify the configured cloud folders before downloading')
+        raw=os.fspath(value)
+        if (len(raw)>4096 or any(ord(c)<32 for c in raw)
+                or raw.startswith(('//','\\\\'))):
+            raise ValueError('Verify the configured cloud folders before downloading')
+        other=Path(value)
+        if not other.is_absolute() or '..' in other.parts:
+            raise ValueError('Verify the configured cloud folders before downloading')
+        try:canonical=other.resolve(strict=False)
+        except OSError:raise ValueError('A configured cloud folder could not be verified') from None
+        if any(candidate==item or candidate.is_relative_to(item) for item in (other,canonical)):
+            raise ValueError('Private download staging must be outside every configured cloud folder')
     for folder in list(reversed(base.parents)) + [base]:
         _ordinary_directory(folder, folder.lstat())
     created = False
@@ -211,31 +233,44 @@ def _staging_directory(staging_dir, root, managed_root):
 
 
 def download_file(connection, metadata, local_path, local_root, namespace,
-                  progress=None, validate=None, expected_target=None, staging_dir=None, managed_root=None):
+                  progress=None, validate=None, expected_target=None, staging_dir=None, managed_root=None,
+                  excluded_roots=None):
+    """Preserve Dropbox's public download contract over the shared safe stream."""
+    return download_verified_file(connection,metadata,local_path,local_root,namespace,
+        progress=progress,validate=validate,expected_target=expected_target,staging_dir=staging_dir,
+        managed_root=managed_root,excluded_roots=excluded_roots,metadata_parser=_metadata,
+        hash_factory=_DropboxHash,open_stream=lambda identity,revision,space:
+        connection.download(identity,rev=revision,namespace=space),provider='Dropbox')
+
+
+def download_verified_file(connection, metadata, local_path, local_root, namespace=None,
+                           progress=None, validate=None, expected_target=None, staging_dir=None,
+                           managed_root=None, excluded_roots=None, *, metadata_parser,
+                           hash_factory, open_stream, verify_after_stream=None, provider):
     """Stream exactly one approved revision and publish it without overwrite.
 
     ``validate`` rechecks the caller's mapping/source binding. It may raise to
     cancel. ``expected_target`` is the result of prepare_target at confirmation
     time. A post-publication progress callback cannot undo a completed transfer.
     """
-    identity, revision, size, expected_hash, modified_ns = _metadata(metadata)
+    identity, revision, size, expected_hash, modified_ns = metadata_parser(metadata)
     target, root = _paths(local_path, local_root)
     snapshot = prepare_target(target, root)
     if expected_target is not None and snapshot != expected_target:
         raise ValueError('The Dropbox destination changed. Choose Download again')
-    connection_id = _connection_id(connection)
+    connection_id = _connection_id(connection,provider)
     def checkpoint(amount=0):
-        if _connection_id(connection) != connection_id:
-            raise ValueError('Dropbox authorization changed. Choose Download again')
+        if _connection_id(connection,provider) != connection_id:
+            raise ValueError(provider+' authorization changed. Choose Download again')
         if validate is not None:validate()
         if prepare_target(target, root) != snapshot:
             raise ValueError('The Dropbox destination changed. Choose Download again')
-        if progress is not None:progress(amount, 'Downloading one approved Dropbox track')
+        if progress is not None:progress(amount, 'Downloading one approved '+provider+' track')
     checkpoint()
     temporary = '.library-workbench-dropbox-' + secrets.token_hex(16) + '.tmp'
     published = False
     fd = None
-    with _staging_directory(staging_dir, root, managed_root) as staging:
+    with _staging_directory(staging_dir, root, managed_root,excluded_roots,provider) as staging:
         temporary_path = staging / temporary
         stage_snapshot = _snapshot_after_publish(temporary_path, staging)
         with _parent_handle(target, snapshot) as parent_fd, _parent_handle(temporary_path, stage_snapshot) as stage_fd:
@@ -250,28 +285,29 @@ def download_file(connection, metadata, local_path, local_root, namespace,
                 fd = os.open(temporary if stage_fd is not None else temporary_path, flags, 0o600, **kwargs)
                 output_identity = _identity(os.fstat(fd))
                 if not stat.S_ISREG(os.fstat(fd).st_mode):raise ValueError('Unable to create an ordinary temporary audio file')
-                consumed, digest = 0, _DropboxHash()
-                with connection.download(identity, rev=revision, namespace=namespace) as response:
-                    actual = _metadata(response.metadata)
+                consumed, digest = 0, hash_factory()
+                with open_stream(identity,revision,namespace) as response:
+                    actual = metadata_parser(response.metadata)
                     if actual[:3] != (identity, revision, size) or actual[3] != expected_hash:
-                        raise ValueError('Dropbox file details changed. Check this track again')
+                        raise ValueError(provider+' file details changed. Check this track again')
                     while True:
                         checkpoint(min(98, 98 * consumed / size))
                         chunk = response.read(CHUNK_BYTES)
-                        if not isinstance(chunk, bytes):raise ValueError('Dropbox returned invalid file content')
+                        if not isinstance(chunk, bytes):raise ValueError(provider+' returned invalid file content')
                         if not chunk:break
                         consumed += len(chunk)
-                        if consumed > size:raise ValueError('Dropbox returned more bytes than the approved file size')
+                        if consumed > size:raise ValueError(provider+' returned more bytes than the approved file size')
                         digest.update(chunk)
                         remaining = memoryview(chunk)
                         while remaining:
                             written = os.write(fd, remaining)
                             if written <= 0:raise OSError('Incomplete file write')
                             remaining = remaining[written:]
-                if consumed != size:raise ValueError('Dropbox returned an incomplete file')
+                if consumed != size:raise ValueError(provider+' returned an incomplete file')
                 actual_hash = digest.hexdigest()
                 if actual_hash != expected_hash:
-                    raise ValueError('Downloaded content does not match Dropbox metadata')
+                    raise ValueError('Downloaded content does not match '+provider+' metadata')
+                if verify_after_stream is not None:verify_after_stream()
                 if modified_ns is not None:
                     if os.utime in os.supports_fd:
                         os.utime(fd, ns=(modified_ns, modified_ns))
@@ -318,7 +354,7 @@ def download_file(connection, metadata, local_path, local_root, namespace,
                 if fd is not None:os.close(fd)
                 if 'output_identity' in locals():_remove_ours(temporary_path, stage_fd, output_identity)
     if progress is not None:
-        try:progress(100, 'The selected Dropbox track is available locally')
+        try:progress(100, 'The selected '+provider+' track is available locally')
         except Exception:pass  # Late cancellation cannot roll back publication.
     return {'downloaded': True, 'local_path': str(target), 'bytes': consumed, 'content_hash': actual_hash}
 

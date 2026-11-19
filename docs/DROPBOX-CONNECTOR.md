@@ -3,7 +3,9 @@
 The Dropbox connector checks saved library references against an authorized
 Dropbox account. Checking existence is a metadata operation: it does not open
 audio, request content downloads, change selective-sync settings or start a
-folder resynchronization. Google Drive account integration remains separate.
+folder resynchronization. [Google Drive](GOOGLE-DRIVE-CONNECTOR.md) has its own
+connection and folder evidence; both can coexist through
+[Cloud connections](CLOUD-CONNECTIONS.md).
 
 ## Connect an account
 
@@ -47,13 +49,41 @@ Dropbox's development/production access rules still apply when distributing an
 app to other users. See the [OAuth guide](https://developers.dropbox.com/oauth-guide)
 and [developer guide](https://www.dropbox.com/developers/reference/developer-guide).
 
+### Fix an invalid redirect URI
+
+Before choosing **Connect Dropbox**, copy the callback URL displayed by
+Workbench. Add that exact string to the app's **OAuth 2 / Redirect URIs** in
+the Dropbox developer console and save the console setting. Workbench cannot
+inspect that developer-console list or register the value on your behalf.
+
+Match the complete address: `127.0.0.1` and `localhost` are different hosts;
+the current Workbench port and `/api/dropbox/callback` path must match; an
+extra trailing slash changes the URI. Recopy the value if Workbench starts on
+another port, and make sure its app key belongs to the console app you edited.
+Then start **Connect Dropbox** again. Do not substitute the Google callback
+or a public cloud-preview address.
+
+This console-registration step is specific to Dropbox's configured redirect
+list. Google's Desktop OAuth loopback procedure is described in its separate
+[setup guide](GOOGLE-DRIVE-CONNECTOR.md).
+
 ## Map the library folder
 
-Choose a detected local Dropbox root and the corresponding remote folder.
-Verify the mapping before checking the collection. The remote path is relative
-to the authorized account's selected namespace; team folders may use a team
-root namespace rather than a member's home namespace. A team/customer folder
-name or matching suffix alone does not establish that it is the same folder.
+Use **Cloud connections** to select the saved collection, account arrangement
+and Rekordbox synchronization method. Keep detected desktop roots as
+candidates. In selected-file mode you can instead review an ordinary existing
+download destination outside those roots, including when Dropbox desktop is
+not installed. All-files mode retains the verified Dropbox desktop-root
+requirement.
+
+Choose the corresponding remote folder and preview complete relative-path
+matches before attaching. If the captured paths use an old prefix, an explicit
+recorded root can propose a source-scoped Audio folders mapping without
+rewriting the snapshot or replacing a conflicting mapping. The remote path is
+relative to the authorized account's selected namespace; team folders may use
+a team root namespace rather than a member's home namespace. A team/customer
+folder name or matching suffix alone does not establish that it is the same
+folder.
 
 Use the narrow folder that contains the selected music. Workbench checks the
 current library path first, then uses XML or original-path evidence as a
@@ -93,8 +123,9 @@ size in the confirmation. Cancel or Escape leaves the file untouched. Approval
 applies to that one current file and does not enable a download queue, bulk
 hydration or a remembered blanket consent.
 
-The connector writes an absent file only into the verified local Dropbox
-location. It does not replace an existing local file, write through a symbolic
+The connector writes an absent file only into the explicitly attached local
+destination. Selected-file destinations can be outside the normal Dropbox
+desktop folder. It does not replace an existing local file, write through a symbolic
 link or turn an arbitrary filename into a destination. Failed or incomplete
 transfers do not publish a partial final file. A changed mapping or remote
 revision requires a new confirmation.

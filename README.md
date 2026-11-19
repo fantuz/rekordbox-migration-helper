@@ -101,6 +101,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
   with provider/OS evidence, bounded searches and explicit source selection.
   Review possible relocation against saved paths; missing prior evidence stays
   unknown. See [cloud-folder discovery](docs/CLOUD-DISCOVERY.md).
+- Use [Cloud connections](docs/CLOUD-CONNECTIONS.md) to authorize Dropbox or Google Drive, retain those detected candidates, and preview account/source/folder matches before explicitly attaching a location. Selected-file download folders can be separate from the provider desktop root; conflicting or incomplete evidence stays unverified.
 - Inspect `master.db` directly or through its containing folder, including differently cased filenames.
 - Capture modern databases and their journals into private copies before querying them; detect changing sources.
 - Report database integrity, required schema fields, track counts, cues, playlists and reference issues.
@@ -155,7 +156,7 @@ The objective is long-term library maintainability: distinguish redundant record
 - Reuse bounded case/Unicode directory lookups for mounted Windows libraries, invalidating indexes when entries change and holding replaced volumes or ambiguous names.
 - Explore **File health** across a saved snapshot with an explicit, cancellable scan, counts and global SQLite search, status filtering and sorting. Unchecked records remain distinct from inconclusive Unverified scans.
 - Filter that full scan by colored Dropbox/Google Drive path evidence. OS-reported placeholders and absent cloud paths remain separate from proven local deletion; scans do not open audio. Opening cloud-managed tracks requires a fresh single-track confirmation. See [cloud file health and metadata API findings](docs/CLOUD-FILE-HEALTH.md).
-- Connect a Dropbox account through browser OAuth/PKCE, map a local Dropbox folder to its authorized namespace and explicitly check remote file existence without downloading audio. Download only one selected absent file after fresh confirmation; see [Dropbox connector setup and limits](docs/DROPBOX-CONNECTOR.md).
+- Connect Dropbox and Google Drive through browser OAuth/PKCE and explicitly check remote file existence without downloading audio. Keep both providers attached, with separate account, source and folder evidence. Download only one selected absent file after fresh confirmation; see [Dropbox setup](docs/DROPBOX-CONNECTOR.md), [Google Drive setup](docs/GOOGLE-DRIVE-CONNECTOR.md) and [connection guidance](docs/CLOUD-CONNECTIONS.md).
 - Click result table headings to sort the currently displayed rows. Tables with local playback controls also show a sortable file-status column; server-paged tables do not silently reorder their entire library.
 - Review connected duplicate groups with keeper selection, donor exclusions and cue/rating conflict evidence.
 - Keep duplicate candidates and comparisons in separate scrolling panes, with visible review actions and a keyboard-accessible drawer on narrower screens, for captured databases and XML/ZIP workspaces.
@@ -264,7 +265,7 @@ Source analyzer also reads standalone collection XML for v5 statistics (track co
 
 The **Files & workflow** page explains each step and shows the input and output paths. Completed exports remain downloadable after restarting. Separate single-format exports are also available. Both writers must validate a paired export before its files become available. XML keeps its input collection scope, which can be narrower than the native backup when cloud/device cohorts differ.
 
-Cloud Library Sync supports **Dropbox or Google Drive**. The cloud music folder and the master database folder can differ. Suggested Windows/Mac locations and saved database settings help locate a source, and manual path entry is always available on all platforms. Online-only audio should be downloaded before file-byte verification or playback testing. The optional [Dropbox connector](docs/DROPBOX-CONNECTOR.md) authorizes metadata checks and explicit single-file downloads. Google Drive account integration is not implemented.
+Cloud Library Sync supports **Dropbox and Google Drive**. The cloud music folder, the selected-file download destination and the master database folder can differ. Suggested Windows/Mac locations and saved database settings help locate a source, and manual path entry is always available on all platforms. [Cloud connections](docs/CLOUD-CONNECTIONS.md) retains autodetection and checks the authorized account, selected collection and full relative paths before an explicit attachment. Both optional provider connectors support metadata checks and individually confirmed downloads; attachment alone starts no content transfer. Existing online-only placeholders retain the individual Play confirmation flow. Live provider and desktop reconciliation validation remains separate from synthetic automated checks.
 
 ## Compatibility status
 

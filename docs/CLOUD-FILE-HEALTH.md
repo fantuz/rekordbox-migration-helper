@@ -46,11 +46,14 @@ checks the selected source, track, current path, mappings and file attributes
 again before dispatch. Expired or changed requests need a new Play action.
 
 A cloud path with no local file or placeholder cannot be opened through the
-local Play action. The optional [Dropbox connector](DROPBOX-CONNECTOR.md) can
-check remote existence after separate account authorization and download one
-absent file after fresh confirmation. Alternatively make that single recording
-available through Dropbox or rekordbox, then refresh. Google Drive support here
-is limited to path labels and local attributes; account integration is deferred.
+local Play action. The optional [Dropbox](DROPBOX-CONNECTOR.md) and
+[Google Drive](GOOGLE-DRIVE-CONNECTOR.md) connectors can check remote existence
+after separate account authorization and download one absent file after fresh
+confirmation. [Cloud connections](CLOUD-CONNECTIONS.md) retains discovery and
+previews the account, collection and destination before attaching them. It also
+covers selected-file destinations outside desktop-managed roots. Alternatively
+make that single recording available through its provider or rekordbox, then
+refresh.
 
 ![Single-track cloud confirmation with Cancel focused by default](screenshots/cloud-track-confirmation.png)
 
@@ -68,9 +71,9 @@ Official APIs can list remote metadata without downloading the recording:
 
 No supported public Windows desktop-client interface for a complete remote
 listing was established in this investigation. File health uses local
-attributes and path evidence. The separate [Dropbox connector](DROPBOX-CONNECTOR.md)
-uses official APIs and browser OAuth authorization to check remote metadata.
-It does not access private client interfaces or recover client credentials.
+attributes and path evidence. The separate provider connectors use official
+APIs and browser OAuth authorization to check remote metadata. They do not
+access private client interfaces or recover client credentials.
 
 The remote API's `.tag` identifies entry kinds such as file and folder; it is
 not an embedded music tag such as genre, key or artist. Audio tag extraction

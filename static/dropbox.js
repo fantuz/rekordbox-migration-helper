@@ -86,6 +86,7 @@ window.DropboxConnector=(()=>{
     await post('/mapping',{local_root:node('local-root').value.trim(),remote_root:node('remote-root').value.trim(),namespace:node('namespace').value.trim()});await load();
   }));
   node('refresh').onclick=wrap(load);
+  node('copy-redirect').onclick=wrap(()=>copyCloudRedirect(node('redirect')));
   node('check').onclick=wrap(()=>action(async()=>{const selected=node('source').value,result=await post('/check',{source:selected});if(result.job)await poll(result.job);if(selected===node('source').value){offset=0;await loadFiles();}notify(t('Cloud check complete'));}));
   node('source').onchange=wrap(async()=>{offset=0;await loadFiles();});
   node('find').onclick=wrap(async()=>{offset=0;await loadFiles();});

@@ -27,7 +27,7 @@ def check_display_workflows_ui(browser,base,store,root,output,opener_log,origina
     for i,key in enumerate(keys):
         tracks.append({'id':'display-'+str(i),'title':'Synthetic track '+str(i),'artist':'Invented artist',
                        'tonality':key,'genre':'House' if i in (0,1) else 'Techno' if i==2 else '' if i==3 else 'Unknown' if i==4 else '日本語 <tag>',
-                       'year':2020 if i<3 else 1999 if i==3 else None,'date_added':'2021-01-01' if i%2 else None,
+                       'year':2020 if i<2 else 2022 if i==2 else 1999 if i==3 else None,'date_added':'2021-01-01' if i%2 else None,
                        'duration':None if i==1 else 0 if i==2 else 240,'bpm':None if i==6 else 120,
                        'play_count':None if i==1 else i,'rating':0,'manual_cues':0,'auto_cues':0,
                        'current_path':str(audio) if i==0 else str(folder/'Absent.mp3') if i==1 else
@@ -133,11 +133,20 @@ def check_display_workflows_ui(browser,base,store,root,output,opener_log,origina
         expect(page.locator('#view-statistics [data-hide-unknown]')).to_be_checked()
         assert page.locator('#release-histogram [data-chart-unknown=true]').count()==0
         expect(page.locator('#release-histogram .chart-exclusion-note')).to_contain_text('4 / 7')
+        expect(page.locator('#statistics-release-order')).to_have_value('year_desc')
+        assert page.locator('#release-histogram .hist-row>span').all_text_contents()==['2022','2020','1999']
+        before_sort=sum('/statistics?' in request['url'] for request in requests)
+        page.select_option('#statistics-release-order','count_desc')
+        assert page.locator('#release-histogram .hist-row>span').all_text_contents()==['2020','2022','1999']
+        assert sum('/statistics?' in request['url'] for request in requests)==before_sort
         expect(page.locator('#genre-histogram .chart-exclusion-note')).to_contain_text('5 / 7')
         expect(page.locator('#length-histogram .chart-exclusion-note')).to_contain_text('6 / 7')
         assert '<tag>' in page.locator('#genre-histogram').inner_text() and page.locator('#genre-histogram tag').count()==0
         page.locator('#view-statistics [data-hide-unknown]').uncheck()
         page.wait_for_selector('#release-histogram [data-chart-unknown=true]')
+        expect(page.locator('#statistics-release-order')).to_have_value('count_desc')
+        assert page.locator('#release-histogram .hist-row').last.get_attribute('data-chart-unknown')=='true'
+        page.select_option('#statistics-release-order','year_desc')
         assert page.locator('#genre-histogram [data-chart-unknown=true]').count()==1
         page.locator('.statistics-chart-grid').screenshot(path=str(output/'collection-statistics-distributions.png'))
         navigate('tonality');page.wait_for_function('(id)=>insightState.tonal.result?.snapshot.id===id',arg=sid)
