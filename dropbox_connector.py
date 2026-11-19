@@ -55,6 +55,7 @@ def register(owner):
         with saved.connection() as db:
             db.execute('CREATE TABLE IF NOT EXISTS dropbox_records (binding TEXT,source TEXT,track_id TEXT,payload TEXT,PRIMARY KEY(binding,source,track_id))')
             db.execute('CREATE TABLE IF NOT EXISTS dropbox_scans (binding TEXT,source TEXT,payload TEXT,PRIMARY KEY(binding,source))')
+            db.execute("CREATE INDEX IF NOT EXISTS dropbox_records_status ON dropbox_records(binding,source,json_extract(payload,'$.status'))")
         return saved
     def local():
         if not local_request():raise ValueError('Use Dropbox from the local Workbench application.')
@@ -180,13 +181,25 @@ def register(owner):
         try:offset=int(request.args.get('offset',0))
         except (TypeError,ValueError):raise ValueError('Choose a valid Dropbox page.') from None
         if state not in ('all','present','not_found','unmapped','unverified') or not 0<=offset<=250000 or len(query)>200:raise ValueError('Choose a valid Dropbox file filter.')
+        where='binding=? AND source=?';params=[key,source]
+        if state!='all':where+=" AND json_extract(payload,'$.status')=?";params.append(state)
+        if query:
+            search=" || ' ' || ".join("coalesce(json_extract(payload,'$."+field+"'),'')" for field in ('track_id','title','artist','filename'))
+            where+=' AND instr(dropbox_casefold('+search+'),?)>0';params.append(query)
+        counts={name:0 for name in ('present','not_found','unmapped','unverified')}
         with store().connection() as db:
-            values=[json.loads(r[0]) for r in db.execute('SELECT payload FROM dropbox_records WHERE binding=? AND source=?',(key,source))]
+            # SQLite's lower()/NOCASE handle ASCII only. Keep Unicode search and
+            # ordering identical to the captured display strings without loading
+            # every remote metadata payload into Python for each 50-row page.
+            db.create_function('dropbox_casefold',1,lambda value:str(value or '').casefold(),deterministic=True)
+            for row in db.execute("SELECT json_extract(payload,'$.status'),count(*) FROM dropbox_records WHERE binding=? AND source=? GROUP BY json_extract(payload,'$.status')",(key,source)):
+                if row[0] in counts:counts[row[0]]=row[1]
+            total=db.execute('SELECT count(*) FROM dropbox_records WHERE '+where,params).fetchone()[0]
+            order="dropbox_casefold(json_extract(payload,'$.artist')),dropbox_casefold(json_extract(payload,'$.title')),track_id"
+            values=[json.loads(r[0]) for r in db.execute('SELECT payload FROM dropbox_records WHERE '+where+' ORDER BY '+order+' LIMIT 50 OFFSET ?',(*params,offset))]
             scan=db.execute('SELECT payload FROM dropbox_scans WHERE binding=? AND source=?',(key,source)).fetchone()
-        counts={name:sum(r['status']==name for r in values) for name in ('present','not_found','unmapped','unverified')}
-        values=[r for r in values if (state=='all' or r['status']==state) and (not query or query in ' '.join(str(r.get(k) or '') for k in ('track_id','title','artist','filename')).casefold())]
-        values.sort(key=lambda r:(r['artist'].casefold(),r['title'].casefold(),r['track_id']));total=len(values);result=[]
-        for r in values[offset:offset+50]:
+        result=[]
+        for r in values:
             remote=r.pop('remote',None);r['local_available']=files.local_available(r.get('local_path',''))
             # lstat only: neither inspect nor open an existing cloud placeholder.
             try:

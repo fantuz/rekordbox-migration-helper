@@ -130,6 +130,16 @@ def check_onetagger_results_ui(browser,base,store,root,output):
         expect(page.locator('#onetagger-report-summary')).to_contain_text('Review is outdated')
         expect(page.locator('#onetagger-stage')).to_be_disabled()
         assert page.locator('#onetagger-review input').evaluate_all('nodes=>nodes.every(n=>n.disabled)')
+        # Reload after the next scheduled poll finishes, rather than while
+        # WebKit is aborting its fetch during document teardown. The CI trace
+        # showed a tick()->batches fetch error 10 ms after this reload began.
+        # Waiting for the natural poll also leaves its next timer a full
+        # interval away; do not suppress page errors or fake API responses.
+        background=page.wait_for_event('response',predicate=lambda response:
+            response.url==base+'/api/lab/musicbrainz/batches' and response.request.method=='GET')
+        assert background.ok,background.text()
+        assert background.finished() is None
+        page.wait_for_load_state('networkidle')
         page.reload(wait_until='networkidle');page.locator('.nav[data-view="onetagger"]').click()
         select_collection(page,'#onetagger-snapshot',sid)
         page.wait_for_selector('#onetagger-selections option[value="'+identity+'"]',state='attached')
@@ -154,7 +164,7 @@ def check_onetagger_results_ui(browser,base,store,root,output):
                 'extended_label_composer_review':True,'raw_upload_digest':True,'date_year_readback':True,'provider_fallback_retained':True,
                 'duplicate_json_rejected':True,'stale_report_held':True,'stale_review_rejected':True,
                 'explicit_staged_fields':1,'snapshot_and_audio_preserved':True,'languages':len(LANGUAGES),
-                'mobile_controls':True,'real_http':True,'mocked_api_responses':False}
+                'mobile_controls':True,'background_poll_settled_before_reload':True,'real_http':True,'mocked_api_responses':False}
     except Exception:
         page.screenshot(path=str(output/'onetagger-results-failure.png'),full_page=True)
         raise

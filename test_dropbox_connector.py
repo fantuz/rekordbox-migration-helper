@@ -3,6 +3,7 @@ from copy import deepcopy
 from contextlib import ExitStack
 from hashlib import sha256
 from io import BytesIO
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -150,6 +151,26 @@ class DropboxConnectorTests(unittest.TestCase):
         self.assertEqual(self.files(status='present').json['total'],1)
         self.assertEqual(self.files(status='not_found').json['total'],0)
         self.assertGreaterEqual(self.files(status='unverified').json['total'],61)
+        self.connection.download.assert_not_called()
+
+    def test_sql_pages_preserve_unicode_casefold_and_full_source_counts(self):
+        tracks=deepcopy(self.before['tracks'])
+        tracks[59].update(title='STRASSE 東京',artist='österreich')
+        tracks[60].update(title='Straße 東京',artist='ÖSTERREICH')
+        snapshot=self.store.save_snapshot({'scope_key':'synthetic:unicode-search','tracks':tracks,'playlists':[]},
+                                           'Invented Unicode search')['id']
+        source='snapshot:'+snapshot;self.map_folder();self.check(source)
+        result=self.files(source=source,status='present',q='strasse 東京').json
+        self.assertEqual(result['total'],2)
+        self.assertEqual([row['track_id'] for row in result['rows']],['59','60'])
+        self.assertEqual(result['counts'],{'present':61,'not_found':1,'unmapped':2,'unverified':0})
+        self.assertEqual(self.files(source=source,status='present',q='STRASSE 東京',offset=1).json['rows'][0]['track_id'],'60')
+        with patch('dropbox_connector.json.loads',wraps=json.loads) as decode:
+            response=self.files(source=source)
+        self.assertEqual(response.status_code,200)
+        decoded_records=[call for call in decode.call_args_list if isinstance(call.args[0],str)
+                         and '"track_id":' in call.args[0] and '"remote":' in call.args[0]]
+        self.assertEqual(len(decoded_records),50)
         self.connection.download.assert_not_called()
 
     def test_failed_recheck_keeps_prior_evidence_and_timestamp(self):

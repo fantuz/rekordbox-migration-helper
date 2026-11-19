@@ -98,9 +98,12 @@ class DropboxFileEvidenceTests(unittest.TestCase):
             with self.subTest(value=value),self.assertRaises(ValueError):files.remote_path(value)
 
     def test_failed_active_audio_mapping_never_falls_back_to_recorded_path(self):
+        from audio_paths import validate
         track={'current_path':str(self.music/'Track.mp3')}
-        failed=[{'recorded_root':str(self.music),'local_root':str(self.music),
-                 'device':self.music.stat().st_dev,'inode':self.music.stat().st_ino+1}]
+        # Persist the same normalized separators as the real mapping API on
+        # Windows as well as POSIX, then simulate replacement of that volume.
+        failed=validate([{'recorded_root':str(self.music),'local_root':str(self.music)}],[self.root])
+        failed[0]['inode']+=1
         self.assertIsNone(files.target(track,self.mapping,failed))
 
 
