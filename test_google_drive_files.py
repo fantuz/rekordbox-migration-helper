@@ -57,7 +57,7 @@ class GoogleDriveFileTests(unittest.TestCase):
         self.assertEqual(self.mapping['location_role'],'selected_download_folder')
         result=files.target({'current_path':r'D:\Old music\Album\Track.mp3'},self.mapping)
         self.assertEqual(result['relative_path'],'Album/Track.mp3')
-        self.assertEqual(result['local_path'],str(self.local/'Album'/'Track.mp3'))
+        self.assertEqual(Path(result['local_path']),self.local/'Album'/'Track.mp3')
         self.assertIsNone(files.target({'current_path':'D:/Other/Track.mp3'},self.mapping))
 
     def test_inventory_uses_exact_parent_hierarchy_and_case(self):
