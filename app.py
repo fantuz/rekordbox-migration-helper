@@ -244,6 +244,14 @@ def bad(error):
     return jsonify(error=str(error)),400
 
 
+from dropbox_http import DropboxError
+@app.errorhandler(DropboxError)
+def dropbox_error(error):
+    # Only allowlisted provider codes and a validated request ID are public.
+    # Authorization headers and raw provider responses never reach the UI.
+    return jsonify(error=str(error),**error.public_fields()),400
+
+
 @app.get("/")
 def home():
     return send_from_directory(ROOT/"static","index.html")

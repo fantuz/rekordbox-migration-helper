@@ -113,13 +113,22 @@ def register(owner):
                 if not row['providers']:provider_counts['other']+=row['n']
             cloud_counts={r['cloud_state']:r['n'] for r in db.execute('SELECT cloud_state,count(*) n FROM file_health_records WHERE source=? GROUP BY cloud_state',(source,))}
             unavailable=db.execute("SELECT count(*) FROM file_health_records WHERE source=? AND (status IN ('missing','inaccessible') OR cloud_state IN ('online_only','not_local'))",(source,)).fetchone()[0]
-        return jsonify(source=source,source_total=total_records,checked=observed,
+        cloud_checks={}
+        origin=request.headers.get('Origin')
+        if local_request() and (not origin or origin.rstrip('/')==request.host_url.rstrip('/')):
+            from cloud_file_evidence import cached_evidence
+            cloud_rows,cloud_checks=cached_evidence(owner,source,[row['track_id'] for row in rows])
+        else:cloud_rows={}
+        for row in rows:row['cloud_evidence']=cloud_rows.get(row['track_id'],[])
+        response=jsonify(source=source,source_total=total_records,checked=observed,
                        unchecked=max(0,total_records-observed),scan_state=('partial' if record and record['state']=='running' and observed<total_records else record['state']) if record else 'not_started',
                        scan_time=record['checked_at'] if record else None,
                        counts={name:counts.get(name,0) for name in STATUS},
                        provider=provider,provider_counts=provider_counts,cloud_counts=cloud_counts,unavailable_count=unavailable,
-                       rows=rows,total=matched,offset=offset,sort=sorting,direction=direction,
+                       rows=rows,total=matched,offset=offset,sort=sorting,direction=direction,cloud_checks=cloud_checks,
                        note='Local metadata evidence from the last explicit scan. Provider labels match recorded or mapped paths, not a verified cloud inventory. Cloud absence is not proof of deletion. Re-scan after storage or path changes.')
+        response.headers['Cache-Control']='no-store'
+        return response
 
     @app.post('/api/file-health/scan')
     def scan_file_health():

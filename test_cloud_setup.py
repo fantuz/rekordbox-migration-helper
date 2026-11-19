@@ -151,6 +151,24 @@ class CloudSetupTests(unittest.TestCase):
         self.assertEqual(local.read_text(),'Invented local bytes')
         self.assertEqual(len(audio_paths.mappings_for(self.saved,self.before)),2)
 
+    def test_status_does_not_claim_a_folder_is_attached_to_another_collection(self):
+        self.assertEqual(self.attach(self.preview()).status_code,200)
+        first=self.client.get('/api/cloud-setup/status',query_string={'source':self.source}).json
+        self.assertTrue(first['providers']['dropbox']['attachment_active'])
+        other=self.saved.save_snapshot({'scope_key':'invented:other-collection','tracks':[],
+                                        'playlists':[]},'Another collection')
+        self.clients['dropbox'].rpc.reset_mock()
+        result=self.client.get('/api/cloud-setup/status',query_string={'source':'snapshot:'+other['id']}).json
+        self.assertFalse(result['providers']['dropbox']['attachment_active'])
+        self.assertIsNone(result['providers']['dropbox']['mapping'])
+        self.assertEqual(result['attachments']['dropbox']['source'],self.source)
+        self.clients['dropbox'].rpc.assert_not_called()
+
+        legacy=self.saved.setting('dropbox_mapping');legacy.pop('source')
+        self.saved.set_setting('dropbox_mapping',legacy)
+        result=self.client.get('/api/cloud-setup/status',query_string={'source':self.source}).json
+        self.assertFalse(result['providers']['dropbox']['attachment_active'])
+
     def test_status_is_local_only_and_does_not_call_remote_provider(self):
         response=self.client.get('/api/cloud-setup/status',query_string={'source':self.source})
         self.assertEqual(response.status_code,200,response.json)

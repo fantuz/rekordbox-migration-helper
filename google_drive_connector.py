@@ -1,17 +1,16 @@
 """Explicit Google Drive authorization, metadata checks and one-file downloads."""
-from hashlib import sha256
 import json
 import logging
 from pathlib import Path
 import re
 import secrets
+import sqlite3
 from threading import RLock
 import time
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from flask import jsonify, redirect, request
 
-from audio_paths import signature
 from collection_sources import resolve
 from file_health import local_request, selected_source
 from workbench_store import Store
@@ -29,6 +28,12 @@ def connection(owner):
             owner.google_drive_connection=GoogleDriveConnection(owner)
             owner._google_drive_profile=profile
         return owner.google_drive_connection
+
+
+def evidence_context(owner,source):
+    """Identify cached evidence without remote requests or audio reads."""
+    from cloud_file_evidence import provider_context
+    return provider_context(owner,source,'google_drive_mapping',connection(owner),files)
 
 
 class _CallbackLogFilter(logging.Filter):
@@ -66,33 +71,9 @@ def register(owner):
         if not isinstance(value,dict):raise ValueError('Provide a Google Drive request object.')
         return value
     def mapping():return store().setting('google_drive_mapping',None)
-    def current():
-        value=mapping();return value,files.binding(connected(),value)
-    def source_state(source):
-        if source.startswith('snapshot:'):
-            with store().connection() as db:
-                row=db.execute('SELECT scope_key,digest FROM snapshots WHERE id=?',(source[9:],)).fetchone()
-            if not row:raise ValueError('Choose an existing saved library snapshot.')
-            return row['scope_key'],row['digest']
-        folder=owner.DATA/'analyzers'/source[8:]
-        if folder.is_symlink() or folder.is_junction():raise ValueError('Choose an ordinary saved source capture.')
-        metadata=folder/'comparison.json'
-        if not metadata.is_file():metadata=folder/'metadata.json'
-        stamps=[]
-        for path in (metadata,folder/'report.json'):
-            if not path.is_file() or path.is_symlink():raise ValueError('Choose an existing saved source capture.')
-            info=path.stat();stamps.append([info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns,info.st_ctime_ns])
-        return source,stamps
     def context(source):
-        mapped,key=current()
-        if mapped.get('source') and mapped['source']!=source:
-            raise ValueError('Attach Google Drive to the selected collection through Cloud connections.')
-        scope,stamp=source_state(source)
-        if mapped.get('scope_key') and mapped['scope_key']!=scope:
-            raise ValueError('The attached collection changed. Verify its Google Drive location again.')
-        audio=store().setting('audio_paths:'+str(scope),[])
-        key=sha256(json.dumps([key,stamp,signature(audio)],sort_keys=True).encode()).hexdigest()
-        return mapped,key,audio
+        state=evidence_context(owner,source)
+        return state['mapping'],state['key'],state['audio']
     def origin():
         local();parsed=urlsplit(request.host_url)
         if parsed.scheme!='http' or parsed.username or parsed.password:
@@ -287,7 +268,8 @@ def register(owner):
             raise ValueError('Google Drive file details changed. Confirm this track again.')
         if prepare_target(destination['local_path'],mapped['local_root'])!=intent['target']:
             raise ValueError('The download destination changed. Confirm this track again.')
-        profile=owner.DATA.resolve();generation=client.status()['connection_id'];task_store=store();last_check=[0.0]
+        profile=owner.DATA.resolve();generation=client.status()['connection_id'];last_check=[0.0]
+        task_audio=context(source)[2]
         def validate(force=False):
             if owner.DATA.resolve()!=profile or connected().status().get('connection_id')!=generation:
                 raise ValueError('Download connection or profile changed.')
@@ -309,7 +291,9 @@ def register(owner):
             result=download_file(client,remote,destination['local_path'],mapped['local_root'],
                                  validate=validate,progress=checkpoint,expected_target=intent['target'],
                                  staging_dir=profile/'cloud-downloads',managed_root=mapped['managed_root'],excluded_roots=excluded)
-            with task_store.connection() as db:db.execute('DELETE FROM file_status_cache')
+            from cloud_file_evidence import refresh_download
+            try:result['local_evidence']=refresh_download(profile,source,identity,track,task_audio)
+            except (OSError,ValueError,sqlite3.DatabaseError):result['local_evidence_refreshed']=False
             return result
         job=owner.launch(work,'Downloading one approved Google Drive track')
         return jsonify(job=job,source=source,track_id=identity)

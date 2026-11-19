@@ -1,10 +1,10 @@
 """Explicit Dropbox connection, metadata validation and one-file download routes."""
-from hashlib import sha256
 import json
 import logging
 from pathlib import Path
 import re
 import secrets
+import sqlite3
 from threading import RLock
 import time
 from urllib.parse import parse_qs,unquote,urlsplit
@@ -14,7 +14,6 @@ from collection_sources import resolve
 from cloud_locations import provider_roots
 from file_health import local_request,selected_source
 from workbench_store import Store
-from audio_paths import signature
 import dropbox_files as files
 
 
@@ -34,30 +33,8 @@ def connection(owner):
 
 def evidence_context(owner,source):
     """Identify cached evidence without remote requests or audio reads."""
-    source=selected_source(source)
-    saved=Store(owner.DATA/'workbench-sidecar.sqlite3')
-    mapped=saved.setting('dropbox_mapping',None)
-    key=files.binding(connection(owner),mapped)
-    if mapped.get('source') and mapped['source']!=source:
-        raise ValueError('Choose the collection attached to this Dropbox folder, or verify a new attachment.')
-    if source.startswith('snapshot:'):
-        with saved.connection() as db:
-            row=db.execute('SELECT scope_key,digest FROM snapshots WHERE id=?',(source[9:],)).fetchone()
-        if not row:raise ValueError('Choose an existing saved library snapshot.')
-        scope,stamp=row['scope_key'],row['digest']
-    else:
-        folder=owner.DATA/'analyzers'/source[8:]
-        if folder.is_symlink() or folder.is_junction():raise ValueError('Choose an ordinary saved source capture.')
-        metadata=folder/'comparison.json'
-        if not metadata.is_file():metadata=folder/'metadata.json'
-        stamps=[]
-        for path in (metadata,folder/'report.json'):
-            if not path.is_file() or path.is_symlink():raise ValueError('Choose an existing saved source capture.')
-            info=path.stat();stamps.append([info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns,info.st_ctime_ns])
-        scope,stamp=source,stamps
-    audio=saved.setting('audio_paths:'+str(scope),[])
-    key=sha256(json.dumps([key,stamp,signature(audio)],sort_keys=True).encode()).hexdigest()
-    return {'store':saved,'mapping':mapped,'key':key,'audio':audio}
+    from cloud_file_evidence import provider_context
+    return provider_context(owner,source,'dropbox_mapping',connection(owner),files)
 
 
 class _CallbackLogFilter(logging.Filter):
@@ -284,7 +261,8 @@ def register(owner):
         from dropbox_download import prepare_target
         if prepare_target(destination['local_path'],mapped['local_root'])!=intent['target']:
             raise ValueError('The download destination changed. Confirm this track again.')
-        profile=owner.DATA.resolve();client=connected();generation=client.status()['connection_id'];task_store=store()
+        profile=owner.DATA.resolve();client=connected();generation=client.status()['connection_id']
+        task_audio=context(source)[2]
         staging_roots=[row['root'] for row in provider_roots(include_unavailable=True)]
         last_check=[0.0]
         def validate(force=False):
@@ -302,7 +280,9 @@ def register(owner):
                                  validate=validate,progress=checkpoint,expected_target=intent['target'],
                                  staging_dir=profile/'dropbox-downloads',managed_root=mapped['managed_root'],
                                  excluded_roots=staging_roots)
-            with task_store.connection() as db:db.execute('DELETE FROM file_status_cache')
+            from cloud_file_evidence import refresh_download
+            try:result['local_evidence']=refresh_download(profile,source,identity,track,task_audio)
+            except (OSError,ValueError,sqlite3.DatabaseError):result['local_evidence_refreshed']=False
             return result
         job=owner.launch(work,'Downloading one approved Dropbox track')
         return jsonify(job=job,source=source,track_id=identity)

@@ -76,6 +76,16 @@ download destination outside those roots, including when Dropbox desktop is
 not installed. All-files mode retains the verified Dropbox desktop-root
 requirement.
 
+For a team account, review **Member home folder** and **Team root folder** in
+the namespace choices. These use the signed-in account's reported home and
+root identities. The first starts in the member's personal area; the second
+starts at the team-space root. Choose the base containing the remote music
+folder and verify the resulting relative paths in the preview. Some accounts
+report the same identity for both choices, so they are not necessarily two
+different locations. Choosing a namespace does not change team membership,
+app access settings, callback registration or cloud permissions, and it does
+not attach a folder automatically.
+
 Choose the corresponding remote folder and preview complete relative-path
 matches before attaching. If the captured paths use an old prefix, an explicit
 recorded root can propose a source-scoped Audio folders mapping without

@@ -115,7 +115,9 @@ class GoogleDriveConnection:
         with self._lock:
             if remember and not self.vault.available:
                 raise GoogleDriveError('A supported operating-system credential store is unavailable. Use this session only.',tag='vault_unavailable')
-            changed=bool(self._key and (key!=self._key or remember!=self._remember or client_secret is not None and client_secret!=(self._client_secret or '')))
+            secret_changed=(client_secret is not None and
+                (client_secret!=(self._client_secret or '') or client_secret=='' and self._secret_saved))
+            changed=bool(self._key and (key!=self._key or remember!=self._remember or secret_changed))
             old_secret=self._client_secret if key==self._key else None
             if changed:self.disconnect()
             if remember:self._clear_pending_cleanup()

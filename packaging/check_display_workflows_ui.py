@@ -178,7 +178,7 @@ def check_display_workflows_ui(browser,base,store,root,output,opener_log,origina
         page.wait_for_function('document.querySelector("#file-health-state").textContent.includes("complete")')
         page.locator('[data-file-provider="dropbox"]').click()
         expect(page.locator('#file-health-results tbody tr')).to_have_count(2)
-        expect(page.locator('#file-health-results')).to_contain_text('Cloud availability unknown')
+        expect(page.locator('#file-health-results')).to_contain_text('Not available locally')
         assert not opener_log.exists()
         page.screenshot(path=str(output/'cloud-file-health-filters.png'))
         play=page.locator('#file-health-results [data-play-track="display-0"]')

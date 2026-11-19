@@ -1,39 +1,60 @@
 /* Explicit account authorization, metadata checks and single-file downloads. */
 window.DropboxConnector=(()=>{
   const node=id=>document.getElementById('dropbox-'+id),t=key=>I18n.t(key);
-  let connection=null,source='',offset=0,pageRows=0,totalRows=0,revision=0,filesRevision=0,busy=false,pending=null;
+  let connection=null,source='',offset=0,pageRows=0,totalRows=0,revision=0,filesRevision=0,busy=false,pending=null,requestedSource='',mappingDraft=false;
   const statusNames={present:'Present',not_found:'Not found',unmapped:'Unmapped',unverified:'Unverified'};
   const post=(path,body={})=>api('/api/dropbox'+path,{method:'POST',body:JSON.stringify(body)});
+  function renderNamespaces(state,input,select,context,list,remote){
+    const account=state.account||{},valid=value=>typeof value==='string'&&/^\d{1,40}$/u.test(value);
+    const home=valid(account.home_namespace_id)?account.home_namespace_id:'',root=valid(account.root_namespace_id)?account.root_namespace_id:'';
+    const values=[];
+    if(home||root)values.push([home||root,'Member home folder']);
+    if(root&&home&&root!==home)values.push([root,'Team root folder']);
+    const current=input.value.trim(),effective=current||root||home;
+    select.replaceChildren(new Option(t("Leave blank to use the connected account's namespace."),''),...values.map(([value,label])=>new Option(t(label)+' · '+value,value)));
+    select.value=values.some(([value])=>value===current)?current:'';select.disabled=busy||!state.connected;
+    list.replaceChildren(...values.map(([value,label])=>new Option(t(label),value)));
+    const known=values.find(([value])=>value===effective),identity=account.name||account.display_name||account.email||account.account_id||'';
+    const lines=[];
+    if(identity)lines.push(t('Connected account')+' · '+identity);
+    if(effective)lines.push(t(known?.[1]||'Team namespace (optional)')+' · '+effective);
+    if(effective)lines.push(t('Folder in cloud account')+' · '+(remote.value.trim()||'/'));
+    if(typeof account.home_path==='string'&&account.home_path)lines.push(t('Member home folder')+' · '+account.home_path);
+    context.textContent=lines.join('\n');context.hidden=!lines.length;
+  }
   function controls(){
-    for(const id of ['app-key','remember','save','connect','disconnect','local-root','remote-root','namespace','mapping-save','source','search','status','find','check','refresh'])node(id).disabled=busy;
+    for(const id of ['app-key','remember','save','connect','disconnect','local-root','remote-root','namespace','namespace-choice','mapping-save','source','search','status','find','check','refresh'])node(id).disabled=busy;
     node('connect').disabled=busy||!node('app-key').value.trim();
     node('disconnect').disabled=busy||!(connection?.connected||connection?.persistent||connection?.credential_storage?.persistent||connection?.credential_cleanup_pending);
     node('remember').disabled=busy||connection?.credential_storage?.available===false;
     node('mapping-save').disabled=busy||!connection?.connected;
-    node('check').disabled=busy||!connection?.connected||!connection?.mapping||!node('source').value;
+    node('namespace-choice').disabled=busy||!connection?.connected;
+    node('check').disabled=busy||mappingDraft||!connection?.connected||!connection?.mapping||!node('source').value;
     node('previous').disabled=busy||offset===0;node('next').disabled=busy||offset+pageRows>=totalRows;
-    for(const button of node('results').querySelectorAll('[data-dropbox-download]'))button.disabled=busy||!connection?.connected;
+    for(const button of node('results').querySelectorAll('[data-dropbox-download]'))button.disabled=busy||mappingDraft||!connection?.connected;
   }
   function renderConnection(data){
+    if(connection&&(connection.account?.account_id||'')!==(data.account?.account_id||''))mappingDraft=false;
     connection=data;
     if(document.activeElement!==node('app-key'))node('app-key').value=data.app_key||'';
     node('redirect').value=data.redirect_uri||'';
     node('remember').checked=Boolean(data.remember ?? data.credential_storage?.persistent);
     node('connection-state').textContent=t(data.connected?'Connected to Dropbox':'Dropbox is not connected')+(data.connected&&data.account?.name?' · '+data.account.name:'');
     node('connection-state').dataset.connected=String(Boolean(data.connected));
-    node('authorization-error').textContent=typeof data.authorization_error==='string'?data.authorization_error:'';node('authorization-error').hidden=!node('authorization-error').textContent;
+    node('authorization-error').textContent=[data.authorization_error,data.permission_error].filter(value=>typeof value==='string'&&value).join('\n');node('authorization-error').hidden=!node('authorization-error').textContent;
     node('cleanup-state').textContent=data.credential_cleanup_pending?t('Credential removal is pending. Select Disconnect Dropbox to retry.'):'';node('cleanup-state').hidden=!data.credential_cleanup_pending;
     node('storage-state').textContent=t(data.credential_storage?.available===false?'Session-only connection; no secure credential store is available.':node('remember').checked?'Credentials stay in the operating system credential store.':'Session-only connection');
     const mapping=data.mapping||{};
     for(const [id,field] of [['local-root','local_root'],['remote-root','remote_root'],['namespace','namespace']]){
-      if(document.activeElement!==node(id))node(id).value=mapping[field]??'';
+      if(!mappingDraft&&document.activeElement!==node(id))node(id).value=mapping[field]??'';
     }
     node('roots').replaceChildren(...(data.roots||[]).map(root=>new Option(root.root,root.root)));
+    renderNamespaces(data,node('namespace'),node('namespace-choice'),node('namespace-context'),node('namespaces'),node('remote-root'));
     controls();
   }
   async function loadFiles(){
     const generation=++filesRevision,selected=node('source').value;source=selected;
-    if(!selected||!connection?.connected||!connection?.mapping){offset=pageRows=totalRows=0;node('results').replaceChildren();node('count').textContent='';node('checked').textContent=t('Not checked');controls();return;}
+    if(!selected||mappingDraft||!connection?.connected||!connection?.mapping){offset=pageRows=totalRows=0;node('results').replaceChildren();node('count').textContent='';node('checked').textContent=t('Not checked');controls();return;}
     const data=await api('/api/dropbox/files?'+new URLSearchParams({source:selected,offset:String(offset),q:node('search').value,status:node('status').value}),{feedback:false});
     if(generation!==filesRevision||selected!==node('source').value)return;
     const rows=data.rows||[],table=document.createElement('table'),head=document.createElement('thead'),body=document.createElement('tbody');
@@ -62,10 +83,11 @@ window.DropboxConnector=(()=>{
     const [status,journeys]=await Promise.all([api('/api/dropbox/status',{feedback:false}),api('/api/journeys',{feedback:false})]);
     if(generation!==revision)return;
     renderConnection(status);
-    const old=node('source').value||window.BrowseState?.value('dropbox-source')||window.Journeys?.context?.()?.source;
+    const old=requestedSource||node('source').value||window.BrowseState?.value('dropbox-source')||window.Journeys?.context?.()?.source;
     const choices=(journeys.sources||[]).filter(row=>/^(?:snapshot|capture):[a-f0-9]{32}$/u.test(row.id));
     node('source').replaceChildren(new Option(t('Choose a saved collection snapshot'),''),...choices.map(row=>new Option(row.label+' · '+snapshotMoment(row.created),row.id)));
     node('source').value=choices.some(row=>row.id===old)?old:'';
+    requestedSource='';
     if(source!==node('source').value)offset=0;
     await loadFiles();
   }
@@ -83,11 +105,18 @@ window.DropboxConnector=(()=>{
   }));
   node('disconnect').onclick=wrap(()=>action(async()=>{await post('/disconnect');await load();}));
   node('mapping-save').onclick=wrap(()=>action(async()=>{
-    await post('/mapping',{local_root:node('local-root').value.trim(),remote_root:node('remote-root').value.trim(),namespace:node('namespace').value.trim()});await load();
+    await post('/mapping',{local_root:node('local-root').value.trim(),remote_root:node('remote-root').value.trim(),namespace:node('namespace').value.trim()});mappingDraft=false;await load();
   }));
   node('refresh').onclick=wrap(load);
+  node('namespace-choice').onchange=()=>{
+    node('namespace').value=node('namespace-choice').value;node('remote-root').value='';pending=null;
+    if(node('download-dialog').open)node('download-dialog').close();
+    renderNamespaces(connection||{},node('namespace'),node('namespace-choice'),node('namespace-context'),node('namespaces'),node('remote-root'));
+    mappingDraft=true;void loadFiles();
+  };
+  for(const id of ['namespace','remote-root','local-root'])node(id).addEventListener('input',()=>{mappingDraft=true;pending=null;if(node('download-dialog').open)node('download-dialog').close();renderNamespaces(connection||{},node('namespace'),node('namespace-choice'),node('namespace-context'),node('namespaces'),node('remote-root'));void loadFiles();});
   node('copy-redirect').onclick=wrap(()=>copyCloudRedirect(node('redirect')));
-  node('check').onclick=wrap(()=>action(async()=>{const selected=node('source').value,result=await post('/check',{source:selected});if(result.job)await poll(result.job);if(selected===node('source').value){offset=0;await loadFiles();}notify(t('Cloud check complete'));}));
+  node('check').onclick=wrap(()=>action(async()=>{const selected=node('source').value,result=await post('/check',{source:selected});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:selected,provider:'dropbox'}}));if(selected===node('source').value){offset=0;await loadFiles();}notify(t('Cloud check complete'));}));
   node('source').onchange=wrap(async()=>{offset=0;await loadFiles();});
   node('find').onclick=wrap(async()=>{offset=0;await loadFiles();});
   node('status').onchange=wrap(async()=>{offset=0;await loadFiles();});
@@ -112,11 +141,18 @@ window.DropboxConnector=(()=>{
   node('download-dialog').addEventListener('close',()=>{pending=null;});
   node('download-confirm').onclick=wrap(async()=>{
     const intent=pending;if(!intent)return;pending=null;node('download-dialog').close();
-    await action(async()=>{const result=await post('/download',{...intent,confirm:true});if(result.job)await poll(result.job);await loadFiles();TrackPlayback.recheck();notify(t('One track downloaded'));});
+    await action(async()=>{const result=await post('/download',{...intent,confirm:true});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:intent.source,provider:'dropbox',track_id:intent.track_id}}));await loadFiles();TrackPlayback.recheck();notify(t('One track downloaded'));});
   });
   const visible=()=>!document.getElementById('view-dropbox').hidden;
   window.addEventListener('focus',()=>{if(visible()&&!busy)void load().catch(error=>notify(error.message,true));});
   window.addEventListener('workbench-language',()=>{if(visible()&&!busy)void load().catch(error=>notify(error.message,true));});
-  controls();return {load};
+  function forSource(value){
+    if(typeof value!=='string'||!/^(?:snapshot|capture):[a-f0-9]{32}$/u.test(value))return false;
+    requestedSource=value;revision++;filesRevision++;pending=null;
+    if(node('download-dialog').open)node('download-dialog').close();
+    window.BrowseState?.set('dropbox-source',value);return true;
+  }
+  for(const button of document.querySelectorAll('#view-dropbox [data-view="cloud-connect"]'))button.onclick=()=>{window.CloudConnections?.forSource?.(node('source').value,'dropbox');showView('cloud-connect');};
+  controls();return {load,forSource,renderNamespaces};
 })();
 if(!document.getElementById('view-dropbox').hidden)DropboxConnector.load().catch(error=>notify(error.message,true));

@@ -1,10 +1,35 @@
 # Cloud paths and file health
 
 Open **File health**, choose the source in **Collection snapshot** above the
-page header, and start **Scan local files**. The scan checks recorded paths and
+page header, and start **Scan local files** (**Scan files** in version 1.2.0).
+The scan checks recorded paths and
 saved audio-folder mappings. It inspects filesystem attributes, logical size
 and local readability; it does not open audio, calculate audio hashes, launch a
 player or call a cloud API.
+
+**Local access** and **Cloud presence** answer different questions. Local
+**Yes** means the scan found a nonempty, readable local audio file; **No**
+groups Missing and Inaccessible; **Unknown** means local access has not been
+established. A cloud file can exist remotely while local access remains
+Unknown because there is no resident file or only an online-only placeholder.
+
+To check remote presence, connect and attach the provider in **Cloud
+connections**, then use **Check remote files** on its connector page. Choose
+the same saved collection snapshot or source capture as File health. Signing
+in alone does not run this check, and a check of another saved collection does
+not establish the result for the current one.
+
+The **Cloud presence** column shows the saved Dropbox or Google Drive result
+and its check time separately from local access. Opening or filtering File
+health reads that saved evidence without starting another remote scan or
+download. Changed accounts, sources or mappings cannot reuse an unrelated
+check. **Present** establishes remote metadata presence; it does not prove
+local residency, byte equality or decodable audio.
+
+Progress batches during **Scan local files** describe the local scan's work.
+A provider desktop client may make its own metadata requests while the scan
+inspects its folders. Those requests do not establish a completed Workbench
+cloud inventory; the connector's explicit check supplies that evidence.
 
 The blue **Dropbox** and green **Google Drive** filters apply to the complete
 saved scan before pagination. Labels describe configured provider roots or
@@ -23,8 +48,9 @@ Old scan rows show **Not classified** until an explicit new scan classifies them
 ## Local absence and placeholders
 
 A Dropbox recording can remain available to rekordbox even when selective sync
-leaves no local file. Such paths show **Cloud availability unknown**, not proof
-of deletion. An absent path cannot establish whether the remote file exists.
+leaves no local file. Such paths show **Not available locally**, not proof of
+deletion. An absent path cannot establish whether the remote file exists;
+consult the separate Cloud presence result or run its explicit check.
 An OS-reported online-only placeholder is shown separately and is not marked
 locally accessible just because it has a nonzero logical size. Windows offline
 and recall attributes and macOS dataless attributes are recognized.
@@ -71,7 +97,8 @@ Official APIs can list remote metadata without downloading the recording:
 
 No supported public Windows desktop-client interface for a complete remote
 listing was established in this investigation. File health uses local
-attributes and path evidence. The separate provider connectors use official
+attributes and path evidence, with cached provider checks shown separately.
+The provider connectors use official
 APIs and browser OAuth authorization to check remote metadata. They do not
 access private client interfaces or recover client credentials.
 
@@ -89,3 +116,9 @@ Regression tests use invented paths, synthetic OS attributes and provider
 responses, and a stand-in for OS playback dispatch. Live Dropbox accounts,
 remote-presence queries and actual Windows/macOS hydration have not been
 validated here.
+
+Collection statistics uses this same distinction between unknown evidence
+and known values. Its release-year histogram starts with newest years first
+and also offers **Most tracks first**. Unknown years remain last when shown;
+**Hide unknown** still controls whether they appear and retains the displayed
+and excluded totals.

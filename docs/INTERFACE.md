@@ -14,7 +14,21 @@ Create an untouched rekordbox Backup Library backup before preparing transformed
 
 Source analyzer can instead inspect a database folder or collection XML. Close rekordbox and pause Cloud Library Sync for capture. Windows and Mac suggestions are optional; manual paths also work on Linux for a user-mounted filesystem. Read [migration](MIGRATION.md), [compatibility](COMPATIBILITY.md) and [capture/asset/history procedures](DISCOVERY-ASSETS-HISTORY.md) for details.
 
-File health includes an **Accessible?** column and full-index filters. **Yes** indicates a successful local file inspection; **No** groups Missing and Inaccessible. **Unknown** represents Unverified; records never inspected remain Unchecked and must not be treated as No. The filter and column sort run against the complete indexed scan, before the 50-record page is selected. Dropbox and Google Drive path filters use colored labels. Cloud-only placeholders and absent cloud paths remain distinct from confirmed local absence. Playback independently rechecks the path and requires a fresh one-track confirmation for cloud-managed audio. See [cloud file health and metadata API findings](CLOUD-FILE-HEALTH.md). This is not a decoding or audio-integrity test.
+File health separates **Local access** from **Cloud presence**. **Yes** under
+Local access indicates a successful local file inspection; **No** groups
+Missing and Inaccessible. **Unknown** represents Unverified; records never
+inspected remain Unchecked and must not be treated as No. **Scan local files**
+checks the filesystem, while **Check remote files** on a connected provider
+checks cloud metadata for the same saved collection. Cloud presence shows that
+saved provider result and check time without making a new cloud request when
+the page opens. Remote presence can be known while local access stays Unknown.
+Local filtering and sorting run against the complete scanned index before the
+50-record page is selected. Dropbox and Google Drive path filters use colored
+labels. Cloud-only placeholders and absent cloud paths remain distinct from
+confirmed local absence. Playback independently rechecks the path and requires
+a fresh one-track confirmation for cloud-managed audio. See [cloud file health
+and metadata API findings](CLOUD-FILE-HEALTH.md). These are not decoding or
+audio-integrity tests.
 
 **Cloud connections** guides provider selection, account authorization, source
 selection and location review. Detected candidates retain their provenance;
@@ -55,6 +69,11 @@ saved-genre distributions. Release dates contribute their year only when a
 valid captured year or ISO release date is available. Genre names retain their
 saved spelling. For very many genres, an explicit Other saved genres bucket
 collects small categories, retaining the complete known total.
+
+Release years start with **Newest years first**. Use the compact selector to
+switch to **Most tracks first** without changing the counts or requesting
+another statistics scan. Unknown years remain last when shown; the separate
+Hide unknown choice still controls their inclusion and the excluded totals.
 
 The compact **Hide unknown** checkbox is remembered locally and shared with
 Bubble and Tonality views. Statistics exclude unknown values independently for
@@ -112,7 +131,11 @@ Column headings in Library lab tracks and reports, saved history, DJ insights, b
 
 Numeric values are compared as numbers; missing values stay last in both directions. Sorting a saved session does not change its recorded sequence or the basis of BPM differences. Library lab sorts effective staged metadata; analytical views continue to describe captured metadata. Report downloads and insight CSV use the requested filters and order. Small, fully rendered summary tables retain the generic local sorter.
 
-File-health ordering uses the last explicit saved scan. **Unchecked** is separate from **Unverified**. Live playback probes update the Play button without moving rows or replacing the saved evidence. File health scans run only when explicitly requested; the SQLite index supports collection-wide filtering and sorting.
+File-health ordering uses the last explicit saved local scan. **Unchecked** is
+separate from **Unverified**. Live playback probes update the Play button
+without moving rows or replacing the saved evidence. Provider results retain
+their separate metadata-check time. File health scans run only when explicitly
+requested; the SQLite index supports collection-wide filtering and sorting.
 
 Browser Back and Forward restore the selected page. Source and filter choices, and collection sort choices, are retained per tab through navigation and reload. A reload starts at the first result page; an ordinary return to an already loaded view retains its page where supported. Consent, staged editor drafts, local filesystem paths and upload files are not restored from browsing preferences.
 

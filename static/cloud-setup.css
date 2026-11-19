@@ -3,3 +3,4 @@
 @media(max-width:620px){.cloud-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.cloud-field-grid,.cloud-location-suggestions{grid-template-columns:minmax(0,1fr)}.cloud-provider-cards{flex-wrap:wrap}.cloud-provider-cards label{flex:1}.cloud-review-summary p{grid-template-columns:minmax(0,1fr);gap:3px}.cloud-callback{display:block}.cloud-callback button{margin:0}.cloud-review-counts>span{flex-basis:40%}}
 
 .cloud-attached-card[data-active=false]{border-inline-start-color:var(--muted)}
+.cloud-namespace-context{white-space:pre-line;overflow-wrap:anywhere;line-height:1.5;font-size:12px}#cloud-setup-auth-error,#dropbox-authorization-error{white-space:pre-line}

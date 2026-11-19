@@ -29310,6 +29310,62 @@
       "ar": "الوجود في السحابة",
       "pt-PT": "Presença na nuvem",
       "pt-BR": "Presença na nuvem"
+    },
+    "Not available locally": {
+      "de": "Lokal nicht verfügbar",
+      "fr": "Non disponible localement",
+      "it": "Non disponibile in locale",
+      "es": "No disponible localmente",
+      "el": "Δεν είναι διαθέσιμο τοπικά",
+      "pl": "Niedostępne lokalnie",
+      "cs": "Není k dispozici místně",
+      "ru": "Недоступно локально",
+      "ja": "ローカルでは利用できません",
+      "ar": "غير متاح محليًا",
+      "pt-PT": "Não disponível localmente",
+      "pt-BR": "Não disponível localmente"
+    },
+    "Local access and cloud presence are checked separately for this collection.": {
+      "de": "Lokaler Zugriff und das Vorhandensein in der Cloud werden für diese Sammlung getrennt geprüft.",
+      "fr": "L’accès local et la présence dans le cloud sont vérifiés séparément pour cette collection.",
+      "it": "L’accesso locale e la presenza nel cloud vengono verificati separatamente per questa raccolta.",
+      "es": "El acceso local y la presencia en la nube se comprueban por separado para esta colección.",
+      "el": "Η τοπική πρόσβαση και η παρουσία στο cloud ελέγχονται ξεχωριστά για αυτήν τη συλλογή.",
+      "pl": "Dostęp lokalny i obecność w chmurze są sprawdzane oddzielnie dla tej kolekcji.",
+      "cs": "Místní přístup a přítomnost v cloudu se u této kolekce kontrolují samostatně.",
+      "ru": "Локальный доступ и наличие в облаке проверяются для этой коллекции отдельно.",
+      "ja": "このコレクションでは、ローカルでのアクセスとクラウド上の存在を別々に確認します。",
+      "ar": "يتم التحقق من الوصول المحلي والوجود في السحابة بشكل منفصل لهذه المجموعة.",
+      "pt-PT": "O acesso local e a presença na nuvem são verificados separadamente para esta coleção.",
+      "pt-BR": "O acesso local e a presença na nuvem são verificados separadamente para esta coleção."
+    },
+    "Member home folder": {
+      "de": "Persönlicher Ordner des Mitglieds",
+      "fr": "Dossier personnel du membre",
+      "it": "Cartella personale del membro",
+      "es": "Carpeta personal del miembro",
+      "el": "Προσωπικός φάκελος μέλους",
+      "pl": "Folder osobisty członka",
+      "cs": "Osobní složka člena",
+      "ru": "Личная папка участника",
+      "ja": "メンバーのホームフォルダー",
+      "ar": "المجلد الرئيسي للعضو",
+      "pt-PT": "Pasta pessoal do membro",
+      "pt-BR": "Pasta pessoal do membro"
+    },
+    "Team root folder": {
+      "de": "Stammordner des Teams",
+      "fr": "Dossier racine de l’équipe",
+      "it": "Cartella radice del team",
+      "es": "Carpeta raíz del equipo",
+      "el": "Ριζικός φάκελος ομάδας",
+      "pl": "Folder główny zespołu",
+      "cs": "Kořenová složka týmu",
+      "ru": "Корневая папка команды",
+      "ja": "チームのルートフォルダー",
+      "ar": "المجلد الجذر للفريق",
+      "pt-PT": "Pasta de raiz da equipa",
+      "pt-BR": "Pasta raiz da equipe"
     }
   }
 }

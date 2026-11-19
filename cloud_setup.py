@@ -163,11 +163,21 @@ def register(owner):
         roots=provider_roots(include_unavailable=True)
         from cloud_oauth import authorization_origin
         origin=authorization_origin()
+        source=request.args.get('source');snapshot=None;context=None
+        if source:snapshot,_=_source(owner,source)
         for provider in PROVIDERS:
             client,files=_provider(owner,provider);state=client.status()
             mapping=saved.setting(MAPPING_KEYS[provider],None);active=False;error=None
             if mapping:
-                try:files.validate_mapping(client,mapping);active=True
+                try:
+                    files.validate_mapping(client,mapping)
+                    if source and not mapping.get('source'):
+                        raise ValueError('Preview and confirm this existing location for the selected collection.')
+                    if source and mapping.get('source')!=source:
+                        raise ValueError('This location is attached to another collection. Preview it for the selected collection.')
+                    if snapshot and mapping.get('scope_key') not in (None,snapshot['scope_key']):
+                        raise ValueError('The attached collection identity changed. Preview this location again.')
+                    active=True
                 except ValueError as problem:error=str(problem)
             attachments[provider]=mapping
             settings[provider]=saved.setting('cloud_setup:'+provider,None)
@@ -179,9 +189,7 @@ def register(owner):
                                                        'persistent':bool(state.get('persistent',False))},
                                  'mapping':mapping if active else None,
                                  'attachment_active':active,'attachment_error':error}
-        source=request.args.get('source');context=None
         if source:
-            snapshot,_=_source(owner,source)
             examples=[]
             for track in snapshot['tracks'][:5]:
                 path=next((track.get(k) for k in audio_paths.FIELDS if track.get(k)),'')

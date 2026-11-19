@@ -8,6 +8,7 @@ import re
 import secrets
 from threading import RLock
 import time
+import unicodedata
 from urllib.parse import urlencode,urlsplit
 
 from flask import has_request_context,request
@@ -59,6 +60,17 @@ def _origin(value):
 
 def _secret(value):
     return isinstance(value,str) and 1<=len(value)<=65536 and all(32<=ord(c)<127 for c in value)
+
+
+def _safe_account_text(value,limit):
+    return isinstance(value,str) and len(value)<=limit and all(unicodedata.category(c)[0]!='C' for c in value)
+
+
+def _home_path(value):
+    """An exact account mount path, never a truncated or normalized suggestion."""
+    if not _safe_account_text(value,4096) or not value.startswith('/') or '\\' in value:return None
+    if value!='/' and any(part in ('','.','..') for part in value[1:].split('/')):return None
+    return value
 
 
 def _namespace(value):
@@ -150,10 +162,15 @@ class DropboxConnection:
     def status(self):
         with self._lock:
             active=bool(self._access or self._refresh or self._saved and self.vault.available) and not self._needs_reconnect
+            missing=[scope for scope in SCOPES if scope not in self._scopes] if active else []
             return {'configured':bool(self._key),'app_key':self._key,'remember':self._remember,
                 'connected':active,'state':'saved' if active and self._saved else 'session' if active else 'disconnected',
                 'connection_id':self._generation,'account':dict(self._account) if self._account and active else None,
-                'scopes':list(self._scopes),'vault_available':bool(self.vault.available),
+                'scopes':list(self._scopes),'required_scopes':list(SCOPES),
+                'missing_scopes':missing,
+                'permission_error':('This connection does not report the required Dropbox read permissions: '+', '.join(missing)+
+                    '. Enable them in the Dropbox App Console, save, then disconnect and connect again.') if missing else None,
+                'vault_available':bool(self.vault.available),
                 'secure_storage_available':bool(self.vault.available),'persistent':bool(self._saved),
                 'vault_backend':getattr(self.vault,'backend_name','operating_system' if self.vault.available else 'unavailable'),
                 'credential_cleanup_pending':bool(self._cleanup),'needs_reconnect':self._needs_reconnect}
@@ -192,10 +209,16 @@ class DropboxConnection:
         roots=value.get('root_info') or {}
         if not isinstance(roots,dict) or not isinstance(value.get('name') or {},dict):
             raise DropboxError('Dropbox did not return a valid account identity.',tag='invalid_response')
-        return {'account_id':value['account_id'],'display_name':str((value.get('name') or {}).get('display_name') or '')[:200],
+        account={'account_id':value['account_id'],'display_name':str((value.get('name') or {}).get('display_name') or '')[:200],
                 'email':str(value.get('email') or '')[:320],
                 'root_namespace_id':_namespace(roots.get('root_namespace_id')),
                 'home_namespace_id':_namespace(roots.get('home_namespace_id'))}
+        home_path=_home_path(roots.get('home_path'))
+        if home_path is not None:account['home_path']=home_path
+        team=value.get('team')
+        if isinstance(team,dict) and _safe_account_text(team.get('name'),200) and team['name'].strip():
+            account['team_name']=team['name']
+        return account
     def _token_values(self,value,*,refreshing=False):
         if not isinstance(value,dict) or not _secret(value.get('access_token')):
             raise DropboxError('Dropbox did not return valid authorization.',tag='invalid_response')

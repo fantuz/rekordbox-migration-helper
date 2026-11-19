@@ -1,7 +1,7 @@
 /* Explicit account authorization, metadata checks and single-file downloads. */
 window.GoogleDriveConnector=(()=>{
   const node=id=>document.getElementById('google-drive-'+id),t=key=>I18n.t(key);
-  let connection=null,source='',offset=0,pageRows=0,totalRows=0,revision=0,filesRevision=0,busy=false,pending=null;
+  let connection=null,source='',offset=0,pageRows=0,totalRows=0,revision=0,filesRevision=0,busy=false,pending=null,requestedSource='';
   const statusNames={present:'Present',not_found:'Not found',unmapped:'Unmapped',ambiguous:'Ambiguous paths',unverified:'Unverified'};
   const post=(path,body={})=>api('/api/google-drive'+path,{method:'POST',body:JSON.stringify(body)});
   function controls(){
@@ -63,10 +63,11 @@ window.GoogleDriveConnector=(()=>{
     const [status,journeys]=await Promise.all([api('/api/google-drive/status',{feedback:false}),api('/api/journeys',{feedback:false})]);
     if(generation!==revision)return;
     renderConnection(status);
-    const old=node('source').value||window.BrowseState?.value('google-drive-source')||window.Journeys?.context?.()?.source;
+    const old=requestedSource||node('source').value||window.BrowseState?.value('google-drive-source')||window.Journeys?.context?.()?.source;
     const choices=(journeys.sources||[]).filter(row=>/^(?:snapshot|capture):[a-f0-9]{32}$/u.test(row.id));
     node('source').replaceChildren(new Option(t('Choose a saved collection snapshot'),''),...choices.map(row=>new Option(row.label+' · '+snapshotMoment(row.created),row.id)));
     node('source').value=choices.some(row=>row.id===old)?old:'';
+    requestedSource='';
     if(source!==node('source').value)offset=0;
     await loadFiles();
   }
@@ -90,7 +91,7 @@ window.GoogleDriveConnector=(()=>{
   node('disconnect').onclick=wrap(()=>action(async()=>{await post('/disconnect');await load();}));
   node('refresh').onclick=wrap(load);
   node('copy-redirect').onclick=wrap(()=>copyCloudRedirect(node('redirect')));
-  node('check').onclick=wrap(()=>action(async()=>{const selected=node('source').value,result=await post('/check',{source:selected});if(result.job)await poll(result.job);if(selected===node('source').value){offset=0;await loadFiles();}notify(t('Cloud check complete'));}));
+  node('check').onclick=wrap(()=>action(async()=>{const selected=node('source').value,result=await post('/check',{source:selected});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:selected,provider:'google_drive'}}));if(selected===node('source').value){offset=0;await loadFiles();}notify(t('Cloud check complete'));}));
   node('source').onchange=wrap(async()=>{offset=0;await loadFiles();});
   node('find').onclick=wrap(async()=>{offset=0;await loadFiles();});
   node('status').onchange=wrap(async()=>{offset=0;await loadFiles();});
@@ -115,11 +116,18 @@ window.GoogleDriveConnector=(()=>{
   node('download-dialog').addEventListener('close',()=>{pending=null;});
   node('download-confirm').onclick=wrap(async()=>{
     const intent=pending;if(!intent)return;pending=null;node('download-dialog').close();
-    await action(async()=>{const result=await post('/download',{...intent,confirm:true});if(result.job)await poll(result.job);await loadFiles();TrackPlayback.recheck();notify(t('One track downloaded'));});
+    await action(async()=>{const result=await post('/download',{...intent,confirm:true});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:intent.source,provider:'google_drive',track_id:intent.track_id}}));await loadFiles();TrackPlayback.recheck();notify(t('One track downloaded'));});
   });
   const visible=()=>!document.getElementById('view-google-drive').hidden;
   window.addEventListener('focus',()=>{if(visible()&&!busy)void load().catch(error=>notify(error.message,true));});
   window.addEventListener('workbench-language',()=>{if(visible()&&!busy)void load().catch(error=>notify(error.message,true));});
-  controls();return {load};
+  function forSource(value){
+    if(typeof value!=='string'||!/^(?:snapshot|capture):[a-f0-9]{32}$/u.test(value))return false;
+    requestedSource=value;revision++;filesRevision++;pending=null;
+    if(node('download-dialog').open)node('download-dialog').close();
+    window.BrowseState?.set('google-drive-source',value);return true;
+  }
+  for(const button of document.querySelectorAll('#view-google-drive [data-view="cloud-connect"]'))button.onclick=()=>{window.CloudConnections?.forSource?.(node('source').value,'google_drive');showView('cloud-connect');};
+  controls();return {load,forSource};
 })();
 if(!document.getElementById('view-google-drive').hidden)GoogleDriveConnector.load().catch(error=>notify(error.message,true));

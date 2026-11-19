@@ -52,6 +52,16 @@ Choose the existing local folder for downloaded audio and the corresponding
 remote folder. Dropbox also exposes its account namespace. Google Drive uses
 a remote folder identity because names alone are not unique.
 
+Dropbox can report both a **Member home folder** and a **Team root folder**.
+The member home is the account's personal member area; the team root is the
+root of its team space. Choose the base that contains the intended remote
+music folder, then browse or preview its contents. Paths are relative to that
+base, so the same folder can need a different path under another base. If
+Dropbox reports the same identity for both choices, they refer to the same
+root. Workbench uses the signed-in account's reported identities rather than
+guessing from a local team-folder name. The choices retain the account's
+existing read permissions and still require preview and explicit attachment.
+
 For **selected music files**, the local destination can be outside the
 provider's desktop root, including when that desktop application is not
 installed. It must be an ordinary existing folder within the server's allowed
@@ -94,6 +104,13 @@ Use the provider's connector page for an explicit metadata check over the
 attached collection. Remote presence, local availability and audio integrity
 are separate evidence. Filters and pagination apply to the indexed result for
 the selected source and account.
+
+File health displays the saved result under **Cloud presence**, alongside its
+separate **Local access** result. **Scan local files** does not query the cloud
+provider. To populate cloud presence, use **Check remote files** for that same
+saved snapshot or source capture; signing in or scanning another collection
+does not establish the current collection's result. Viewing the saved evidence
+does not start another scan or download.
 
 Each file download requires its own filename, destination and size
 confirmation. The connector verifies the current remote identity and content

@@ -5,6 +5,8 @@
 - Guide Dropbox and Google Drive authorization through Cloud connections, retaining autodetected locations and requiring a complete account/source/folder preview before explicit attachment. Support selected-file destinations outside provider desktop roots, preserve both providers, and keep ambiguous or changed mappings unverified.
 - Add Google Drive metadata verification and individually confirmed checksum-verified downloads, with browser OAuth/PKCE, optional OS credential storage, folder identities, indexed filtering and failure-preserving evidence. Keep Google selected-file mode separate from provider desktop stream/mirror settings and Rekordbox's default upload preference.
 - Extend real-HTTP browser and filesystem tests for selected-file caches, wrong/ambiguous cloud folders, attachment consent, provider coexistence, and individual download cancellation. Document setup, official Rekordbox account/sync models and live-account validation limits.
+- Separate File health's Local access and Cloud presence results, showing the saved provider check and its time for the same collection without a new cloud request. Keep cloud presence distinct from local residency and preserve uncertainty after account, source or mapping changes.
+- Order the release-year histogram by newest year by default, with a compact Most tracks first choice. Preserve unknown-year placement, Hide unknown behavior and chart totals.
 
 ## 1.2.0 — 2026-11-19
 
