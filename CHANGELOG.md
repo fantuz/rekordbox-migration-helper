@@ -2,12 +2,18 @@
 
 ## Unreleased
 
+## 1.2.1 — 2026-11-19
+
+This release guides Dropbox and Google Drive connections to verified library locations, separates local access from cloud presence, and fixes Dropbox checks that stopped on unsupported paths.
+
 - Guide Dropbox and Google Drive authorization through Cloud connections, retaining autodetected locations and requiring a complete account/source/folder preview before explicit attachment. Support selected-file destinations outside provider desktop roots, preserve both providers, and keep ambiguous or changed mappings unverified.
 - Add Google Drive metadata verification and individually confirmed checksum-verified downloads, with browser OAuth/PKCE, optional OS credential storage, folder identities, indexed filtering and failure-preserving evidence. Keep Google selected-file mode separate from provider desktop stream/mirror settings and Rekordbox's default upload preference.
 - Extend real-HTTP browser and filesystem tests for selected-file caches, wrong/ambiguous cloud folders, attachment consent, provider coexistence, and individual download cancellation. Document setup, official Rekordbox account/sync models and live-account validation limits.
 - Separate File health's Local access and Cloud presence results, showing the saved provider check and its time for the same collection without a new cloud request. Keep cloud presence distinct from local residency and preserve uncertainty after account, source or mapping changes.
 - Clarify Dropbox member-home and team-root namespaces, callback registration and permission errors. Keep metadata checks usable when individual paths are unsupported, preserve partial-listing uncertainty, and require verification after folder inputs change.
 - Order the release-year histogram by newest year by default, with a compact Most tracks first choice. Preserve unknown-year placement, Hide unknown behavior and chart totals.
+
+Release scope: [PR #79](https://github.com/fantuz/rekordbox-migration-helper/pull/79). Both providers require your own registered OAuth client and browser authorization on the computer running Workbench. Metadata checks do not download recordings or change provider synchronization settings; each download requires a separate confirmation. Downloads retain the 8 GiB limit, existing-parent-folder requirement and same-filesystem staging outside cloud folders. Provider and filesystem tests use synthetic responses and fixtures; live accounts, team namespaces and desktop synchronization remain unverified. Google Drive Shared Drive layouts and ambiguous paths remain unsupported or unverified. Reload open browser tabs after upgrading. See the [guided connection setup](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.2.1/docs/CLOUD-CONNECTIONS.md), [Dropbox guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.2.1/docs/DROPBOX-CONNECTOR.md), [Google Drive guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.2.1/docs/GOOGLE-DRIVE-CONNECTOR.md) and [File health evidence guide](https://github.com/fantuz/rekordbox-migration-helper/blob/v1.2.1/docs/CLOUD-FILE-HEALTH.md).
 
 ## 1.2.0 — 2026-11-19
 
