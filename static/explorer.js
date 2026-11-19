@@ -12,7 +12,7 @@
   const totalDuration=rows=>rows.reduce((s,r)=>s+(r.duration || 0),0);
   function duration(s){if(empty(s))return I18n.t("Unknown");const n=Math.round(s);return Math.floor(n/60)+":"+String(n%60).padStart(2,"0");}
   function hours(s){return number.format(Math.round(s/3600*10)/10)+" h";}
-  function rating(v){return empty(v)?I18n.t("Unknown"):v===0?I18n.t("Unrated"):v+" / 5";}
+  function rating(v){return empty(v)?I18n.t("Unknown"):Number.isInteger(v)&&v>=0&&v<=5?"★".repeat(v)+"☆".repeat(5-v)+(v===0?" · "+I18n.t("Unrated"):""):I18n.t("Unknown");}
   const tracks=data.rows.map(row=>Object.fromEntries(data.columns.map((name,i)=>[name,row[i]])));
   const aggregateOnly=data.preset==='public', included=new Set(data.columns);
   const pageFields={tracks:null,genres:'genre',years:'year',added:'date_added',artists:'artist',albums:'album',bpm:'bpm',ratings:'rating',duration:'duration',formats:'format',playlists:'playlists',tonality:'tonality',colours:'color_status'};
@@ -64,7 +64,7 @@
   function groups(rows,field){
     const result=new Map();
     for(const r of rows){const values=field==="playlist"?(r.playlists.length?r.playlists:[null]):[r[field]];
-      for(const value of values){const key=canonical(value),derived=['bpm_group','duration_group'].includes(field)||field==='rating_group';if(!result.has(key))result.set(key,{key,label:derived&&!empty(value)?(field==='rating_group' && /^(\d+) stars$/.test(value)?number.format(Number(String(value).split(' ')[0]))+' / 5':I18n.t(String(value))):label(value),count:0,duration:0,rated:0,plays:0,bpm_total:0,bpm_count:0});
+      for(const value of values){const key=canonical(value),derived=['bpm_group','duration_group'].includes(field)||field==='rating_group';if(!result.has(key))result.set(key,{key,label:derived&&!empty(value)?(field==='rating_group' && /^(\d+) stars$/.test(value)?rating(Number(String(value).split(' ')[0])):I18n.t(String(value))):label(value),count:0,duration:0,rated:0,plays:0,bpm_total:0,bpm_count:0});
         const g=result.get(key);g.count++;g.duration+=r.duration || 0;g.rated+=r.rating>0;g.plays+=r.play_count || 0;if(!empty(r.bpm)){g.bpm_total+=r.bpm;g.bpm_count++;}
       }
     }

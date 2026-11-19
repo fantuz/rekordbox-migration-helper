@@ -122,12 +122,14 @@ def check_display_workflows_ui(browser,base,store,root,output,opener_log,origina
         page.set_viewport_size({'width':1440,'height':1050})
         page.locator('#bubble-expand').click();page.wait_for_selector('#bubble-expanded[open]')
         assert page.locator('#bubble-expanded #collection-navigation').count()==1
+        assert page.locator('#bubble-expanded .header-actions').count()==0
+        assert page.locator('#bubble-expanded #header-information').count()==0
         open_collection_picker(page,'#bubble-snapshot')
         expect(page.locator('#bubble-snapshot')).to_have_value(sid)
         page.locator('#bubble-snapshot').press('Escape')
         assert page.locator('#bubble-expanded').evaluate('node=>node.open')
         page.keyboard.press('Escape');page.wait_for_selector('#bubble-expanded',state='hidden')
-        expect(page.locator('main>#collection-navigation')).to_have_count(1)
+        expect(page.locator('main>.workspace-toolbar>#collection-navigation')).to_have_count(1)
         panel.locator('summary').click()
         navigate('statistics');page.wait_for_selector('#genre-histogram .hist-row')
         expect(page.locator('#view-statistics [data-hide-unknown]')).to_be_checked()

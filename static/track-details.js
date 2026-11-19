@@ -71,6 +71,7 @@ async function trackStoreEdit(s,field,value,reset=false){
     else s.record.overrides[field]={value:result.value};
     s.record.edit_revision=result.edit_revision;
     renderTrackWorkingEdits(s);
+    window.dispatchEvent(new CustomEvent('workbench-metadata-saved',{detail:{scope:s.record.scope,trackId:s.trackId,record:s.record}}));
     // Refresh export counters without reopening the editor or replacing its drafts.
     const status=await api('/api/status');
     if(session && status.session?.id===session.id){session=status.session;renderSession();}
@@ -112,6 +113,7 @@ async function openTrackDetails(snapshot,trackId){
 }
 function bindTrackDetails(selector,snapshot){
   TrackPlayback.bind(selector,snapshot);
+  InlineRating.bind(selector,snapshot);
   $$(selector+' [data-insight-open]').forEach(button=>button.onclick=wrap(()=>openTrackDetails(snapshot,button.dataset.insightOpen)));
 }
 async function openWorkspaceTrack(trackId){

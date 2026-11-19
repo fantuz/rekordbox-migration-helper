@@ -90,7 +90,9 @@ Library bubbles explores metadata categories visually, including unknown genres 
   [workflow and preparation requirements](docs/WORKFLOWS.md).
 - Media inventory names its loaded XML+ZIP workspace, separates optional path
   mapping, restores saved scan folders and lets you remove folders from the
-  next scan. Changed settings are distinguished from saved scan evidence.
+  next scan. Step indicators, clickable status counters, compact reference
+  details and staging explanations distinguish the next settings from saved
+  scan evidence.
 
 A factual overview of the current source tree. Release downloads may lag behind `main`; the draft items below retain their stated limits.
 
@@ -128,14 +130,15 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Browse library bubbles, Colour cloud, tonality, tempo and duration distributions.
 - Switch alphabetical, Camelot and Open Key display across Bubble, Tonality, key filters and File view; recognized equivalents share a group while original tags stay unchanged.
 - Compare release-year and saved-genre histograms alongside addition dates and track length. Hide unknown values independently per chart, with excluded counts and known zero values retained.
+- Inspect Dropbox and Google Drive path counters in Collection statistics, and reuse cloud-location filters in statistics, DJ insights, bubbles, tonality and captured collection review. These classify recorded or mapped references; cloud presence and local access remain separate checks.
 - Use one compact Bubble filter panel for all criteria, with active summaries and automatic collapse after successful Apply.
-- Expand the orange Collection context and pink Collection snapshot controls above the header for their existing selectors and actions; both start collapsed.
+- Use one compact toolbar for the orange Collection context and pink Collection snapshot controls, temporary-copy notice, library input choices, language, saved sessions and theme. Collection controls start collapsed; the toolbar wraps on smaller screens.
 - Bubble labels prioritize category names at a consistent 12-pixel size, wrapping up to four lines. Counts remain in the category table and accessible labels; circle areas still represent the chosen metric.
 - Bubble counters precede the filters and breadcrumb navigation. Click or use
   Enter/Space on the scrolling category legend to drill down; desktop legends
   show 15 rows with a visible scrollbar, including zero-area categories.
 - Focus a loaded Bubble breadcrumb after drill-down; repeated or superseded navigation preserves the current keyboard focus.
-- A prominent “Use local library” entry opens source selection directly, without requiring XML/ZIP exports.
+- Choose **Use local library** to open source selection without XML/ZIP exports, or **Use XML/ZIP backup** to open the paired-input import dialog.
 - Compact Rekordbox and Serato cards on Files & workflow open local source analysis and the existing experimental Serato export workflow. Serato library import is not implemented.
 - Audit preparation coverage, saved analysis references and STEMS-related evidence.
 - Inspect ANLZ framing, grids and repeated cue groups, player-settings CRCs, classic catalog headers and Recordbox STEMS cache structure in **Library lab → Formats & STEMS**, with bounded reads and optional SHA-256 fingerprints. Native STEMS readiness stays Unknown.
@@ -145,7 +148,8 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Review captured native artist roles, raw analysis flags, cue anomalies and smart-playlist definitions in **Native source insights**. Unsupported rules and unresolved IDs remain visible; no playlist rule is executed.
 - Combine finding section, severity, validation, asset family/provider, cache state, source eligibility/provider and text filters across saved evidence reports and complete filtered JSON downloads. See [format and STEMS inspection](docs/FORMATS-AND-STEMS.md).
 - Inspect comments, personal stars, colour assignments and other captured metadata in a single-track view.
-- Stage metadata edits in a private sidecar; quick comments and colours remain separate from the original files.
+- Edit personal stars directly in live track rows, including duplicate comparisons, insight tables, playlist contents and the Lab editor. Click a star, clear to Unrated or reset a staged change; unknown captured ratings stay distinct. Aggregate charts continue to describe captured evidence.
+- Stage metadata edits in a private sidecar; quick comments, stars and colours remain separate from the original files.
 - Play available recorded audio files in the computer's default media player from live track views.
 - Save bounded evidence reports for later inspection.
 - Enrich the current loaded XML/ZIP library or a connected Rekordbox source, preparing local metadata within the workflow. New MusicBrainz batches default to playable audio, with an explicit override for unavailable files. Category lists show loading and retry feedback; queued and recent batches remain visible with a sticky progress notice.
@@ -180,7 +184,7 @@ The objective is long-term library maintainability: distinguish redundant record
 - Open MusicBrainz from the dedicated **Enrich** sidebar section, with source selection, saved batches, progress and results on one page.
 - Run opted-in lookups in the background with pacing, cached results, cancellation, resume and an in-app completion notice.
 - See shared loading feedback after 200 ms, a “Waiting…” message after one second without a response or progress change, and elapsed time during longer operations. These notices do not cancel work; existing cancellation controls remain available.
-- Read compact, contextual guidance between the page title and language controls rather than repeated full-width notices; expand Details to view full history, statistics and lab explanations and documentation links.
+- Read compact, contextual guidance in the global toolbar; expand Details to view full history, statistics and lab explanations and documentation links.
 - Review recording matches, separate community ratings and vote counts, genres, tags and release-year suggestions.
 - Retain original titles/artists, every search cleanup and attempted query, and candidate disagreements including version differences in both directions. Search cleanup never replaces captured tags automatically.
 - Open **Enrich → OneTagger bridge** as an independent page, with its own snapshot selector, audio-folder mappings and saved selections. The workflow map links directly to it.
@@ -296,7 +300,7 @@ The major desktop conversion was v5 → v6. AlphaTheta documents that v6 → v7 
 - Connected recording groups show every member with one keeper, donor include/exclude controls and a read-only combined plan. Compatible copies stage together; cue/rating conflicts and indirect-only matches stay held. Batch undo restores earlier choices.
 - Evidence filters include recorded paths, saved preview waveforms, cue/grid agreement, ratings, usage, XML membership and optional local file hashes.
 - Filters cover track length, cue category, album, artist, genre, label, format, BPM, bitrate, playlist and media availability. Saved views and resumable workspaces retain work locally.
-- Collection context and tool snapshots use compact collapsed controls above the header. Bubble filters share one responsive panel that closes after a successful Apply.
+- Collection context, tool snapshots, library input choices and global controls share a compact toolbar above the page title. Bubble filters share one responsive panel that closes after a successful Apply.
 - Key notation can switch between alphabetical, Camelot and Open Key display, grouping recognized equivalents while retaining original tags.
 - Collection statistics adds release-year and saved-genre histograms; a shared Hide unknown choice excludes missing values independently per chart.
 - File health offers colored Dropbox/Google Drive path filters and local placeholder evidence. Cloud-managed playback asks before opening each single track; scans do not open audio or request downloads. See [cloud metadata API findings and limits](docs/CLOUD-FILE-HEALTH.md).

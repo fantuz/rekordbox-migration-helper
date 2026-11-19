@@ -46,7 +46,7 @@ def connection(owner):
     return saved.connection()
 
 
-def cached_collection(owner):
+def cached_collection(owner,vary=None):
     def decorate(fn):
         @wraps(fn)
         def wrapped(*args,**kwargs):
@@ -54,13 +54,14 @@ def cached_collection(owner):
             if stamp is None:return fn(*args,**kwargs)
             saved=Store(owner.DATA/'workbench-sidecar.sqlite3')
             decisions=saved.setting('duplicate_reviews:'+source,{}) if '/duplicates' in request.path else None
-            key=sha256(encoded([SCHEMA,request.path,sorted(request.args.items(multi=True)),stamp,decisions]).encode()).hexdigest()
+            context=vary() if vary else None
+            key=sha256(encoded([SCHEMA,request.path,sorted(request.args.items(multi=True)),stamp,decisions,context]).encode()).hexdigest()
             now=time.time()
             with connection(owner) as db:row=db.execute('SELECT payload FROM result_cache WHERE key=? AND created>?',(key,now-7*86400)).fetchone()
             if row:
                 response=owner.app.response_class(row[0],mimetype='application/json');response.headers['X-Workbench-Cache']='hit';return response
             response=make_response(fn(*args,**kwargs))
-            if response.status_code==200 and response.mimetype=='application/json' and signature(owner,source)==stamp and (decisions is None or saved.setting('duplicate_reviews:'+source,{})==decisions):
+            if response.status_code==200 and response.mimetype=='application/json' and signature(owner,source)==stamp and (vary is None or vary()==context) and (decisions is None or saved.setting('duplicate_reviews:'+source,{})==decisions):
                 raw=response.get_data(as_text=True)
                 if len(raw.encode())<=MAX_BYTES:
                     with connection(owner) as db:

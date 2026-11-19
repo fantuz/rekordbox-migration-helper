@@ -1053,7 +1053,10 @@ def statistics():
         raise ValueError("Unknown statistics scope")
     tracks=[t for t in session["catalog"].tracks.values()
             if duration_in_range(t["duration_seconds"],minimum,maximum) and (cohort=="all" or t["october_xml"])]
+    from cloud_analysis import context,select
+    tracks,cloud=select(tracks,request.args.get('provider','all'),context(sys.modules[__name__],'workspace'))
     counters={"total":len(tracks),"analysed":0,"rated":0,"full_manual":0,"mixed":0,"only_auto":0,"no_cues_no_plays":0,"no_cues":0}
+    counters.update(dropbox_paths=cloud['selected_counts']['dropbox'],google_drive_paths=cloud['selected_counts']['google_drive'])
     bins=[(30,"< 30 sec"),(60,"30–60 sec"),(180,"1–3 min"),(300,"3–5 min"),(600,"5–10 min"),
           (1800,"10–30 min"),(3600,"30–60 min"),(float("inf"),"> 60 min")]
     hist=[0]*len(bins)
@@ -1085,7 +1088,7 @@ def statistics():
     from chart_views import collection_charts,hide_unknown
     hide=hide_unknown(request.args.get('hide_unknown',False));additions=added_years(tracks)
     histogram=[{"label":label,"count":count} for (_,label),count in zip(bins,hist)]
-    return jsonify(counters=counters,unknown_duration=sum(t['duration_seconds'] is None for t in tracks),histogram=histogram,
+    return jsonify(counters=counters,cloud=cloud,unknown_duration=sum(t['duration_seconds'] is None for t in tracks),histogram=histogram,
                    addition_dates=additions,charts=collection_charts(tracks,histogram,additions,hide),hide_unknown=hide,
                    scope=cohort,min_minutes=minimum/60,max_minutes=maximum/60 if maximum!=float("inf") else None,
                    note="Manual categories mean cues without CUE(Auto) or 1.1Bars labels. Zero play count is the saved count.")
@@ -1162,6 +1165,7 @@ def inventory_items():
         elif status!="all" and match["status"]!=status:continue
         if query and query not in (track["title"]+" "+track["artist"]+" "+i).casefold():continue
         rows.append({"track_id":i,"title":track["title"],"artist":track["artist"],
+                     'recorded_path':track.get('current_path') or track.get('original_path') or track.get('xml_location') or '',
                      'staged_uri':session['relocations'].get(i),**match})
     from result_order import ordered
     rows=ordered(rows,request.args.get('sort',''),request.args.get('direction','asc'),('title','artist','status','candidate_count'))
@@ -1351,6 +1355,8 @@ def stop_desktop():
 
 from lab_routes import register as register_lab
 register_lab(sys.modules[__name__])
+from inline_ratings import register as register_inline_ratings
+register_inline_ratings(sys.modules[__name__])
 from insights_routes import register as register_insights
 register_insights(sys.modules[__name__])
 from track_playback import register as register_playback

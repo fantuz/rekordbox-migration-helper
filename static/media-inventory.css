@@ -1,0 +1,36 @@
+/* Inventory always describes the imported workspace and its last explicit
+ * folder search. Editing folders prepares the next search, retaining evidence. */
+#view-inventory .inventory-scope{padding:15px 18px}
+#view-inventory .inventory-scope h3{margin-top:0}
+#inventory-library{display:block;font-size:15px;overflow-wrap:anywhere}
+#inventory-context-note:empty{display:none}
+#inventory-context-note{padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2)}
+#view-inventory .inventory-steps{gap:6px;margin:10px 0 14px}
+#view-inventory .inventory-steps li{border:1px solid transparent;padding:7px 11px;color:var(--muted)}
+#view-inventory .inventory-steps [data-state=current]{border-color:var(--accent);color:var(--text)}
+#view-inventory .inventory-steps [data-state=complete]{color:var(--green)}
+#inventory-settings[data-changed=true]{border-color:var(--amber,var(--accent))}
+#view-inventory .media-root{gap:8px;margin-bottom:9px;padding:10px 12px}
+#view-inventory .media-root .media-remove{margin-top:20px}
+#view-inventory .media-root>details{font-size:11px;color:var(--muted)}
+#inventory-scan-state{font-size:12px;line-height:1.6}
+#inventory-counts{grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin:14px 0}
+#inventory-counts article{padding:0;overflow:hidden}
+.inventory-count{display:block;width:100%;height:100%;text-align:start;padding:12px 14px;color:var(--text);background:transparent;border:0;border-inline-start:3px solid transparent;cursor:pointer}
+.inventory-count>span{font-size:11px;color:var(--muted)}
+.inventory-count>strong{font-size:25px;margin:4px 0 0}
+.inventory-count[aria-pressed=true]{border-inline-start-color:var(--accent);background:var(--panel2)}
+.inventory-count:hover{background:var(--panel2)}
+.inventory-count:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+#view-inventory .inventory-row{grid-template-columns:minmax(150px,1fr) minmax(100px,.55fr) minmax(180px,1.4fr) minmax(150px,.8fr);align-items:start;gap:12px;padding:15px 0;font-size:12px}
+#view-inventory .inventory-row>div{min-width:0}
+#view-inventory .inventory-row small{font-size:11px;line-height:1.5;margin-top:4px}
+.inventory-status{display:inline-block;justify-self:start;border:1px solid var(--line);border-radius:999px;padding:4px 9px;font-size:11px;line-height:1.4;background:var(--panel2)}
+[data-inventory-state=found] .inventory-status,[data-inventory-state=available] .inventory-status{border-color:var(--green)}
+[data-inventory-state=cloud_only] .inventory-status,[data-inventory-state=unverified] .inventory-status,[data-inventory-state=ambiguous] .inventory-status,[data-inventory-state=review] .inventory-status{border-color:var(--amber,var(--accent))}
+.inventory-recorded{margin-top:8px;color:var(--muted);font-size:11px}
+.inventory-recorded summary{cursor:pointer}
+.inventory-recorded code{display:block;font-size:10px;margin-top:5px}
+.inventory-reference-action>.button{margin-bottom:4px}
+@media(max-width:1150px){#view-inventory .inventory-row{grid-template-columns:minmax(150px,1fr) minmax(120px,.7fr)}#view-inventory .inventory-row>.inventory-reference-action{grid-column:2}#view-inventory .inventory-row>.inventory-track{grid-column:1}}
+@media(max-width:500px){#view-inventory .inventory-row{grid-template-columns:minmax(0,1fr);gap:9px}#view-inventory .inventory-row>.inventory-reference-action{grid-column:1}#inventory-counts{grid-template-columns:repeat(2,minmax(0,1fr))}.inventory-count{padding:10px}.inventory-count>strong{font-size:23px}}

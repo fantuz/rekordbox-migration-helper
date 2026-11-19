@@ -4,6 +4,7 @@ from urllib.parse import urlsplit
 
 
 def check_review_workspace_ui(browser,base,source,output):
+    from playwright.sync_api import expect
     context=browser.new_context(locale='en-US',viewport={'width':1715,'height':1000})
     context.add_init_script("localStorage.setItem('library-workbench.language.v1','en')")
     reviews={};writes=[];errors=[];held=[];hold_save=False
@@ -45,7 +46,10 @@ def check_review_workspace_ui(browser,base,source,output):
         assert page.locator('.native-review-note').get_attribute('open') is None
         page.locator('[data-native-group="g0"]').click();page.wait_for_selector('.native-compare-record')
         assert page.locator('.native-compare-record').count()==50
-        assert page.locator('.native-compare-record').first.locator('dd').all_text_contents()==['240','Unknown','4','1','2','1']
+        fields=page.locator('.native-compare-record').first.locator('dd')
+        assert [fields.nth(i).inner_text() for i in (0,1,3,4,5)]==['240','Unknown','1','2','1']
+        expect(fields.nth(2).locator('[data-inline-stars="4"]')).to_have_attribute('aria-pressed','true')
+        assert fields.nth(2).locator('.inline-rating-star').all_text_contents()==['★','★','★','★','☆']
         assert '/Synthetic/Music/' in page.locator('.native-record-path code').first.inner_text()
         assert page.locator('.native-save').bounding_box()['y']<page.locator('.native-compare-record').first.bounding_box()['y']
         page.screenshot(path=str(output/'native-duplicate-review-dense.png'))

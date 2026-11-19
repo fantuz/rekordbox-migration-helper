@@ -131,9 +131,11 @@ def check_preparation_inventory_ui(browser, base, store, root, output):
 
         workspace = import_pair()
         page.locator('.nav[data-view="inventory"]').click()
+        expect(page.locator('#collection-metrics')).to_be_hidden()
         page.wait_for_function('document.querySelectorAll("#media-roots .media-root").length===1')
         name = page.evaluate('session.name')
         expect(page.locator('#inventory-library')).to_have_text(name)
+        expect(page.locator('.inventory-steps [aria-current="step"]')).to_have_text('Choose folders')
         assert page.locator('#scan-media').is_disabled()
         page.locator('.media-folder').fill(str(music))
         page.locator('#add-media-root').click()
@@ -141,22 +143,53 @@ def check_preparation_inventory_ui(browser, base, store, root, output):
         page.locator('.media-remove').nth(1).click()
         assert page.locator('.media-root').count() == 1
         assert page.locator('.media-folder').input_value() == str(music)
+        # A candidate without an export URI remains inspectable, with a useful
+        # explanation instead of a disabled button that silently does nothing.
+        pending_root = str(root / 'next search folder')
+        page.evaluate('''next=>{
+            document.querySelector('#scan-media').click();
+            const input=document.querySelector('.media-folder');
+            input.value=next;input.dispatchEvent(new Event('input',{bubbles:true}));
+        }''', pending_root)
+        page.wait_for_selector('[data-inventory-ref="a"]')
+        expect(page.locator('.media-folder')).to_have_value(pending_root)
+        expect(page.locator('#inventory-settings-note')).to_contain_text('last scan')
+        expect(page.locator('.inventory-steps [aria-current="step"]')).to_have_text('Choose folders')
+        page.locator('.media-folder').fill(str(music))
+        expect(page.locator('#inventory-settings-note')).to_be_empty()
+        expect(page.locator('[data-inventory-ref="a"]')).to_be_disabled()
+        expect(page.locator('.inventory-row').filter(has=page.locator('[data-inventory-ref="a"]'))).to_contain_text('Set an exported reference prefix')
+        expect(page.locator('#inventory-scan-state')).to_contain_text('audio files: 1 · folders: 1')
+        expect(page.locator('.inventory-steps [aria-current="step"]')).to_have_text('Review results')
+        page.locator('.inventory-row').filter(has=page.locator('[data-inventory-ref="a"]')).locator('.inventory-recorded summary').click()
+        expect(page.locator('.inventory-recorded[open] code')).to_contain_text('a.wav')
+        before_filter = len(searches)
+        page.locator('[data-inventory-status="not_found"]').click()
+        expect(page.locator('#inventory-status')).to_have_value('not_found')
+        expect(page.locator('[data-inventory-ref="a"]')).to_have_count(0)
+        expect(page.locator('#inventory-list')).to_contain_text('Check other drives or cloud storage')
+        page.locator('[data-inventory-status="all"]').click()
+        expect(page.locator('[data-inventory-ref="a"]')).to_be_visible()
+        assert len(searches) == before_filter
         page.locator('.media-root summary').click()
         page.locator('.media-prefix').fill('D:/Music')
         page.locator('.media-export').fill('file:///E:/Relocated')
         page.locator('#scan-media').click()
-        page.wait_for_selector('[data-inventory-ref="a"]')
-        assert len(searches) == 1 and searches[0]['workspace'] == workspace
-        assert [r['root'] for r in searches[0]['roots']] == [str(music)]
+        expect(page.locator('[data-inventory-ref="a"]')).to_be_enabled()
+        assert len(searches) == 2 and all(search['workspace'] == workspace for search in searches)
+        assert [r['root'] for r in searches[1]['roots']] == [str(music)]
         expect(page.locator('[data-inventory-ref="a"]')).to_be_enabled()
         page.locator('[data-inventory-ref="a"]').click()
         expect(page.locator('[data-inventory-ref="a"]')).to_have_text('Undo')
         response = context.request.get(base + page.locator('#inventory-report').get_attribute('href'))
         assert response.ok
+        expect(page.locator('#toast')).to_be_hidden(timeout=12000)
+        page.evaluate('window.scrollTo(0,0)')
         page.screenshot(path=str(output / 'media-inventory.png'), full_page=True)
         # Removing a path edits only the next scan. Prior evidence stays labelled.
         page.locator('.media-remove').click()
         expect(page.locator('#inventory-settings-note')).to_contain_text('last scan')
+        expect(page.locator('.inventory-steps [aria-current="step"]')).to_have_text('Choose folders')
         assert page.locator('#scan-media').is_disabled()
         assert page.locator('[data-inventory-ref="a"]').is_visible()
         page.locator('#add-media-root').click();page.locator('.media-folder').fill(str(music))
@@ -169,6 +202,7 @@ def check_preparation_inventory_ui(browser, base, store, root, output):
         expect(page.locator('#inventory-context-note')).not_to_be_empty()
         page.set_viewport_size({'width':390, 'height':900})
         assert not page.evaluate('document.documentElement.scrollWidth>innerWidth')
+        page.evaluate('window.scrollTo(0,0)')
         page.screenshot(path=str(output / 'media-inventory-narrow.png'), full_page=True)
         page.set_viewport_size({'width':1550, 'height':1080})
         second = import_pair()
@@ -183,6 +217,9 @@ def check_preparation_inventory_ui(browser, base, store, root, output):
                 'native_preparation_and_reuse':True, 'explicit_file_scan':True,
                 'actual_xml_zip_import':True, 'root_removal_and_reload':True,
                 'inventory_scope_and_staging':True, 'workspace_isolation':True,
+                'actionable_staging_reasons':True, 'saved_result_counter_filters_do_not_scan':True,
+                'recorded_reference_details':True, 'reactive_inventory_steps':True,
+                'pending_search_preserves_next_scan_draft':True,
                 'source_preserved':True, 'languages':len(LANGUAGES), 'narrow_layout':True}
     except Exception:
         page.screenshot(path=str(output / 'preparation-inventory-failure.png'), full_page=True)

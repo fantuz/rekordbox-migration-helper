@@ -55,14 +55,25 @@ review without loading the MusicBrainz page.
 
 ## Compact collection navigation and charts
 
-**Collection context** and **Collection snapshot** sit in a slim row above the
-page header, collapsed by default. Orange and pink outlines identify the two
+**Collection context** and **Collection snapshot** share the top toolbar with
+the temporary-copy notice, library input buttons, language, saved sessions and
+theme. The page title sits below it. The toolbar wraps on smaller screens while
+keeping its controls accessible. Both collection groups start collapsed.
+Orange and pink outlines identify the two
 controls. Their short labels show the current selections. Expand a control to
 change its source, inspect capture times or use the existing snapshot actions.
 Only one group expands at once; click outside or press Escape to close it.
 Snapshot controls follow the active tool, while Collection context remains the
 shared source for collection views. Choosing a tool snapshot retains that
 tool's existing scope rules; it does not silently change the shared context.
+
+**Use local library** opens Source analyzer. **Use XML/ZIP backup** opens the
+existing import dialog for a matching collection XML and Backup Library ZIP.
+Neither entry creates or changes a library merely by opening its dialog. The
+temporary-copy notice retains contextual **Details** and help links for pages
+that need more explanation.
+
+![Compact workspace toolbar with synthetic data](screenshots/compact-workspace-toolbar.png)
 
 **Collection statistics** shows addition-year, track-length, release-year and
 saved-genre distributions. Release dates contribute their year only when a
@@ -93,7 +104,22 @@ Duplicate decisions, reference changes and metadata overrides are staged locally
 
 Routine pages use short technical labels. Expand information boxes or select **Details** for procedures and evidence limits. Small icons supplement visible labels; colour alone does not identify an action. See [Library lab](LIBRARY-LAB.md) and [DJ insights](DJ-INSIGHTS.md).
 
-Single-track **File view** provides 0–5 instant personal-star buttons alongside the existing instant colour palette. Both stage a local working edit on click, without a confirmation or advanced-field unlock. Reset restores the captured value. Supported native colour choices are constrained to verified palette mappings; nothing is written to original source libraries or audio files. Comments retain their separate Save action, and export still requires normal review.
+Personal-rating cells in live track tables show five clickable stars. This
+includes duplicate comparisons and recording-group members, DJ insights,
+bubble and tonality track lists, Lab tracks and Library intelligence playlist
+contents. Click a star to stage 1–5, use the clear button for **Unrated** (0), or
+reset a staged edit to its captured value. Unknown captured ratings remain
+distinct from zero. A staged indicator and tooltip distinguish working values
+from captured evidence. Buttons support keyboard activation, and a rejected or
+stale save does not silently apply the requested value.
+
+Single-track **File view** retains its instant star and colour palettes. These
+edits use the private sidecar without an advanced-field unlock; original
+libraries and audio tags remain unchanged. Aggregate rating histograms,
+captured filters and evidence continue to describe the captured collection,
+rather than being rewritten by a working edit. Detached offline exports remain
+read-only. Comments retain their separate Save action, and copy exports still
+require normal review and the matching workspace.
 
 ## Export and cleanup
 

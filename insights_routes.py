@@ -11,6 +11,7 @@ from flask import jsonify,request
 from result_order import ordered,scan_statuses
 from dj_insights import InsightIndex,ranking,bubbles,tonalities
 from workbench_store import Store
+import cloud_analysis
 
 
 def register(owner):
@@ -21,11 +22,12 @@ def register(owner):
     def store():return Store(owner.DATA/'workbench-sidecar.sqlite3')
     def index_for(identity):
         working=store()
-        with working.connection() as db:r=db.execute('SELECT digest FROM snapshots WHERE id=?',(identity,)).fetchone()
+        with working.connection() as db:r=db.execute('SELECT digest,scope_key FROM snapshots WHERE id=?',(identity,)).fetchone()
         if r is None:raise ValueError('Choose a saved snapshot for DJ insights. Save one in Library lab or capture the loaded library.')
-        key=(str(owner.DATA.resolve()),identity,r[0])
+        cloud=cloud_analysis.context(owner,'snapshot:'+identity,{'scope_key':r['scope_key']},working)
+        key=(str(owner.DATA.resolve()),identity,r[0],cloud_analysis.signature(cloud))
         with guard:
-            if key not in cache:cache[key]=InsightIndex(working.snapshot(identity))
+            if key not in cache:cache[key]=InsightIndex(working.snapshot(identity),cloud)
             cache.move_to_end(key)
             while len(cache)>2:cache.popitem(last=False)
             return cache[key]

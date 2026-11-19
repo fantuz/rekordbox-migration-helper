@@ -1,5 +1,17 @@
 # Interface screenshots
 
+`compact-workspace-toolbar.png` shows the shared header at desktop width with
+an empty synthetic workspace. `inline-star-ratings.png` comes from
+`packaging/check_inline_ratings_ui.py`: invented records, real private sidecar
+save/reset requests and no provider account or audio files. The current
+`media-inventory.png` comes from `packaging/check_preparation_inventory_ui.py`,
+including a temporary generated silent WAV and a real XML/ZIP test workspace.
+`cloud-analysis-statistics.png` uses the invented paths in
+`packaging/check_cloud_analysis_ui.py`; provider counters and filters use
+recorded metadata without cloud requests.
+Only these rendered images are committed; generated libraries, audio, sidecars
+and diagnostic logs remain outside the source tree.
+
 `bubble-navigation.png` is a real Chromium capture of the counters, filters,
 breadcrumb path and 15-row legend. `packaging/check_bubble_labels_ui.py`
 generates 127 invented records across 21 artist groups, including long,

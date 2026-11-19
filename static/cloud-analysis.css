@@ -1,0 +1,9 @@
+.cloud-analysis-filter{min-width:140px;max-width:100%;display:flex;flex-direction:column;gap:5px}
+.cloud-analysis-filter select{min-width:0;max-width:100%;border-width:1px;border-style:solid}
+.cloud-analysis-note{font-size:11px;line-height:1.5;margin-block:5px 12px}
+.stat-card[data-cloud-provider=dropbox]{border-color:#518fc3}
+.stat-card[data-cloud-provider=google_drive]{border-color:#559b70}
+.stat-card[data-cloud-provider=dropbox]>span{color:#a6d5ff}
+.stat-card[data-cloud-provider=google_drive]>span{color:#a7e7bc}
+[data-theme=light] .stat-card[data-cloud-provider=dropbox]>span{color:#064b90}
+[data-theme=light] .stat-card[data-cloud-provider=google_drive]>span{color:#1b6330}
