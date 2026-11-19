@@ -280,6 +280,8 @@ jobs:
       - name: Check real-server workflows, formats and STEMS evidence
         if: matrix.browser == 'chromium'
         run: python packaging/check_workflow_integrity.py --output ci-output/languages/workflow-integrity
+      - name: Check Dropbox metadata and deliberate single-file downloads
+        run: xvfb-run -a python packaging/check_dropbox_connector_ui.py --headed --browser ${{ matrix.browser }} --output ci-output/languages/dropbox-connector
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:

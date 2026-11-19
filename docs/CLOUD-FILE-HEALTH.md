@@ -45,11 +45,12 @@ then download it. Consent is not saved or reused for the next track. The server
 checks the selected source, track, current path, mappings and file attributes
 again before dispatch. Expired or changed requests need a new Play action.
 
-A cloud path with no local file or placeholder cannot be opened by Workbench.
-Make that single recording available through Dropbox or rekordbox, then refresh.
-Workbench has no account connection with which to request a remote download.
-Google Drive support here is limited to path labels and local attributes;
-provider account integration is deferred.
+A cloud path with no local file or placeholder cannot be opened through the
+local Play action. The optional [Dropbox connector](DROPBOX-CONNECTOR.md) can
+check remote existence after separate account authorization and download one
+absent file after fresh confirmation. Alternatively make that single recording
+available through Dropbox or rekordbox, then refresh. Google Drive support here
+is limited to path labels and local attributes; account integration is deferred.
 
 ![Single-track cloud confirmation with Cancel focused by default](screenshots/cloud-track-confirmation.png)
 
@@ -66,11 +67,10 @@ Official APIs can list remote metadata without downloading the recording:
 | Local filesystem | File names, logical sizes and supported placeholder attributes | Cannot establish remote existence when no local entry is present. |
 
 No supported public Windows desktop-client interface for a complete remote
-listing was established in this investigation. This feature therefore uses
-local attributes and path evidence. It does not access private client
-interfaces, recover client credentials or introduce an account authorization
-flow. A future, separately authorized Dropbox API connection could supply
-remote-presence evidence without a music download.
+listing was established in this investigation. File health uses local
+attributes and path evidence. The separate [Dropbox connector](DROPBOX-CONNECTOR.md)
+uses official APIs and browser OAuth authorization to check remote metadata.
+It does not access private client interfaces or recover client credentials.
 
 The remote API's `.tag` identifies entry kinds such as file and folder; it is
 not an embedded music tag such as genre, key or artist. Audio tag extraction
@@ -82,6 +82,7 @@ Sources checked on 2026-11-18:
 - [Dropbox Linux commands](https://help.dropbox.com/installs/linux-commands)
 - [Windows file attribute constants](https://learn.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants)
 
-Regression tests use invented paths, synthetic OS attributes and a recording
-stand-in for OS playback dispatch. Live Dropbox accounts, remote-presence
-queries and actual Windows/macOS hydration have not been validated here.
+Regression tests use invented paths, synthetic OS attributes and provider
+responses, and a stand-in for OS playback dispatch. Live Dropbox accounts,
+remote-presence queries and actual Windows/macOS hydration have not been
+validated here.
