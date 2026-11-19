@@ -107,12 +107,6 @@ Dropbox client to make that one file available instead. Workbench verifies
 both the advertised byte count and Dropbox content hash before publishing the
 complete file, so interrupted transfers never appear in the sync folder.
 
-The destination's parent folders must already be locally available. Downloads
-are limited to one nonempty audio file of at most 8 GiB, with its size and
-Dropbox content hash verified before publication. Temporary download bytes
-stay outside Dropbox on the same volume; an incompatible storage layout is
-held for review rather than starting another transfer or moving a folder.
-
 If the filesystem already contains an online-only placeholder, use the
 existing individual **Play** flow so the provider can hydrate that one file.
 The connector does not overwrite a placeholder with a separate API transfer.
