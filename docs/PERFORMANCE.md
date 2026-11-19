@@ -1,6 +1,6 @@
 # Performance measurements and cache boundaries
 
-GitHub source checks measure duplicate review with synthetic collections of **33,000 and 100,000 tracks**. They exercise the actual API filters, connected recording groups, evidence facets, a cold query and five subsequent 40-row pages. No private library is used. The `source-validation-ubuntu-24.04` artifact contains `performance.json` with elapsed time, incremental peak allocations and graph-build counts.
+GitHub source checks measure duplicate review with synthetic collections of **33,000 and 100,000 tracks**. They exercise the actual API filters, connected recording groups, evidence facets, a cold query and five subsequent 40-row pages. No private library is used. The `source-validation-ubuntu-24.04-attempt-N` artifact contains `performance.json` with elapsed time, incremental peak allocations and graph-build counts; `N` identifies the producing job's workflow attempt.
 
 A generous CI budget catches accidental quadratic work: 60 seconds per cold query, 10 seconds per subsequent page and 600 MiB of incremental Python allocations. These are regression limits for the synthetic workload, not a promise about all hardware or complete library import time. Compare recorded measurements across equivalent runners before tightening them or changing the storage model. Browser rendering, audio hashing, native database extraction and archive compression need separate measurements.
 

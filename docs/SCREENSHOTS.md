@@ -39,7 +39,7 @@ Run the **Check and package** GitHub workflow on the proposed change. Its browse
 python packaging/check_browser_languages.py --browser chromium --output ci-output/languages
 ```
 
-Download the `language-validation-chromium` artifact and review these three files before committing them under `docs/screenshots/`:
+Download the `language-validation-chromium-attempt-N` artifact for the producing job's workflow attempt and review these three files before committing them under `docs/screenshots/`:
 
 - `readme-library-insights.png`
 - `readme-track-editor.png`

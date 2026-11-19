@@ -12,6 +12,8 @@ That workflow also exercises Formats & STEMS and Native source insights with gen
 
 Bubble checks retain `bubble-navigation-diagnostics.json` and `bubble-navigation-trace.zip`, with a screenshot on failure. Compare the requested and returned view, loading state, focus, pointer targets and bounded response history before changing a navigation assertion. The checks use generated snapshots; preserve that isolation when reproducing a failure.
 
+Diagnostic artifact names end in `-attempt-N` so a rerun preserves earlier outputs. Successful jobs retained by a partial rerun can still have an earlier attempt number. This naming applies to future runs using the updated workflow; rerunning an older source uses its original workflow. Package-producing all-job reruns retain the existing fixed-name package/proof contracts and can still encounter name collisions. Do not delete or overwrite earlier outputs to resolve them.
+
 Translations belong in the shared [interface catalogue](static/locales.json). Follow the [localization guide](docs/LOCALIZATION.md), preserve placeholders and technical identifiers, and check both live and offline interfaces. Native-speaker corrections are welcome. Full project documentation and legal policies remain English unless a separately reviewed translation is added.
 
 For input-format changes, include a regression that exercises actual parsing/writing and confirms source preservation. Document unsupported cases rather than silently replacing characters or guessing a format. Read [Unicode/input checks](docs/UNICODE-INPUTS.md) and [compatibility](docs/COMPATIBILITY.md).
