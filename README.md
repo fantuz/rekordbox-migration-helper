@@ -134,6 +134,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Bubble counters precede the filters and breadcrumb navigation. Click or use
   Enter/Space on the scrolling category legend to drill down; desktop legends
   show 15 rows with a visible scrollbar, including zero-area categories.
+- Focus a loaded Bubble breadcrumb after drill-down; repeated or superseded navigation preserves the current keyboard focus.
 - A prominent “Use local library” entry opens source selection directly, without requiring XML/ZIP exports.
 - Compact Rekordbox and Serato cards on Files & workflow open local source analysis and the existing experimental Serato export workflow. Serato library import is not implemented.
 - Audit preparation coverage, saved analysis references and STEMS-related evidence.

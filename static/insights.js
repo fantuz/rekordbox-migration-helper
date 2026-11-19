@@ -416,20 +416,19 @@ function renderBubbleMap(){
 }
 async function drillBubble(group){
   const state=insightState.bubble;
-  if(!state.result || $('#library-bubbles').getAttribute('aria-busy')==='true')return;
+  if(!state.result || $('#library-bubbles').getAttribute('aria-busy')==='true')return false;
   const dimension=state.result.dimension;
   if(dimension==='tracks'){
-    await openTrackDetails($('#bubble-snapshot').value,group.key);return;
+    await openTrackDetails($('#bubble-snapshot').value,group.key);return false;
   }
   if(state.path.length>=8)throw new Error(I18n.t("This branch has reached eight levels. Use a breadcrumb to change direction."));
   state.path.push({dimension,key:group.key});const used=new Set(state.path.map(p=>p.dimension));
   const preferred={family:'genre',genre:'initial',initial:'artist',artist:"tracks",year:'genre',added:'genre',bpm:'genre',rating:'genre',usage:'genre',preparation:'genre',format:'genre',tone:'genre',colour:'family'}[dimension];
-  state.dimension=[preferred,'family','genre','initial','artist',"tracks"].find(d=>d && !used.has(d)) || "tracks";state.groupOffset=0;state.offset=0;$('#bubble-track-detail').hidden=true;await loadBubbleData();
+  state.dimension=[preferred,'family','genre','initial','artist',"tracks"].find(d=>d && !used.has(d)) || "tracks";state.groupOffset=0;state.offset=0;$('#bubble-track-detail').hidden=true;return await loadBubbleData();
 }
 async function activateBubbleGroup(group){
-  const opensBranch=insightState.bubble.result?.dimension!=='tracks';
-  await drillBubble(group);
-  if(opensBranch)$('#bubble-breadcrumbs button:last-child')?.focus();
+  const navigation=drillBubble(group),revision=insightState.bubble.revision;
+  if(await navigation && revision===insightState.bubble.revision)$('#bubble-breadcrumbs button:last-child')?.focus();
 }
 $('#bubble-dimension').onchange=wrap(async()=>{insightState.bubble.dimension=$('#bubble-dimension').value;insightState.bubble.groupOffset=0;await loadBubbleData();});
 $('#bubble-metric').onchange=wrap(()=>loadBubbleData());$('#bubble-color').onchange=()=>{renderColourLegend();renderBubbleMap();};

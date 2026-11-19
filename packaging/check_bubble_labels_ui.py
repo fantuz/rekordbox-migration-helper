@@ -3,6 +3,7 @@ from ui_navigation import select_collection, open_collection_picker
 from copy import deepcopy
 import json
 import re
+from urllib.parse import parse_qs, urlsplit
 
 
 def check_bubble_labels_ui(page,base,sid,output,store):
@@ -144,7 +145,7 @@ def check_bubble_labels_ui(page,base,sid,output,store):
     assert page.evaluate('window.legendExecuted') is None
     last=page.evaluate('()=>({index:insightState.bubble.result.groups.length-1,...insightState.bubble.result.groups.at(-1)})')
     page.locator(f'#bubble-groups [data-bubble-index="{last["index"]}"]').click()
-    page.wait_for_function('(key)=>insightState.bubble.result?.dimension==="tracks"&&insightState.bubble.path.length===1&&insightState.bubble.path[0].key===key',arg=last['key'])
+    page.wait_for_function('(key)=>insightState.bubble.result?.dimension==="tracks"&&insightState.bubble.path.length===1&&insightState.bubble.path[0].key===key&&document.activeElement===document.querySelector("#bubble-breadcrumbs button:last-child")',arg=last['key'])
     assert page.locator('#bubble-breadcrumbs button:last-child').inner_text()==last['label']
     assert page.locator('#bubble-summary strong').first.inner_text()==str(last['entries'])
     assert page.locator('#bubble-breadcrumbs button:last-child').evaluate('node=>node===document.activeElement')
@@ -155,10 +156,39 @@ def check_bubble_labels_ui(page,base,sid,output,store):
     for key in ('Enter','Space'):
         page.locator('#bubble-groups [data-bubble-index="1"]').focus()
         page.keyboard.press(key)
-        page.wait_for_function('insightState.bubble.result?.dimension==="tracks"&&insightState.bubble.path.length===1')
+        page.wait_for_function('insightState.bubble.result?.dimension==="tracks"&&insightState.bubble.path.length===1&&document.activeElement===document.querySelector("#bubble-breadcrumbs button:last-child")')
         assert page.locator('#bubble-breadcrumbs button:last-child').inner_text()==labels[1]
         assert page.locator('#bubble-summary strong').first.inner_text()=='30'
         back_to_artists()
+    # Keep one drill-down pending so a repeated key and a newer breadcrumb
+    # selection cannot have their focus stolen by ignored or obsolete work.
+    held=[]
+    pattern='**/api/insights/*'
+    page.evaluate('window.bubbleHeldRequests=0')
+    def hold_branch(route):
+        url=urlsplit(route.request.url);query=parse_qs(url.query)
+        if (url.path in ('/api/insights/bubbles','/api/insights/tracks')
+                and query.get('snapshot')==[record] and query.get('path')!=['[]']):
+            held.append(route)
+            page.evaluate('(count)=>window.bubbleHeldRequests=count',len(held))
+        else:route.continue_()
+    page.route(pattern,hold_branch)
+    try:
+        page.locator('#bubble-groups [data-bubble-index="1"]').focus()
+        page.evaluate('()=>{window.bubbleHeldActivation=activateBubbleGroup(insightState.bubble.result.groups[1]);}')
+        page.wait_for_function('window.bubbleHeldRequests===2&&document.querySelector("#library-bubbles").getAttribute("aria-busy")==="true"')
+        page.keyboard.press('Enter')
+        assert page.locator('#bubble-groups [data-bubble-index="1"]').evaluate('node=>node===document.activeElement'), 'Ignored activation moved keyboard focus'
+        back_to_artists()
+        page.locator('#bubble-metric').focus()
+        while held:held.pop(0).continue_()
+        page.evaluate('()=>window.bubbleHeldActivation')
+        assert page.locator('#bubble-metric').evaluate('node=>node===document.activeElement'), 'Superseded navigation moved keyboard focus'
+        assert page.evaluate('insightState.bubble.path.length===0&&insightState.bubble.result.dimension==="artist"')
+    finally:
+        while held:held.pop(0).continue_()
+        page.unroute(pattern,hold_branch)
+        page.evaluate('()=>{delete window.bubbleHeldRequests;delete window.bubbleHeldActivation;}')
     # A zero-usage category has no area, but remains reachable through its legend.
     page.select_option('#bubble-metric','plays')
     page.wait_for_function('insightState.bubble.result?.metric==="plays"')
@@ -166,7 +196,7 @@ def check_bubble_labels_ui(page,base,sid,output,store):
     assert zero['value']==0
     assert page.locator(f'#library-bubbles [data-bubble-index="{zero["index"]}"]').count()==0
     page.locator(f'#bubble-groups [data-bubble-index="{zero["index"]}"]').click()
-    page.wait_for_function('insightState.bubble.path.length===1&&insightState.bubble.result?.summary.entries===1')
+    page.wait_for_function('insightState.bubble.path.length===1&&insightState.bubble.result?.summary.entries===1&&document.activeElement===document.querySelector("#bubble-breadcrumbs button:last-child")')
     back_to_artists()
     page.select_option('#bubble-metric','tracks')
     page.wait_for_function('insightState.bubble.result?.metric==="tracks"')
@@ -190,4 +220,5 @@ def check_bubble_labels_ui(page,base,sid,output,store):
             'circle_areas_preserved':True,'linked_focus':True,'standalone_svg':True,
             'controls_after_counters':True,'fifteen_visible_legend_rows':True,'scrollbar_contrast_and_wheel':True,
             'legend_mouse_and_keyboard_drilldown':True,'breadcrumb_navigation':True,
-            'zero_weight_categories_accessible':True,'source_snapshot_preserved':True}
+            'zero_weight_categories_accessible':True,'ignored_activation_preserves_focus':True,
+            'superseded_navigation_preserves_focus':True,'source_snapshot_preserved':True}

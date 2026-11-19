@@ -37,6 +37,9 @@ contrasting scrollbar; small windows adapt to the available space. Categories
 with zero/unknown area remain reachable through the list. Counts and source
 metadata are retained when navigating back to the collection.
 
+A completed drill-down focuses its breadcrumb. Repeated activation while loading
+and earlier requests superseded by a newer selection do not move keyboard focus.
+
 ![Bubble navigation and scrolling legend with invented artist groups](screenshots/bubble-navigation.png)
 
 Circle **area**, not radius, represents track count, recorded usage from the selected evidence, or the sum of full track durations. Durations are not actual time played. Up to 60 categories are drawn per page to keep large collections responsive; exact totals, paging and the accessible category list remain available. Zero/unknown weights stay in that list even when a circle cannot be drawn. Compare circle areas within one displayed page. Individual tracks can be inspected from bubbles or tables.
