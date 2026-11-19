@@ -98,7 +98,7 @@ class CloudSetupTests(unittest.TestCase):
         response=self.attach(result)
         self.assertEqual(response.status_code,200,response.json)
         mapping=self.saved.setting('dropbox_mapping')
-        self.assertEqual(mapping['local_root'],str(self.cache));self.assertEqual(mapping['source'],self.source)
+        self.assertEqual(Path(mapping['local_root']),self.cache);self.assertEqual(mapping['source'],self.source)
         self.assertEqual(len(audio_paths.mappings_for(self.saved,self.before)),1)
         self.assertEqual(self.saved.snapshot(self.snapshot['id']),self.before)
         self.assertEqual(self.attach(result).status_code,400)

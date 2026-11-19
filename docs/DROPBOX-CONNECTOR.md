@@ -125,6 +125,14 @@ A failed authorization, permission or network request reports a failed check
 and preserves earlier evidence with its original timestamp. It does not turn
 unchecked paths into missing files.
 
+An unsupported captured path is left unmapped without stopping the other
+tracks. If a remote listing contains names that cannot be mapped safely, the
+check keeps positive matches and leaves unseen paths unverified. Its summary
+explains the partial result; selecting a narrower music folder can help.
+Changing any folder-mapping input holds further checks and downloads until
+the new mapping is verified. Restoring the verified values restores access to
+the saved results.
+
 ## Download one file deliberately
 
 Remote validation never calls the content-download endpoint. To fetch a file,

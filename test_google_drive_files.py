@@ -43,7 +43,7 @@ class GoogleDriveFileTests(unittest.TestCase):
         if route!='files/list':raise AssertionError(route)
         parents=re.findall(r"'([A-Za-z0-9_-]+)' in parents",payload['q'])
         rows=[row for row in self.entries if any(parent in row['parents'] for parent in parents)]
-        match=re.search(r"and name = '((?:\\.|[^'])*)'",payload['q'])
+        match=re.search(r"and name = '((?:\\.|[^'\\])*)'",payload['q'])
         if match:
             name=match.group(1).replace("\\'", "'").replace('\\\\','\\')
             rows=[row for row in rows if row['name']==name]
@@ -53,7 +53,7 @@ class GoogleDriveFileTests(unittest.TestCase):
     def inventory(self):return files.inventory(self.connection,self.mapping,lambda *_:None)
 
     def test_selected_download_folder_needs_no_provider_desktop_root(self):
-        self.assertEqual(self.mapping['local_root'],str(self.local))
+        self.assertEqual(Path(self.mapping['local_root']),self.local)
         self.assertEqual(self.mapping['location_role'],'selected_download_folder')
         result=files.target({'current_path':r'D:\Old music\Album\Track.mp3'},self.mapping)
         self.assertEqual(result['relative_path'],'Album/Track.mp3')

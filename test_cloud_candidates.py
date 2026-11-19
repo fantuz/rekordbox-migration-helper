@@ -42,7 +42,7 @@ class CloudCandidateTests(unittest.TestCase):
         with patch.object(Path,'open',side_effect=AssertionError('File opened')),patch.object(Path,'stat',side_effect=AssertionError('File probed')):
             rows=suggestions(saved,roots)
         album=next(row for row in rows if row['path']=='/music/Dropbox/Album')
-        self.assertIsNone(album['available'])
+        self.assertEqual(album['available'],False if os.name=='nt' else None)
 
     def test_unsafe_or_nonabsolute_references_are_not_suggestions(self):
         saved={'tracks':[{'current_path':'../private/One.mp3'},

@@ -146,6 +146,9 @@ def register(owner):
                 if owner.DATA.resolve()!=profile or context(source)[1]!=key:raise ValueError('Dropbox connection, source or mapping changed. Check metadata again.')
                 progress(amount,message)
             entries,complete=files.inventory(client,mapped,checkpoint);rows=[]
+            unsupported=int(getattr(entries,'unsupported_paths',0))
+            scan_note=('Some Dropbox paths could not be mapped safely. Only positive path matches are confirmed; '
+                       'choose a narrower Rekordbox folder to complete this check.') if unsupported else None
             for i,track in enumerate(snapshot['tracks']):
                 if i%100==0:checkpoint(70+25*i/max(1,len(snapshot['tracks'])),'Matching library paths with Dropbox metadata')
                 destination=files.target(track,mapped,audio);remote=entries.get(files.path_key(destination['remote_path'])) if destination else None
@@ -156,8 +159,8 @@ def register(owner):
             with task_store.connection() as db:
                 db.execute('DELETE FROM dropbox_records WHERE binding=? AND source=?',(key,source))
                 db.executemany('INSERT INTO dropbox_records VALUES (?,?,?,?)',[(key,source,r['track_id'],json.dumps(r)) for r in rows])
-                db.execute('INSERT OR REPLACE INTO dropbox_scans VALUES (?,?,?)',(key,source,json.dumps({'checked_at':checked,'complete':complete,'tracks':len(rows)})))
-            return {'checked':len(rows),'complete':complete,'audio_contents_read':False,'downloads':0}
+                db.execute('INSERT OR REPLACE INTO dropbox_scans VALUES (?,?,?)',(key,source,json.dumps({'checked_at':checked,'complete':complete,'tracks':len(rows),'unsupported_paths':unsupported,'scan_note':scan_note})))
+            return {'checked':len(rows),'complete':complete,'unsupported_paths':unsupported,'scan_note':scan_note,'audio_contents_read':False,'downloads':0}
         def finished(_state):
             with guard:running.pop(identity,None)
         with guard:
@@ -194,15 +197,17 @@ def register(owner):
             scan=db.execute('SELECT payload FROM dropbox_scans WHERE binding=? AND source=?',(key,source)).fetchone()
         result=[]
         for r in values:
-            remote=r.pop('remote',None);r['local_available']=files.local_available(r.get('local_path',''))
+            remote=r.pop('remote',None);local_path=r.get('local_path')
+            r['local_available']=bool(local_path) and files.local_available(local_path)
             # lstat only: neither inspect nor open an existing cloud placeholder.
-            try:
-                info=Path(r.get('local_path','')).lstat()
-                from media import cloud_placeholder
-                r['local_state']='online_only' if cloud_placeholder(info) else 'present'
-                absent=False
-            except FileNotFoundError:absent=True;r['local_state']='not_local'
-            except OSError:absent=False;r['local_state']='unverified'
+            absent=False;r['local_state']='unmapped'
+            if local_path:
+                try:
+                    info=Path(local_path).lstat()
+                    from media import cloud_placeholder
+                    r['local_state']='online_only' if cloud_placeholder(info) else 'present'
+                except FileNotFoundError:absent=True;r['local_state']='not_local'
+                except OSError:r['local_state']='unverified'
             r['downloadable']=bool(remote and remote.get('is_downloadable',True) and absent)
             result.append(r)
         return jsonify(rows=result,total=total,offset=offset,counts=counts,**(json.loads(scan[0]) if scan else {}))

@@ -118,7 +118,7 @@ class DropboxAccountMetadataTests(unittest.TestCase):
         self.owner=SimpleNamespace(DATA=Path(temporary.name))
         self.account={'account_id':'dbid:invented-account','name':{'display_name':'Example member'},
             'email':'example@example.invalid','team':{'id':'dbtid:team','name':'Cloud Option DJ team'},
-            'root_info':{'.tag':'team','root_namespace_id':'123','home_namespace_id':'456','home_path':'/Massimiliano Fantuzzi'}}
+            'root_info':{'.tag':'team','root_namespace_id':'123','home_namespace_id':'456','home_path':'/Invented Member'}}
         self.vault=SimpleNamespace(available=False)
         self.transport=SimpleNamespace(
             token=lambda parameters:{'access_token':'PRIVATE_ACCESS','refresh_token':'PRIVATE_REFRESH','expires_in':14400,
@@ -135,7 +135,7 @@ class DropboxAccountMetadataTests(unittest.TestCase):
 
     def test_team_home_path_and_name_survive_oauth_status(self):
         status=self.connect();account=status['account']
-        self.assertEqual(account['home_path'],'/Massimiliano Fantuzzi')
+        self.assertEqual(account['home_path'],'/Invented Member')
         self.assertEqual(account['team_name'],'Cloud Option DJ team')
         self.assertEqual(account['root_namespace_id'],'123');self.assertEqual(account['home_namespace_id'],'456')
         self.assertEqual(status['required_scopes'],list(SCOPES));self.assertEqual(status['missing_scopes'],[])
@@ -163,7 +163,7 @@ class DropboxAccountMetadataTests(unittest.TestCase):
             with self.subTest(path=path):
                 account=deepcopy(self.account);account['root_info']['home_path']=path
                 self.assertNotIn('home_path',self.connection._account_info(account))
-        self.assertEqual(self.connection._account_info(self.account)['home_path'],'/Massimiliano Fantuzzi')
+        self.assertEqual(self.connection._account_info(self.account)['home_path'],'/Invented Member')
 
     def test_safe_unicode_names_are_preserved_and_unsafe_team_names_omitted(self):
         for team_name in (None,{},'','   ','team\nPRIVATE','team\u202ePRIVATE','x'*201):

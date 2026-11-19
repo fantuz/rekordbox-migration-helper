@@ -6,8 +6,9 @@ whereas an attachment records the folder the user actually approved.
 from hashlib import sha256
 import json
 import os
-from pathlib import Path
+from pathlib import Path,PureWindowsPath
 import stat
+import unicodedata
 
 from audio_paths import allowed_roots,confined_folder,mapped_path,mapping_applies,recorded
 from cloud_file_status import lexical_path
@@ -118,6 +119,7 @@ def track_target(track,mapping,audio_mappings=None):
         value=track.get(field)
         if not value:continue
         if mapping_applies(value,audio_mappings):
+            if not _safe_audio_reference(value,audio_mappings):continue
             mapped=mapped_path(value,audio_mappings)
             if mapped is None:continue
             candidate=lexical_path(str(mapped))
@@ -131,15 +133,59 @@ def track_target(track,mapping,audio_mappings=None):
             continue
         parts=candidate.relative_to(base).parts
         if not parts or candidate.suffix.lower() not in AUDIO_EXTENSIONS:continue
-        # Local destination uses only relative path components that lexical_path
-        # already checked for traversal/UNC/Windows stream aliases.
-        destination=Path(mapping['local_root']).joinpath(*parts)
-        if any(destination.is_relative_to(Path(root)) for root in mapping.get('foreign_provider_roots',[])):
+        # A POSIX captured component can contain a Windows absolute path or
+        # stream alias. Validate components in the destination's flavor before
+        # joining them; otherwise a Windows join can reset the approved root.
+        destination=_relative_destination(local,parts)
+        if destination is None:continue
+        foreign=(lexical_path(root) for root in mapping.get('foreign_provider_roots',[]))
+        if any(root is not None and type(root) is type(destination) and destination.is_relative_to(root) for root in foreign):
             continue
         return {'local_path':str(destination),
                 'relative_path':'/'.join(parts),'filename':parts[-1],
                 'recorded_path':str(value),'reference_field':field}
     return None
+
+
+def _safe_audio_reference(value,mappings):
+    """Preflight the selected audio mapping before mapped_path probes names."""
+    normalized=recorded(value)
+    if normalized is None:return False
+    captured=lexical_path(value)
+    windows=isinstance(lexical_path(normalized),PureWindowsPath)
+    compared=normalized.casefold() if windows else normalized
+    for row in sorted(mappings or [],key=lambda item:-len(item.get('recorded_root',''))):
+        prefix=row['recorded_root'].rstrip('/')
+        match=prefix.casefold() if windows else prefix
+        if compared!=match and not compared.startswith(match+'/'):continue
+        root=lexical_path(row.get('local_root'))
+        parts=tuple(part for part in normalized[len(prefix):].strip('/').split('/') if part)
+        if _relative_destination(root,parts) is None:return False
+        base=lexical_path(row['recorded_root'])
+        if not captured or not base or type(captured) is not type(base) or not captured.is_relative_to(base):return False
+        captured_parts=captured.relative_to(base).parts
+        # Audio mappings normalize separator syntax. A literal POSIX backslash
+        # must not silently become another directory and match a different song.
+        if captured_parts!=parts or _relative_destination(root,captured_parts) is None:return False
+        return True
+    return False
+
+
+def _relative_destination(root,parts):
+    if root is None or not root.is_absolute() or not parts:return None
+    if any(not part or part in ('.','..') for part in parts):return None
+    if isinstance(root,PureWindowsPath):
+        reserved={'CON','PRN','AUX','NUL','CLOCK$','CONIN$','CONOUT$'}
+        reserved.update(prefix+digit for prefix in ('COM','LPT') for digit in '123456789\u00b9\u00b2\u00b3')
+        for part in parts:
+            if (not part or part in ('.','..') or part.endswith((' ','.'))
+                    or any(char in part for char in '/\\<>:"|?*')
+                    or any(unicodedata.category(char) in ('Cc','Cs') for char in part)
+                    or part.split('.')[0].rstrip(' ').upper() in reserved):
+                return None
+    destination=root.joinpath(*parts)
+    if not destination.is_relative_to(root):return None
+    return destination
 
 
 def digest(value):

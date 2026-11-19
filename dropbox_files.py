@@ -31,13 +31,18 @@ def ordinary_chain(path):
 
 
 def remote_path(value):
-    if not isinstance(value,str) or len(value)>4096 or any(ord(c)<32 for c in value) or '\\' in value:
-        raise ValueError('Enter a Dropbox folder path beginning with /.')
+    message='Enter a Dropbox folder path beginning with /, or leave it blank to use the selected namespace root.'
+    if not isinstance(value,str) or not _supported_remote_path(value):
+        raise ValueError(message)
     if value=='/':return ''
     if value.endswith('/'):value=value[:-1]
     if value and (not value.startswith('/') or any(p in ('','.','..') for p in value[1:].split('/'))):
-        raise ValueError('Enter a Dropbox folder path beginning with /.')
+        raise ValueError(message)
     return value
+
+
+def _supported_remote_path(value):
+    return len(value)<=4096 and '\\' not in value and not any(unicodedata.category(c) in ('Cc','Cs') for c in value)
 
 
 def path_key(value):return unicodedata.normalize('NFC',value).lower()
@@ -128,17 +133,24 @@ def binding(connection,mapping):
 
 
 def target(track,mapping,audio_mappings=None):
+    # A malformed saved mapping is a setup failure. Only a computed reference
+    # from one captured track may be skipped below, never the mapping itself.
+    remote_root=remote_path(mapping['remote_root'])
     if mapping.get('recorded_root') or mapping.get('provider')=='dropbox':
         from cloud_attachments import track_target
         target=track_target(track,mapping,audio_mappings)
         if not target:return None
-        return {**target,'remote_path':remote_path(mapping['remote_root']+'/'+target['relative_path'])}
+        try:remote=remote_path(remote_root+'/'+target['relative_path'])
+        except ValueError:return None
+        return {**target,'remote_path':remote}
     from audio_paths import mapped_path,mapping_applies
     root=lexical_path(mapping['local_root'])
     for field in ('current_path','xml_location','original_path'):
         value=track.get(field)
         if not value:continue
         if mapping_applies(value,audio_mappings):
+            from cloud_attachments import _safe_audio_reference
+            if not _safe_audio_reference(value,audio_mappings):continue
             mapped=mapped_path(value,audio_mappings)
             if mapped is None:continue
             value=str(mapped)
@@ -146,7 +158,8 @@ def target(track,mapping,audio_mappings=None):
         if not path or type(path) is not type(root) or not path.is_relative_to(root):continue
         parts=path.relative_to(root).parts
         if not parts or path.suffix.lower() not in AUDIO_EXTENSIONS:continue
-        remote=remote_path(mapping['remote_root']+'/'+ '/'.join(parts))
+        try:remote=remote_path(remote_root+'/'+ '/'.join(parts))
+        except ValueError:return None
         return {'local_path':str(Path(mapping['local_root']).joinpath(*parts)),'remote_path':remote,'filename':parts[-1]}
     return None
 
@@ -158,11 +171,24 @@ def local_available(path):
     except OSError:return False
 
 
+class Inventory(dict):
+    def __init__(self):
+        super().__init__();self.unsupported_paths=0
+
+
+def _inventory_path(value):
+    """Separate unsupported names from malformed provider hierarchy evidence."""
+    if (not isinstance(value,str) or not value.startswith('/') or value.endswith('/')
+            or any(part in ('','.','..') for part in value[1:].split('/'))):
+        raise ValueError('Dropbox returned an invalid metadata path while listing the selected folder.')
+    return value,_supported_remote_path(value)
+
+
 def inventory(connection,mapping,progress):
     """List the selected remote subtree once, including explicitly reported pagination."""
     root={'.tag':'namespace_id','namespace_id':mapping['namespace']}
     route='files/list_folder';payload={'path':mapping['remote_root'],'recursive':True,'include_deleted':False,'limit':2000}
-    files={};seen=0;cursors=set();paths=set();identities=set()
+    files=Inventory();seen=0;cursors=set();paths=set();identities=set()
     for page in range(MAX_PAGES):
         progress(5+min(60,page), 'Checking Dropbox file metadata')
         result=connection.rpc(route,payload,path_root=root)
@@ -174,9 +200,7 @@ def inventory(connection,mapping,progress):
             if seen>MAX_ENTRIES:return files,False
             if not isinstance(entry,dict) or entry.get('.tag') not in ('file','folder'):
                 raise ValueError('Dropbox returned an invalid metadata entry.')
-            path=entry.get('path_lower') or entry.get('path_display')
-            if not isinstance(path,str) or not path or path!=remote_path(path):
-                raise ValueError('Dropbox returned an invalid metadata path.')
+            path,supported=_inventory_path(entry.get('path_lower') or entry.get('path_display'))
             prefix=path_key(mapping['remote_root'])
             key=path_key(path)
             if prefix and not key.startswith(prefix+'/'):
@@ -188,15 +212,22 @@ def inventory(connection,mapping,progress):
             if key in paths or identity in identities:raise ValueError('Dropbox returned ambiguous file paths.')
             paths.add(key);identities.add(identity)
             display=entry.get('path_display')
-            if display is not None and (not isinstance(display,str) or display!=remote_path(display) or path_key(display)!=key):
-                raise ValueError('Dropbox returned inconsistent metadata paths.')
-            if entry['.tag']=='folder':continue
+            if display is not None:
+                display,display_supported=_inventory_path(display)
+                if path_key(display)!=key:raise ValueError('Dropbox returned inconsistent metadata paths.')
+                supported=supported and display_supported
+            if entry['.tag']=='folder':
+                if not supported:files.unsupported_paths+=1
+                continue
             if (not isinstance(entry.get('rev'),str) or not entry['rev'] or len(entry['rev'])>4096 or
                     any(ord(c)<32 for c in entry['rev']) or type(entry.get('size')) is not int or entry['size']<0 or
                     ('is_downloadable' in entry and type(entry['is_downloadable']) is not bool)):
                 raise ValueError('Dropbox returned invalid file metadata.')
+            if not supported:
+                files.unsupported_paths+=1
+                continue
             files[key]=entry
-        if not more:return files,True
+        if not more:return files,not files.unsupported_paths
         cursor=result.get('cursor')
         if not isinstance(cursor,str) or not cursor or cursor in cursors:raise ValueError('Dropbox returned an invalid listing cursor.')
         cursors.add(cursor);route='files/list_folder/continue';payload={'cursor':cursor}

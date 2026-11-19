@@ -29,7 +29,7 @@ def main():
             'mocked_api_responses':False,'synthetic_provider_transport':True,
             'live_accounts_validated':False}
     from playwright.sync_api import sync_playwright,expect
-    from ui_navigation import select_collection
+    from ui_navigation import select_collection,open_collection_picker
     from werkzeug.serving import make_server
     from test_cloud_connection_workflows import CloudConnectionWorkflowTests
     fixture=CloudConnectionWorkflowTests('test_both_selected_cache_attachments_preserve_sources_and_detach_independently')
@@ -52,7 +52,7 @@ def main():
             context=browser.new_context(locale='en-US',viewport={'width':1440,'height':1050})
             context.add_init_script("if(location.protocol==='http:')localStorage.setItem('library-workbench.language.v1','en')")
             context.tracing.start(screenshots=True,snapshots=True,sources=True)
-            page=context.new_page();errors=[];external=[];transfers=[];statistics_reads=[]
+            page=context.new_page();errors=[];external=[];transfers=[];statistics_reads=[];dropbox_checks=[]
             page.on('pageerror',lambda error:errors.append(str(error)))
             context.on('request',lambda request:external.append(request.url) if urlsplit(request.url).scheme not in
                 ('data','blob','file') and urlsplit(request.url).netloc!=urlsplit(base).netloc else None)
@@ -60,6 +60,8 @@ def main():
                 urlsplit(request.url).path in ('/api/dropbox/download','/api/google-drive/download') else None)
             page.on('request',lambda request:statistics_reads.append(request.url) if
                 urlsplit(request.url).path in ('/api/statistics','/api/collection/statistics') else None)
+            page.on('request',lambda request:dropbox_checks.append(request.url) if
+                urlsplit(request.url).path=='/api/dropbox/check' and request.method=='POST' else None)
 
             def get(path):
                 response=context.request.get(base+'/api/'+path)
@@ -75,10 +77,10 @@ def main():
                 expect(page.locator('#toast')).to_be_hidden(timeout=12000)
                 locator.screenshot(path=str(output/name))
 
-            def scan_local():
+            def run_ui_job(button,path):
                 with page.expect_response(lambda response:
-                        urlsplit(response.url).path=='/api/file-health/scan' and response.request.method=='POST') as response:
-                    page.locator('#file-health-scan').click()
+                        urlsplit(response.url).path==path and response.request.method=='POST') as response:
+                    button.click()
                 assert response.value.ok,response.value.text()
                 started=response.value.json();deadline=time.monotonic()+20
                 while time.monotonic()<deadline:
@@ -86,7 +88,11 @@ def main():
                     if job['status']=='complete':break
                     assert job['status'] not in ('error','cancelled'),job
                     time.sleep(0.02)
-                else:raise AssertionError('Local File health scan did not complete')
+                else:raise AssertionError('Requested scan did not complete: '+path)
+                return job['result']
+
+            def scan_local():
+                run_ui_job(page.locator('#file-health-scan'),'/api/file-health/scan')
                 expect(page.locator('#file-health-state')).to_contain_text('complete',timeout=20000)
 
             def check_release_order():
@@ -224,8 +230,88 @@ def main():
                 # metadata scan as independent evidence before local scanning.
                 page.locator('.nav[data-view="dropbox"]').click()
                 select_collection(page,'#dropbox-source',fixture.source)
-                page.locator('#dropbox-check').click()
+                dropbox_check=page.locator('#dropbox-check')
+                run_ui_job(dropbox_check,'/api/dropbox/check')
                 expect(page.locator('#dropbox-count')).to_contain_text('64')
+                expect(dropbox_check).to_be_enabled()
+
+                # Editing a verified mapping is a draft, never a hidden change
+                # to the scope used for a remote check. Restoring the exact
+                # verified fields reuses the existing metadata cache.
+                verified_remote=page.locator('#dropbox-remote-root').input_value()
+                verified_local=page.locator('#dropbox-local-root').input_value()
+                verified_namespace=page.locator('#dropbox-namespace').input_value()
+                checks_before_draft=len(dropbox_checks);calls_before_draft=provider_calls()
+                page.fill('#dropbox-remote-root','/Different unverified folder')
+                expect(dropbox_check).to_be_disabled()
+                expect(page.locator('#dropbox-results tbody tr')).to_have_count(0)
+                page.fill('#dropbox-remote-root',verified_remote)
+                expect(dropbox_check).to_be_enabled()
+                expect(page.locator('#dropbox-count')).to_contain_text('64')
+                page.fill('#dropbox-local-root',str(fixture.google_cache))
+                expect(dropbox_check).to_be_disabled()
+                page.fill('#dropbox-local-root',verified_local)
+                expect(dropbox_check).to_be_enabled()
+
+                account_root=fixture.providers['dropbox'].state['account']['root_namespace_id']
+                open_collection_picker(page,'#dropbox-namespace')
+                page.fill('#dropbox-namespace','')
+                expect(dropbox_check).to_be_enabled()
+                page.fill('#dropbox-namespace',account_root)
+                expect(dropbox_check).to_be_enabled()
+                page.fill('#dropbox-namespace',verified_namespace)
+                expect(dropbox_check).to_be_enabled()
+                select_collection(page,'#dropbox-source',other_source)
+                expect(dropbox_check).to_be_enabled()
+                select_collection(page,'#dropbox-source',fixture.source)
+                page.fill('#dropbox-search','Invented Dropbox 000');page.locator('#dropbox-find').click()
+                expect(page.locator('#dropbox-results tbody tr')).to_have_count(1)
+                expect(dropbox_check).to_be_enabled()
+                page.fill('#dropbox-search','');page.locator('#dropbox-find').click()
+                expect(page.locator('#dropbox-count')).to_contain_text('64')
+                assert len(dropbox_checks)==checks_before_draft
+                assert provider_calls()==calls_before_draft
+
+                # Named team namespaces remain an explicit selection. A
+                # personal account exposes one namespace, not duplicate scopes.
+                namespace_choice=page.locator('#dropbox-namespace-choice')
+                expect(namespace_choice.locator('option')).to_have_count(3)
+                expect(namespace_choice).to_contain_text('Member home folder')
+                expect(namespace_choice).to_contain_text('Team root folder')
+                namespace_choice.select_option('102')
+                expect(page.locator('#dropbox-remote-root')).to_have_value('')
+                expect(dropbox_check).to_be_disabled()
+                namespace_choice.select_option(account_root)
+                page.fill('#dropbox-remote-root',verified_remote)
+                expect(dropbox_check).to_be_enabled()
+                fixture.providers['dropbox'].state['account']['home_namespace_id']=account_root
+                page.locator('#dropbox-refresh').click()
+                expect(namespace_choice.locator('option')).to_have_count(2)
+                expect(namespace_choice).not_to_contain_text('Team root folder')
+                fixture.providers['dropbox'].state['account']['home_namespace_id']='102'
+                page.locator('#dropbox-refresh').click()
+                expect(namespace_choice.locator('option')).to_have_count(3)
+                expect(dropbox_check).to_be_enabled()
+                assert len(dropbox_checks)==checks_before_draft
+                assert provider_calls()==calls_before_draft
+
+                # An unsupported provider filename makes the listing partial;
+                # positive matches survive and the plain uncertainty note is
+                # visible instead of treating unseen paths as missing.
+                original_entries=deepcopy(fixture.providers['dropbox'].entries)
+                unsupported=deepcopy(original_entries[0])
+                unsupported.update(id='id:unsupported-name',name='Legacy\\Archive.mp3',
+                    path_display='/Music/Album/Legacy\\Archive.mp3',path_lower='/music/album/legacy\\archive.mp3')
+                fixture.providers['dropbox'].entries.append(unsupported)
+                partial=run_ui_job(dropbox_check,'/api/dropbox/check')
+                assert partial['complete'] is False and partial['scan_note']
+                expect(page.locator('#dropbox-checked')).to_contain_text('Unverified')
+                expect(page.locator('#dropbox-checked')).to_contain_text(partial['scan_note'])
+                assert page.locator('#dropbox-checked').locator('*').count()==0
+                fixture.providers['dropbox'].entries=original_entries
+                complete=run_ui_job(dropbox_check,'/api/dropbox/check')
+                assert complete['complete'] is True
+                expect(page.locator('#dropbox-checked')).not_to_contain_text('Unverified')
 
                 page.locator('.nav[data-view="google-drive"]').click()
                 expect(page.locator('#google-drive-connection-state')).to_contain_text('Invented Google account')
@@ -352,6 +438,10 @@ def main():
                     local_and_cloud_evidence_distinct=True,file_health_open_no_provider_requests=True,
                     cloud_evidence_source_isolation=True,file_health_source_handoff=True,
                     downloaded_file_local_recheck=True,release_year_order=True,release_year_count_order=True,
+                    verified_mapping_drafts_held=True,restored_mapping_reuses_cache=True,
+                    equivalent_default_namespace=True,source_search_preserve_verified_mapping=True,
+                    explicit_team_namespace_choices=True,personal_namespace_not_duplicated=True,
+                    partial_dropbox_check_note=True,
                     snapshot_unchanged=True,mobile_layout=True,downloaded_files=1,external_requests=external)
             except Exception:
                 page.screenshot(path=str(output/'cloud-connections-failure.png'),full_page=True);raise

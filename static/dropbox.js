@@ -4,6 +4,15 @@ window.DropboxConnector=(()=>{
   let connection=null,source='',offset=0,pageRows=0,totalRows=0,revision=0,filesRevision=0,busy=false,pending=null,requestedSource='',mappingDraft=false;
   const statusNames={present:'Present',not_found:'Not found',unmapped:'Unmapped',unverified:'Unverified'};
   const post=(path,body={})=>api('/api/dropbox'+path,{method:'POST',body:JSON.stringify(body)});
+  function mappingChanged(){
+    const local=node('local-root').value.trim(),remote=node('remote-root').value.trim(),namespace=node('namespace').value.trim();
+    const saved=connection?.mapping;if(!saved)return Boolean(local||remote||namespace);
+    const localKey=value=>{let path=String(value||'').trim().replace(/\\/gu,'/');const windows=/^[A-Za-z]:\//u.test(path);if(path.length>1&&!/^[A-Za-z]:\/$/u.test(path))path=path.replace(/\/$/u,'');return windows?path.toLowerCase():path;};
+    const remoteKey=value=>{const path=String(value||'').trim();return (path==='/'?'':path.replace(/\/$/u,'')).normalize('NFC').toLowerCase();};
+    const accountRoot=connection?.account?.root_namespace_id||'';
+    return localKey(local)!==localKey(saved.local_root)||remoteKey(remote)!==remoteKey(saved.remote_root)||
+      (namespace||accountRoot)!==(String(saved.namespace||accountRoot));
+  }
   function renderNamespaces(state,input,select,context,list,remote){
     const account=state.account||{},valid=value=>typeof value==='string'&&/^\d{1,40}$/u.test(value);
     const home=valid(account.home_namespace_id)?account.home_namespace_id:'',root=valid(account.root_namespace_id)?account.root_namespace_id:'';
@@ -23,12 +32,15 @@ window.DropboxConnector=(()=>{
     context.textContent=lines.join('\n');context.hidden=!lines.length;
   }
   function controls(){
+    mappingDraft=mappingChanged();
     for(const id of ['app-key','remember','save','connect','disconnect','local-root','remote-root','namespace','namespace-choice','mapping-save','source','search','status','find','check','refresh'])node(id).disabled=busy;
     node('connect').disabled=busy||!node('app-key').value.trim();
     node('disconnect').disabled=busy||!(connection?.connected||connection?.persistent||connection?.credential_storage?.persistent||connection?.credential_cleanup_pending);
     node('remember').disabled=busy||connection?.credential_storage?.available===false;
     node('mapping-save').disabled=busy||!connection?.connected;
     node('namespace-choice').disabled=busy||!connection?.connected;
+    let hint=node('mapping-draft');if(!hint){hint=document.createElement('p');hint.id='dropbox-mapping-draft';hint.className='dropbox-note';hint.setAttribute('role','status');node('mapping-save').after(hint);}
+    hint.textContent=t('Verify folder mapping');hint.hidden=!mappingDraft;
     node('check').disabled=busy||mappingDraft||!connection?.connected||!connection?.mapping||!node('source').value;
     node('previous').disabled=busy||offset===0;node('next').disabled=busy||offset+pageRows>=totalRows;
     for(const button of node('results').querySelectorAll('[data-dropbox-download]'))button.disabled=busy||mappingDraft||!connection?.connected;
@@ -53,6 +65,7 @@ window.DropboxConnector=(()=>{
     controls();
   }
   async function loadFiles(){
+    mappingDraft=mappingChanged();
     const generation=++filesRevision,selected=node('source').value;source=selected;
     if(!selected||mappingDraft||!connection?.connected||!connection?.mapping){offset=pageRows=totalRows=0;node('results').replaceChildren();node('count').textContent='';node('checked').textContent=t('Not checked');controls();return;}
     const data=await api('/api/dropbox/files?'+new URLSearchParams({source:selected,offset:String(offset),q:node('search').value,status:node('status').value}),{feedback:false});
@@ -75,7 +88,8 @@ window.DropboxConnector=(()=>{
     }
     table.append(head,body);node('results').replaceChildren(table);
     const total=Number(data.total||0);totalRows=total;pageRows=rows.length;node('count').textContent=num(total)+' · '+(total?num(offset+1)+'–'+num(Math.min(offset+rows.length,total)):'0');
-    node('checked').textContent=data.checked_at?snapshotMoment(typeof data.checked_at==='number'?new Date(data.checked_at*1000).toISOString():data.checked_at):t('Not checked');
+    const checked=data.checked_at?snapshotMoment(typeof data.checked_at==='number'?new Date(data.checked_at*1000).toISOString():data.checked_at):t('Not checked');
+    node('checked').textContent=checked+(data.complete===false?' · '+t('Unverified'):'')+(typeof data.scan_note==='string'&&data.scan_note?' · '+data.scan_note:'');
     controls();
   }
   async function load(){
@@ -114,9 +128,10 @@ window.DropboxConnector=(()=>{
     renderNamespaces(connection||{},node('namespace'),node('namespace-choice'),node('namespace-context'),node('namespaces'),node('remote-root'));
     mappingDraft=true;void loadFiles();
   };
-  for(const id of ['namespace','remote-root','local-root'])node(id).addEventListener('input',()=>{mappingDraft=true;pending=null;if(node('download-dialog').open)node('download-dialog').close();renderNamespaces(connection||{},node('namespace'),node('namespace-choice'),node('namespace-context'),node('namespaces'),node('remote-root'));void loadFiles();});
+  function mappingInputChanged(){mappingDraft=mappingChanged();pending=null;if(node('download-dialog').open)node('download-dialog').close();renderNamespaces(connection||{},node('namespace'),node('namespace-choice'),node('namespace-context'),node('namespaces'),node('remote-root'));void loadFiles();}
+  for(const id of ['namespace','remote-root','local-root'])for(const event of ['input','change'])node(id).addEventListener(event,mappingInputChanged);
   node('copy-redirect').onclick=wrap(()=>copyCloudRedirect(node('redirect')));
-  node('check').onclick=wrap(()=>action(async()=>{const selected=node('source').value,result=await post('/check',{source:selected});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:selected,provider:'dropbox'}}));if(selected===node('source').value){offset=0;await loadFiles();}notify(t('Cloud check complete'));}));
+  node('check').onclick=wrap(()=>action(async()=>{if(mappingChanged()){mappingDraft=true;await loadFiles();return;}const selected=node('source').value,result=await post('/check',{source:selected});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:selected,provider:'dropbox'}}));if(selected===node('source').value){offset=0;await loadFiles();}notify(t('Cloud check complete'));}));
   node('source').onchange=wrap(async()=>{offset=0;await loadFiles();});
   node('find').onclick=wrap(async()=>{offset=0;await loadFiles();});
   node('status').onchange=wrap(async()=>{offset=0;await loadFiles();});

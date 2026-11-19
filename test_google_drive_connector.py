@@ -87,7 +87,7 @@ class GoogleDriveConnectorTests(unittest.TestCase):
         if self.fail_listing:raise GoogleDriveError('Synthetic metadata request failed',tag='network')
         parents=re.findall(r"'([A-Za-z0-9_-]+)' in parents",payload['q'])
         rows=[row for row in self.entries if any(parent in row['parents'] for parent in parents)]
-        match=re.search(r"and name = '((?:\\.|[^'])*)'",payload['q'])
+        match=re.search(r"and name = '((?:\\.|[^'\\])*)'",payload['q'])
         if match:
             name=match.group(1).replace("\\'", "'").replace('\\\\','\\')
             rows=[row for row in rows if row['name']==name]
