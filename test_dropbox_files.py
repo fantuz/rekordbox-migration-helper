@@ -46,6 +46,20 @@ class DropboxFileEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'folder changed'):
             files.validate_mapping(self.connection,mapping)
 
+    def test_requested_mapping_cannot_use_outside_sibling_or_link_alias(self):
+        outside=self.root/'Private';outside.mkdir()
+        sibling=self.root/'Dropbox extra';sibling.mkdir()
+        invalid=[str(outside),str(sibling),str(self.music/'..'/'Music')]
+        alias=self.dropbox/'Outside alias'
+        try:alias.symlink_to(outside,target_is_directory=True)
+        except OSError:pass
+        else:invalid.append(str(alias))
+        with patch.object(files,'detected_roots',return_value=[{'root':str(self.dropbox)}]):
+            for value in invalid:
+                with self.subTest(path=value),self.assertRaises(ValueError):
+                    files.mapping_record(self.connection,value,'/Music')
+        self.connection.rpc.assert_not_called()
+
     def test_valid_pagination_returns_one_metadata_inventory_without_content(self):
         first=entry();second=entry('/Music/Album/Other.flac','id:other')
         values,complete=self.inventory([

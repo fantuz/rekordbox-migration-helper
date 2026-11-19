@@ -45,20 +45,26 @@ def path_key(value):return unicodedata.normalize('NFC',value).lower()
 
 def mapping_record(connection,local_root,remote_root,namespace=None):
     if not isinstance(local_root,str) or any(ord(c)<32 for c in local_root):raise ValueError('Choose a detected Dropbox folder.')
-    path=Path(local_root).expanduser()
-    if not path.is_absolute() or '..' in path.parts:raise ValueError('Choose a detected Dropbox folder.')
-    ordinary_chain(path)
-    canonical=path.resolve(strict=True)
     managed=[]
     for row in detected_roots():
         root=Path(row['root'])
         try:
             ordinary_chain(root)
             boundary=root.resolve(strict=True)
-            if canonical.is_relative_to(boundary):managed.append(boundary)
+            managed.append(boundary)
         except (OSError,RuntimeError,ValueError):continue
     if not managed:
         raise ValueError('Choose a folder inside a Dropbox root detected from local provider configuration.')
+    # Use the same component-boundary sanitizer as local audio mappings before
+    # constructing or inspecting any request-derived Path. Provider roots are
+    # selected by the server, never by the browser's mapping request.
+    from audio_paths import confined_folder
+    canonical=confined_folder(local_root,managed)
+    expanded=os.path.normcase(os.path.abspath(os.path.expanduser(local_root)))
+    if expanded!=os.path.normcase(str(canonical)):
+        raise ValueError('Choose an existing local Dropbox folder without links.')
+    ordinary_chain(canonical)
+    managed=[root for root in managed if canonical.is_relative_to(root)]
     # Use the outermost managed root: staging in an ancestor of the selected
     # music subfolder must still not create a partially synced Dropbox file.
     managed_root=min(managed,key=lambda p:len(p.parts))
