@@ -10,6 +10,8 @@ For real-server workflow integrity checks, run `python packaging/check_workflow_
 
 That workflow also exercises Formats & STEMS and Native source insights with generated binary layouts: structure checks, checksum distinctions, combined filters/downloads, saved-report reload, native track evidence and mobile controls. Synthetic generators live in `test_asset_formats.py` and `test_source_insights.py`; do not replace them with private exports or model files. Missing external fixtures must not silently count as successful coverage.
 
+Bubble checks retain `bubble-navigation-diagnostics.json` and `bubble-navigation-trace.zip`, with a screenshot on failure. Compare the requested and returned view, loading state, focus, pointer targets and bounded response history before changing a navigation assertion. The checks use generated snapshots; preserve that isolation when reproducing a failure.
+
 Translations belong in the shared [interface catalogue](static/locales.json). Follow the [localization guide](docs/LOCALIZATION.md), preserve placeholders and technical identifiers, and check both live and offline interfaces. Native-speaker corrections are welcome. Full project documentation and legal policies remain English unless a separately reviewed translation is added.
 
 For input-format changes, include a regression that exercises actual parsing/writing and confirms source preservation. Document unsupported cases rather than silently replacing characters or guessing a format. Read [Unicode/input checks](docs/UNICODE-INPUTS.md) and [compatibility](docs/COMPATIBILITY.md).
