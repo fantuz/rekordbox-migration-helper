@@ -110,6 +110,77 @@ class DropboxDownloadTests(unittest.TestCase):
         self.assertGreater(self.response.reads, 30)
         self.assertEqual(result['content_hash'], content_hash(self.payload))
 
+    def test_final_play_verification_reads_only_approved_resident_file_with_readonly_flags(self):
+        state=downloads.prepare_target(self.target,self.root);result=self.download(expected_target=state)
+        with patch.object(downloads.os,'open',wraps=os.open) as opened,patch.object(downloads.os,'read',wraps=os.read) as read:
+            downloads.verify_downloaded_content(self.target,self.root,state,result['file_identity'],
+                                                len(self.payload),content_hash(self.payload))
+        opened.assert_called_once()
+        self.assertEqual(opened.call_args.args[0],self.target)
+        flags=opened.call_args.args[1]
+        self.assertFalse(flags&(os.O_WRONLY|os.O_RDWR|os.O_CREAT|os.O_TRUNC))
+        self.assertEqual(flags&getattr(os,'O_NOFOLLOW',0),getattr(os,'O_NOFOLLOW',0))
+        self.assertEqual(flags&getattr(os,'O_NONBLOCK',0),getattr(os,'O_NONBLOCK',0))
+        self.assertTrue(read.called)
+
+    def test_final_play_hash_detects_same_size_change_even_when_all_metadata_is_unchanged(self):
+        state=downloads.prepare_target(self.target,self.root);result=self.download(expected_target=state)
+        original=self.target.stat();self.target.write_bytes(b'X'*len(self.payload))
+        os.utime(self.target,ns=(original.st_atime_ns,original.st_mtime_ns))
+        with patch.object(downloads,'resident_file_identity',return_value=result['file_identity']),patch.object(downloads.os,'fstat',return_value=original):
+            with self.assertRaisesRegex(ValueError,'content changed'):
+                downloads.verify_downloaded_content(self.target,self.root,state,result['file_identity'],
+                                                    len(self.payload),content_hash(self.payload))
+        self.assertEqual(self.target.read_bytes(),b'X'*len(self.payload))
+
+    def test_windows_fd_timestamp_precision_differences_preserve_hash_verification(self):
+        state=downloads.prepare_target(self.target,self.root);result=self.download(expected_target=state)
+        info=self.target.stat()
+        # Windows fstat may expose coarser mtime and creation-time ctime while
+        # the path query exposes a different timestamp representation. Optional
+        # file-attribute fields may also be absent from that fd result.
+        windows_fd=SimpleNamespace(st_mode=info.st_mode,st_dev=info.st_dev,st_ino=info.st_ino,
+            st_size=info.st_size,st_mtime_ns=info.st_mtime_ns//10**9*10**9,
+            st_ctime_ns=info.st_ctime_ns+20*10**9)
+        with patch.object(downloads.sys,'platform','win32'),patch.object(downloads.os,'fstat',return_value=windows_fd),patch.object(downloads.os,'read',wraps=os.read) as read:
+            downloads.verify_downloaded_content(self.target,self.root,state,result['file_identity'],
+                                                len(self.payload),content_hash(self.payload))
+            self.assertTrue(read.called)
+            # Ignoring incompatible timestamps must never ignore a different
+            # underlying file or an explicit placeholder flag before reading.
+            for change in ({'st_ino':info.st_ino+1},{'st_file_attributes':0x1000}):
+                altered=SimpleNamespace(**{**vars(windows_fd),**change})
+                with self.subTest(change=change),patch.object(downloads.os,'fstat',return_value=altered),patch.object(downloads.os,'read',side_effect=AssertionError('Unapproved fd read')):
+                    with self.assertRaisesRegex(ValueError,'changed'):
+                        downloads.verify_downloaded_content(self.target,self.root,state,result['file_identity'],
+                                                            len(self.payload),content_hash(self.payload))
+
+    def test_final_play_verification_rejects_stale_identity_before_any_read(self):
+        state=downloads.prepare_target(self.target,self.root);result=self.download(expected_target=state)
+        changed=[*result['file_identity']];changed[1]+=1
+        with patch.object(downloads.os,'open',side_effect=AssertionError('Unapproved file opened')):
+            with self.assertRaisesRegex(ValueError,'changed'):
+                downloads.verify_downloaded_content(self.target,self.root,state,changed,
+                                                    len(self.payload),content_hash(self.payload))
+        with patch.object(downloads.os,'fstat',return_value=SimpleNamespace(st_mode=0)),patch.object(downloads.os,'read',side_effect=AssertionError('Special file read')):
+            with self.assertRaisesRegex(ValueError,'changed'):
+                downloads.verify_downloaded_content(self.target,self.root,state,result['file_identity'],
+                                                    len(self.payload),content_hash(self.payload))
+
+    def test_final_play_verification_cancellation_closes_only_selected_file_and_keeps_download(self):
+        from task_control import OperationCancelled
+        state=downloads.prepare_target(self.target,self.root);result=self.download(expected_target=state)
+        calls=0
+        def checkpoint():
+            nonlocal calls
+            calls+=1
+            if calls==3:raise OperationCancelled('Synthetic cancel during selected file verification')
+        with patch.object(downloads.os,'close',wraps=os.close) as closed:
+            with self.assertRaises(OperationCancelled):
+                downloads.verify_downloaded_content(self.target,self.root,state,result['file_identity'],
+                                                    len(self.payload),content_hash(self.payload),checkpoint)
+        closed.assert_called_once();self.assertEqual(self.target.read_bytes(),self.payload)
+
     def test_exact_hash_block_boundary(self):
         self.payload = b'x' * (4 * 1024**2)
         self.metadata.update(size=len(self.payload), content_hash=content_hash(self.payload))

@@ -309,7 +309,7 @@ def register(owner):
                     progress(99,'Checking the approved track before playback')
                     validate(force=True)
                     validate_destination(mapped,destination['local_path'])
-                    from dropbox_download import resident_file_identity
+                    from dropbox_download import resident_file_identity,verify_downloaded_content
                     from track_playback import inspect_audio_details,open_audio
                     details=inspect_audio_details(track,context(source)[2])
                     target=Path(destination['local_path'])
@@ -318,6 +318,11 @@ def register(owner):
                             or not result.get('file_identity') or fresh!=result['file_identity']
                             or details['status']!='playable' or details['path']!=target):
                         raise ValueError('The downloaded track changed or is no longer available locally. Choose Play again.')
+                    def playback_checkpoint():
+                        validate()
+                        progress(99,'Verifying the approved downloaded track before playback')
+                    verify_downloaded_content(target,mapped['local_root'],intent['target'],fresh,
+                                              remote['size'],remote['content_hash'],playback_checkpoint)
                     validate(force=True)
                     if resident_file_identity(target,mapped['local_root'],intent['target'])!=fresh:
                         raise ValueError('The downloaded track changed before playback. Choose Play again.')

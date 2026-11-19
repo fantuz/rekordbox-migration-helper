@@ -184,7 +184,7 @@ class DropboxConnectorTests(unittest.TestCase):
         self.map_folder()
         result=self.post('download/prepare',source='snapshot:'+snapshot,track_id='0')
         self.assertEqual(result.status_code,200,result.json)
-        self.assertEqual(result.json['local_path'],str(self.album/'Synthetic 000.mp3'))
+        self.assertEqual(Path(result.json['local_path']),self.album/'Synthetic 000.mp3')
         self.assertEqual(result.json['expected_size'],len(self.payload)+1)
         self.assertEqual(result.json['remote_size'],len(self.payload))
         self.assertEqual(result.json['size_comparison'],'mismatch')
@@ -348,11 +348,30 @@ class DropboxConnectorTests(unittest.TestCase):
 
     def test_download_only_consent_does_not_open_a_player(self):
         self.map_folder()
-        with patch('track_playback.open_audio') as opened:
+        with patch('track_playback.open_audio') as opened,patch('dropbox_download.verify_downloaded_content',side_effect=AssertionError('Download-only content reread')):
             response=self.confirm(self.prepare())
             self.assertEqual(response.status_code,200,response.json)
             self.assertTrue(self.result['downloaded']);self.assertFalse(self.result['opened'])
             self.assertFalse(self.result['play_after_download']);opened.assert_not_called()
+
+    def test_same_size_content_change_with_unchanged_clocks_cannot_open_player(self):
+        self.map_folder();target=self.album/'Synthetic 000.mp3'
+        from cloud_file_evidence import refresh_download
+        from dropbox_download import resident_file_identity
+        def changed(*args,**kwargs):
+            result=refresh_download(*args,**kwargs)
+            info=target.stat();identity=resident_file_identity(target,self.library)
+            target.write_bytes(b'X'*len(self.payload));os.utime(target,ns=(info.st_atime_ns,info.st_mtime_ns))
+            for stub in (patch('dropbox_download.resident_file_identity',return_value=identity),
+                         patch('dropbox_download.os.fstat',return_value=info)):
+                stub.start();self.addCleanup(stub.stop)
+            return result
+        with patch('cloud_file_evidence.refresh_download',side_effect=changed),patch('track_playback.open_audio') as opened:
+            response=self.confirm(self.prepare(play_after_download=True))
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertTrue(self.result['downloaded']);self.assertFalse(self.result['opened'])
+        self.assertIn('content changed',self.result['playback_error']);opened.assert_not_called()
+        self.assertEqual(target.read_bytes(),b'X'*len(self.payload))
 
     def test_player_launch_failure_keeps_completed_download_visible(self):
         self.map_folder()

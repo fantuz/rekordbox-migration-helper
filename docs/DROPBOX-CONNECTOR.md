@@ -187,7 +187,12 @@ computer's default audio player. Cancel or Escape starts neither operation.
 
 Workbench waits for the complete, size- and hash-verified file to be published
 at the attached location, then rechecks the source, mapping and resident file
-before opening it. Changed or unavailable destinations prevent playback. A
+before opening it. Play also streams that one approved local file through the
+Dropbox content-hash check again: metadata timestamps alone can miss rapid
+same-size changes, especially on Windows. This extra local read applies only
+to the approved download-and-play action; scans and browsing stay metadata-only.
+The hash confirms the downloaded Dropbox revision, not the identity of the
+original recording expected by the captured library. Changed or unavailable destinations prevent playback. A
 player-launch failure leaves the completed download available for a retry.
 This confirmation does not authorize a queue or another recording. Already
 local files and online-only placeholders retain their existing individual

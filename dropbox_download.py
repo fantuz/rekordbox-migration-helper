@@ -12,6 +12,7 @@ import re
 import secrets
 import shutil
 import stat
+import sys
 import tempfile
 
 from media import cloud_placeholder
@@ -103,7 +104,7 @@ def prepare_target(local_path, local_root):
 
 
 def resident_file_identity(local_path, local_root, expected_target=None):
-    """Inspect an ordinary published file and its parents without opening it.
+    """Inspect an ordinary published file and its parents without audio reads.
 
     This stamp supports a subsequent, explicitly approved local Play action.
     It is freshness evidence, not another content-hash or decoding check.
@@ -116,8 +117,60 @@ def resident_file_identity(local_path, local_root, expected_target=None):
             or getattr(info,'st_file_attributes',0)&0x400 or cloud_placeholder(info)
             or info.st_size<=0 or not os.access(target,os.R_OK)):
         raise ValueError('The downloaded track is no longer an ordinary locally available file')
-    return [info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns,info.st_ctime_ns,
-            getattr(info,'st_file_attributes',0),getattr(info,'st_flags',0)]
+    def stamp(value):
+        return [value.st_dev,value.st_ino,value.st_size,value.st_mtime_ns,value.st_ctime_ns,
+                getattr(value,'st_file_attributes',0),getattr(value,'st_flags',0)]
+    result=stamp(info)
+    return result
+
+
+def verify_downloaded_content(local_path,local_root,expected_target,expected_identity,
+                              expected_size,expected_hash,checkpoint=None):
+    """Recheck only the already approved download before its approved Play.
+
+    Metadata clocks can coalesce writes, including writes that restore mtime.
+    A matching stamp is only freshness evidence; verify the selected resident
+    file's bytes against the remote revision already approved and downloaded.
+    Never call this helper from inventory, browsing or download-only actions.
+    """
+    target,root=_paths(local_path,local_root)
+    if (type(expected_size) is not int or not 0<expected_size<=MAX_FILE_BYTES
+            or not isinstance(expected_hash,str) or not re.fullmatch('[0-9a-f]{64}',expected_hash)
+            or not isinstance(expected_identity,list) or len(expected_identity)!=7):
+        raise ValueError('The approved download cannot be verified for playback')
+    def check():
+        if checkpoint is not None:checkpoint()
+    def unchanged(info):
+        # Windows fd/path stat APIs differ in timestamp precision and ctime
+        # semantics. Their shared identity is device/inode/size, not timestamps.
+        # Full path stamps are still checked before/after reading on every OS;
+        # the final byte hash detects changes hidden by timestamp granularity.
+        if (not stat.S_ISREG(info.st_mode) or cloud_placeholder(info)
+                or [info.st_dev,info.st_ino,info.st_size]!=expected_identity[:3]):return False
+        return sys.platform=='win32' or [info.st_mtime_ns,info.st_ctime_ns]==expected_identity[3:5]
+    check()
+    if resident_file_identity(target,root,expected_target)!=expected_identity:
+        raise ValueError('The downloaded track changed before content verification')
+    flags=(os.O_RDONLY|getattr(os,'O_BINARY',0)|getattr(os,'O_NOINHERIT',0)
+           |getattr(os,'O_NOFOLLOW',0)|getattr(os,'O_NONBLOCK',0))
+    fd=os.open(target,flags)
+    try:
+        if not unchanged(os.fstat(fd)) or resident_file_identity(target,root,expected_target)!=expected_identity:
+            raise ValueError('The downloaded track changed before content verification')
+        digest=_DropboxHash();consumed=0
+        while True:
+            check()
+            chunk=os.read(fd,min(CHUNK_BYTES,expected_size-consumed+1))
+            if not chunk:break
+            consumed+=len(chunk)
+            if consumed>expected_size:raise ValueError('The downloaded track size changed before playback')
+            digest.update(chunk)
+        check()
+        if consumed!=expected_size or digest.hexdigest()!=expected_hash:
+            raise ValueError('The downloaded track content changed before playback')
+        if not unchanged(os.fstat(fd)) or resident_file_identity(target,root,expected_target)!=expected_identity:
+            raise ValueError('The downloaded track changed during content verification')
+    finally:os.close(fd)
 
 
 @contextmanager
