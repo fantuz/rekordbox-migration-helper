@@ -90,3 +90,35 @@ library, account credentials or commercial recording is used. The source
 snapshot and generated audio are not packaged; the screenshot records rendered
 synthetic metadata only. The same test verifies navigation away and back,
 direct-link reload, M3U handoff, report import and explicit field staging.
+
+
+## Dropbox metadata connector
+
+`dropbox-setup.png` and `dropbox-confirmation.png` are reviewed Chromium captures
+from `packaging/check_dropbox_connector_ui.py`. The first shows connection setup,
+the exact local OAuth redirect URL and an explicit local-to-remote folder mapping.
+The second shows the warning, track name, destination path, size and Cancel option
+before one file can be downloaded.
+
+The browser uses real application HTTP routes and temporary SQLite storage. A
+synthetic server-side Dropbox transport supplies an invented account, public app
+key, team/customer folder names and 61 invented remote file entries; two further
+library records exercise absent and unmapped paths. No browser API responses are
+intercepted. No external Dropbox service or actual cloud account is contacted,
+and these captures do not establish live-account compatibility. OAuth and
+credential-store behavior have separate automated tests.
+
+The confirmed download creates one short non-audio test payload in a temporary
+folder. Cancel and Escape create no file; metadata checks download no content.
+No actual music, personal paths, credentials or library database is packaged.
+Only the rendered PNG screenshots and test-generator code are included in source
+archives; the temporary metadata, provider inventory and payload are discarded.
+
+Regenerate the evidence with:
+
+```sh
+python packaging/check_dropbox_connector_ui.py --browser chromium --output ci-output/dropbox-connector
+```
+
+Review `dropbox-setup.png` and `dropbox-confirmation.png` before copying them to
+`docs/screenshots/`. Keep the invented account and metadata labels visible.

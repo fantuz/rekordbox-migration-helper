@@ -99,6 +99,14 @@ link or turn an arbitrary filename into a destination. Failed or incomplete
 transfers do not publish a partial final file. A changed mapping or remote
 revision requires a new confirmation.
 
+Parent folders must already exist locally as ordinary directories. Transfers
+are limited to 8 GiB per file and need sufficient free space. A private staging
+folder outside Dropbox must be on the same filesystem as the destination;
+the filesystem must support atomic hard links. If these checks fail, use the
+Dropbox client to make that one file available instead. Workbench verifies
+both the advertised byte count and Dropbox content hash before publishing the
+complete file, so interrupted transfers never appear in the sync folder.
+
 The destination's parent folders must already be locally available. Downloads
 are limited to one nonempty audio file of at most 8 GiB, with its size and
 Dropbox content hash verified before publication. Temporary download bytes

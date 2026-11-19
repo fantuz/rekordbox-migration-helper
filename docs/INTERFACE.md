@@ -16,6 +16,14 @@ Source analyzer can instead inspect a database folder or collection XML. Close r
 
 File health includes an **Accessible?** column and full-index filters. **Yes** indicates a successful local file inspection; **No** groups Missing and Inaccessible. **Unknown** represents Unverified; records never inspected remain Unchecked and must not be treated as No. The filter and column sort run against the complete indexed scan, before the 50-record page is selected. Dropbox and Google Drive path filters use colored labels. Cloud-only placeholders and absent cloud paths remain distinct from confirmed local absence. Playback independently rechecks the path and requires a fresh one-track confirmation for cloud-managed audio. See [cloud file health and metadata API findings](CLOUD-FILE-HEALTH.md). This is not a decoding or audio-integrity test.
 
+**Dropbox connector** provides optional browser authorization and metadata-only
+checks for a saved collection. Register a public app key, verify the mapping
+between a detected local Dropbox folder and the authorized remote folder, then
+choose **Check remote files**. Remote presence and local availability are
+separate evidence. An individual download requires its own confirmation;
+existing placeholders use the individual Play flow. See the
+[setup and registration guide](DROPBOX-CONNECTOR.md).
+
 In saved native snapshot **Duplicate review** and **File references**, click a sortable column heading to order the entire filtered collection, not only the visible 50 rows. Click again to reverse direction; changing the column resets to page one, and Previous/Next retain the chosen sort. The arrows indicate direction, while the Review action column is not sortable. Large requests use the shared Loading / Waiting feedback without locking the page. File health independently sorts its full scanned SQLite index before paging.
 
 The **Enrich** sidebar group contains separate **MusicBrainz** and

@@ -26,7 +26,7 @@ sys.path.insert(0,str(ROOT))
 class SyntheticProvider:
     def __init__(self,folder):
         self.folder=folder;self.body=b'Invented Dropbox download fixture; not real music.'
-        self.calls=[];self.downloads=[]
+        self.calls=[];self.downloads=[];self.fail_scan=False
         digest=sha256(sha256(self.body).digest()).hexdigest()
         self.entries=[{'.tag':'file','id':'id:invented-'+str(i),'rev':'rev-'+str(i),
                        'name':f'Synthetic {i:03}.mp3','path_display':f'/Music/Album/Synthetic {i:03}.mp3',
@@ -44,7 +44,9 @@ class SyntheticProvider:
     def rpc(self,route,payload,**_kwargs):
         from dropbox_http import DropboxError
         self.calls.append(route)
-        if route=='files/list_folder':return {'entries':deepcopy(self.entries),'has_more':False,'cursor':'invented'}
+        if route=='files/list_folder':
+            if self.fail_scan:raise DropboxError('Synthetic metadata interruption',tag='network')
+            return {'entries':deepcopy(self.entries),'has_more':False,'cursor':'invented'}
         if route=='files/get_metadata':
             if payload['path']=='/Music':return {'.tag':'folder','id':'id:folder','name':'Music'}
             for entry in self.entries:
@@ -126,6 +128,12 @@ def main():
                     expect(page.locator('#dropbox-results tbody tr')).to_have_count(50)
                     page.screenshot(path=str(output/'dropbox-checked.png'),full_page=True)
                     assert not provider.downloads and not list(album.iterdir())
+                    evidence_url=base+'/api/dropbox/files?source=snapshot:'+sid
+                    checked_at=context.request.get(evidence_url).json()['checked_at']
+                    provider.fail_scan=True;page.locator('#dropbox-check').click()
+                    expect(page.locator('#toast')).to_contain_text('Synthetic metadata interruption')
+                    assert context.request.get(evidence_url).json()['checked_at']==checked_at
+                    provider.fail_scan=False
                     page.select_option('#dropbox-status','present')
                     expect(page.locator('#dropbox-count')).to_contain_text('61')
                     page.locator('#dropbox-next').click()
@@ -178,7 +186,8 @@ def main():
                     report.update(status='passed',metadata_only_check=True,full_scope_pagination=True,
                         explicit_single_download=True,cancel_and_escape_preserve_files=True,snapshot_unchanged=True,
                         remote_files=61,downloaded_files=1,mobile_layout=True,
-                        credential_cleanup_remains_actionable=True,external_requests=external)
+                        failed_recheck_preserves_evidence=True,credential_cleanup_remains_actionable=True,
+                        external_requests=external)
                 except Exception:
                     page.screenshot(path=str(output/'dropbox-failure.png'),full_page=True);raise
                 finally:
