@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.2.4 — 2026-11-20
+
+Library Workbench makes cloud scans easier to follow and helps DJs review collections shared across computers.
+
+- Follow Dropbox and Google Drive operations in the central progress dialog. Folder scans count metadata pages and entries, library comparisons show completed tracks, and confirmed single-track downloads show the filename and exact byte count. Metadata checks read file information only.
+- Preview mappings for library paths recorded on another Windows or macOS computer. Workbench suggests detected cloud folders and recorded prefixes, keeps manual choices available, and shows sample matches before attachment. Dropbox results explain incomplete scans and unmapped paths.
+- See cloud-location counts in Collection statistics and filter by provider across library views. The shared **Hide metadata sidecars** option reports how many entries it hides and keeps ordinary music under `contents_*` visible.
+- Edit personal star ratings directly in live track tables and Duplicate review. Edits are staged in Workbench’s private sidecar. The captured library retains its original ratings.
+- Find collection context, snapshots and source controls together in the compact toolbar. Media inventory identifies the active workspace, search folders and candidates for relocation. Duplicate review fits more rows, and File health keeps its sort headings legible.
+- Reuse folder suggestions when revisiting Cloud connections. In a 40,000-track synthetic library, the same suggestions took about 5 seconds on the first visit and 5 milliseconds on repeat visits, down from about 10 seconds on each visit.
+
 ## 1.2.3 — 2026-11-19
 
 Maintenance packaging refresh of the validated 1.2.2 application.
