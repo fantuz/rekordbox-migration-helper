@@ -28,6 +28,7 @@ from discovery import suggestions as discover_locations,scan_roots as discover_s
 from storage_audit import scan_storage, verify_group
 from metadata_export import capture_catalog, export_metadata, list_metadata_exports
 from task_control import TaskControl, OperationCancelled
+from cloud_progress import CloudProgress
 import localization
 import documentation
 from workspace_safety import transaction
@@ -118,7 +119,18 @@ def task_progress(job, amount, text):
     if shutdown.requested.is_set():raise InterruptedError('Stopping: temporary analysis copies are being cleaned')
     task_controls[job].checkpoint(amount)
     with lock:
-        tasks[job].update(progress=amount,message=text)
+        tasks[job].update(progress=amount,message=str(text))
+        if isinstance(text, CloudProgress):
+            detail=text.detail.copy()
+            if detail.get('unit')=='entries':
+                detail['entries']=detail['completed']
+            else:
+                previous=tasks[job].get('cloud_progress',{})
+                if 'pages' in previous:
+                    detail.update(pages=previous['pages'],entries=previous['entries'])
+            tasks[job]['cloud_progress'] = detail
+        else:
+            tasks[job].pop('cloud_progress', None)
 
 
 def launch(work, message, pool=None, on_finished=None, cancel_event=None):
@@ -148,6 +160,7 @@ def launch(work, message, pool=None, on_finished=None, cancel_event=None):
             finally:
                 with lock:
                     task_controls.pop(job,None)
+                    tasks[job].pop('cloud_progress',None)
                     tasks[job]['_completed_at']=monotonic()
                     prune_tasks()
     try:(pool or executor).submit(run)
@@ -586,7 +599,13 @@ def task(job):
         prune_tasks()
         if job not in tasks:
             return jsonify(error="Task not found or expired; completed reports and exports remain saved"),404
-        return jsonify({k:v for k,v in tasks[job].items() if not k.startswith('_')})
+        value={k:v for k,v in tasks[job].items() if not k.startswith('_')}
+        if 'cloud_progress' in value:
+            from file_health import local_request
+            if not local_request():value.pop('cloud_progress')
+        response=jsonify(value)
+        response.headers['Cache-Control']='no-store'
+        return response
 
 
 @app.post('/api/tasks/<job>/cancel')

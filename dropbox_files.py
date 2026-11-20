@@ -253,11 +253,16 @@ def _inventory_path(value):
 
 def inventory(connection,mapping,progress):
     """List the selected remote subtree once, including explicitly reported pagination."""
+    from cloud_progress import CloudProgress
     root={'.tag':'namespace_id','namespace_id':mapping['namespace']}
     route='files/list_folder';payload={'path':mapping['remote_root'],'recursive':True,'include_deleted':False,'limit':2000}
     files=Inventory();seen=0;cursors=set();paths=set();identities=set()
+    last_item=mapping['remote_root']
+    def report_page():
+        progress(5+min(60,files.pages_read), CloudProgress('Dropbox','Reading folder metadata',item=last_item,
+                 unit='entries',completed=seen,pages=files.pages_read))
+    report_page()
     for page in range(MAX_PAGES):
-        progress(5+min(60,page), 'Checking Dropbox file metadata')
         result=connection.rpc(route,payload,path_root=root)
         if not isinstance(result,dict):raise ValueError('Dropbox returned an invalid metadata listing.')
         entries=result.get('entries');more=result.get('has_more')
@@ -267,6 +272,7 @@ def inventory(connection,mapping,progress):
             if seen>=MAX_ENTRIES:
                 files.incomplete_reasons.append('entry_limit')
                 if files.unsupported_paths:files.incomplete_reasons.append('unsupported_paths')
+                report_page()
                 return files,False
             seen+=1
             files.entries_listed=seen
@@ -288,6 +294,7 @@ def inventory(connection,mapping,progress):
                 display,display_supported=_inventory_path(display)
                 if path_key(display)!=key:raise ValueError('Dropbox returned inconsistent metadata paths.')
                 supported=supported and display_supported
+            last_item=display or path
             if entry['.tag']=='folder':
                 files.folders_listed+=1
                 if not supported:files.unsupported_paths+=1
@@ -301,6 +308,7 @@ def inventory(connection,mapping,progress):
                 files.unsupported_paths+=1
                 continue
             files[key]=entry
+        report_page()
         if not more:
             files.listing_complete=True
             if files.unsupported_paths:files.incomplete_reasons.append('unsupported_paths')

@@ -93,7 +93,8 @@ window.TrackPlayback=(()=>{
       let result=await api('/api/playback/open',{method:'POST',body:JSON.stringify({...source,track_id:identity})});
       if(result.confirmation_required){
         if(!await confirmCloudOpen(result))return;
-        result=await api('/api/playback/open',{method:'POST',body:JSON.stringify({...source,track_id:identity,confirm_cloud_open:true,confirmation_token:result.confirmation_token})});
+        result=await CloudOperations.run(result.cloud_provider,'Play in default media player',()=>
+          api('/api/playback/open',{method:'POST',feedback:false,body:JSON.stringify({...source,track_id:identity,confirm_cloud_open:true,confirmation_token:result.confirmation_token})}),result.title);
       }
       if(result.opened)notify(t('Opened in your default media player'));
     })()

@@ -39,7 +39,8 @@ window.CloudConnections=(()=>{
   }
   const provider=()=>node('google').checked?'google_drive':'dropbox';
   const endpoint=()=>provider()==='dropbox'?'/api/dropbox':'/api/google-drive';
-  const post=(path,value={})=>api('/api/cloud-setup'+path,{method:'POST',body:JSON.stringify(value)});
+  const accountPost=(path,value={})=>CloudOperations.post(provider(),endpoint(),path,value);
+  const post=(path,value={},item='')=>CloudOperations.post(value.provider||provider(),'/api/cloud-setup',path,value,item);
   const accountState=()=>{const value=model?.providers?.[provider()]||{};return value.status||value;};
   const accountName=state=>{const account=state?.account||{},name=account.name||account.display_name||'';return [name,account.email].filter((value,index,values)=>value&&values.indexOf(value)===index).join(' · ')||account.account_id||'';};
   function remember(){
@@ -168,7 +169,7 @@ window.CloudConnections=(()=>{
       const buttons=document.createElement('div');buttons.className='lab-actions';
       const open=document.createElement('button');open.type='button';open.className='button secondary small';open.textContent=t('Check remote files');open.dataset.cloudActive=String(active);open.disabled=!active;open.onclick=()=>{const component=kind==='dropbox'?window.DropboxConnector:window.GoogleDriveConnector;component?.forSource?.(node('source').value);showView(kind==='dropbox'?'dropbox':'google-drive');};
       const change=document.createElement('button');change.type='button';change.className='button secondary small';change.textContent=t('Change attachment');change.onclick=()=>{node('google').checked=kind==='google_drive';node('dropbox').checked=kind==='dropbox';invalidate();renderProvider(true);showStep(2);};
-      const remove=document.createElement('button');remove.type='button';remove.className='text-button';remove.textContent=t('Detach location');remove.onclick=wrap(()=>action(async()=>{await post('/detach',{provider:kind});invalidate();await load();notify(t('Location detached. Files and account connections are kept.'));}));
+      const remove=document.createElement('button');remove.type='button';remove.className='text-button';remove.textContent=t('Detach location');remove.onclick=wrap(()=>action(async()=>{await post('/detach',{provider:kind},mapping.local_root);invalidate();await load();notify(t('Location detached. Files and account connections are kept.'));}));
       buttons.append(open,change,remove);card.append(heading,identity,path,remote);
       if(!active){const warning=document.createElement('p');warning.className='cloud-error';warning.textContent=state.attachment_error||t('Not connected');card.append(warning);}
       card.append(buttons);list.append(card);
@@ -227,7 +228,7 @@ window.CloudConnections=(()=>{
   }
   async function previewAttachment(){
     invalidate();
-    const result=await post('/preview',details()),value=result.job?await poll(result.job):result;
+    const value=await post('/preview',details(),node('local-root').value);
     renderReview(value);showStep(3);
   }
   async function browse(value=null,more=false){
@@ -235,7 +236,7 @@ window.CloudConnections=(()=>{
     if(provider()==='dropbox')body.remote_root=input.path??input.remote_root??node('remote-root').value.trim();
     else body.remote_folder_id=(input.id??input.remote_folder_id??node('remote-root').value.trim())||'root';
     if(more&&folder?.next_page_token)body.page_token=folder.next_page_token;
-    const result=await post('/folders',body);folder={...result,request:body};node('folder-browser').hidden=false;
+    const result=await post('/folders',body,input.name||input.path||body.remote_root||body.remote_folder_id);folder={...result,request:body};node('folder-browser').hidden=false;
     node('folder-path').textContent=result.folder?.path||result.folder?.name||result.folder?.id||'/';
     if(!more)node('folder-rows').replaceChildren();
     for(const row of result.rows||[]){const button=document.createElement('button');button.type='button';button.className='cloud-folder-option';button.textContent=row.name||row.path||row.id;button.onclick=wrap(()=>action(async()=>{folderStack.push(folder.request);await browse(row);}));node('folder-rows').append(button);}
@@ -246,26 +247,26 @@ window.CloudConnections=(()=>{
   node('namespace-choice').onchange=()=>{node('namespace').value=node('namespace-choice').value;changeNamespace(true);};
   node('namespace').addEventListener('input',()=>changeNamespace());
   node('remote-root').addEventListener('input',()=>{if(provider()==='dropbox')renderNamespaces();});
-  node('source').onchange=wrap(async()=>{invalidate();controls();await load();});
+  node('source').onchange=wrap(async()=>{invalidate();controls();await CloudOperations.run(provider(),'Refresh file suggestions',load);});
   node('client-id').oninput=controls;
   node('copy-redirect').onclick=wrap(()=>copyCloudRedirect(node('redirect')));
   node('remember').onchange=()=>{node('storage-state').textContent=t(node('remember').checked?'Credentials stay in the operating system credential store.':'Session-only connection');};
   node('connect').onclick=wrap(()=>action(async()=>{
     const google=provider()==='google_drive',value={remember:node('remember').checked};value[google?'client_id':'app_key']=node('client-id').value.trim();
     if(google&&node('client-secret').value.trim())value.client_secret=node('client-secret').value.trim();
-    try{await api(endpoint()+'/configure',{method:'POST',body:JSON.stringify(value)});}finally{node('client-secret').value='';}
-    remember();const result=await api(endpoint()+'/connect',{method:'POST',body:JSON.stringify({return_to:'cloud-connect'})}),url=new URL(result.authorize_url||result.authorization_url);
+    try{await accountPost('/configure',value);}finally{node('client-secret').value='';}
+    remember();const result=await accountPost('/connect',{return_to:'cloud-connect'}),url=new URL(result.authorize_url||result.authorization_url);
     if(url.username||url.password||(google?url.origin!=='https://accounts.google.com'||url.pathname!=='/o/oauth2/v2/auth':url.origin!=='https://www.dropbox.com'||url.pathname!=='/oauth2/authorize'))throw new Error(t('The action could not be completed'));
     window.location.assign(url.href);
   }));
-  node('disconnect').onclick=wrap(()=>action(async()=>{await api(endpoint()+'/disconnect',{method:'POST',body:'{}'});invalidate();await load();}));
-  node('refresh').onclick=wrap(load);
+  node('disconnect').onclick=wrap(()=>action(async()=>{await accountPost('/disconnect');invalidate();await load();}));
+  node('refresh').onclick=wrap(()=>CloudOperations.run(provider(),'Refresh',load));
   node('previous').onclick=()=>showStep(step-1);
   node('next').onclick=wrap(()=>step===2?action(previewAttachment):showStep(step+1));
   document.querySelectorAll('[data-cloud-step]').forEach(button=>button.onclick=()=>showStep(Number(button.dataset.cloudStep)));
   node('attach').onclick=wrap(()=>action(async()=>{
     const intent=preview;if(!intent?.preview_token||intent.attachable!==true)return;
-    invalidate();await post('/attach',{preview_token:intent.preview_token,confirm:true});await load();showStep(0);notify(t('Cloud location attached'));
+    invalidate();await post('/attach',{preview_token:intent.preview_token,confirm:true},node('local-root').value);await load();showStep(0);notify(t('Cloud location attached'));
   }));
   node('browse').onclick=wrap(()=>action(async()=>{folderStack=[];await browse();}));
   node('folder-up').onclick=wrap(()=>action(async()=>{if(folderStack.length)await browse(folderStack.pop());}));

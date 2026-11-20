@@ -164,6 +164,10 @@ Review the three Dropbox captures before copying them to
 before authorization, the library-path preview before attaching a selected-file
 cache, and local access beside the separately checked cloud presence.
 
+The same harness captures `dropbox-metadata-progress.png` and
+`google-drive-byte-progress.png` while a real job is paused at a measured
+checkpoint. The latter illustrates the progress dialog in the cloud setup guide.
+
 The harness runs the real application HTTP routes, JavaScript, SQLite store,
 background jobs and filesystem operations. Only the remote Dropbox/Google Drive
 transports and local provider discovery fixture are synthetic. The collection

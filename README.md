@@ -48,6 +48,7 @@ Use our [OneTagger bridge](docs/AUDIO-MATCHING-AND-ONETAGGER.md#onetagger-handof
 - Start fresh by archiving current investigations and staged edits, then optionally delete archived analyses permanently after a separate preview. Original libraries, audio, inputs and completed exports are kept.
 - Reuse bounded, persistent cached results for saved-collection statistics, duplicate review and file references; changing the source evidence or review decisions invalidates the relevant result. Clear result/provider caches independently of saved reports.
 - Cloud connections reuses folder suggestions when you return to the same collection. Each refresh checks the current account and folder attachment.
+- The central progress dialog identifies the cloud provider and current file or folder. Metadata scans count pages, entries and library tracks. Confirmed single-file downloads show transferred bytes against the approved size.
 - Restore a cleanup from the same page. Archiving clears menus but retains disk space; original libraries, audio, uploaded inputs and exports are preserved.
 - The shared collection header provides a direct **Save a snapshot for insight tools** action. Snapshot creation is an explicit choice.
 

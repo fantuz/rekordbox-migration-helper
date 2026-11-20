@@ -86,40 +86,48 @@ function notify(text, error=false) {
   toast.timeout = setTimeout(() => toast.hidden = true, error ? 9000 : 4500);
 }
 function wrap(fn) { return async e => {const finish=Activity.begin();try {await fn(e);} catch(error) {notify(error.message,error.name!=='OperationCancelled');}finally{finish();}}; }
-let progressCancel=null;
-function progress(n, text, cancel) {
-  const dialog=$("#progress"),value=Number.isFinite(n)?Math.max(0,Math.min(100,n)):null;
+let progressCancel=null,progressOwner=null;
+function progress(n, text, cancel, cloud=null) {
+  const dialog=$("#progress"),measured=window.CloudOperations?.render(cloud);
+  const value=measured?measured.percent:Number.isFinite(n)?Math.max(0,Math.min(100,n)):null;
   if(cancel){progressCancel=cancel;$("#progress-cancel").hidden=false;$("#progress-cancel").disabled=false;}
   dialog.hidden=false;if(!dialog.open)dialog.showModal();
   document.documentElement.dataset.operationBusy='true';
-  $("#progress-label").textContent=text;
-  $("#progress-percent").textContent=value===null?'—':I18n.number(Math.round(value))+'%';
+  const label=measured?measured.label:text;
+  if($("#progress-label").textContent!==label)$("#progress-label").textContent=label;
+  $("#progress-percent").textContent=value===null?'—':I18n.number(measured?Math.floor(value):Math.round(value))+'%';
   if(value===null)$("#progress-bar").removeAttribute('value');else $("#progress-bar").value=value;
-  Activity.progress(value,text);
+  Activity.progress(value,measured?measured.activity:label);
 }
 function finishProgress(){
   const dialog=$("#progress");if(dialog.open)dialog.close();dialog.hidden=true;
   document.documentElement.dataset.operationBusy='false';progressCancel=null;$("#progress-cancel").hidden=true;
+  progressOwner=null;window.CloudOperations?.render(null);
   Activity.finishProgress();
 }
 $("#progress").addEventListener('cancel',event=>event.preventDefault());
 $("#progress-stop").onclick=()=>openCleanupDialog();
 $("#progress-cancel").onclick=wrap(async()=>{$("#progress-cancel").disabled=true;if(progressCancel)await progressCancel();});
-async function poll(job) {
-  const wasBusy=busy;busy=true;progress(null,I18n.t("Working"),async()=>{
+async function poll(job,cloud=null,owner=job) {
+  const wasBusy=busy;busy=true;
+  if(!cloud)progressOwner=owner;
+  if(progressOwner===owner)progress(null,I18n.t("Working"),async()=>{
     await api('/api/tasks/'+encodeURIComponent(job)+'/cancel',{method:'POST',body:'{}'});
     $('#progress-label').textContent=I18n.t('Cancelling at the next safe checkpoint');
-  });
+  },cloud);
   try {
     while (true) {
       const state=await api("/api/tasks/"+job,{feedback:false});
-      progress(state.progress,state.message);
+      const detail=state.cloud_progress||cloud;
+      if(progressOwner===owner&&(!detail||state.status==='running')){
+        progress(state.progress,state.message,null,state.cancel_requested&&detail?{...detail,phase:'Cancelling at the next safe checkpoint'}:detail);
+      }
       if (state.status==="error") throw new Error(state.message);
       if (state.status==="cancelled") {const error=new Error(I18n.t('Operation cancelled. Completed reports and decisions are kept.'));error.name='OperationCancelled';throw error;}
       if (state.status==="complete") return state.result;
       await new Promise(resolve=>setTimeout(resolve,900));
     }
-  } finally { busy=wasBusy;finishProgress(); }
+  } finally { busy=wasBusy;if(progressOwner===owner)finishProgress(); }
 }
 function renderSession() {
   $('#report-download').href='/api/report?'+new URLSearchParams({workspace:session?.id||''});

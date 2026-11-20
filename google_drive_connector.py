@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from flask import jsonify, redirect, request
 
 from cloud_oauth import callback_errors
+from cloud_progress import CloudProgress, evidence_records, matching_tracks
 from collection_sources import resolve
 from file_health import local_request, selected_source
 from workbench_store import Store
@@ -162,19 +163,19 @@ def register(owner):
                     raise ValueError('Google Drive connection, source or attachment changed. Check metadata again.')
                 progress(amount,message)
             entries,complete=files.inventory(client,mapped,checkpoint);rows=[]
-            for i,track in enumerate(snapshot['tracks']):
-                if i%100==0:checkpoint(70+25*i/max(1,len(snapshot['tracks'])),'Matching library paths with Google Drive metadata')
+            coverage={name:getattr(entries,name,None) for name in ('entries_listed','pages_read')}
+            for track in matching_tracks(snapshot['tracks'],'Google Drive',checkpoint):
                 destination=files.target(track,mapped,audio)
                 remote,state=files.lookup(entries,destination['relative_path']) if destination else (None,'unmapped')
                 if state=='not_found' and not complete:state='unverified'
                 rows.append({'track_id':str(track['id']),'title':str(track.get('title') or ''),'artist':str(track.get('artist') or ''),
                              'status':state,**(destination or {}),'size':int(remote['size']) if remote and remote.get('size') is not None else None,'remote':remote})
-            checkpoint(98,'Saving Google Drive metadata evidence');checked=time.time()
+            checkpoint(98,CloudProgress('Google Drive','Saving file evidence',unit='tracks',total=len(rows)));checked=time.time()
             with task_store.connection() as db:
                 db.execute('DELETE FROM google_drive_records WHERE binding=? AND source=?',(key,source))
-                db.executemany('INSERT INTO google_drive_records VALUES (?,?,?,?)',[(key,source,row['track_id'],json.dumps(row)) for row in rows])
-                db.execute('INSERT OR REPLACE INTO google_drive_scans VALUES (?,?,?)',(key,source,json.dumps({'checked_at':checked,'complete':complete,'tracks':len(rows)})))
-            return {'checked':len(rows),'complete':complete,'audio_contents_read':False,'downloads':0}
+                db.executemany('INSERT INTO google_drive_records VALUES (?,?,?,?)',evidence_records(rows,key,source,'Google Drive',progress))
+                db.execute('INSERT OR REPLACE INTO google_drive_scans VALUES (?,?,?)',(key,source,json.dumps({'checked_at':checked,'complete':complete,'tracks':len(rows),'coverage':coverage})))
+            return {'checked':len(rows),'complete':complete,'coverage':coverage,'audio_contents_read':False,'downloads':0}
         def finished(_state):
             with guard:running.pop(identity,None)
         with guard:

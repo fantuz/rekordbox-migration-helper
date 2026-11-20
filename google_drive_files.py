@@ -116,6 +116,8 @@ class Inventory(dict):
         self.blocked = {}
         self.folded = None
         self.folded_blocked = None
+        self.pages_read = 0
+        self.entries_listed = 0
 
 
 def lookup(entries, relative_path):
@@ -163,11 +165,17 @@ def _entry(value, parents):
 
 def inventory(connection, mapping, progress):
     """Enumerate only the chosen subtree, batching parent IDs rather than names."""
+    from cloud_progress import CloudProgress
     result = Inventory()
     pending = deque([(mapping['remote_root'], '')])
-    visited = set();seen_entries = 0;requests = 0;complete = True
+    visited = set();complete = True
+    last_item = mapping.get('remote_name', '')
+    def report_page():
+        progress(5 + min(55, result.pages_read // 2), CloudProgress('Google Drive','Reading folder metadata',
+                 item=last_item,unit='entries',completed=result.entries_listed,pages=result.pages_read))
+    report_page()
     while pending:
-        if requests >= MAX_PAGES:return result, False
+        if result.pages_read >= MAX_PAGES:return result, False
         batch = [pending.popleft() for _ in range(min(PARENT_BATCH, len(pending)))]
         parents = dict(batch)
         if any(identity in visited for identity in parents):
@@ -176,13 +184,12 @@ def inventory(connection, mapping, progress):
         if len(visited) > MAX_FOLDERS:return result, False
         children = defaultdict(dict);tokens = set();token = None
         while True:
-            if requests >= MAX_PAGES:return result, False
-            progress(5 + min(55, requests // 2), 'Checking Google Drive file metadata')
+            if result.pages_read >= MAX_PAGES:return result, False
             payload = {'q': '(' + ' or '.join("'" + p + "' in parents" for p in parents) + ') and trashed = false',
                        'pageSize': 1000, 'spaces': 'drive', 'corpora': 'user',
                        'fields': 'nextPageToken,incompleteSearch,files(' + FILE_FIELDS + ')'}
             if token:payload['pageToken'] = token
-            response = connection.rpc('files/list', payload);requests += 1
+            response = connection.rpc('files/list', payload);result.pages_read += 1
             if not isinstance(response, dict) or not isinstance(response.get('files'), list):
                 raise ValueError('Google Drive returned an invalid metadata listing.')
             incomplete = response.get('incompleteSearch', False)
@@ -191,9 +198,11 @@ def inventory(connection, mapping, progress):
                 complete = False
                 for prefix in parents.values():result.blocked[prefix] = 'unverified'
             for value in response['files']:
-                seen_entries += 1
-                if seen_entries > MAX_ENTRIES:return result, False
+                if result.entries_listed >= MAX_ENTRIES:
+                    report_page();return result, False
                 identity, name, mime, matched = _entry(value, parents)
+                result.entries_listed += 1
+                last_item = name
                 for parent in matched:
                     prior = children[parent].get(identity)
                     if prior is not None and prior != value:
@@ -201,6 +210,7 @@ def inventory(connection, mapping, progress):
                     if prior is not None:
                         raise ValueError('Google Drive repeated a file across metadata pages.')
                     children[parent][identity] = value
+            report_page()
             token = response.get('nextPageToken')
             if not token:break
             if (not isinstance(token, str) or len(token) > 4096 or any(ord(c) < 32 for c in token)

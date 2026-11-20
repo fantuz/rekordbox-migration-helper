@@ -19,6 +19,7 @@ from cloud_attachments import digest,local_presence
 from cloud_candidates import suggestions
 from cloud_locations import provider_roots
 from cloud_oauth import callback_errors
+from cloud_progress import CloudProgress, matching_tracks
 from collection_sources import resolve
 from file_health import local_request,selected_source
 from workbench_store import Store,encoded
@@ -281,11 +282,11 @@ def register(owner):
                 raise ValueError('Another cloud attachment changed. Preview this attachment again.')
         def work(progress):
             def update(amount,message):checkpoint();progress(amount,message)
+            name='Dropbox' if provider=='dropbox' else 'Google Drive'
             entries,complete=files.inventory(client,mapping,update)
             counts={name:0 for name in ('matched','unmapped','ambiguous','not_found','unverified')}
             matched_examples=[];other_examples=[];warnings=[]
-            for index,track in enumerate(snapshot['tracks']):
-                if index%100==0:update(70+25*index/max(1,len(snapshot['tracks'])),'Comparing collection paths with cloud metadata')
+            for track in matching_tracks(snapshot['tracks'],name,update):
                 destination=files.target(track,mapping,after_audio)
                 if not destination:remote=None;state='unmapped'
                 elif provider=='google_drive':
@@ -307,7 +308,7 @@ def register(owner):
                     examples.append({'track_id':str(track['id']),'title':str(track.get('title') or ''),'recorded_path':recorded,
                         **(destination or {}),'remote_size':remote_size,'status':state,'content_verified':False})
                     if destination:examples[-1].update(local_presence(destination['local_path']))
-            update(98,'Preparing the explicit cloud attachment confirmation')
+            update(98,CloudProgress(name,'Review and attach',item=mapping.get('remote_name') or mapping.get('local_root')))
             examples=matched_examples[:6]
             examples+=other_examples[:8-len(examples)]
             if len(examples)<8:examples+=matched_examples[6:6+8-len(examples)]

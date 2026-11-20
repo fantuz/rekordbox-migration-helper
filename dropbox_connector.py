@@ -13,6 +13,7 @@ from flask import jsonify,redirect,request
 from collection_sources import resolve
 from cloud_locations import provider_roots
 from cloud_oauth import callback_errors
+from cloud_progress import CloudProgress, evidence_records, matching_tracks
 from file_health import local_request,selected_source
 from workbench_store import Store
 import dropbox_files as files
@@ -155,8 +156,7 @@ def register(owner):
                        'choose a narrower Rekordbox folder to complete this check.') if unsupported else (
                        'Dropbox metadata listing is incomplete. Only positive path matches are confirmed; '
                        'choose a narrower Rekordbox folder to complete this check.') if not complete else None
-            for i,track in enumerate(snapshot['tracks']):
-                if i%100==0:checkpoint(70+25*i/max(1,len(snapshot['tracks'])),'Matching library paths with Dropbox metadata')
+            for track in matching_tracks(snapshot['tracks'],'Dropbox',checkpoint):
                 destination=files.target(track,mapped,audio);remote=entries.get(files.path_key(destination['remote_path'])) if destination else None
                 state='unmapped' if not destination else 'present' if remote else 'not_found' if complete else 'unverified'
                 unresolved=('unmapped_path' if state=='unmapped' else 'not_found_in_complete_listing' if state=='not_found'
@@ -165,10 +165,10 @@ def register(owner):
                              'metadata_sidecar':is_sidecar(track),'unresolved_reason':unresolved,'track_id':str(track['id']),'title':str(track.get('title') or ''),'artist':str(track.get('artist') or ''),
                              'status':state,**(destination or {}),'size':remote.get('size') if remote else None,
                              **size_evidence(track,remote),'remote':remote})
-            checkpoint(98,'Saving Dropbox metadata evidence');checked=time.time()
+            checkpoint(98,CloudProgress('Dropbox','Saving file evidence',unit='tracks',total=len(rows)));checked=time.time()
             with task_store.connection() as db:
                 db.execute('DELETE FROM dropbox_records WHERE binding=? AND source=?',(key,source))
-                db.executemany('INSERT INTO dropbox_records VALUES (?,?,?,?)',[(key,source,r['track_id'],json.dumps(r)) for r in rows])
+                db.executemany('INSERT INTO dropbox_records VALUES (?,?,?,?)',evidence_records(rows,key,source,'Dropbox',progress))
                 db.execute('INSERT OR REPLACE INTO dropbox_scans VALUES (?,?,?)',(key,source,json.dumps({'checked_at':checked,'complete':complete,'tracks':len(rows),'unsupported_paths':unsupported,'scan_note':scan_note,'coverage':coverage})))
             return {'checked':len(rows),'complete':complete,'unsupported_paths':unsupported,'scan_note':scan_note,'coverage':coverage,'audio_contents_read':False,'downloads':0}
         def finished(_state):
@@ -313,27 +313,28 @@ def register(owner):
                 try:
                     # Publication remains successful if cancellation arrived
                     # afterwards, but it must still prevent the separate launch.
-                    progress(99,'Checking the approved track before playback')
+                    target=Path(destination['local_path'])
+                    progress(99,CloudProgress('Dropbox','Verifying downloaded audio',item=target.name))
                     validate(force=True)
                     validate_destination(mapped,destination['local_path'])
                     from dropbox_download import resident_file_identity,verify_downloaded_content
                     from track_playback import inspect_audio_details,open_audio
                     details=inspect_audio_details(track,context(source)[2])
-                    target=Path(destination['local_path'])
                     fresh=resident_file_identity(target,mapped['local_root'],intent['target'])
                     if (result.get('local_path')!=str(target) or result.get('bytes')!=remote['size']
                             or not result.get('file_identity') or fresh!=result['file_identity']
                             or details['status']!='playable' or details['path']!=target):
                         raise ValueError('The downloaded track changed or is no longer available locally. Choose Play again.')
-                    def playback_checkpoint():
+                    def playback_checkpoint(consumed):
                         validate()
-                        progress(99,'Verifying the approved downloaded track before playback')
+                        progress(99,CloudProgress('Dropbox','Verifying downloaded audio',item=target.name,
+                                 unit='bytes',completed=consumed,total=remote['size']))
                     verify_downloaded_content(target,mapped['local_root'],intent['target'],fresh,
-                                              remote['size'],remote['content_hash'],playback_checkpoint)
+                                              remote['size'],remote['content_hash'],byte_progress=playback_checkpoint)
                     validate(force=True)
                     if resident_file_identity(target,mapped['local_root'],intent['target'])!=fresh:
                         raise ValueError('The downloaded track changed before playback. Choose Play again.')
-                    progress(99,'Opening the approved downloaded track')
+                    progress(99,CloudProgress('Dropbox','Play in default media player',item=target.name))
                     open_audio(target)
                     result['opened']=True
                 except (OSError,ValueError,RuntimeError) as error:

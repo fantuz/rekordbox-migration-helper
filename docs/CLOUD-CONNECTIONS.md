@@ -52,6 +52,23 @@ Returning to this page reuses suggestions for the same saved collection and
 detected roots. Changing the collection evidence or detected roots rebuilds
 the suggestions. Account, attachment and upload settings refresh each time.
 
+### Read the progress dialog
+
+The center dialog names the provider and the operation you started. While browsing
+or listing a folder, Workbench requests names and metadata. A full listing counts
+the pages received and entries examined, including folders. The provider supplies
+the next page as it goes, so the total is unknown until listing finishes.
+
+When Workbench matches those entries against the library or saves the results,
+the bar shows completed tracks out of the selected collection. For a confirmed
+single-track download, it shows the filename and exact bytes transferred out of
+the approved size. Verification and saving have their own labels. The percentage
+applies to the current step. Sign-in and consent take place on the provider’s page.
+When the desktop sync app handles an online-only file, Workbench shows the
+handoff to the player. The sync app owns the subsequent download and its byte count.
+
+![Progress for a single invented Google Drive file showing 8 of 55 bytes transferred](screenshots/google-drive-byte-progress.png)
+
 Choose the existing local folder for downloaded audio and the corresponding
 remote folder. Dropbox also exposes its account namespace. Google Drive uses
 a remote folder identity because names alone are not unique.
