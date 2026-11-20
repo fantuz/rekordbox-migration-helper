@@ -153,7 +153,8 @@ def cached_evidence(owner,source,track_ids):
                 item={'provider':provider,'status':status,'checked_at':checked,'complete':complete}
                 if status=='present':
                     if provider=='dropbox':
-                        item['downloadable']=remote.get('is_downloadable',True) is True
+                        from dropbox_files import downloadable_metadata
+                        item['downloadable']=downloadable_metadata(remote,require_hash=False)
                         # Old scans have no captured expected_size: leave their
                         # comparison unknown until an explicit metadata recheck.
                         item.update(size_evidence({'size':payload.get('expected_size')},remote))

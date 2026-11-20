@@ -62,7 +62,7 @@ def check_workspace_ui(browser,page,base,sid,output,offline):
     page.select_option('#theme','light')
     page.locator('.nav[data-view="investigations"]').focus();page.keyboard.press('Tab')
     assert page.locator('.nav[data-view="files"]').evaluate('e=>e.matches(":focus-visible") && parseFloat(getComputedStyle(e).outlineWidth)>=2')
-    page.locator('.nav[data-view="inventory"]').click();page.wait_for_selector('#collection-metrics',state='visible')
+    page.locator('.nav[data-view="exports"]').click();page.wait_for_selector('#collection-metrics',state='visible')
     assert page.locator('#collection-metrics small').evaluate_all('(els)=>els.every(el=>parseFloat(getComputedStyle(el).fontSize)>=13)')
     assert page.locator('#collection-metrics article>span').evaluate_all('(els)=>els.every(el=>parseFloat(getComputedStyle(el).fontSize)>=12)')
     page.screenshot(path=str(output/'summary-cards.png'))

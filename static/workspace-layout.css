@@ -14,3 +14,6 @@
 #request-activity[hidden]{display:none}#request-activity[data-waiting=true]{border-color:#b77b18}#request-activity .spinner{flex:0 0 18px;width:18px;height:18px;margin-top:2px;border-width:3px}#request-activity strong{font-size:15px}#request-activity p{font-size:13px;line-height:1.5;margin:5px 0}#request-activity small{display:block;font-size:12px;margin-top:4px;font-variant-numeric:tabular-nums}
 dialog #request-activity{position:static;width:100%;max-width:100%;margin-top:16px;box-shadow:none}
 @media(prefers-reduced-motion:reduce){#request-activity .spinner,.operation-progress>.spinner{animation:none}}
+#progress-cloud{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#progress-counts:not(:empty),#progress-item:not(:empty){display:block;margin-block:4px}
+#progress-item{color:var(--muted);font-size:13px}

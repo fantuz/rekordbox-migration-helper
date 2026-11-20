@@ -103,6 +103,47 @@ class DropboxFileEvidenceTests(unittest.TestCase):
             self.inventory([{'entries':[],'has_more':True,'cursor':'same'},
                             {'entries':[],'has_more':True,'cursor':'same'}])
 
+    def test_inventory_coverage_distinguishes_completed_listing_and_indexable_paths(self):
+        folder={'.tag':'folder','id':'id:album','path_lower':'/music/album','path_display':'/Music/Album'}
+        values,complete=self.inventory([{'entries':[folder,entry()], 'has_more':True,'cursor':'next'},
+                                       {'entries':[entry('/Music/literal\\name.mp3','id:unsupported')],'has_more':False}])
+        self.assertFalse(complete)
+        self.assertEqual(values.coverage(),{'entries_listed':3,'files_listed':2,'files_indexed':1,
+            'folders_listed':1,'pages_read':2,'listing_complete':True,'incomplete_reasons':['unsupported_paths'],
+            'entry_limit':files.MAX_ENTRIES,'page_limit':files.MAX_PAGES})
+        self.connection.download.assert_not_called()
+
+    def test_inventory_limits_report_actual_bounded_coverage_and_reason(self):
+        page={'entries':[entry(),entry('/Music/Other.mp3','id:other')],'has_more':False}
+        with patch.object(files,'MAX_ENTRIES',1):values,complete=self.inventory([page])
+        self.assertFalse(complete);coverage=values.coverage()
+        self.assertEqual(coverage['incomplete_reasons'],['entry_limit'])
+        self.assertFalse(coverage['listing_complete']);self.assertEqual(coverage['entries_listed'],1)
+        self.assertEqual(coverage['files_indexed'],1);self.assertEqual(coverage['entry_limit'],1)
+        with patch.object(files,'MAX_PAGES',1):
+            values,complete=self.inventory([{'entries':[entry()],'has_more':True,'cursor':'more'}])
+        self.assertFalse(complete);coverage=values.coverage()
+        self.assertEqual(coverage['incomplete_reasons'],['page_limit'])
+        self.assertFalse(coverage['listing_complete']);self.assertEqual(coverage['pages_read'],1)
+        self.assertEqual(coverage['page_limit'],1)
+        self.connection.download.assert_not_called()
+
+    def test_downloadable_metadata_matches_positive_verified_audio_constraints(self):
+        valid={**entry(),'content_hash':'a'*64}
+        self.assertTrue(files.downloadable_metadata(valid,'/Music/Album/Track.mp3'))
+        for update in ({'size':0},{'size':None},{'size':True},{'size':-1},{'size':8*1024**3+1},
+                       {'content_hash':None},{'content_hash':'not-a-hash'},{'id':''},{'rev':''},
+                       {'.tag':'folder'},{'is_downloadable':False},{'is_downloadable':None},
+                       {'path_lower':'/music/other.mp3'}):
+            with self.subTest(update=update):
+                self.assertFalse(files.downloadable_metadata({**valid,**update},'/Music/Album/Track.mp3'))
+        without_hash={key:value for key,value in valid.items() if key!='content_hash'}
+        self.assertFalse(files.downloadable_metadata(without_hash))
+        self.assertTrue(files.downloadable_metadata(without_hash,require_hash=False))
+        self.assertFalse(files.downloadable_metadata({**valid,'content_hash':'not-a-hash'},require_hash=False))
+        self.assertFalse(files.downloadable_metadata(None))
+        self.connection.download.assert_not_called()
+
     def test_current_path_precedes_original_and_remote_paths_remain_canonical(self):
         current=self.music/'New.mp3';old=self.music/'Old.mp3'
         target=files.target({'current_path':str(current),'original_path':str(old)},self.mapping)
@@ -151,6 +192,46 @@ class DropboxFileEvidenceTests(unittest.TestCase):
         for other in (entry('/Music/other\\name.mp3'),entry('/Music/LITERAL\\NAME.MP3','id:other')):
             with self.subTest(other=other),self.assertRaisesRegex(ValueError,'ambiguous'):
                 self.inventory([{'entries':[duplicate,other],'has_more':False}])
+
+    def test_unmapped_path_diagnostics_are_bounded_local_evidence_without_resolution_or_secrets(self):
+        track={'current_path':r'C:\Old\Track.mp3','original_path':r'\\server\share\Track.mp3',
+               'xml_location':'file://localhost/c:/Dropbox/Track.mp3'}
+        mapping={**self.mapping,'recorded_root':'D:/Captured','account_id':'PRIVATE-ACCOUNT','access_token':'PRIVATE-TOKEN'}
+        with patch.object(Path,'lstat',side_effect=AssertionError('Diagnostics probed a path')):
+            result=files.path_diagnostics(track,mapping)
+        self.assertEqual(result['recorded_paths'],track)
+        self.assertEqual(result['mapping_recorded_root'],'D:/Captured')
+        self.assertEqual(result['mapping_local_root'],self.mapping['local_root'])
+        self.assertEqual(result['mapping_remote_root'],'/Music');self.assertEqual(result['namespace'],'101')
+        self.assertEqual(result['truncated_fields'],[]);self.assertEqual(result['redacted_fields'],[])
+        self.assertNotIn('PRIVATE-ACCOUNT',str(result));self.assertNotIn('PRIVATE-TOKEN',str(result))
+        urls={'current_path':'https://account:PRIVATE-PASSWORD@example.invalid/song?token=PRIVATE-TOKEN',
+              'original_path':'file://account:PRIVATE-PASSWORD@localhost/Music/Track.mp3',
+              'xml_location':'file://localhost/Music/Track.mp3?token=PRIVATE-TOKEN'}
+        result=files.path_diagnostics(urls,mapping)
+        self.assertTrue(all(value is None for value in result['recorded_paths'].values()))
+        self.assertEqual(len(result['redacted_fields']),3)
+        self.assertNotIn('PRIVATE-PASSWORD',str(result));self.assertNotIn('PRIVATE-TOKEN',str(result))
+        for prefix in (' ', '\t\n', '\x00 '):
+            with self.subTest(prefix=repr(prefix)):
+                result=files.path_diagnostics({'current_path':prefix+urls['current_path']},mapping)
+                self.assertIsNone(result['recorded_paths']['current_path'])
+                self.assertNotIn('PRIVATE-PASSWORD',str(result));self.assertNotIn('PRIVATE-TOKEN',str(result))
+        for value in ('//account:PRIVATE-PASSWORD@example.invalid/song?token=PRIVATE-TOKEN',
+                      '//example.invalid/song?token=PRIVATE-TOKEN'):
+            with self.subTest(protocol_relative=value):
+                result=files.path_diagnostics({'current_path':value},mapping)
+                self.assertIsNone(result['recorded_paths']['current_path'])
+                self.assertNotIn('PRIVATE-PASSWORD',str(result));self.assertNotIn('PRIVATE-TOKEN',str(result))
+        unc='//server/share/Track.mp3'
+        self.assertEqual(files.path_diagnostics({'current_path':unc},mapping)['recorded_paths']['current_path'],unc)
+        ordinary='  C:/Captured/Track.mp3  '
+        self.assertEqual(files.path_diagnostics({'current_path':ordinary},mapping)['recorded_paths']['current_path'],ordinary)
+        result=files.path_diagnostics({'current_path':'/Music/'+'a'*5000},mapping)
+        self.assertLessEqual(len(result['recorded_paths']['current_path']),4096)
+        self.assertEqual(result['truncated_fields'],['recorded_paths.current_path'])
+        root=files.path_diagnostics({},dict(mapping,remote_root=''))
+        self.assertEqual(root['mapping_remote_root'],'')
 
     def test_failed_active_audio_mapping_never_falls_back_to_recorded_path(self):
         from audio_paths import validate

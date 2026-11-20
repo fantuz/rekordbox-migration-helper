@@ -1,0 +1,18 @@
+.inline-rating{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;vertical-align:middle;max-width:100%;font-size:11px}
+.inline-rating-choices{display:inline-flex;align-items:center;gap:1px;white-space:nowrap}
+.inline-rating-choices>button{display:inline-flex;align-items:center;justify-content:center;min-width:22px;min-height:28px;padding:1px 2px;margin:0;border:0;border-radius:4px;background:transparent;color:var(--accent);font-size:19px;line-height:1;cursor:pointer}
+.inline-rating-choices>button:hover{background:var(--panel2)}
+.inline-rating-choices>button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.inline-rating-choices>button:disabled{cursor:default;opacity:.65}
+.inline-rating-choices>.inline-rating-clear,.inline-rating-choices>.inline-rating-reset,.inline-rating-choices>.inline-rating-retry{color:var(--muted);font-size:16px}
+.inline-rating-state{font-size:10px;line-height:1.3;color:var(--muted);white-space:normal}
+.inline-rating-staged .inline-rating-state{color:var(--accent)}
+.inline-rating [hidden]{display:none!important}
+.sibling .inline-rating{margin:5px 0 9px}.sibling .inline-rating-choices>button{min-width:25px;min-height:30px}
+/* A rating needs room for five stars and its clear/reset actions. Let the
+ * surrounding captured fields wrap instead of painting over the next field. */
+.native-compare-record dl{display:flex;flex-wrap:wrap}
+.native-compare-record dl>div{flex:1 1 76px;min-width:0}
+.native-compare-record dl>div:has(.inline-rating){flex:2 1 170px;min-width:min-content}
+.native-compare-record .inline-rating{min-width:max-content}
+@media(pointer:coarse){.inline-rating-choices>button{min-width:28px;min-height:36px}}

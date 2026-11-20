@@ -1,6 +1,6 @@
 /* One local playback action shared by every live-library track renderer. */
 window.TrackPlayback=(()=>{
-  const queue=new Set(),cache=new Map();let timer=null,running=false,availabilityRevision=0;
+  const queue=new Set(),cache=new Map();let timer=null,activeCheck=null,suspended=false,availabilityRevision=0;
   // Per-button force markers survive batched IntersectionObserver callbacks.
   const forceRefresh=new WeakSet();let lastForcedRefresh=0;
   const MIN_FORCE_INTERVAL_MS=5000;
@@ -20,12 +20,15 @@ window.TrackPlayback=(()=>{
     b.dispatchEvent(new CustomEvent('workbench-file-status',{bubbles:true,detail:{status:fileState}}));
   }
   const observer=new IntersectionObserver(entries=>{
+    if(suspended)return;
     for(const entry of entries)if(entry.isIntersecting){observer.unobserve(entry.target);queue.add(entry.target);}
     schedule();
   });
-  function schedule(){if(!timer)timer=setTimeout(flush,100);}
+  function schedule(){if(queue.size&&!timer&&!activeCheck&&!suspended)timer=setTimeout(flush,100);}
   async function flush(){
-    timer=null;if(running){schedule();return;}running=true;
+    timer=null;
+    const controller=new AbortController();
+    activeCheck=controller;
     try{
       const groups=new Map();
       for(const b of queue){queue.delete(b);if(!b.isConnected)continue;
@@ -38,7 +41,7 @@ window.TrackPlayback=(()=>{
         const ids=[...new Set(buttons.map(b=>b.dataset.playTrack))];
         for(let offset=0;offset<ids.length;offset+=100){
           const requestRevision=availabilityRevision,force=buttons.some(b=>forceRefresh.has(b));
-          const r=await api('/api/playback/availability',{feedback:false,method:'POST',body:JSON.stringify({...JSON.parse(source),track_ids:ids.slice(offset,offset+100),...(force?{refresh:true}:{})})});
+          const r=await api('/api/playback/availability',{feedback:false,signal:controller.signal,method:'POST',body:JSON.stringify({...JSON.parse(source),track_ids:ids.slice(offset,offset+100),...(force?{refresh:true}:{})})});
           // A download/focus refresh may happen while this request is pending.
           // Its older result must neither refill the cache nor clear the new
           // force marker; retry the surviving buttons with current attributes.
@@ -49,8 +52,8 @@ window.TrackPlayback=(()=>{
         }
       }
       if(cache.size>2000)cache.clear();
-    }catch{/* A later focus or click retries if the local application was busy. */}
-    finally{running=false;if(queue.size)schedule();}
+    }catch{/* A later focus or page restore rechecks visible tracks. */}
+    finally{activeCheck=null;schedule();}
   }
   function scan(root){
     if(!(root instanceof Element))return;
@@ -93,7 +96,8 @@ window.TrackPlayback=(()=>{
       let result=await api('/api/playback/open',{method:'POST',body:JSON.stringify({...source,track_id:identity})});
       if(result.confirmation_required){
         if(!await confirmCloudOpen(result))return;
-        result=await api('/api/playback/open',{method:'POST',body:JSON.stringify({...source,track_id:identity,confirm_cloud_open:true,confirmation_token:result.confirmation_token})});
+        result=await CloudOperations.run(result.cloud_provider,'Play in default media player',()=>
+          api('/api/playback/open',{method:'POST',feedback:false,body:JSON.stringify({...source,track_id:identity,confirm_cloud_open:true,confirmation_token:result.confirmation_token})}),result.title);
       }
       if(result.opened)notify(t('Opened in your default media player'));
     })()
@@ -104,6 +108,12 @@ window.TrackPlayback=(()=>{
   document.addEventListener('keydown',event=>{if(event.target.matches('[data-play-track]'))event.stopPropagation();},true);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)recheck();});
   window.addEventListener('focus',recheck);
+  window.addEventListener('pagehide',()=>{
+    suspended=true;clearTimeout(timer);timer=null;queue.clear();activeCheck?.abort();
+  });
+  window.addEventListener('pageshow',()=>{
+    if(suspended){suspended=false;recheck({force:true});}
+  });
   window.addEventListener('workbench-language',()=>{for(const b of document.querySelectorAll('[data-play-track]'))if(b.dataset.available)status(b,b.dataset.available==='true',b.dataset.fileStatus,{can_open:b.dataset.cloudOpen==='true'});});
   function recheck(options={}){
     availabilityRevision++;

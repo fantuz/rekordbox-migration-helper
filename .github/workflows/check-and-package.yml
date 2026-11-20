@@ -251,7 +251,8 @@ jobs:
   browser-language:
     name: Language and Unicode UI · ${{ matrix.browser }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # Includes the full application, Dropbox and guided cloud workflow suites.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:

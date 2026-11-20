@@ -37,7 +37,7 @@ window.Intelligence=(()=>{
     for(const option of node('intelligence-lens').options)option.disabled=(['recurring','history_absent'].includes(option.value)&&!info.history_details)||(option.value==='unfiled'&&!info.playlist_membership);
     if(node('intelligence-lens').selectedOptions[0]?.disabled)node('intelligence-lens').value='all';
   }
-  function table(headers,rows,tracks=[],titleColumn=-1){return '<div class="lab-table"><table><thead><tr>'+headers.map(x=>'<th>'+e(t(x))+'</th>').join('')+'</tr></thead><tbody>'+rows.map((row,i)=>'<tr>'+row.map((x,j)=>'<td>'+(j===titleColumn?TrackPlayback.button(node('intelligence-source').value,tracks[i]?.track_id):'')+e(x ?? '—')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';}
+  function table(headers,rows,tracks=[],titleColumn=-1){return '<div class="lab-table"><table><thead><tr>'+headers.map(x=>'<th>'+e(t(x))+'</th>').join('')+'</tr></thead><tbody>'+rows.map((row,i)=>'<tr>'+row.map((x,j)=>'<td>'+(j===titleColumn?TrackPlayback.button(node('intelligence-source').value,tracks[i]?.track_id):'')+(headers[j]==='Rating'?InlineRating.render(tracks[i]?.track_id,x,node('intelligence-source').value):e(x ?? '—'))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';}
   function render(data,kind){
     let html='<p class="callout">'+e(t(data.basis))+'</p>';
     if(kind==='playlists')html+=table(['Playlist','Shared tracks','Tracks','Overlap','Same order'],data.rows.map(r=>[r.name,num(r.common_tracks),num(r.tracks),I18n.number(r.jaccard*100,{maximumFractionDigits:1})+'%',r.same_saved_order===null?t('Unknown'):r.same_saved_order?t('Yes'):t('No')]));

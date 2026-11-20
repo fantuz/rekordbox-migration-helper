@@ -29,6 +29,29 @@ the selected source and selects it in the shared header. This is an explicit act
 not a new snapshot created on every visit. Merging and staging path changes for a
 copy export continue to require the XML + ZIP workspace.
 
+## Cloud path analysis
+
+Collection statistics includes **Dropbox paths** and **Google Drive paths**
+counters. The **Cloud location** selector also appears in statistics, DJ
+insights, Library bubbles, Tonality & tempo and captured duplicate/reference
+views. It filters recorded or mapped path evidence, using the existing provider
+classification. Opening a page or changing this filter does not scan files,
+query a provider or download audio.
+
+The two provider counter boxes describe the currently filtered collection,
+including the selected provider. Counts in the selector describe the scope
+before that provider choice; the other active criteria still apply. A record with
+different references to both providers can count in both, so the boxes are not
+parts of a total that must add up. **No cloud match** means no recognized
+provider path; it does not establish that the file is local. **Not classified**
+retains missing or insufficient path evidence. Use File health and an explicit
+provider check for local access and remote presence. These path counts do not
+measure account storage, file identity or synchronization completeness.
+
+A provider filter selects a duplicate group when any member matches; all
+members remain visible for comparison. Filtered group/track counts are separate
+from the retained full-source totals.
+
 ## Clean up saved investigations
 
 Open **Saved investigations**, select individual items or entire categories, then

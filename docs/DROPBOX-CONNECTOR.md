@@ -103,6 +103,31 @@ Invalid or ambiguous audio-folder mappings are held for review. References
 outside the selected root remain unmapped. Workbench does not rewrite paths in
 the captured library or infer an arbitrary cloud location from a filename.
 
+### Match a member folder to the correct namespace
+
+A team account's local member folder and the remote team root are different
+bases. For example, these invented settings map the same music folder:
+
+| Local folder on this computer | Namespace | Dropbox folder in the account |
+| --- | --- | --- |
+| `C:\Users\demo\Dropbox (Example team)\Alex Example` | Member home folder | Leave blank for that member's root |
+| `C:\Users\demo\Dropbox (Example team)\Alex Example` | Team root folder | `/Alex Example`, if that is the account-reported member-home location |
+| `C:\Users\demo\Dropbox (Example team)\Alex Example\rekordbox` | Member home folder | `/rekordbox` |
+
+Use the location reported by the connected account rather than guessing from
+the Windows username or team label. If the local folder is the member home
+but the selected remote base is **Team root /**, a relative reference such as
+`rekordbox/Example.mp3` can incorrectly target the team's root instead of the
+member's area. The namespace hint offers **Use member home folder** where this
+mismatch is recognized; it does not silently replace the mapping. Alternatively,
+retain Team root and include the account-reported member-home path in the
+remote folder.
+
+After changing the namespace or either folder, choose **Verify folder mapping**
+and then **Check remote files** again. Verification establishes the selected
+folder's availability; the subsequent check evaluates the library's mapped file
+paths. A verified broad root alone does not prove those paths are correct.
+
 ## Check existence without downloading
 
 Choose a saved collection and start the explicit metadata check. Results apply
@@ -114,6 +139,43 @@ to the entire checked collection before filtering and pagination.
 | Not found | Dropbox did not find that mapped path in the checked namespace; this alone is not proof of deletion. |
 | Unmapped | No verified selected-folder mapping applies to the recorded reference. |
 | Unverified | A bounded metadata listing ended before this mapped path could be conclusively checked. |
+
+### Separate mapping, remote presence and local checks
+
+**Unmapped** means Workbench cannot construct a Dropbox path from the captured
+reference and current mapping. It does not mean Dropbox denied a request for
+that file. Expand **Path mapping details** in the row to compare the captured
+current, original and XML paths, when available, with the recorded root, local
+folder, remote folder and selected namespace. The values are selectable for
+copying; unusually long paths are marked as shortened, and sensitive URI
+details are omitted.
+
+If a captured path still begins with an old drive or folder prefix, use that
+evidence to configure the explicit recorded-root/Audio folders mapping to the
+current local music folder. Verify the resulting relative path, save the folder
+mapping and run **Check remote files** again. Do not infer a matching file from
+its filename alone. A namespace mismatch is one possible mapping problem, not
+an explanation for every unmapped reference.
+
+**Unverified** is different: a mapped path was not conclusively covered by an
+incomplete metadata listing. Narrow the checked folder and retry as described
+below. **Unchecked** under local access means no local file inspection has
+been performed; the remote check does not perform that scan. A captured
+**Library size** can therefore be known while cloud size/presence is Unknown
+and local access remains Unchecked. None of these combinations alone proves
+access denial or lost audio.
+
+New private snapshots retain an XML path when the source supplies it; older
+captures may need a fresh matching capture to recover previously absent XML
+evidence. Native-only libraries may have no independent XML reference. This
+field is diagnostic evidence, not an extra path included in shared explorers.
+
+For a changed Windows username or a mix of cloud-relative and older absolute
+paths, use the explicit [recorded-prefix and Audio folders workflow](CLOUD-CONNECTIONS.md#old-windows-profiles-and-cloud-relative-references).
+`contents_*` folders may hold the music itself. Do not discard them or assume a
+fixed physical location from their name. The optional **Hide metadata sidecars**
+display filter recognizes separate filename hints and leaves real contents
+directories visible; see [display-filter limits](INTERFACE.md#compact-collection-navigation-and-charts).
 
 The account, mapping and checked path determine the result. A wrong account,
 renamed file or different team namespace can produce an unavailable path even
@@ -140,6 +202,20 @@ explains the partial result; selecting a narrower music folder can help.
 Changing any folder-mapping input holds further checks and downloads until
 the new mapping is verified. Restoring the verified values restores access to
 the saved results.
+
+The summary reports how many files and metadata pages were listed. A listing
+can stop at a bounded entry/page limit or leave unsupported paths unresolved.
+Positive path matches remain **Reachable**, while paths not covered by that
+incomplete listing remain **Unverified**. This is not an access-denied result
+or evidence that those files were deleted. Verify a narrower folder containing
+the Rekordbox music, then check again. Download remains unavailable for a row
+whose remote metadata has not been confirmed.
+
+The existing `files.metadata.read` permission already includes file paths and
+byte sizes; checking a size needs no extra scope or content download.
+`files.content.read` permits an individually approved download. Neither
+permission proves a particular mapping or listing is complete, and enabling
+cloud-write access would not resolve those issues.
 
 ## Download one file deliberately
 

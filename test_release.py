@@ -142,12 +142,21 @@ class ReleaseTests(unittest.TestCase):
         (source/'.gitattributes').write_text('static/vendor.js -text\n',encoding='utf-8')
         (source/'CHANGELOG.md').write_text('# Public release notes\n',encoding='utf-8')
         (source/'.data').mkdir();(source/'.data'/'private.db').write_bytes(b'private input')
+        docs=Path(__file__).resolve().parent/'docs'
+        guides='\n'.join(guide.read_text(encoding='utf-8') for guide in [docs.parent/'README.md',*docs.glob('*.md')])
+        documented={image.name for image in (docs/'screenshots').iterdir()
+                    if image.suffix in {'.png','.webp'} and image.name in guides}
+        screenshots=source/'docs'/'screenshots';screenshots.mkdir(parents=True)
+        for name in documented:(screenshots/name).write_bytes(name.encode('utf-8'))
+        (screenshots/'unpublished-capture.png').write_bytes(b'private example')
         with patch.object(build_source,'ROOT',source),patch.object(build_source,'VERSION',self.version):build_source.main()
         archive=next((source/'releases').glob('*.tar.gz'))
         with tarfile.open(archive) as packed:
             self.assertIn('library-workbench/.gitattributes',packed.getnames())
             self.assertIn('library-workbench/CHANGELOG.md',packed.getnames())
             self.assertNotIn('library-workbench/.data/private.db',packed.getnames())
+            self.assertEqual({Path(name).name for name in packed.getnames()
+                              if name.startswith('library-workbench/docs/screenshots/')},documented)
         for output in (source/'releases').iterdir():
             (self.root/output.name).write_bytes(output.read_bytes())
         self.assertEqual(len(release.verify_assets(self.root,self.version,self.commit)),5)

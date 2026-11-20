@@ -125,7 +125,7 @@ def resident_file_identity(local_path, local_root, expected_target=None):
 
 
 def verify_downloaded_content(local_path,local_root,expected_target,expected_identity,
-                              expected_size,expected_hash,checkpoint=None):
+                              expected_size,expected_hash,checkpoint=None,*,byte_progress=None):
     """Recheck only the already approved download before its approved Play.
 
     Metadata clocks can coalesce writes, including writes that restore mtime.
@@ -138,8 +138,10 @@ def verify_downloaded_content(local_path,local_root,expected_target,expected_ide
             or not isinstance(expected_hash,str) or not re.fullmatch('[0-9a-f]{64}',expected_hash)
             or not isinstance(expected_identity,list) or len(expected_identity)!=7):
         raise ValueError('The approved download cannot be verified for playback')
+    consumed=0
     def check():
         if checkpoint is not None:checkpoint()
+        if byte_progress is not None:byte_progress(consumed)
     def unchanged(info):
         # Windows fd/path stat APIs differ in timestamp precision and ctime
         # semantics. Their shared identity is device/inode/size, not timestamps.
@@ -157,7 +159,7 @@ def verify_downloaded_content(local_path,local_root,expected_target,expected_ide
     try:
         if not unchanged(os.fstat(fd)) or resident_file_identity(target,root,expected_target)!=expected_identity:
             raise ValueError('The downloaded track changed before content verification')
-        digest=_DropboxHash();consumed=0
+        digest=_DropboxHash()
         while True:
             check()
             chunk=os.read(fd,min(CHUNK_BYTES,expected_size-consumed+1))
@@ -325,18 +327,23 @@ def download_verified_file(connection, metadata, local_path, local_root, namespa
     time. A post-publication progress callback cannot undo a completed transfer.
     """
     identity, revision, size, expected_hash, modified_ns = metadata_parser(metadata)
+    from cloud_progress import CloudProgress
     target, root = _paths(local_path, local_root)
     snapshot = prepare_target(target, root)
     if expected_target is not None and snapshot != expected_target:
         raise ValueError('The Dropbox destination changed. Choose Download again')
     connection_id = _connection_id(connection,provider)
+    consumed = 0
     def checkpoint(amount=0):
         if _connection_id(connection,provider) != connection_id:
             raise ValueError(provider+' authorization changed. Choose Download again')
         if validate is not None:validate()
         if prepare_target(target, root) != snapshot:
             raise ValueError('The Dropbox destination changed. Choose Download again')
-        if progress is not None:progress(amount, 'Downloading one approved '+provider+' track')
+        if progress is not None:
+            detail = (CloudProgress(provider,'Saving downloaded audio',item=target.name) if amount == 99 else
+                      CloudProgress(provider,'Downloading audio',item=target.name,unit='bytes',completed=consumed,total=size))
+            progress(amount, detail)
     checkpoint()
     temporary = '.library-workbench-dropbox-' + secrets.token_hex(16) + '.tmp'
     published = False
@@ -356,7 +363,7 @@ def download_verified_file(connection, metadata, local_path, local_root, namespa
                 fd = os.open(temporary if stage_fd is not None else temporary_path, flags, 0o600, **kwargs)
                 output_identity = _identity(os.fstat(fd))
                 if not stat.S_ISREG(os.fstat(fd).st_mode):raise ValueError('Unable to create an ordinary temporary audio file')
-                consumed, digest = 0, hash_factory()
+                digest = hash_factory()
                 with open_stream(identity,revision,namespace) as response:
                     actual = metadata_parser(response.metadata)
                     if actual[:3] != (identity, revision, size) or actual[3] != expected_hash:
@@ -375,6 +382,8 @@ def download_verified_file(connection, metadata, local_path, local_root, namespa
                             if written <= 0:raise OSError('Incomplete file write')
                             remaining = remaining[written:]
                 if consumed != size:raise ValueError(provider+' returned an incomplete file')
+                if progress is not None:
+                    progress(98,CloudProgress(provider,'Verifying downloaded audio',item=target.name))
                 actual_hash = digest.hexdigest()
                 if actual_hash != expected_hash:
                     raise ValueError('Downloaded content does not match '+provider+' metadata')
@@ -433,7 +442,7 @@ def download_verified_file(connection, metadata, local_path, local_root, namespa
         if info[:2]==output_identity and info[2]==size:published_identity=info
     except (OSError,ValueError,RuntimeError):pass
     if progress is not None:
-        try:progress(100, 'The selected '+provider+' track is available locally')
+        try:progress(100, CloudProgress(provider, 'One track downloaded', item=target.name,unit='bytes',completed=consumed,total=size))
         except Exception:pass  # Late cancellation cannot roll back publication.
     return {'downloaded': True, 'local_path': str(target), 'bytes': consumed,
             'content_hash': actual_hash,'file_identity':published_identity}

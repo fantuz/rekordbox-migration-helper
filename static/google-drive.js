@@ -3,7 +3,7 @@ window.GoogleDriveConnector=(()=>{
   const node=id=>document.getElementById('google-drive-'+id),t=key=>I18n.t(key);
   let connection=null,source='',offset=0,pageRows=0,totalRows=0,revision=0,filesRevision=0,busy=false,pending=null,requestedSource='';
   const statusNames={present:'Reachable',not_found:'Not found',unmapped:'Unmapped',ambiguous:'Ambiguous paths',unverified:'Unverified'};
-  const post=(path,body={})=>api('/api/google-drive'+path,{method:'POST',body:JSON.stringify(body)});
+  const post=(path,body={},item='')=>CloudOperations.post('google_drive','/api/google-drive',path,body,item);
   function controls(){
     for(const id of ['client-id','client-secret','remember','save','connect','disconnect','source','search','status','find','check','refresh'])node(id).disabled=busy;
     node('connect').disabled=busy||!node('client-id').value.trim();
@@ -89,20 +89,21 @@ window.GoogleDriveConnector=(()=>{
     window.location.assign(url.href);
   }));
   node('disconnect').onclick=wrap(()=>action(async()=>{await post('/disconnect');await load();}));
-  node('refresh').onclick=wrap(load);
+  node('refresh').onclick=wrap(()=>CloudOperations.run('google_drive','Refresh',load));
   node('copy-redirect').onclick=wrap(()=>copyCloudRedirect(node('redirect')));
-  node('check').onclick=wrap(()=>action(async()=>{const selected=node('source').value,result=await post('/check',{source:selected});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:selected,provider:'google_drive'}}));if(selected===node('source').value){offset=0;await loadFiles();}notify(t('Cloud check complete'));}));
-  node('source').onchange=wrap(async()=>{offset=0;await loadFiles();});
-  node('find').onclick=wrap(async()=>{offset=0;await loadFiles();});
-  node('status').onchange=wrap(async()=>{offset=0;await loadFiles();});
+  node('check').onclick=wrap(()=>action(async()=>{const selected=node('source').value,result=await post('/check',{source:selected});window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:selected,provider:'google_drive'}}));if(selected===node('source').value){offset=0;await loadFiles();}notify(CloudOperations.checked('google_drive',result));}));
+  node('source').onchange=wrap(async()=>{offset=0;await browseFiles();});
+  const browseFiles=()=>CloudOperations.run('google_drive','Saved file evidence',loadFiles,'',200);
+  node('find').onclick=wrap(async()=>{offset=0;await browseFiles();});
+  node('status').onchange=wrap(async()=>{offset=0;await browseFiles();});
   node('search').onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();node('find').click();}};
   node('client-id').oninput=controls;
   node('remember').onchange=()=>{node('storage-state').textContent=t(node('remember').checked?'Credentials stay in the operating system credential store.':'Session-only connection');};
-  node('previous').onclick=wrap(async()=>{offset=Math.max(0,offset-50);await loadFiles();});
-  node('next').onclick=wrap(async()=>{offset+=50;await loadFiles();});
+  node('previous').onclick=wrap(async()=>{offset=Math.max(0,offset-50);await browseFiles();});
+  node('next').onclick=wrap(async()=>{offset+=50;await browseFiles();});
   async function prepareDownload(selected,identity){
     await action(async()=>{
-      const result=await post('/download/prepare',{source:selected,track_id:identity});
+      const result=await post('/download/prepare',{source:selected,track_id:identity},identity);
       if(result.confirmation_required!==true||!result.confirmation_token)return;
       pending={source:selected,track_id:identity,confirmation_token:result.confirmation_token};
       node('download-title').textContent=result.title||result.filename||identity;
@@ -116,7 +117,7 @@ window.GoogleDriveConnector=(()=>{
   node('download-dialog').addEventListener('close',()=>{pending=null;});
   node('download-confirm').onclick=wrap(async()=>{
     const intent=pending;if(!intent)return;pending=null;node('download-dialog').close();
-    await action(async()=>{const result=await post('/download',{...intent,confirm:true});if(result.job)await poll(result.job);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:intent.source,provider:'google_drive',track_id:intent.track_id}}));await loadFiles();TrackPlayback.recheck({force:true,source:intent.source,track_id:intent.track_id});notify(t('One track downloaded'));});
+    await action(async()=>{await post('/download',{...intent,confirm:true},node('download-title').textContent);window.dispatchEvent(new CustomEvent('workbench-cloud-evidence',{detail:{source:intent.source,provider:'google_drive',track_id:intent.track_id}}));await loadFiles();TrackPlayback.recheck({force:true,source:intent.source,track_id:intent.track_id});notify(t('One track downloaded'));});
   });
   const visible=()=>!document.getElementById('view-google-drive').hidden;
   window.addEventListener('focus',()=>{if(visible()&&!busy)void load().catch(error=>notify(error.message,true));});

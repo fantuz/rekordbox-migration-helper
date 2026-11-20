@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import stat
 import unicodedata
+from urllib.parse import urlsplit
 
 from cloud_file_status import lexical_path
 from cloud_locations import provider_roots
@@ -164,6 +165,39 @@ def target(track,mapping,audio_mappings=None):
     return None
 
 
+
+def path_diagnostics(track,mapping):
+    """Bounded private reference evidence; no path resolution or extra probes.
+
+    These fields belong only to the local connector's unmapped-row diagnostics.
+    Never include account metadata, credentials or an arbitrary service URL.
+    """
+    truncated=[];redacted=[]
+    def bounded(name,value):
+        if not isinstance(value,str):return None
+        examined=value.strip()
+        windows_drive=bool(re.match(r'^[A-Za-z]:',examined) and not re.match(r'^[A-Za-z]://',examined))
+        if not windows_drive:
+            try:
+                uri=urlsplit(examined)
+                if (uri.username or uri.password or
+                        uri.scheme and (uri.scheme.lower()!='file' or uri.query or uri.fragment) or
+                        uri.netloc and (uri.query or uri.fragment)):
+                    redacted.append(name);return None
+            except ValueError:
+                redacted.append(name);return None
+        if len(value)>4096:
+            truncated.append(name);return value[:4095]+'…'
+        return value
+    result={'recorded_paths':{field:bounded('recorded_paths.'+field,track.get(field))
+                              for field in ('current_path','xml_location','original_path')}}
+    for target,field in (('mapping_recorded_root','recorded_root'),('mapping_local_root','local_root'),
+                         ('mapping_remote_root','remote_root'),('namespace','namespace')):
+        result[target]=bounded(target,mapping.get(field))
+    result.update(truncated_fields=truncated,redacted_fields=redacted)
+    return result
+
+
 def local_available(path):
     try:
         path=Path(path);info=path.lstat()
@@ -173,7 +207,40 @@ def local_available(path):
 
 class Inventory(dict):
     def __init__(self):
-        super().__init__();self.unsupported_paths=0
+        super().__init__()
+        self.unsupported_paths=0
+        self.entries_listed=0;self.files_listed=0;self.folders_listed=0;self.pages_read=0
+        self.listing_complete=False;self.incomplete_reasons=[]
+        self.entry_limit=MAX_ENTRIES;self.page_limit=MAX_PAGES
+
+    def coverage(self):
+        return {'entries_listed':self.entries_listed,'files_listed':self.files_listed,
+                'files_indexed':len(self),'folders_listed':self.folders_listed,'pages_read':self.pages_read,
+                'listing_complete':self.listing_complete,'incomplete_reasons':list(self.incomplete_reasons),
+                'entry_limit':self.entry_limit,'page_limit':self.page_limit}
+
+
+def downloadable_metadata(remote,expected_path=None,*,require_hash=True):
+    """Metadata eligibility only; actual consent rechecks the file and destination.
+
+    Reachability includes empty/non-downloadable entries. Those must remain
+    visible without offering an action that the verified-audio gate will reject.
+    Bulk metadata may omit the optional content hash: preparation must refresh
+    it before any transfer, rather than hiding an otherwise eligible action.
+    """
+    from dropbox_download import MAX_FILE_BYTES
+    if not isinstance(remote,dict):return False
+    path=remote.get('path_lower') or remote.get('path_display')
+    content_hash=remote.get('content_hash')
+    valid_hash=isinstance(content_hash,str) and re.fullmatch(r'[0-9a-f]{64}',content_hash)
+    hash_available=valid_hash or (not require_hash and content_hash is None)
+    return bool(remote.get('.tag')=='file' and isinstance(remote.get('id'),str) and remote['id']
+                and isinstance(remote.get('rev'),str) and remote['rev']
+                and type(remote.get('size')) is int and 0<remote['size']<=MAX_FILE_BYTES
+                and hash_available
+                and remote.get('is_downloadable',True) is True
+                and isinstance(path,str) and (expected_path is None or isinstance(expected_path,str)
+                    and path_key(path)==path_key(expected_path)))
 
 
 def _inventory_path(value):
@@ -186,18 +253,29 @@ def _inventory_path(value):
 
 def inventory(connection,mapping,progress):
     """List the selected remote subtree once, including explicitly reported pagination."""
+    from cloud_progress import CloudProgress
     root={'.tag':'namespace_id','namespace_id':mapping['namespace']}
     route='files/list_folder';payload={'path':mapping['remote_root'],'recursive':True,'include_deleted':False,'limit':2000}
     files=Inventory();seen=0;cursors=set();paths=set();identities=set()
+    last_item=mapping['remote_root']
+    def report_page():
+        progress(5+min(60,files.pages_read), CloudProgress('Dropbox','Reading folder metadata',item=last_item,
+                 unit='entries',completed=seen,pages=files.pages_read))
+    report_page()
     for page in range(MAX_PAGES):
-        progress(5+min(60,page), 'Checking Dropbox file metadata')
         result=connection.rpc(route,payload,path_root=root)
         if not isinstance(result,dict):raise ValueError('Dropbox returned an invalid metadata listing.')
         entries=result.get('entries');more=result.get('has_more')
         if not isinstance(entries,list) or not isinstance(more,bool):raise ValueError('Dropbox returned an invalid metadata listing.')
+        files.pages_read+=1
         for entry in entries:
+            if seen>=MAX_ENTRIES:
+                files.incomplete_reasons.append('entry_limit')
+                if files.unsupported_paths:files.incomplete_reasons.append('unsupported_paths')
+                report_page()
+                return files,False
             seen+=1
-            if seen>MAX_ENTRIES:return files,False
+            files.entries_listed=seen
             if not isinstance(entry,dict) or entry.get('.tag') not in ('file','folder'):
                 raise ValueError('Dropbox returned an invalid metadata entry.')
             path,supported=_inventory_path(entry.get('path_lower') or entry.get('path_display'))
@@ -216,19 +294,28 @@ def inventory(connection,mapping,progress):
                 display,display_supported=_inventory_path(display)
                 if path_key(display)!=key:raise ValueError('Dropbox returned inconsistent metadata paths.')
                 supported=supported and display_supported
+            last_item=display or path
             if entry['.tag']=='folder':
+                files.folders_listed+=1
                 if not supported:files.unsupported_paths+=1
                 continue
             if (not isinstance(entry.get('rev'),str) or not entry['rev'] or len(entry['rev'])>4096 or
                     any(ord(c)<32 for c in entry['rev']) or type(entry.get('size')) is not int or entry['size']<0 or
                     ('is_downloadable' in entry and type(entry['is_downloadable']) is not bool)):
                 raise ValueError('Dropbox returned invalid file metadata.')
+            files.files_listed+=1
             if not supported:
                 files.unsupported_paths+=1
                 continue
             files[key]=entry
-        if not more:return files,not files.unsupported_paths
+        report_page()
+        if not more:
+            files.listing_complete=True
+            if files.unsupported_paths:files.incomplete_reasons.append('unsupported_paths')
+            return files,not files.unsupported_paths
         cursor=result.get('cursor')
         if not isinstance(cursor,str) or not cursor or cursor in cursors:raise ValueError('Dropbox returned an invalid listing cursor.')
         cursors.add(cursor);route='files/list_folder/continue';payload={'cursor':cursor}
+    files.incomplete_reasons.append('page_limit')
+    if files.unsupported_paths:files.incomplete_reasons.append('unsupported_paths')
     return files,False

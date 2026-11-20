@@ -5,6 +5,11 @@ from flask import request
 from file_health import local_request
 
 
+def callback_errors(app,provider):
+    """Profile-specific callback messages shared by the connector and setup screens."""
+    return app.extensions.setdefault('workbench_cloud_callback_errors', {}).setdefault(provider, {})
+
+
 def authorization_origin():
     """Use the canonical loopback host, retaining the actual Workbench port.
 

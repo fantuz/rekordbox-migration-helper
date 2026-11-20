@@ -50,6 +50,9 @@ def track(values):
     """Keep a bounded metadata allowlist; unavailable values stay unknown."""
     text = ("id", "title", "artist", "album", "genre", "label", "composer", "date_added", "last_played", "tonality", *PATH_FIELDS)
     result = {field: str(values.get(field) or '') for field in text}
+    # Retain independent XML path evidence in private snapshots. Export field
+    # allowlists remain unchanged, so it is never added to shared explorers.
+    if values.get('xml_location') not in (None,''):result['xml_location']=str(values['xml_location'])
     result['comment']=None if values.get('comment') is None else str(values['comment'])
     result.update({field:clean(values.get(field)) for field in ('color_name','color_key','color_basis')})
     result['color_status']=values.get('color_status') if values.get('color_status') in ('assigned','unassigned','unknown') else 'unknown'

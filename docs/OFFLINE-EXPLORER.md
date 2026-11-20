@@ -22,6 +22,13 @@ Private fields are removed from the serialized data when unchecked: hiding a col
 
 The preview lists the number of tracks, included fields, excluded fields and metadata state before generating files. It reads metadata already captured locally. It does not contact an online service or publish anything.
 
+When personal ratings are included, track rows and rating categories display
+star symbols. Unknown ratings remain separate from Unrated (0). These detached
+files are read-only: their stars show the metadata frozen at generation time,
+including working metadata only when that export option was explicitly
+selected. To stage a new personal rating, use a live Workbench track row or File
+view; offline stars cannot change the private sidecar or original library.
+
 **Captured metadata** is the saved source information. **Working metadata** applies your explicit local metadata overrides, such as reviewed genres or colours. Merge and relocation decisions are not applied to these browsing exports; their XML/ZIP library exports have a separate preparation and validation flow. The selected state is recorded in the generated files and export details.
 
 Public summaries offer category tables and CSV export. Detailed presets retain search, filters, track details and only the category pages for included fields. Unknown values remain visible. Counts include library records; they are not a claim that every audio file exists or every record is a distinct recording.

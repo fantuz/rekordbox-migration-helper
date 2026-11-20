@@ -3,7 +3,7 @@
  * and applies to the whole scanned set, not only the 50 rendered rows.
  */
 window.FileHealth=(()=>{
-  let source='',offset=0,sort='artist',direction='asc',revision=0,contextSource=null;
+  let source='',offset=0,sort='artist',direction='asc',revision=0,contextSource=null,requestedSource='',requestedAudioFolders=false;
   const states=['playable','missing','inaccessible','unverified'];
   const label=key=>I18n.t(key),stateNames={playable:'Accessible',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'};
   const node=id=>document.getElementById('file-health-'+id);
@@ -86,14 +86,14 @@ window.FileHealth=(()=>{
     await AudioPaths.load(node('audio-paths'),selected);
     node('scan').disabled=!selected;
     if(!selected){node('results').replaceChildren();node('counts').replaceChildren();node('providers').replaceChildren();node('cloud-state').replaceChildren();node('cloud-state').hidden=true;node('legacy').hidden=true;node('state').textContent=label('Choose a saved collection snapshot');return;}
-    const args=new URLSearchParams({source:selected,status:node('status').value,provider:node('provider').value,q:node('search').value,sort,direction,offset:String(offset)});
+    const args=new URLSearchParams({source:selected,status:node('status').value,provider:node('provider').value,q:node('search').value,sort,direction,offset:String(offset),hide_metadata_sidecars:DisplayPreferences.args().hide_metadata_sidecars});
     node('state').textContent=label('Loading');
     try{
       const r=await api('/api/file-health?'+args,{feedback:false});
       if(request!==revision || selected!==chosen())return;
       renderCounts(r);renderProviders(r);renderCloudChecks(r);renderRows(r);
       const time=r.scan_time?snapshotMoment(new Date(r.scan_time*1000).toISOString()):label('Not checked');
-      node('state').textContent=label('Scan local files')+': '+label(r.scan_state)+' · '+label('Last checked')+': '+time;
+      node('state').textContent=label('Scan local files')+': '+label(r.scan_state)+' · '+label('Last checked')+': '+time+(r.sidecars?.enabled?' · '+DisplayPreferences.sidecarNote(r):'');
     }catch(e){if(request===revision)node('state').textContent=e.message;}
   }
   async function load(){
@@ -107,10 +107,12 @@ window.FileHealth=(()=>{
     // Keep an explicit per-tool selection on return from cloud verification;
     // a later change to Collection context still deliberately changes scope.
     const changedContext=contextSource===null||contextSource!==current;
-    const wanted=[changedContext?current:null,old,current].find(v=>options.some(s=>s.id===v)) || options[0]?.id || '';
+    const requested=requestedSource,openAudioFolders=requestedAudioFolders;requestedSource='';requestedAudioFolders=false;
+    const wanted=requested?(options.some(s=>s.id===requested)?requested:''):[changedContext?current:null,old,current].find(v=>options.some(s=>s.id===v)) || options[0]?.id || '';
     contextSource=current;
     node('source').value=wanted;
     if(source!==wanted)offset=0;await loadResults();
+    if(openAudioFolders&&wanted===chosen()&&!node('results').closest('.view').hidden){const panel=node('audio-paths').querySelector('.audio-path-panel');if(panel){panel.open=true;panel.querySelector('summary').focus({preventScroll:true});panel.scrollIntoView({block:'nearest'});}}
   }
   node('source').onchange=wrap(async()=>{offset=0;await loadResults();});
   node('status').onchange=wrap(async()=>{offset=0;await loadResults();});
@@ -130,10 +132,13 @@ window.FileHealth=(()=>{
       node('scan').disabled=!node('source').value;
     }
   });
+  const display=document.createElement('div');display.innerHTML=DisplayPreferences.controls({keys:false,unknown:false,sidecars:true});node('find').before(display);DisplayPreferences.sync();
   window.addEventListener('workbench-language',()=>{if(!node('results').closest('.view').hidden)void loadResults();});
+  window.addEventListener('workbench-display-preferences',()=>{if(!node('results').closest('.view').hidden){offset=0;void loadResults();}});
   window.addEventListener('workbench-audio-paths',()=>{if(!node('results').closest('.view').hidden)void loadResults();});
   window.addEventListener('workbench-cloud-evidence',event=>{if(event.detail?.source===chosen()&&!node('results').closest('.view').hidden)void loadResults();});
   for(const button of document.querySelectorAll('#view-file-health [data-view]'))
     if(['cloud-connect','dropbox','google-drive'].includes(button.dataset.view))button.onclick=()=>openCloud(button.dataset.view);
-  return {load};
+  function forSource(value,{audioFolders=false}={}){if(!/^(?:snapshot|capture):[0-9a-f]{32}$/u.test(value||''))return false;requestedSource=value;requestedAudioFolders=audioFolders;revision++;offset=0;return true;}
+  return {load,forSource};
 })();

@@ -100,6 +100,19 @@ class DropboxDownloadTests(unittest.TestCase):
         self.assertTrue(self.response.closed)
         self.assertEqual(list(self.staging.iterdir()), [])
 
+    def test_progress_measures_streamed_and_verified_bytes_for_one_file(self):
+        state=downloads.prepare_target(self.target,self.root);steps=[];verified=[]
+        with patch.object(downloads,'CHUNK_BYTES',8):
+            result=self.download(expected_target=state,progress=lambda _,step:steps.append(step.detail))
+            downloads.verify_downloaded_content(self.target,self.root,state,result['file_identity'],len(self.payload),
+                                               self.metadata['content_hash'],byte_progress=verified.append)
+        transfer=[step for step in steps if step['phase']=='Downloading audio']
+        self.assertEqual({step['item'] for step in steps},{self.target.name})
+        self.assertEqual({step['total'] for step in transfer},{len(self.payload)})
+        self.assertEqual(sorted(set(step['completed'] for step in transfer)),[*range(0,len(self.payload),8),len(self.payload)])
+        self.assertEqual(sorted(set(verified)),[*range(0,len(self.payload),8),len(self.payload)])
+        self.assertEqual(steps[-1]['completed'],len(self.payload));self.assertEqual(len(self.connection.calls),1)
+
     def test_multiblock_hash_with_unaligned_transport_chunks(self):
         self.payload = b'abcdefg' * (4 * 1024**2 // 7 + 2)
         self.metadata.update(size=len(self.payload), content_hash=content_hash(self.payload))

@@ -40,6 +40,23 @@ class TaskLifecycleTests(unittest.TestCase):
             patcher.start();self.addCleanup(patcher.stop)
         self.pool=QueuedPool()
 
+    def test_cloud_activity_is_local_transient_and_keeps_exact_page_counts(self):
+        from cloud_progress import CloudProgress
+        client=workspace_client(application)
+        def work(report):
+            report(5,CloudProgress('Dropbox','Reading folder metadata',unit='entries',completed=85,pages=2))
+            report(70,CloudProgress('Dropbox','Matching library paths',unit='tracks',completed=100,total=251,
+                                   item='C:/private/old-user/Band\u200d mix\u202e.mp3'))
+            local=client.get('/api/tasks/'+job)
+            self.assertEqual(local.headers['Cache-Control'],'no-store')
+            self.assertEqual(local.json['cloud_progress'],{'provider':'Dropbox','phase':'Matching library paths',
+                'unit':'tracks','completed':100,'total':251,'pages':2,'entries':85,'item':'Band\u200d mix.mp3'})
+            remote=client.get('/api/tasks/'+job,environ_overrides={'REMOTE_ADDR':'192.0.2.13'})
+            self.assertNotIn('cloud_progress',remote.json);self.assertNotIn('Band',remote.get_data(as_text=True))
+        job=application.launch(work,'Check metadata',self.pool);self.pool.work()
+        terminal=client.get('/api/tasks/'+job).json
+        self.assertEqual(terminal['status'],'complete',terminal);self.assertNotIn('cloud_progress',terminal)
+
     def test_cancel_queued_task_never_starts_work_and_releases_control(self):
         from unittest.mock import Mock
         work=Mock();job=application.launch(work,'Queued',self.pool)

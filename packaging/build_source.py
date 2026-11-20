@@ -29,7 +29,10 @@ def main():
                                                        "cloud-file-health-filters.png","cloud-track-confirmation.png",
                                                        "dropbox-setup.png","dropbox-confirmation.png","dropbox-play-confirmation.png",
                                                        "cloud-connection-setup.png","cloud-attachment-preview.png",
-                                                       "cloud-file-evidence.png","release-year-order.png")]
+                                                       "cloud-file-evidence.png","release-year-order.png",
+                                                       "cloud-recorded-root-suggestions.png","google-drive-byte-progress.png",
+                                                       "compact-workspace-toolbar.png","inline-star-ratings.png",
+                                                       "cloud-analysis-statistics.png","metadata-sidecar-statistics.png")]
     with tarfile.open(destination,"w:gz") as archive:
         for file in sorted(files):
             if file.is_file():archive.add(file,arcname="library-workbench/"+str(file.relative_to(ROOT)),recursive=False)

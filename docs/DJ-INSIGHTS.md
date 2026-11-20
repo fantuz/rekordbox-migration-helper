@@ -16,6 +16,13 @@ History dates are session dates, not timestamps for individual plays. Entries ou
 
 Filters include genre family, exact saved tag, saved tonality, track colour, known-zero/low/positive/unknown usage, preparation, title/artist/album text, BPM, duration and personal stars. “Prepared” specifically requires a saved analyzed flag and at least one cue classified as manual. Cue origin is inferred from editable labels. Underplayed thresholds and the rediscovery age are user choices; rediscovery uses a displayed snapshot reference date, not an invented play date.
 
+**Cloud location** narrows DJ insights, bubbles and Tonality & tempo using
+recorded or mapped Dropbox/Google Drive paths. It combines with the other
+criteria without initiating a filesystem scan, provider request or download.
+**No cloud match** and **Not classified** remain separate; neither proves that
+audio is available locally. See [cloud path analysis](NATIVE-COLLECTION-VIEWS.md#cloud-path-analysis)
+for overlapping provider counts and evidence limits.
+
 Uniform random sampling treats each matching entry equally. Genre-balanced sampling selects entries in shuffled rounds across families, giving small families more opportunity. The seed makes a selection reproducible; “Surprise me” changes it. Duplicate recordings can still appear as different library entries.
 
 The genre-balance panel compares shares of entries with known usage to shares of recorded usage in the filtered collection, before the selected perspective. Unknown counters do not lower a group's score. If total recorded plays are zero, the exploration gap is unavailable rather than a fabricated preference score. Top-ten concentration is another descriptive measure, not a judgement about how a set should be played.
@@ -62,7 +69,17 @@ Keys come from XML `Tonality` or native `djmdKey.ScaleName` through `KeyID`. Cho
 
 Open an individual **File view** from insight tables, a track bubble, Duplicate review or the Library lab editor. **Comments** opens directly. Save a comment or click a labelled colour in the palette without unlocking other metadata. Colour changes preserve unsaved comment text. The file view lists saved working edits, and the final private export report recaps their application. Comments are not displayed in collection tables, CSV, insight reports or shareable HTML. Existing whitespace/newlines are preserved. The editor accepts up to 4,096 characters and rejects invalid XML/control characters. A blank working value explicitly clears the comment in generated copies; resetting removes the working override and restores the captured value. The palette offers the eight standard colours and clear, displays configured native names, and disables unavailable native mappings with an explanation.
 
-Other metadata is behind a collapsed panel and an explicit unlock warning. Unlocking is for the same snapshot scope; title, artist, album, genre, year and personal stars use the existing guarded override workflow. Tonality, colour and BPM are inspection fields here. No original files or audio tags are changed.
+Personal-star cells in the live insight tables are editable directly: choose
+one of five stars, clear to Unrated (0), or reset a staged change. The file view
+has the same quick star controls. A working-edit indicator and captured-value
+tooltip keep the two values separate; unknown remains distinct from unrated.
+These actions use the selected collection's private sidecar scope without
+creating a new metadata snapshot or accessing audio/cloud files.
+
+Other metadata is behind a collapsed panel and an explicit unlock warning.
+Unlocking is for the same snapshot scope; title, artist, album, genre and year
+use the existing guarded override workflow. Tonality and BPM are inspection
+fields here. No original files or audio tags are changed.
 
 Comments are stored in the retained local sidecar and can participate in XML `Comments` / native `Commnt` copy export from the **same loaded workspace**. Export checks the captured baseline and holds conflicting donor/keeper edits. Source-folder snapshots do not attach edits to an unrelated XML/ZIP workspace. An old snapshot without its original comment can retain a working note, but a matching fresh capture is needed before applying it safely. Rekordbox may include My Tag text in Comments; this utility does not parse, remove or rewrite that text automatically.
 

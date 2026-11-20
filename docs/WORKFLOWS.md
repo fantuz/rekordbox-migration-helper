@@ -5,6 +5,11 @@ The columns show inputs, transformation, enrichment, verification and outputs.
 Returning tabs retain their last page; direct links still open the requested
 tool. Each input has its own capabilities.
 
+The compact top toolbar keeps **Collection context**, **Collection snapshot**,
+the temporary-copy notice and global controls together. **Use local library**
+opens source selection; **Use XML/ZIP backup** opens the paired-input import
+dialog. Both remain available as you move between tools.
+
 ![Workflow map with synthetic data](screenshots/workflow-map.png)
 
 ## Prepare your input
@@ -67,6 +72,12 @@ The collection header can select a different snapshot without changing that
 recovery-search input. Use **File health** and **Audio folders** to inspect a
 selected capture or snapshot instead.
 
+The step indicator shows whether to load the workspace, choose folders or
+review results. Expand **Which library is checked?** for the scope explanation.
+After a scan, click a status counter to filter its saved results; this does not
+start another scan. The last-scan line identifies the indexed audio and folder
+counts. Expand a track's **Recorded reference** to inspect its original path.
+
 1. Import the pair whose original references you want to check.
 2. Add **Folder on this computer** paths containing music. These are search
    folders, not ZIP files, database folders or export destinations.
@@ -78,6 +89,12 @@ selected capture or snapshot instead.
 5. Review candidates. A unique suggestion is not proof of audio identity.
    Ambiguous/unavailable evidence cannot be staged as a unique match. Stage
    or undo references and review them before export.
+
+Each staging action explains what is still needed. A missing export-reference
+prefix requires setting that mapping and repeating the scan. Cloud
+placeholders, incomplete searches, ambiguous candidates and conflicting
+metadata remain held for review. A unique reference candidate is a suggestion,
+not a verification of audio identity.
 
 **Remove** takes a folder out of the next scan settings. It never deletes the
 directory, music or saved report. Changed settings are labelled separately

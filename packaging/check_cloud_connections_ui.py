@@ -30,6 +30,7 @@ def main():
             'live_accounts_validated':False}
     from playwright.sync_api import sync_playwright,expect
     from ui_navigation import select_collection,open_collection_picker
+    from check_cloud_progress_ui import check_cloud_progress
     from werkzeug.serving import make_server
     from test_cloud_connection_workflows import CloudConnectionWorkflowTests
     fixture=CloudConnectionWorkflowTests('test_both_selected_cache_attachments_preserve_sources_and_detach_independently')
@@ -231,7 +232,7 @@ def main():
                 page.locator('.nav[data-view="dropbox"]').click()
                 select_collection(page,'#dropbox-source',fixture.source)
                 dropbox_check=page.locator('#dropbox-check')
-                run_ui_job(dropbox_check,'/api/dropbox/check')
+                check_cloud_progress(page,application,dropbox_check,'Dropbox',screenshot=output/'dropbox-metadata-progress.png')
                 expect(page.locator('#dropbox-count')).to_contain_text('64')
                 expect(dropbox_check).to_be_enabled()
 
@@ -317,7 +318,7 @@ def main():
                 expect(page.locator('#google-drive-connection-state')).to_contain_text('Invented Google account')
                 expect(page.locator('#google-drive-redirect')).to_have_value(base+'/api/google-drive/callback')
                 select_collection(page,'#google-drive-source',fixture.source)
-                page.locator('#google-drive-check').click()
+                check_cloud_progress(page,application,page.locator('#google-drive-check'),'Google Drive')
                 expect(page.locator('#google-drive-count')).to_contain_text('64')
                 expect(page.locator('#google-drive-results tbody tr')).to_have_count(50)
                 assert all(not item.downloads for item in fixture.providers.values())
@@ -384,7 +385,8 @@ def main():
                 page.keyboard.press('Escape');expect(dialog).to_be_hidden()
                 assert not fixture.providers['google_drive'].downloads
                 page.locator('[data-google-drive-download="gd-60"]').click();expect(dialog).to_be_visible()
-                page.locator('#google-drive-download-confirm').click()
+                check_cloud_progress(page,application,page.locator('#google-drive-download-confirm'),'Google Drive',
+                                     download=True,screenshot=output/'google-drive-byte-progress.png')
                 expect(page.locator('#toast')).to_contain_text('One track downloaded',timeout=20000)
                 assert fixture.providers['google_drive'].downloads==['drive-60']
                 assert (fixture.google_cache/'Album'/'Drive 060.mp3').read_bytes()==fixture.providers['google_drive'].body
@@ -442,7 +444,10 @@ def main():
                     equivalent_default_namespace=True,source_search_preserve_verified_mapping=True,
                     explicit_team_namespace_choices=True,personal_namespace_not_duplicated=True,
                     partial_dropbox_check_note=True,
-                    snapshot_unchanged=True,mobile_layout=True,downloaded_files=1,external_requests=external)
+                    snapshot_unchanged=True,mobile_layout=True,downloaded_files=1,external_requests=external,
+                    measured_cloud_metadata_and_track_progress=True,confirmed_download_byte_progress=True)
+                from check_cloud_root_suggestions_ui import check_cloud_root_suggestions_ui
+                report['cloud_root_suggestions_ui']=check_cloud_root_suggestions_ui(browser,base,fixture,output)
             except Exception:
                 page.screenshot(path=str(output/'cloud-connections-failure.png'),full_page=True);raise
             finally:

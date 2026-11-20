@@ -71,10 +71,11 @@ def confined_folder(raw, roots):
     expanded=os.path.expanduser(raw)
     if not os.path.isabs(expanded) or '..' in expanded.replace('\\','/').split('/'):
         raise ValueError('Choose an absolute local folder.')
-    # realpath removes link/parent aliases before any Path is constructed.
-    canonical=os.path.normcase(os.path.realpath(expanded))
+    # Resolve both sides before checking the boundary. Keep the filesystem's
+    # spelling for display, reads and case-sensitive directories on Windows.
+    canonical=os.path.realpath(expanded)
     for root in roots:
-        boundary=os.path.normcase(os.path.realpath(str(root)))
+        boundary=os.path.realpath(str(root))
         # Exact-root selection returns the server's own canonical root. Only
         # descendants return a request-derived path, after the separator check.
         if canonical==boundary:

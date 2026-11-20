@@ -6,6 +6,13 @@ File health checks the captured paths. **Missing** means a specific file is abse
 
 Load the matching XML/ZIP workspace and open **Media inventory**. Enable **Advanced relocate**, enter local music folders, and choose **Scan these folders**. This opt-in search reads audio tags and duration with the bundled reader; it does not upload metadata, download cloud placeholders, move audio, or edit the live Rekordbox library. Saved snapshots in File health remain read-only; load their original matching pair to stage relocation changes.
 
+The page names that workspace even if Collection context points to a different
+snapshot. Its step indicator and last-scan summary distinguish setup from
+saved results. Click a status counter to filter those results, and expand a
+recorded reference to inspect the original path. Removing a folder changes the
+next scan settings only. Disabled staging actions explain whether a destination
+prefix, a complete scan or review of ambiguous/conflicting evidence is needed.
+
 The search combines mapped path and byte size, normalized filename and byte size, and embedded title/artist tags with duration within two seconds. Tag matching can find a renamed file even when its byte size differs. Normalization preserves remix/version words and digits. This is metadata evidence, not acoustic fingerprinting or proof that two recordings sound identical.
 
 Candidates show their local paths, proposed export URIs, evidence, and available tags. Evidence ranks mapped paths before filename matches, then tag matches. Multiple plausible files stay **Several candidates** even if one ranks higher. A candidate whose tags or duration conflict with captured metadata stays **Needs review**. Audio already available at a recorded path is **Playable**.

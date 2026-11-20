@@ -152,6 +152,12 @@ def main():
                 report['recovery_and_queue']=check_recovery_queue_ui(browser,base,sid,args.output)
                 from check_header_information_ui import check_header_information_ui
                 report['header_information_ui']=check_header_information_ui(page,args.output)
+                from check_cloud_analysis_ui import check_cloud_analysis_ui
+                report['cloud_analysis_ui']=check_cloud_analysis_ui(browser,base,store,args.output)
+                from check_inline_ratings_ui import check_inline_ratings_ui
+                report['inline_ratings_ui']=check_inline_ratings_ui(browser,base,store,args.output)
+                from check_metadata_sidecars_ui import check_metadata_sidecars_ui
+                report['metadata_sidecars_ui']=check_metadata_sidecars_ui(browser,base,store,args.output)
                 from check_workspace_ui import check_workspace_ui
                 report['workspace_ui']=check_workspace_ui(browser,page,base,sid,args.output,offline)
                 from check_bubble_labels_ui import check_bubble_labels_ui
@@ -189,13 +195,13 @@ def main():
                         assert sidebar['x']>=main['x']+main['width']-1,(sidebar,main)
                         assert page.locator('td.numeric').first.evaluate('(node)=>getComputedStyle(node).direction')=='ltr'
                         assert page.evaluate('''() => {
-                            const cell=[...document.querySelectorAll('td.numeric')].find(node=>node.textContent==='4 / 5');
+                            const cell=[...document.querySelectorAll('td.numeric')].find(node=>node.textContent==='★★★★☆');
                             if(!cell)return false;
                             const left=document.createRange(),right=document.createRange();
                             left.setStart(cell.firstChild,0);left.setEnd(cell.firstChild,1);
                             right.setStart(cell.firstChild,4);right.setEnd(cell.firstChild,5);
                             return left.getBoundingClientRect().x<right.getBoundingClientRect().x;
-                        }'''), 'RTL reversed the rating numerator and denominator'
+                        }'''), 'RTL reversed the filled and empty stars'
                         page.screenshot(path=str(args.output/'ar-offline.png'),full_page=False)
                 with page.expect_download() as download:
                     page.locator('#download-csv').click()

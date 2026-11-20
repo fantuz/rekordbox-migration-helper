@@ -12,6 +12,7 @@ from flask import jsonify,request
 from collection_sources import resolve
 from file_status_cache import inspect as cached_inspect
 from workbench_store import Store
+import metadata_sidecars
 
 PAGE_SIZE=50
 BATCH_SIZE=100
@@ -51,6 +52,7 @@ def register(owner):
         sorting=request.args.get('sort','artist')
         direction=request.args.get('direction','asc')
         query=request.args.get('q','').strip().casefold()
+        hiding_sidecars=metadata_sidecars.enabled(request.args.get('hide_metadata_sidecars',False))
         try:offset=int(request.args.get('offset',0))
         except (TypeError,ValueError):raise ValueError('Choose a valid offset') from None
         if (status not in ('all','not_playable','cloud_only','cloud_not_local',*STATUS)
@@ -59,6 +61,7 @@ def register(owner):
             raise ValueError('Choose a supported file-health filter and sort')
         saved=store()
         with saved.connection() as db:
+            db.create_function('metadata_sidecar_name',1,metadata_sidecars.is_name_sidecar,deterministic=True)
             # After a scan, avoid deserializing the entire (potentially 250k
             # track) saved JSON on every filter, sort or page request. Use the
             # indexed total, but still reject a missing/archived source.
@@ -79,7 +82,12 @@ def register(owner):
             else:
                 total_records=len(resolve(owner,source)['tracks'])
             if total_records>250000:raise ValueError('This library exceeds the file-health scan limit')
-            where='source=?';params=[source]
+            # An observed filename wins over an older source-path hint.
+            sidecar_predicate="(CASE WHEN filename<>'' THEN metadata_sidecar_name(filename) ELSE coalesce(metadata_sidecar,0) END=1)"
+            sidecar_count=db.execute('SELECT count(*) FROM file_health_records WHERE source=? AND '+sidecar_predicate,(source,)).fetchone()[0]
+            sidecars=metadata_sidecars.summary(total_records,sidecar_count,hiding_sidecars)
+            scope_where='source=?'+(' AND NOT '+sidecar_predicate if hiding_sidecars else '')
+            where=scope_where;params=[source]
             if status=='not_playable':where+=" AND (status IN ('missing','inaccessible') OR cloud_state IN ('online_only','not_local'))"
             elif status=='cloud_only':where+=" AND cloud_state='online_only'"
             elif status=='cloud_not_local':where+=" AND cloud_state='not_local'"
@@ -102,17 +110,17 @@ def register(owner):
             for row in rows:
                 try:row['provider_evidence']=json.loads(row['provider_evidence'])
                 except (TypeError,ValueError):row['provider_evidence']=[]
-            counts={r['status']:r['n'] for r in db.execute('SELECT status,count(*) n FROM file_health_records WHERE source=? GROUP BY status',(source,))}
+            counts={r['status']:r['n'] for r in db.execute('SELECT status,count(*) n FROM file_health_records WHERE '+scope_where+' GROUP BY status',(source,))}
             observed=sum(counts.values())
             provider_counts=dict.fromkeys(('all','dropbox','google_drive','other','unknown'),0)
             provider_counts['all']=observed
-            for row in db.execute('SELECT providers,provider_checked,count(*) n FROM file_health_records WHERE source=? GROUP BY providers,provider_checked',(source,)):
+            for row in db.execute('SELECT providers,provider_checked,count(*) n FROM file_health_records WHERE '+scope_where+' GROUP BY providers,provider_checked',(source,)):
                 if not row['provider_checked']:provider_counts['unknown']+=row['n'];continue
                 if row['providers']&1:provider_counts['dropbox']+=row['n']
                 if row['providers']&2:provider_counts['google_drive']+=row['n']
                 if not row['providers']:provider_counts['other']+=row['n']
-            cloud_counts={r['cloud_state']:r['n'] for r in db.execute('SELECT cloud_state,count(*) n FROM file_health_records WHERE source=? GROUP BY cloud_state',(source,))}
-            unavailable=db.execute("SELECT count(*) FROM file_health_records WHERE source=? AND (status IN ('missing','inaccessible') OR cloud_state IN ('online_only','not_local'))",(source,)).fetchone()[0]
+            cloud_counts={r['cloud_state']:r['n'] for r in db.execute('SELECT cloud_state,count(*) n FROM file_health_records WHERE '+scope_where+' GROUP BY cloud_state',(source,))}
+            unavailable=db.execute("SELECT count(*) FROM file_health_records WHERE "+scope_where+" AND (status IN ('missing','inaccessible') OR cloud_state IN ('online_only','not_local'))",(source,)).fetchone()[0]
         cloud_checks={}
         origin=request.headers.get('Origin')
         if local_request() and (not origin or origin.rstrip('/')==request.host_url.rstrip('/')):
@@ -120,8 +128,8 @@ def register(owner):
             cloud_rows,cloud_checks=cached_evidence(owner,source,[row['track_id'] for row in rows])
         else:cloud_rows={}
         for row in rows:row['cloud_evidence']=cloud_rows.get(row['track_id'],[])
-        response=jsonify(source=source,source_total=total_records,checked=observed,
-                       unchecked=max(0,total_records-observed),scan_state=('partial' if record and record['state']=='running' and observed<total_records else record['state']) if record else 'not_started',
+        response=jsonify(source=source,source_total=total_records,filtered_source_total=total_records-sidecars['excluded'],sidecars=sidecars,checked=observed,
+                       unchecked=max(0,total_records-sidecars['excluded']-observed),scan_state=('partial' if record and record['state']=='running' and observed<total_records-sidecars['excluded'] else record['state']) if record else 'not_started',
                        scan_time=record['checked_at'] if record else None,
                        counts={name:counts.get(name,0) for name in STATUS},
                        provider=provider,provider_counts=provider_counts,cloud_counts=cloud_counts,unavailable_count=unavailable,
@@ -177,12 +185,12 @@ def register(owner):
                     # evidence, never merely a replay of the status TTL.
                     states,_,details=cached_inspect(owner,probes,refresh=True,mappings=mappings,details=True,roots=roots)
                     with saved.connection() as db:
-                        db.executemany('INSERT OR REPLACE INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text,providers,provider_checked,cloud_state,logical_size,filename,provider_evidence) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                        db.executemany('INSERT OR REPLACE INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text,providers,provider_checked,cloud_state,logical_size,filename,provider_evidence,metadata_sidecar) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                             [(source,identity,str(t.get('title') or ''),str(t.get('artist') or ''),
                               str(t.get('genre') or ''),states[identity],time.time(),
                               ' '.join(str(t.get(k) or '') for k in ('id','title','artist','genre')).casefold(),
                               details[identity]['providers'],1,details[identity]['cloud_state'],
-                              details[identity]['logical_size'],details[identity]['filename'],json.dumps(details[identity]['provider_evidence']))
+                              details[identity]['logical_size'],details[identity]['filename'],json.dumps(details[identity]['provider_evidence']),int(metadata_sidecars.is_sidecar({**t,'filename':details[identity].get('filename') or t.get('filename')})))
                              for identity,t in probes.items()])
                         done=len(prior)+index+len(batch)
                         db.execute('UPDATE file_health_scans SET done=?,checked_at=? WHERE source=?',(done,time.time(),source))

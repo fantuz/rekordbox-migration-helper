@@ -58,7 +58,7 @@ class Store:
                 'file_health_records':{'providers':'INTEGER NOT NULL DEFAULT 0',
                     'provider_checked':'INTEGER NOT NULL DEFAULT 0','cloud_state':"TEXT NOT NULL DEFAULT 'not_checked'",
                     'logical_size':'INTEGER','filename':"TEXT NOT NULL DEFAULT ''",
-                    'provider_evidence':"TEXT NOT NULL DEFAULT '[]'"},
+                    'provider_evidence':"TEXT NOT NULL DEFAULT '[]'",'metadata_sidecar':'INTEGER'},
             }
             for table,columns in additions.items():
                 present={row['name'] for row in db.execute('PRAGMA table_info('+table+')')}

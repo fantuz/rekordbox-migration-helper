@@ -3,6 +3,7 @@ import json
 
 
 def check_regional_languages_ui(browser, base, output):
+    from playwright.sync_api import expect
     cases=[('pt-BR',None,'pt-BR'),('pt-PT',None,'pt-PT'),
            ('pt-AO',None,'pt-PT'),('pt',None,'pt-PT'),('ja-JP',None,'ja'),
            ('ar-EG',None,'ar'),('en-US','PT_br','pt-BR'),
@@ -33,8 +34,11 @@ def check_regional_languages_ui(browser, base, output):
             page.wait_for_function('document.documentElement.dataset.languageBusy!=="true"')
             assert page.locator('#analyzer-path').input_value()=='C:\\Music\\日本語\\موسيقى\\faixa.mp3'
             assert page.locator('html').get_attribute('dir')=='ltr'
+            assert page.evaluate("localStorage.getItem('library-workbench.language.v1')")=='ja'
             page.reload(wait_until='networkidle')
-            assert page.locator('#language').input_value()=='ja'
+            assert page.evaluate("localStorage.getItem('library-workbench.language.v1')")=='ja'
+            expect(page.locator('html')).to_have_attribute('lang','ja')
+            expect(page.locator('#language')).to_have_value('ja')
             # Rich translations isolate data, keep literal markup inert and retain controls.
             assert page.evaluate('''() => {
                 const node=document.createElement('p');

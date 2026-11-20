@@ -19,6 +19,7 @@ window.Activity=(()=>{
     const parent=modal || document.body;
     if(banner.parentElement!==parent)parent.append(banner);
     const quiet=now-(inProgress?entry.updated:entry.started),waiting=quiet>=WAIT_AFTER;
+    if(inProgress&&!waiting&&document.getElementById('progress-cloud')?.hidden===false){banner.hidden=true;return;}
     banner.dataset.waiting=String(waiting);banner.hidden=false;
     put(title,I18n.t(waiting?'Waiting…':inProgress?'Working':'Loading'));
     put(hint,quiet>=LONG_AFTER?I18n.t('This is taking longer. Avoid starting the same action again.'):

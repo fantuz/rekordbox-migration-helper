@@ -12,6 +12,8 @@ from urllib.parse import parse_qs,unquote,urlsplit
 from flask import jsonify,redirect,request
 from collection_sources import resolve
 from cloud_locations import provider_roots
+from cloud_oauth import callback_errors
+from cloud_progress import CloudProgress, evidence_records, matching_tracks
 from file_health import local_request,selected_source
 from workbench_store import Store
 import dropbox_files as files
@@ -53,7 +55,7 @@ class _CallbackLogFilter(logging.Filter):
 
 def register(owner):
     app=owner.app
-    intents={};guard=RLock();authorization_errors={};running={};return_views={}
+    intents={};guard=RLock();authorization_errors=callback_errors(app,'dropbox');running={};return_views={}
     logging.getLogger('werkzeug').addFilter(_CallbackLogFilter())
     def connected():return connection(owner)
     def store():
@@ -143,26 +145,32 @@ def register(owner):
         task_store=store();client=connected()
         def work(progress):
             from cloud_file_evidence import size_evidence
+            from metadata_sidecars import is_sidecar
             def checkpoint(amount,message):
                 if owner.DATA.resolve()!=profile or context(source)[1]!=key:raise ValueError('Dropbox connection, source or mapping changed. Check metadata again.')
                 progress(amount,message)
             entries,complete=files.inventory(client,mapped,checkpoint);rows=[]
-            unsupported=int(getattr(entries,'unsupported_paths',0))
+            unsupported=int(getattr(entries,'unsupported_paths',0));coverage=getattr(entries,'coverage',lambda:None)()
+            reasons=(coverage or {}).get('incomplete_reasons',[])
             scan_note=('Some Dropbox paths could not be mapped safely. Only positive path matches are confirmed; '
-                       'choose a narrower Rekordbox folder to complete this check.') if unsupported else None
-            for i,track in enumerate(snapshot['tracks']):
-                if i%100==0:checkpoint(70+25*i/max(1,len(snapshot['tracks'])),'Matching library paths with Dropbox metadata')
+                       'choose a narrower Rekordbox folder to complete this check.') if unsupported else (
+                       'Dropbox metadata listing is incomplete. Only positive path matches are confirmed; '
+                       'choose a narrower Rekordbox folder to complete this check.') if not complete else None
+            for track in matching_tracks(snapshot['tracks'],'Dropbox',checkpoint):
                 destination=files.target(track,mapped,audio);remote=entries.get(files.path_key(destination['remote_path'])) if destination else None
                 state='unmapped' if not destination else 'present' if remote else 'not_found' if complete else 'unverified'
-                rows.append({'track_id':str(track['id']),'title':str(track.get('title') or ''),'artist':str(track.get('artist') or ''),
+                unresolved=('unmapped_path' if state=='unmapped' else 'not_found_in_complete_listing' if state=='not_found'
+                            else reasons[0] if state=='unverified' and len(reasons)==1 else 'incomplete_inventory' if state=='unverified' else None)
+                rows.append({**({'path_diagnostics':files.path_diagnostics(track,mapped)} if state=='unmapped' else {}),
+                             'metadata_sidecar':is_sidecar(track),'unresolved_reason':unresolved,'track_id':str(track['id']),'title':str(track.get('title') or ''),'artist':str(track.get('artist') or ''),
                              'status':state,**(destination or {}),'size':remote.get('size') if remote else None,
                              **size_evidence(track,remote),'remote':remote})
-            checkpoint(98,'Saving Dropbox metadata evidence');checked=time.time()
+            checkpoint(98,CloudProgress('Dropbox','Saving file evidence',unit='tracks',total=len(rows)));checked=time.time()
             with task_store.connection() as db:
                 db.execute('DELETE FROM dropbox_records WHERE binding=? AND source=?',(key,source))
-                db.executemany('INSERT INTO dropbox_records VALUES (?,?,?,?)',[(key,source,r['track_id'],json.dumps(r)) for r in rows])
-                db.execute('INSERT OR REPLACE INTO dropbox_scans VALUES (?,?,?)',(key,source,json.dumps({'checked_at':checked,'complete':complete,'tracks':len(rows),'unsupported_paths':unsupported,'scan_note':scan_note})))
-            return {'checked':len(rows),'complete':complete,'unsupported_paths':unsupported,'scan_note':scan_note,'audio_contents_read':False,'downloads':0}
+                db.executemany('INSERT INTO dropbox_records VALUES (?,?,?,?)',evidence_records(rows,key,source,'Dropbox',progress))
+                db.execute('INSERT OR REPLACE INTO dropbox_scans VALUES (?,?,?)',(key,source,json.dumps({'checked_at':checked,'complete':complete,'tracks':len(rows),'unsupported_paths':unsupported,'scan_note':scan_note,'coverage':coverage})))
+            return {'checked':len(rows),'complete':complete,'unsupported_paths':unsupported,'scan_note':scan_note,'coverage':coverage,'audio_contents_read':False,'downloads':0}
         def finished(_state):
             with guard:running.pop(identity,None)
         with guard:
@@ -177,6 +185,8 @@ def register(owner):
     def rows():
         local();source=selected_source(request.args.get('source'))
         mapped,key,_=context(source);state=request.args.get('status','all');query=request.args.get('q','').strip().casefold()
+        from metadata_sidecars import enabled,summary
+        hide_sidecars=enabled(request.args.get('hide_metadata_sidecars',False))
         try:offset=int(request.args.get('offset',0))
         except (TypeError,ValueError):raise ValueError('Choose a valid Dropbox page.') from None
         if state not in ('all','present','not_found','unmapped','unverified') or not 0<=offset<=250000 or len(query)>200:raise ValueError('Choose a valid Dropbox file filter.')
@@ -191,8 +201,12 @@ def register(owner):
             # ordering identical to the captured display strings without loading
             # every remote metadata payload into Python for each 50-row page.
             db.create_function('dropbox_casefold',1,lambda value:str(value or '').casefold(),deterministic=True)
-            for row in db.execute("SELECT json_extract(payload,'$.status'),count(*) FROM dropbox_records WHERE binding=? AND source=? GROUP BY json_extract(payload,'$.status')",(key,source)):
+            total_before=db.execute('SELECT count(*) FROM dropbox_records WHERE '+where,params).fetchone()[0]
+            recognized=db.execute("SELECT count(*) FROM dropbox_records WHERE "+where+" AND json_extract(payload,'$.metadata_sidecar')=1",params).fetchone()[0]
+            sidecar_filter=" AND coalesce(json_extract(payload,'$.metadata_sidecar'),0)<>1" if hide_sidecars else ''
+            for row in db.execute("SELECT json_extract(payload,'$.status'),count(*) FROM dropbox_records WHERE binding=? AND source=?"+sidecar_filter+" GROUP BY json_extract(payload,'$.status')",(key,source)):
                 if row[0] in counts:counts[row[0]]=row[1]
+            where+=sidecar_filter
             total=db.execute('SELECT count(*) FROM dropbox_records WHERE '+where,params).fetchone()[0]
             order="dropbox_casefold(json_extract(payload,'$.artist')),dropbox_casefold(json_extract(payload,'$.title')),track_id"
             values=[json.loads(r[0]) for r in db.execute('SELECT payload FROM dropbox_records WHERE '+where+' ORDER BY '+order+' LIMIT 50 OFFSET ?',(*params,offset))]
@@ -212,9 +226,9 @@ def register(owner):
                     r['local_state']='online_only' if cloud_placeholder(info) else 'present'
                 except FileNotFoundError:absent=True;r['local_state']='not_local'
                 except OSError:r['local_state']='unverified'
-            r['downloadable']=bool(remote and remote.get('is_downloadable',True) and absent)
+            r['downloadable']=bool(r.get('status')=='present' and absent and files.downloadable_metadata(remote,r.get('remote_path'),require_hash=False))
             result.append(r)
-        return jsonify(rows=result,total=total,offset=offset,counts=counts,**(json.loads(scan[0]) if scan else {}))
+        return jsonify(rows=result,total=total,offset=offset,counts=counts,sidecars=summary(total_before,recognized,hide_sidecars),**(json.loads(scan[0]) if scan else {}))
     def selected(value):
         source=selected_source(value.get('source'));identity=value.get('track_id')
         if not isinstance(identity,str) or not 1<=len(identity)<=200:raise ValueError('Choose one library track.')
@@ -225,14 +239,7 @@ def register(owner):
         return source,identity,mapped,key,destination,track
     def remote_file(mapped,destination):
         remote=connected().rpc('files/get_metadata',{'path':destination['remote_path']},path_root={'.tag':'namespace_id','namespace_id':mapped['namespace']})
-        from dropbox_download import MAX_FILE_BYTES
-        path=remote.get('path_lower') or remote.get('path_display')
-        if (remote.get('.tag')!='file' or not isinstance(remote.get('id'),str) or not remote['id']
-                or not isinstance(remote.get('rev'),str) or not remote['rev']
-                or type(remote.get('size')) is not int or not 0<remote['size']<=MAX_FILE_BYTES
-                or not isinstance(remote.get('content_hash'),str) or not re.fullmatch(r'[0-9a-f]{64}',remote['content_hash'])
-                or remote.get('is_downloadable',True) is False
-                or not isinstance(path,str) or files.path_key(path)!=files.path_key(destination['remote_path'])):
+        if not files.downloadable_metadata(remote,destination['remote_path']):
             raise ValueError('This Dropbox entry cannot be downloaded as a verified audio file.')
         return remote
     @app.post('/api/dropbox/download/prepare')
@@ -306,27 +313,28 @@ def register(owner):
                 try:
                     # Publication remains successful if cancellation arrived
                     # afterwards, but it must still prevent the separate launch.
-                    progress(99,'Checking the approved track before playback')
+                    target=Path(destination['local_path'])
+                    progress(99,CloudProgress('Dropbox','Verifying downloaded audio',item=target.name))
                     validate(force=True)
                     validate_destination(mapped,destination['local_path'])
                     from dropbox_download import resident_file_identity,verify_downloaded_content
                     from track_playback import inspect_audio_details,open_audio
                     details=inspect_audio_details(track,context(source)[2])
-                    target=Path(destination['local_path'])
                     fresh=resident_file_identity(target,mapped['local_root'],intent['target'])
                     if (result.get('local_path')!=str(target) or result.get('bytes')!=remote['size']
                             or not result.get('file_identity') or fresh!=result['file_identity']
                             or details['status']!='playable' or details['path']!=target):
                         raise ValueError('The downloaded track changed or is no longer available locally. Choose Play again.')
-                    def playback_checkpoint():
+                    def playback_checkpoint(consumed):
                         validate()
-                        progress(99,'Verifying the approved downloaded track before playback')
+                        progress(99,CloudProgress('Dropbox','Verifying downloaded audio',item=target.name,
+                                 unit='bytes',completed=consumed,total=remote['size']))
                     verify_downloaded_content(target,mapped['local_root'],intent['target'],fresh,
-                                              remote['size'],remote['content_hash'],playback_checkpoint)
+                                              remote['size'],remote['content_hash'],byte_progress=playback_checkpoint)
                     validate(force=True)
                     if resident_file_identity(target,mapped['local_root'],intent['target'])!=fresh:
                         raise ValueError('The downloaded track changed before playback. Choose Play again.')
-                    progress(99,'Opening the approved downloaded track')
+                    progress(99,CloudProgress('Dropbox','Play in default media player',item=target.name))
                     open_audio(target)
                     result['opened']=True
                 except (OSError,ValueError,RuntimeError) as error:

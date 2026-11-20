@@ -154,7 +154,12 @@ class DropboxConnectorTests(unittest.TestCase):
         with patch('dropbox_files.MAX_PAGES',1):self.check()
         self.assertEqual(self.files(status='present').json['total'],1)
         self.assertEqual(self.files(status='not_found').json['total'],0)
-        self.assertGreaterEqual(self.files(status='unverified').json['total'],61)
+        result=self.files(status='unverified').json
+        self.assertGreaterEqual(result['total'],61)
+        self.assertEqual(result['coverage']['incomplete_reasons'],['page_limit'])
+        self.assertEqual(result['coverage']['pages_read'],1)
+        self.assertIn('narrower',result['scan_note'])
+        self.assertTrue(all(row['unresolved_reason']=='page_limit' and row['remote_size'] is None for row in result['rows']))
         self.connection.download.assert_not_called()
 
     def test_metadata_check_compares_captured_size_without_asserting_file_identity(self):
@@ -225,10 +230,32 @@ class DropboxConnectorTests(unittest.TestCase):
         result=self.files().json
         self.assertFalse(result['complete'])
         self.assertEqual(result['unsupported_paths'],1)
+        self.assertTrue(result['coverage']['listing_complete'])
+        self.assertEqual(result['coverage']['incomplete_reasons'],['unsupported_paths'])
+        self.assertEqual(result['coverage']['files_listed'],2)
+        self.assertEqual(result['coverage']['files_indexed'],1)
         self.assertIn('Only positive path matches are confirmed',result['scan_note'])
         self.assertEqual(self.files(status='present').json['total'],1)
         self.assertEqual(self.files(status='not_found').json['total'],0)
         self.assertGreaterEqual(self.files(status='unverified').json['total'],61)
+        self.connection.download.assert_not_called();self.assertEqual(self.store.snapshot(self.sid),self.before)
+
+    def test_unmapped_rows_retain_private_reference_diagnostics_at_metadata_check_time(self):
+        self.map_folder();self.check();rows=self.files(status='unmapped').json['rows']
+        self.assertEqual(len(rows),2)
+        for row in rows:
+            original=next(track for track in self.before['tracks'] if track['id']==row['track_id'])
+            details=row['path_diagnostics']
+            self.assertEqual(details['recorded_paths']['current_path'],original['current_path'])
+            self.assertEqual(details['mapping_local_root'],str(self.library))
+            self.assertEqual(details['mapping_remote_root'],'/Music');self.assertEqual(details['namespace'],'101')
+            self.assertNotIn('account_id',details)
+        self.assertNotIn('path_diagnostics',self.files(status='present').json['rows'][0])
+        # Pagination reads the retained diagnostics, not all source tracks or a
+        # second filesystem/path translation of each displayed record.
+        with patch('dropbox_connector.resolve',side_effect=AssertionError('Snapshot reread')),\
+             patch('dropbox_files.target',side_effect=AssertionError('Target recomputed')):
+            self.assertEqual(self.files(status='unmapped').json['rows'],rows)
         self.connection.download.assert_not_called();self.assertEqual(self.store.snapshot(self.sid),self.before)
 
     def test_sql_pages_preserve_unicode_casefold_and_full_source_counts(self):
@@ -249,6 +276,88 @@ class DropboxConnectorTests(unittest.TestCase):
         decoded_records=[call for call in decode.call_args_list if isinstance(call.args[0],str)
                          and '"track_id":' in call.args[0] and '"remote":' in call.args[0]]
         self.assertEqual(len(decoded_records),50)
+        self.connection.download.assert_not_called()
+
+    def test_empty_and_non_downloadable_files_remain_reachable_without_download_actions(self):
+        self.map_folder()
+        self.entries[0]['size']=0;self.entries[1]['is_downloadable']=False
+        self.entries[2].pop('content_hash')
+        self.entries[3]['size']=8*1024**3+1
+        self.check();result=self.files().json;rows={row['track_id']:row for row in result['rows']}
+        self.assertTrue(result['complete']);self.assertIsNone(result['scan_note'])
+        self.assertTrue(result['coverage']['listing_complete']);self.assertEqual(result['coverage']['files_listed'],61)
+        self.assertEqual(result['coverage']['incomplete_reasons'],[])
+        self.assertEqual(rows['0']['size'],0);self.assertEqual(rows['0']['remote_size'],0)
+        for identity in ('0','1','3'):
+            with self.subTest(identity=identity):
+                self.assertEqual(rows[identity]['status'],'present');self.assertIsNone(rows[identity]['unresolved_reason'])
+                self.assertFalse(rows[identity]['downloadable'])
+                response=self.post('download/prepare',source=self.source,track_id=identity)
+                self.assertEqual(response.status_code,400,response.json)
+        self.assertTrue(rows['4']['downloadable'])
+        # Optional hashes may be absent from a bulk listing. Do not disable an
+        # otherwise valid action; a fresh get_metadata must prove the hash.
+        self.assertTrue(rows['2']['downloadable'])
+        original_rpc=self.rpc
+        def fresh_metadata(route,payload,**kwargs):
+            result=original_rpc(route,payload,**kwargs)
+            if route=='files/get_metadata' and result.get('id')==self.entries[2]['id']:
+                result['content_hash']=content_hash(self.payload)
+            return result
+        self.connection.rpc.side_effect=fresh_metadata
+        response=self.post('download/prepare',source=self.source,track_id='2')
+        self.assertEqual(response.status_code,200,response.json)
+        self.connection.download.assert_not_called()
+        self.assertEqual(self.store.snapshot(self.sid),self.before)
+
+    def test_entry_limit_explains_unverified_rows_and_complete_absence_has_separate_reason(self):
+        self.map_folder()
+        with patch('dropbox_files.MAX_ENTRIES',1):self.check()
+        result=self.files(status='unverified').json
+        self.assertEqual(result['coverage']['incomplete_reasons'],['entry_limit'])
+        self.assertEqual(result['coverage']['entries_listed'],1)
+        self.assertIn('narrower',result['scan_note'])
+        self.assertTrue(all(row['unresolved_reason']=='entry_limit' and row['size'] is None for row in result['rows']))
+        self.check()
+        missing=self.files(status='not_found').json['rows'][0]
+        self.assertEqual(missing['unresolved_reason'],'not_found_in_complete_listing')
+        unmapped=self.files(status='unmapped').json['rows'][0]
+        self.assertEqual(unmapped['unresolved_reason'],'unmapped_path')
+        self.connection.download.assert_not_called()
+
+    def test_provider_scope_failure_does_not_persist_unverified_rows_or_mask_prior_evidence(self):
+        self.map_folder();self.check();before=self.files().json
+        self.connection.rpc.side_effect=DropboxError('Synthetic read scope denied',status=403,tag='missing_scope')
+        failed=self.post('check',source=self.source)
+        self.assertEqual(failed.status_code,400,failed.json)
+        self.assertEqual(failed.json['http_status'],403);self.assertEqual(failed.json['tag'],'missing_scope')
+        after=self.files().json
+        self.assertEqual(after['checked_at'],before['checked_at']);self.assertEqual(after['coverage'],before['coverage'])
+        self.assertEqual(after['counts'],before['counts']);self.connection.download.assert_not_called()
+
+    def test_optional_sidecar_filter_excludes_before_paging_and_keeps_unknown_cached_rows(self):
+        self.map_folder();tracks=deepcopy(self.before['tracks'])
+        tracks.extend({'id':'sidecar-'+str(index),'title':'Invented sidecar '+str(index),
+                       'current_path':str(self.album/('._Metadata '+str(index)+'.mp3'))} for index in range(12))
+        saved=self.store.save_snapshot({'scope_key':'synthetic:dropbox-sidecars','tracks':tracks,'playlists':[]},'Invented sidecars')
+        self.source='snapshot:'+saved['id'];before=deepcopy(self.store.snapshot(saved['id']))
+        self.check()
+        all_rows=self.files().json;filtered=self.files(hide_metadata_sidecars='1').json
+        self.assertEqual(all_rows['total'],len(tracks));self.assertEqual(filtered['total'],len(tracks)-12)
+        self.assertEqual(filtered['sidecars']['recognized'],12);self.assertEqual(filtered['sidecars']['excluded'],12)
+        self.assertEqual(len(filtered['rows']),50)
+        later=self.files(hide_metadata_sidecars='true',offset=50).json
+        self.assertEqual(len(later['rows']),len(tracks)-12-50)
+        self.assertTrue(all(not row.get('metadata_sidecar') for row in filtered['rows']+later['rows']))
+        with self.store.connection() as db:
+            row=db.execute('SELECT binding,payload FROM dropbox_records WHERE source=? AND track_id=?',(self.source,'sidecar-0')).fetchone()
+            old=json.loads(row['payload']);old.pop('metadata_sidecar')
+            db.execute('UPDATE dropbox_records SET payload=? WHERE binding=? AND source=? AND track_id=?',
+                       (json.dumps(old),row['binding'],self.source,'sidecar-0'))
+        unknown=self.files(hide_metadata_sidecars='1',q='Invented sidecar').json
+        self.assertEqual(unknown['total'],1);self.assertEqual(unknown['rows'][0]['track_id'],'sidecar-0')
+        self.assertEqual(self.files(hide_metadata_sidecars='unsupported').status_code,400)
+        self.assertEqual(self.store.snapshot(saved['id']),before)
         self.connection.download.assert_not_called()
 
     def test_failed_recheck_keeps_prior_evidence_and_timestamp(self):

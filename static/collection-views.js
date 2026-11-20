@@ -1,7 +1,7 @@
 /* Native captures share the collection selector; source files are never mutated. */
 window.NativeCollection=(()=>{
   const revisions={review:0,reference:0};
-  const state={review:{offset:0,basis:'path',q:'',sort:'count',direction:'desc',flag:window.BrowseState?.value('native-zero-filter')||''},reference:{offset:0,mode:'all',q:'',sort:'title',direction:'asc'}};
+  const state={review:{offset:0,basis:'path',q:'',sort:'count',direction:'desc',provider:'all',flag:window.BrowseState?.value('native-zero-filter')||''},reference:{offset:0,provider:'all',mode:'all',q:'',sort:'title',direction:'asc'}};
   const labels={unreviewed:'Unreviewed',keep_separate:'Keep separate',candidate:'Candidate for later cleanup'};
   const fileStates=['playable','missing','inaccessible','unverified'];
   const fileStateLabels={playable:'Accessible',missing:'Missing',inaccessible:'Inaccessible',unverified:'Unverified'};
@@ -38,7 +38,7 @@ window.NativeCollection=(()=>{
       panel.innerHTML='<p role="status">'+text('Loading')+'</p>';
     let r;
     try{
-      r=await api('/api/collection/'+(view==='review'?'duplicates':'references')+'?'+new URLSearchParams({source:scope,...values}));
+      r=await api('/api/collection/'+(view==='review'?'duplicates':'references')+'?'+new URLSearchParams({source:scope,...values,...DisplayPreferences.args()}));
     }finally{
       if(revision===revisions[view])panel.removeAttribute('aria-busy');
     }
@@ -46,14 +46,29 @@ window.NativeCollection=(()=>{
     ReviewWorkspace.dispose(panel.querySelector('.review-workspace'));
     panel.dataset.loadedScope=scope;
     const options=view==='review'?[['path','Same recorded path'],['metadata','Same artist and title']]:[['all','All references'],['changed','Original path differs'],['missing_path','No recorded current path']];
-    panel.innerHTML=(view==='review'?'<div class="review-workspace native-review-workspace">':'')+'<article class="wide-card '+(view==='review'?'review-candidates':'')+'"><h2>'+text(view==='review'?'Captured duplicate candidates':'Captured file references')+'</h2>'+(view==='review'?'<details class="native-review-note"><summary>'+text('Details')+'</summary><p>'+esc(r.note)+'</p></details>':'<p class="callout">'+esc(r.note)+'</p>')+'<form class="native-filter"><label>'+text('Evidence')+'<select name="mode">'+options.map(([v,l])=>'<option value="'+v+'" '+(v===(values.basis || values.mode)?'selected':'')+'>'+text(l)+'</option>').join('')+'</select></label><label>'+text('Search')+'<input name="query" value="'+esc(values.q)+'"></label><button class="button">'+text('Apply')+'</button></form><p class="native-result-count">'+(view==='review'?num(r.groups)+' '+text('candidate groups')+' · '+num(r.tracks)+' '+text('tracks'):num(r.tracks)+' '+text('tracks')+' · '+num(r.changed)+' '+text('different original paths')+' · '+num(r.missing_path)+' '+text('empty current paths'))+'</p><div class="native-table"><table data-sort-scope="server"><thead><tr>'+(view==='review'?heading('title','Track',values)+heading('count','Records',values,'native-count')+heading('duration_spread','Duration spread',values,'native-spread')+heading('review','Review status',values,'native-review-state')+'<th scope="col" class="native-action">'+text('Review')+'</th>':heading('title','Track',values)+heading('current_path','Current path',values)+heading('original_path','Original path',values)+heading('analysis_path','Analysis path',values))+'</tr></thead><tbody>'+r.rows.map(t=>view==='review'?'<tr><td><strong>'+esc(t.title)+'</strong><br><span class="native-candidate-artist">'+esc(t.artist)+'</span></td><td class="native-count">'+num(t.count)+'</td><td class="native-spread">'+esc(t.duration_spread ?? I18n.t('Unknown'))+'</td><td class="native-review-state">'+text(labels[t.review] || 'Unreviewed')+'</td><td><button class="button secondary" data-native-group="'+esc(t.id)+'">'+text('Review')+'</button></td></tr>':'<tr><td>'+track(t)+'</td><td><code>'+esc(t.current_path || '')+'</code></td><td><code>'+esc(t.original_path || '')+'</code></td><td><code>'+esc(t.analysis_path || '')+'</code></td></tr>').join('')+'</tbody></table></div>'+pager(view,r)+'</article>'+(view==='review'?'<section class="native-detail" id="native-review-detail"><div class="detail-empty"><h3>'+text('Review')+'</h3><p>'+text('Compare captured records')+'</p></div></section></div>':'<div class="native-detail"></div>');
+    panel.innerHTML=(view==='review'?'<div class="review-workspace native-review-workspace">':'')+'<article class="wide-card '+(view==='review'?'review-candidates':'')+'"><h2>'+text(view==='review'?'Captured duplicate candidates':'Captured file references')+'</h2>'+(view==='review'?'<details class="native-review-note"><summary>'+text('Details')+'</summary><p>'+esc(r.note)+'</p></details>':'<p class="callout">'+esc(r.note)+'</p>')+'<form class="native-filter"><label>'+text('Evidence')+'<select name="mode">'+options.map(([v,l])=>'<option value="'+v+'" '+(v===(values.basis || values.mode)?'selected':'')+'>'+text(l)+'</option>').join('')+'</select></label><label>'+text('Search')+'<input name="query" value="'+esc(values.q)+'"></label>'+CloudAnalysis.control('native-'+view+'-provider',values.provider)+'<button class="button">'+text('Apply')+'</button></form><p class="native-result-count">'+(view==='review'?num(r.groups)+' '+text('candidate groups')+' · '+num(r.tracks)+' '+text('tracks'):num(r.tracks)+' '+text('tracks')+' · '+num(r.changed)+' '+text('different original paths')+' · '+num(r.missing_path)+' '+text('empty current paths'))+'</p><div class="native-table"><table data-sort-scope="server"><thead><tr>'+(view==='review'?heading('title','Track',values)+heading('count','Records',values,'native-count')+heading('duration_spread','Duration spread',values,'native-spread')+heading('review','Review status',values,'native-review-state')+'<th scope="col" class="native-action">'+text('Review')+'</th>':heading('title','Track',values)+heading('current_path','Current path',values)+heading('original_path','Original path',values)+heading('analysis_path','Analysis path',values))+'</tr></thead><tbody>'+r.rows.map(t=>view==='review'?'<tr><td><strong>'+esc(t.title)+'</strong><br><span class="native-candidate-artist">'+esc(t.artist)+'</span></td><td class="native-count">'+num(t.count)+'</td><td class="native-spread">'+esc(t.duration_spread ?? I18n.t('Unknown'))+'</td><td class="native-review-state">'+text(labels[t.review] || 'Unreviewed')+'</td><td><button class="button secondary" data-native-group="'+esc(t.id)+'">'+text('Review')+'</button></td></tr>':'<tr><td>'+track(t)+'</td><td><code>'+esc(t.current_path || '')+'</code></td><td><code>'+esc(t.original_path || '')+'</code></td><td><code>'+esc(t.analysis_path || '')+'</code></td></tr>').join('')+'</tbody></table></div>'+pager(view,r)+'</article>'+(view==='review'?'<section class="native-detail" id="native-review-detail"><div class="detail-empty"><h3>'+text('Review')+'</h3><p>'+text('Compare captured records')+'</p></div></section></div>':'<div class="native-detail"></div>');
     if(view==='review'){
       const filters=document.createElement('div');filters.className='native-metadata-filters';filters.innerHTML=MetadataFlags.controls(r.flag_counts,values.flag);
       panel.querySelector('.native-review-note').insertAdjacentHTML('beforeend','<p>'+text('Filter groups containing flagged records. Keep all siblings visible for comparison.')+'</p>');
       panel.querySelector('.native-filter').after(filters);
       filters.querySelectorAll('[data-metadata-flag]').forEach(button=>button.onclick=wrap(async()=>{values.flag=button.dataset.metadataFlag;values.offset=0;BrowseState.set('native-zero-filter',values.flag);await load(view);}));
     }
-    panel.querySelector('form').onsubmit=wrap(async e=>{e.preventDefault();values.q=e.target.elements.query.value;values[view==='review'?'basis':'mode']=e.target.elements.mode.value;values.offset=0;await load(view);});
+    const providerControl=panel.querySelector('[data-cloud-analysis-provider]');CloudAnalysis.paint(providerControl,r.cloud?.counts);
+    const display=document.createElement('div');display.innerHTML=DisplayPreferences.controls({keys:false,unknown:false,sidecars:true});panel.querySelector('.native-filter').append(display);DisplayPreferences.sync();
+    const cloudHelp=I18n.t(CloudAnalysis.note),sidecarNote=DisplayPreferences.sidecarNote(r);
+    if(view==='review'){
+      const explanation=document.createElement('p');
+      explanation.textContent=cloudHelp;
+      panel.querySelector('.native-review-note').append(explanation);
+    }
+    const noteText=view==='review'?sidecarNote:[cloudHelp,sidecarNote].filter(Boolean).join(' · ');
+    if(noteText){
+      const note=document.createElement('p');
+      note.className='subtle cloud-analysis-note';
+      note.textContent=noteText;
+      panel.querySelector('.native-filter').after(note);
+    }
+    panel.querySelector('form').onsubmit=wrap(async e=>{e.preventDefault();values.q=e.target.elements.query.value;values.provider=e.target.elements.provider.value;values[view==='review'?'basis':'mode']=e.target.elements.mode.value;values.offset=0;await load(view);});
     panel.querySelectorAll('[data-native-sort]').forEach(button=>button.onclick=wrap(async()=>{
       const field=button.dataset.nativeSort;
       values.direction=values.sort===field&&values.direction==='asc'?'desc':'asc';
@@ -72,11 +87,11 @@ window.NativeCollection=(()=>{
     host.innerHTML='<p>'+text('Loading')+'</p>';
     ReviewWorkspace.refresh(root,host);ReviewWorkspace.present(root,trigger);
     root.querySelectorAll('[data-native-group]').forEach(button=>button.setAttribute('aria-current',String(button.dataset.nativeGroup===id)));
-    const r=await api('/api/collection/duplicates/'+encodeURIComponent(id)+'?'+new URLSearchParams({source:scope,basis,offset}));
+    const r=await api('/api/collection/duplicates/'+encodeURIComponent(id)+'?'+new URLSearchParams({source:scope,basis,offset,...DisplayPreferences.args()}));
     if(scope!==source() || revision!==revisions.review)return;
     const hadFocus=host.contains(document.activeElement);
     const fields=[['duration','Duration'],['size','Recorded size (bytes)'],['rating','Rating'],['play_count','Play count'],['manual_cues','Manual cues'],['auto_cues','Automatic cues']];
-    host.innerHTML='<article class="wide-card"><p class="native-review-scope">'+text('Review notes are saved locally. Merging and path edits require the XML + ZIP export workspace.')+'</p><div class="native-compare-records">'+r.rows.map(t=>'<article class="native-compare-record" data-file-track="'+esc(t.id)+'"><header>'+track(t)+'<span class="native-file-status">'+fileBadge('unverified')+'</span>'+MetadataFlags.badges(t)+'</header><dl>'+fields.map(([field,label])=>'<div><dt>'+text(label)+'</dt><dd>'+esc(t[field] ?? I18n.t('Unknown'))+'</dd></div>').join('')+'</dl><div class="native-record-path"><span>'+text('Current path')+'</span><code>'+esc(t.current_path || '')+'</code></div></article>').join('')+'</div>'+pager('detail',r)+'<div class="native-review-actions"><label>'+text('Review status')+'<select class="native-status">'+Object.entries(labels).map(([v,l])=>'<option value="'+v+'" '+(v===r.review?'selected':'')+'>'+text(l)+'</option>').join('')+'</select></label><button class="button native-save">'+text('Save review')+'</button></div></article>';
+    host.innerHTML='<article class="wide-card"><p class="native-review-scope">'+text('Review notes are saved locally. Merging and path edits require the XML + ZIP export workspace.')+'</p><div class="native-compare-records">'+r.rows.map(t=>'<article class="native-compare-record" data-file-track="'+esc(t.id)+'"><header>'+track(t)+'<span class="native-file-status">'+fileBadge('unverified')+'</span>'+MetadataFlags.badges(t)+'</header><dl>'+fields.map(([field,label])=>'<div><dt>'+text(label)+'</dt><dd>'+(field==='rating'?InlineRating.render(t.id,t.rating,scope):esc(t[field] ?? I18n.t('Unknown')))+'</dd></div>').join('')+'</dl><div class="native-record-path"><span>'+text('Current path')+'</span><code>'+esc(t.current_path || '')+'</code></div></article>').join('')+'</div>'+pager('detail',r)+'<div class="native-review-actions"><label>'+text('Review status')+'<select class="native-status">'+Object.entries(labels).map(([v,l])=>'<option value="'+v+'" '+(v===r.review?'selected':'')+'>'+text(l)+'</option>').join('')+'</select></label><button class="button native-save">'+text('Save review')+'</button></div></article>';
     host.querySelector('[data-native-prev]').onclick=wrap(()=>detail(id,Math.max(0,offset-50)));
     host.querySelector('[data-native-next]').onclick=wrap(()=>detail(id,offset+50));
     host.querySelector('.native-save').onclick=wrap(async()=>{
@@ -153,6 +168,10 @@ window.NativeCollection=(()=>{
     if(view==='statistics')renderStatistics().catch(e=>notify(e.message,true));
     update(view);
     if(view==='history')loadHistory().catch(e=>notify(e.message,true));
+  });
+  window.addEventListener('workbench-display-preferences',()=>{
+    const view=$('.view:not([hidden])')?.id?.replace('view-','');
+    if(active()&&['review','reference'].includes(view)){state[view].offset=0;void load(view).catch(error=>notify(error.message,true));}
   });
   return {active,source,update};
 })();

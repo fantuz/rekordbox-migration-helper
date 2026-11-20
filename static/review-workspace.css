@@ -60,11 +60,11 @@ html[dir=rtl] .review-drawer{border-radius:0 14px 14px 0}
 .native-review-note p{margin:6px 0;padding:8px 10px;background:var(--soft-blue);border-radius:8px}
 #view-review .native-review-workspace .native-filter{margin:8px 12px;gap:8px;align-items:end}
 #view-review .native-review-workspace .native-filter label{min-width:120px;font-size:12px;margin:0}
-#view-review .native-review-workspace .native-filter select,#view-review .native-review-workspace .native-filter input{padding:7px 9px;min-height:34px;margin-top:3px}
+#view-review .native-review-workspace .native-filter select,#view-review .native-review-workspace .native-filter input:not([type=checkbox]){padding:7px 9px;min-height:34px;margin-top:3px}
 .native-review-workspace .native-result-count{margin:2px 12px 8px;font-size:12px}
 .native-review-workspace .review-candidates .native-table td,.native-review-workspace .review-candidates .native-table th{padding:6px 9px;line-height:1.45;vertical-align:middle}
-.native-review-workspace .review-candidates .native-table th.native-count{width:56px}
-.native-review-workspace .review-candidates .native-table th.native-spread{width:88px}
+.native-review-workspace .review-candidates .native-table th.native-count{width:8em}
+.native-review-workspace .review-candidates .native-table th.native-spread{width:9em}
 .native-review-workspace .review-candidates .native-table th.native-review-state{width:100px}
 .native-review-workspace .review-candidates .native-table th:last-child{width:90px}
 .native-review-workspace .native-candidate-artist{color:var(--muted);font-size:12px}
@@ -85,4 +85,4 @@ html[dir=rtl] .review-drawer{border-radius:0 14px 14px 0}
 .native-record-path{font-size:11px;line-height:1.6;min-width:0}
 .native-record-path>span{color:var(--muted);display:block}
 .native-record-path code{display:block;overflow-wrap:anywhere;white-space:normal;word-break:normal;font-size:11px}
-@container(max-width:580px){.native-review-workspace .native-spread{display:none}.native-review-workspace .review-candidates .native-table th.native-count{width:48px}.native-review-workspace .review-candidates .native-table th.native-review-state{width:82px}.native-review-workspace .review-candidates .native-table th:last-child{width:65px}.native-review-workspace .review-candidates .native-table td,.native-review-workspace .review-candidates .native-table th{padding:6px}}
+@container(max-width:580px){.native-review-workspace .native-spread{display:none}.native-review-workspace .review-candidates .native-table th.native-count{width:7em}.native-review-workspace .review-candidates .native-table th.native-review-state{width:82px}.native-review-workspace .review-candidates .native-table th:last-child{width:65px}.native-review-workspace .review-candidates .native-table td,.native-review-workspace .review-candidates .native-table th{padding:6px}}

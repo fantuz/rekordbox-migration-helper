@@ -3,3 +3,13 @@
 #dropbox-authorization-error,#dropbox-cleanup-state{color:var(--red);overflow-wrap:anywhere}
 .dropbox-layout select{display:block;width:100%;max-width:100%;min-width:0;padding:9px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);color:var(--text)}
 .dropbox-size-comparison{display:inline-block;font-size:12px;font-weight:650;line-height:1.5}.dropbox-size-match{color:var(--green)}.dropbox-size-mismatch{color:var(--red)}.dropbox-size-unknown{color:var(--muted)}#dropbox-download-comparison{margin-block:12px}
+.dropbox-namespace-hint{padding:10px 12px;border:1px solid var(--accent);border-radius:7px;background:var(--panel2)}
+.dropbox-namespace-hint p{margin-block:0 8px;overflow-wrap:anywhere}
+.dropbox-namespace-hint[hidden]{display:none}
+.dropbox-mapping-details{font-size:12px;max-width:520px;margin-block:8px}
+.dropbox-mapping-details summary{cursor:pointer;color:var(--accent)}
+.dropbox-mapping-details dl{margin:8px 0;display:grid;gap:3px;min-width:0}
+.dropbox-mapping-details dt{color:var(--muted);font-weight:550}
+.dropbox-mapping-details dd{margin:0 0 5px;min-width:0}
+.dropbox-mapping-details code{font-size:11px;overflow-wrap:anywhere;white-space:normal}
+.dropbox-criteria .display-preferences label{flex:0 1 auto;min-width:0}
