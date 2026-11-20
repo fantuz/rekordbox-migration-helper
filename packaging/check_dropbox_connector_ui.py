@@ -199,9 +199,19 @@ def main():
                     expect(page.locator('#file-health-results [data-local-access="unverified"]')).to_have_text('Unknown')
                     expect(page.locator('#file-health-results [data-cloud-presence]')).to_contain_text('Reachable')
                     expect(page.locator('#file-health-results [data-cloud-presence]')).to_contain_text('Size matches')
-                    expect(page.locator('#file-health-results [data-play-track="60"]')).to_be_enabled()
-                    expect(page.locator('#file-health-results [data-play-track="60"]')).to_have_attribute('data-available','false')
-                    expect(page.locator('#file-health-results [data-play-track="60"]')).to_have_attribute('title','Download and play this track')
+                    last_checked=page.locator('#file-health-results button[data-file-health-sort="checked"]')
+                    assert last_checked.evaluate('''button=>{
+                        const label=document.createRange();label.selectNodeContents(button.firstChild);
+                        return label.getClientRects().length===1;
+                    }'''), 'Last checked should fit on one line at desktop width'
+                    # Local availability is requested when a track scrolls into view.
+                    health_play=page.locator('#file-health-results [data-play-track="60"]')
+                    health_play.scroll_into_view_if_needed()
+                    expect(health_play).to_have_attribute('aria-busy','false')
+                    expect(health_play).to_be_enabled()
+                    expect(health_play).to_have_attribute('data-available','false')
+                    expect(health_play).to_have_attribute('data-dropbox-download-ready','true')
+                    expect(health_play).to_have_attribute('title','Download and play this track')
                     assert len(provider.calls)==calls_before_health and not provider.downloads
                     page.locator('.nav[data-view="dropbox"]').click()
                     evidence_url=base+'/api/dropbox/files?source=snapshot:'+sid
@@ -232,6 +242,7 @@ def main():
                     expect(page.locator('#dropbox-results tbody tr')).to_have_count(1)
                     expect(page.locator('#dropbox-results')).to_contain_text('Invented 060 <mix>')
                     play=page.locator('#dropbox-results [data-play-track="60"]')
+                    play.scroll_into_view_if_needed()
                     expect(play).to_have_attribute('data-available','false')
                     expect(play).to_be_enabled()
                     expect(play).to_have_attribute('title','Download and play this track')
@@ -297,7 +308,8 @@ def main():
                     expect(page.locator('#file-health-results [data-local-access="playable"]')).to_have_text('Yes')
                     expect(page.locator('#file-health-results [data-cloud-presence]')).to_contain_text('Reachable')
                     expect(page.locator('#file-health-results [data-cloud-presence]')).to_contain_text('Size matches')
-                    expect(page.locator('#file-health-results [data-play-track="60"]')).to_be_enabled()
+                    health_play.scroll_into_view_if_needed()
+                    expect(health_play).to_be_enabled()
                     page.screenshot(path=str(output/'dropbox-file-health.png'),full_page=True)
 
                     # The visible scan still records local access after an
@@ -306,10 +318,9 @@ def main():
                     resident_path=album/'Synthetic 060.mp3'
                     resident_path.unlink();calls_before_eviction=len(provider.calls)
                     page.evaluate('source=>TrackPlayback.recheck({force:true,source,track_id:"60"})','snapshot:'+sid)
-                    resident_play=page.locator('#file-health-results [data-play-track="60"]')
-                    expect(resident_play).to_have_attribute('data-available','false')
-                    expect(resident_play).to_be_enabled()
-                    expect(resident_play).to_have_attribute('title','Download and play this track')
+                    expect(health_play).to_have_attribute('data-available','false')
+                    expect(health_play).to_be_enabled()
+                    expect(health_play).to_have_attribute('title','Download and play this track')
                     stale_scan=context.request.get(base+'/api/file-health?source=snapshot:'+sid+'&q=Invented+060').json()
                     assert stale_scan['rows'][0]['status']=='playable'
                     assert not resident_path.exists() and not opened_paths
@@ -318,13 +329,14 @@ def main():
                     # retain their expected file count; the app did no transfer.
                     resident_path.write_bytes(provider.body)
                     page.evaluate('source=>TrackPlayback.recheck({force:true,source,track_id:"60"})','snapshot:'+sid)
-                    expect(resident_play).to_have_attribute('data-available','true')
+                    expect(health_play).to_have_attribute('data-available','true')
 
                     # Reachable Play keeps the user on File health and requests
                     # consent for exactly one download followed by OS dispatch.
                     page.fill('#file-health-search','Invented 059');page.locator('#file-health-find').click()
                     expect(page.locator('#file-health-results tbody tr')).to_have_count(1)
                     remote_play=page.locator('#file-health-results [data-play-track="59"]')
+                    remote_play.scroll_into_view_if_needed()
                     expect(remote_play).to_be_enabled()
                     expect(remote_play).to_have_attribute('data-available','false')
                     for close in ('cancel','escape'):
@@ -350,6 +362,12 @@ def main():
                     expect(page.locator('#file-health-results [data-local-access="playable"]')).to_have_text('Yes')
                     expect(page.locator('#file-health-results [data-play-track="59"]')).to_have_attribute('data-available','true')
                     assert page.locator('#view-file-health').is_visible()
+                    desktop=page.viewport_size
+                    page.set_viewport_size({'width':390,'height':844})
+                    last_checked.scroll_into_view_if_needed()
+                    expect(last_checked).to_be_in_viewport()
+                    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+                    page.set_viewport_size(desktop)
                     page.locator('.nav[data-view="dropbox"]').click()
                     page.fill('#dropbox-search','');page.select_option('#dropbox-status','not_found')
                     page.locator('#dropbox-find').click()
