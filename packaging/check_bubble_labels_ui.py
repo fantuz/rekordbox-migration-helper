@@ -200,8 +200,10 @@ def _check_bubble_labels_ui(page,base,sid,output,store):
     assert page.locator('#bubble-breadcrumbs button:last-child').inner_text()==last['label']
     assert page.locator('#bubble-summary strong').first.inner_text()==str(last['entries'])
     assert page.locator('#bubble-breadcrumbs button:last-child').evaluate('node=>node===document.activeElement')
-    def back_to_artists():
-        page.locator('#bubble-breadcrumbs [data-bubble-back="0"]').click()
+    root_crumb=page.locator('#bubble-breadcrumbs [data-bubble-back="0"]')
+    def back_to_artists(*,keyboard=False):
+        if keyboard:root_crumb.press('Enter')
+        else:root_crumb.click()
         page.wait_for_function('insightState.bubble.result?.dimension==="artist"&&insightState.bubble.path.length===0&&insightState.bubble.result.groups.length===21')
     back_to_artists()
     for key in ('Enter','Space'):
@@ -210,7 +212,22 @@ def _check_bubble_labels_ui(page,base,sid,output,store):
         page.wait_for_function('insightState.bubble.result?.dimension==="tracks"&&insightState.bubble.path.length===1&&document.activeElement===document.querySelector("#bubble-breadcrumbs button:last-child")')
         assert page.locator('#bubble-breadcrumbs button:last-child').inner_text()==labels[1]
         assert page.locator('#bubble-summary strong').first.inner_text()=='30'
-        back_to_artists()
+        if key=='Space':
+            # Pressing a breadcrumb and releasing outside it cancels navigation.
+            root_crumb.hover();page.mouse.down()
+            assert root_crumb.evaluate('button=>button===document.activeElement')
+            box=root_crumb.bounding_box()
+            page.mouse.move(box['x']+box['width']/2,box['y']-5);page.mouse.up()
+            assert page.evaluate('insightState.bubble.path.length===1')
+            # Model the 21px native focus scroll seen between mouse-down and
+            # mouse-up in WebKit. Playwright still delivers a real pointer click.
+            page.locator('#bubble-breadcrumbs button:last-child').focus()
+            root_crumb.evaluate('''button=>{
+                button.addEventListener('mousedown',event=>{
+                    if(!event.defaultPrevented)window.scrollBy(0,-21);
+                },{once:true});
+            }''')
+        back_to_artists(keyboard=key=='Enter')
     # Keep one drill-down pending so a repeated key and a newer breadcrumb
     # selection cannot have their focus stolen by ignored or obsolete work.
     held=[]

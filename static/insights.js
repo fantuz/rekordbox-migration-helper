@@ -271,7 +271,20 @@ async function loadBubbleData({applied=false}={}){
 
 function renderBubbleBreadcrumbs(crumbs){
   $('#bubble-breadcrumbs').innerHTML=("<button data-bubble-back=\"0\">"+esc(I18n.t("Collection"))+"</button>")+crumbs.map((p,i)=>'<span>›</span><button data-bubble-back="'+(i+1)+'">'+esc(p.dimension==='colour'?colourDisplayLabel(p.key,p.label):p.label)+'</button>').join('');
-  $$('[data-bubble-back]').forEach(b=>b.onclick=wrap(async()=>{const s=insightState.bubble,n=Number(b.dataset.bubbleBack);s.dimension=s.path[n]?.dimension || s.dimension;s.path=s.path.slice(0,n);s.offset=0;s.groupOffset=0;$('#bubble-track-detail').hidden=true;await loadBubbleData();}));
+  $$('[data-bubble-back]').forEach(button=>{
+    button.onmousedown=event=>{
+      if(event.button!==0)return;
+      // WebKit can scroll the pressed button out from under the pointer on focus.
+      event.preventDefault();
+      button.focus({preventScroll:true});
+    };
+    button.onclick=wrap(async()=>{
+      const state=insightState.bubble,depth=Number(button.dataset.bubbleBack);
+      state.dimension=state.path[depth]?.dimension || state.dimension;
+      state.path=state.path.slice(0,depth);state.offset=0;state.groupOffset=0;
+      $('#bubble-track-detail').hidden=true;await loadBubbleData();
+    });
+  });
 }
 const bubblePalette=['#a8d9d0','#b8d8ee','#c7d3f0','#c2e2bd','#b9dfe6','#d7c9ed','#9fcedf','#ccded0','#bed0e1','#b5d4bf'];
 function bubbleColor(group){
@@ -432,7 +445,13 @@ async function drillBubble(group){
 }
 async function activateBubbleGroup(group){
   const navigation=drillBubble(group),revision=insightState.bubble.revision;
-  if(await navigation && revision===insightState.bubble.revision)$('#bubble-breadcrumbs button:last-child')?.focus();
+  if(await navigation && revision===insightState.bubble.revision){
+    const breadcrumb=$('#bubble-breadcrumbs button:last-child');
+    if(breadcrumb){
+      breadcrumb.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+      breadcrumb.focus({preventScroll:true});
+    }
+  }
 }
 $('#bubble-dimension').onchange=wrap(async()=>{insightState.bubble.dimension=$('#bubble-dimension').value;insightState.bubble.groupOffset=0;await loadBubbleData();});
 $('#bubble-metric').onchange=wrap(()=>loadBubbleData());$('#bubble-color').onchange=()=>{renderColourLegend();renderBubbleMap();};
