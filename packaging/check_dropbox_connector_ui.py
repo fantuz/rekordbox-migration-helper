@@ -1,7 +1,7 @@
 """Real HTTP Dropbox workflows with a synthetic server-side provider transport.
 
 No application API response data is fabricated and no live account is contacted.
-One real availability response is delayed unchanged to test a download race.
+Local availability responses are held to test navigation and a download race.
 The synthetic provider models an already authorized account; OAuth/PKCE and
 credential storage are tested separately in test_dropbox_auth.py.
 """
@@ -17,12 +17,39 @@ from pathlib import Path
 import sys
 import time
 from tempfile import TemporaryDirectory
-from threading import Thread
+from threading import Event, Thread
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+
+
+def check_playback_page_restore(page, source):
+    import file_status_cache
+    inspect=file_status_cache.inspect
+    entered,release=Event(),Event()
+
+    def hold_first(owner,tracks,**options):
+        if '60' in tracks and not entered.is_set():
+            entered.set()
+            if not release.wait(15):raise AssertionError('Availability response was not released')
+        return inspect(owner,tracks,**options)
+
+    def availability(request):
+        return urlsplit(request.url).path=='/api/playback/availability'
+
+    with patch.object(file_status_cache,'inspect',hold_first):
+        try:
+            page.evaluate('source=>TrackPlayback.recheck({force:true,source,track_id:"60"})',source)
+            assert entered.wait(10),'The visible track was not checked'
+            with page.expect_event('requestfailed',predicate=availability,timeout=8000):
+                page.evaluate("dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}))")
+        finally:
+            release.set()
+    with page.expect_response(lambda response:availability(response.request) and response.ok) as restored:
+        page.evaluate("dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))")
+    assert restored.value.json()['tracks']['60'] is False
 
 
 class SyntheticProvider:
@@ -212,6 +239,7 @@ def main():
                     expect(health_play).to_have_attribute('data-available','false')
                     expect(health_play).to_have_attribute('data-dropbox-download-ready','true')
                     expect(health_play).to_have_attribute('title','Download and play this track')
+                    check_playback_page_restore(page,'snapshot:'+sid)
                     assert len(provider.calls)==calls_before_health and not provider.downloads
                     page.locator('.nav[data-view="dropbox"]').click()
                     evidence_url=base+'/api/dropbox/files?source=snapshot:'+sid
@@ -394,7 +422,7 @@ def main():
                     sidecar_sid=store.save_snapshot({'scope_key':'synthetic:dropbox-sidecar-view',
                         'tracks':sidecar_tracks,'playlists':[]},'Invented Dropbox sidecar view')['id']
                     sidecar_before=deepcopy(store.snapshot(sidecar_sid))
-                    page.reload(wait_until='networkidle')
+                    page.locator('#dropbox-refresh').click()
                     page.select_option('#dropbox-source','snapshot:'+sidecar_sid)
                     page.locator('#dropbox-check').click()
                     expect(page.locator('#dropbox-results tbody tr')).to_have_count(2)
@@ -429,7 +457,7 @@ def main():
                         reachable_play_same_page=True,play_cancel_and_escape_no_transfer=True,
                         download_only_never_opens=True,approved_play_opens_only_published_target=True,
                         evicted_resident_keeps_reachable_play=True,eviction_check_no_provider_request=True,
-                        synthetic_eviction_fixture_restored=True,
+                        synthetic_eviction_fixture_restored=True,playback_requests_pause_and_resume=True,
                         external_requests=external)
                 except Exception:
                     page.screenshot(path=str(output/'dropbox-failure.png'),full_page=True);raise
