@@ -13,6 +13,7 @@ from lxml import etree
 from engine import Catalog,export_xml
 from file_workflow import prepare_export,list_exports
 from native_export import mutable_copy,export_native,rewrite_archive
+from test_asset_formats import anlz_file,pqtz_section
 
 
 class IndependentExportTests(TestCase):
@@ -93,12 +94,62 @@ class IndependentExportTests(TestCase):
         self.assertEqual({e.get('Name') for e in tree.findall('.//POSITION_MARK')},{'Label a','Label b'})
         self.assertEqual((self.backup.read_bytes(),self.xml.read_bytes()),self.originals)
 
-    def test_native_only_playlist_track_is_reconstructed_from_source(self):
+    def remove_b_from_xml(self):
         self.catalog.tracks['b']['october_xml']=False
         tree=etree.parse(str(self.xml));collection=tree.find('COLLECTION');collection.remove(collection.findall('TRACK')[1]);collection.set('Entries','1');tree.write(str(self.xml),encoding='utf-8')
+
+    def attach_grid(self,data,prefix='share'):
+        path='/PIONEER/USBANLZ/P001/00000001/ANLZ0000.DAT'
+        self.catalog.tracks['b']['analysis_path']=path
+        with zipfile.ZipFile(self.backup,'a') as archive:
+            archive.writestr(prefix+path,data)
+
+    def test_native_only_playlist_track_is_reconstructed_from_source(self):
+        self.remove_b_from_xml()
         result=self.prepare('xml')
         self.assertEqual(result['validation']['playlist_tracks_recovered'],1)
         self.assertEqual(result['validation']['independent_verification']['status'],'passed')
+
+    def test_restored_tempo_uses_effective_milliseconds_and_native_summary_bpm(self):
+        self.remove_b_from_xml()
+        self.attach_grid(anlz_file(pqtz_section(((3,12495,257),(4,12501,737)),shift=-7)))
+        originals=(self.backup.read_bytes(),self.xml.read_bytes())
+        result=self.prepare('xml')
+        tree=etree.parse(str(Path(result['directory'])/'edited-collection.xml'))
+        track=tree.find('.//COLLECTION/TRACK[@TrackID="b"]')
+        self.assertEqual(track.get('AverageBpm'),'128.00')
+        self.assertEqual([(t.get('Inizio'),t.get('Bpm'),t.get('Battito')) for t in track.findall('TEMPO')],
+                         [('0.250','124.95','3'),('0.730','125.01','4')])
+        self.assertEqual(result['validation']['independent_verification']['status'],'passed')
+        self.assertEqual((self.backup.read_bytes(),self.xml.read_bytes()),originals)
+
+    def test_verification_rejects_restored_tempo_with_header_shift_dropped(self):
+        self.remove_b_from_xml()
+        self.attach_grid(anlz_file(pqtz_section(((1,12800,257),),shift=-7)))
+        def drop_shift(c,d,r,path,p):
+            result=export_xml(c,d,r,path,p)
+            tree=etree.parse(str(path))
+            tree.find('.//COLLECTION/TRACK[@TrackID="b"]/TEMPO').set('Inizio','0.257')
+            tree.write(str(path),encoding='utf-8')
+            return result
+        with self.assertRaisesRegex(ValueError,'Independent XML verification'):
+            self.prepare('xml',xml_writer=drop_shift)
+        self.assertEqual(list_exports(self.root/'exports'),[])
+
+    def test_negative_effective_time_stops_restoration(self):
+        self.remove_b_from_xml()
+        self.attach_grid(anlz_file(pqtz_section(((1,12800,2),),shift=-7)))
+        with self.assertRaisesRegex(ValueError,'timestamp'):
+            self.prepare('xml')
+        self.assertEqual(list_exports(self.root/'exports'),[])
+
+    def test_ambiguous_archive_dat_stops_restoration(self):
+        self.remove_b_from_xml()
+        self.attach_grid(anlz_file(pqtz_section(shift=-7)))
+        self.attach_grid(anlz_file(pqtz_section()),prefix='other')
+        with self.assertRaisesRegex(ValueError,'Multiple analysis DAT'):
+            self.prepare('xml')
+        self.assertEqual(list_exports(self.root/'exports'),[])
 
     def test_xml_mutations_after_writer_validation_are_blocked(self):
         mutations={

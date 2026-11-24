@@ -39,6 +39,15 @@ def _records(body, header_shift):
         previous = ms
 
 
+def _dat_pqtz(data, sections):
+    if len(data) > MAX_FILE_BYTES:
+        raise ValueError('DAT exceeds the analysis size limit')
+    if any(s['tag'].startswith('PQT') and s['tag'] != 'PQTZ' for s in sections):
+        raise ValueError('Unsupported timing section in DAT')
+    grid = _unique(sections, 'PQTZ')
+    return _pqtz(data, grid) if grid else (0, memoryview(b''))
+
+
 def xml_grid_beats(data):
     """Yield (beat in bar, hundredths of BPM, effective milliseconds) for XML export."""
     if len(data) > MAX_FILE_BYTES:
@@ -46,13 +55,41 @@ def xml_grid_beats(data):
     sections, state, detail = anlz_sections(data, len(data))
     if state != 'recognized':
         raise ValueError(detail)
-    if any(s['tag'].startswith('PQT') and s['tag'] != 'PQTZ' for s in sections):
-        raise ValueError('Unsupported timing section in DAT')
-    grid = _unique(sections, 'PQTZ')
-    if grid:
-        shift, body = _pqtz(data, grid)
-        for beat, bpm100, ms in _records(body, shift):
-            yield beat, bpm100, ms + shift
+    shift, body = _dat_pqtz(data, sections)
+    for beat, bpm100, ms in _records(body, shift):
+        yield beat, bpm100, ms + shift
+
+
+HASH_BLOCK_BEATS = 8192
+
+
+def grid_timing_digest(data, sections):
+    """Hash validated effective beats as packed big-endian (u16, u16, u64) records."""
+    shift, body = _dat_pqtz(data, sections)
+    if not body:
+        return None
+    # Catalog imports scan millions of beats. Keep validation in bounded, contiguous batches.
+    import numpy as np
+    native = np.dtype([('beat', '>u2'), ('bpm', '>u2'), ('ms', '>u4')])
+    effective = np.dtype([('beat', '>u2'), ('bpm', '>u2'), ('ms', '>u8')])
+    records = np.frombuffer(body, dtype=native)
+    digest = hashlib.sha256()
+    previous = -1
+    for start in range(0, len(records), HASH_BLOCK_BEATS):
+        block = records[start:start + HASH_BLOCK_BEATS]
+        beats, tempos, times = block['beat'], block['bpm'], block['ms']
+        first = int(times[0])
+        if (beats.min() < 1 or beats.max() > 4 or tempos.min() == 0 or first + shift < 0
+                or first <= previous or (times[1:] <= times[:-1]).any()):
+            raise ValueError('PQTZ contains an invalid beat, tempo or timestamp')
+        previous = int(times[-1])
+        canonical = block.astype(effective)
+        if shift < 0:
+            canonical['ms'] -= -shift
+        elif shift > 0:
+            canonical['ms'] += shift
+        digest.update(canonical)
+    return digest.hexdigest()
 
 
 def _media_path(data, section):

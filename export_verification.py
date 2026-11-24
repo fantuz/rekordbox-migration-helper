@@ -10,7 +10,6 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import shutil
-import struct
 from urllib.parse import quote
 import zipfile
 
@@ -175,7 +174,7 @@ def native_state(db, mapping=None, results=None, edits=None, relocations=None):
 
 class ExportExpectations:
     def __init__(self,catalog,mapping,results,edits,relocations,kind,folder):
-        from engine import open_master,asset_key,read_tags
+        from engine import analysis_dat_index,open_master,restored_grid_beats
         self.folder=Path(folder);self.xml=None;self.native=None
         self.edits=deepcopy(edits);self.original=Path(catalog.metadata['zip_path'])
         source=self.folder/'.verify-source.db'
@@ -204,7 +203,7 @@ class ExportExpectations:
                         # Missing native keepers and native-only playlist references
                         # are reconstructed from the original database and grids.
                         wanted={mapping.get(i,i) for i in self.xml['source_ids']}|set(self.xml['references'])
-                        index={asset_key(r.filename):r for r in archive.infolist()}
+                        index=analysis_dat_index(archive.infolist())
                         for identity in wanted-self.xml['tracks'].keys():
                             if identity not in catalog.tracks:raise ValueError('Independent verification found an unknown playlist reference')
                             cursor=db.execute('''SELECT c.*,a.Name AS Artist,al.Name AS Album,g.Name AS Genre,k.ScaleName AS Tonality
@@ -222,12 +221,8 @@ class ExportExpectations:
                                 if row[column] is not None:attrs[attr]=row[column]
                             if row.get('ReleaseYear'):attrs['Year']=row['ReleaseYear']
                             element=etree.Element('TRACK',{k:str(v) for k,v in attrs.items()})
-                            member=index.get(asset_key(track.get('analysis_path')))
-                            if member:
-                                grid=read_tags(archive,member).get(b'PQTZ',b'')
-                                for offset in range(0,len(grid)-7,8):
-                                    beat,bpm,ms=struct.unpack_from('>HHI',grid,offset)
-                                    etree.SubElement(element,'TEMPO',Inizio=f'{ms/1000:.3f}',Bpm=f'{bpm/100:.2f}',Metro='4/4',Battito=str(beat))
+                            for beat,bpm,ms in restored_grid_beats(archive,index,track.get('analysis_path')):
+                                etree.SubElement(element,'TEMPO',Inizio=f'{ms/1000:.3f}',Bpm=f'{bpm/100:.2f}',Metro='4/4',Battito=str(beat))
                             xml_cues(element,results.get(identity,{'cues':catalog.cues[identity],'rating':row['Rating'] or 0}))
                             xml_edits(element,edits.get(identity,{}));self.xml['tracks'][identity]=digest(node(element))
         finally:source.unlink(missing_ok=True)

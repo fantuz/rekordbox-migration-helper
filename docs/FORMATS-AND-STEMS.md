@@ -49,6 +49,8 @@ The shift moves each stored beat by the same millisecond. Beat numbers, tempo ch
 
 The desktop behavior was checked against two independent tracks. Both have a DAT, EXT, 2EX and 3EX. One has 725 beats and a populated secondary table. The other has four beats and no secondary table. The after-files matched for all eight members. A new-grid placement, a BPM edit, and timing changes on USB devices each require different evidence. Workbench limits this editor to a uniform nudge on an eligible desktop backup. [Recordbox implementation and validation](https://github.com/fantuz/recordbox/pull/22)
 
+The same timing rules apply when Workbench restores a native-only track to collection XML. For example, a stored beat at 257 ms with a −7 ms header offset exports at 0.250 seconds. The track keeps its own summary BPM while each grid entry retains its individual tempo. In Duplicate review, a grid match requires the same effective beat times, tempos and beat numbers. Older saved workspaces lack timing-aware fingerprints, so their grids remain unconfirmed until a fresh import.
+
 ## Native source insights
 
 Capture a modern native library into a saved snapshot, select **Native source insights**, and choose **Check native evidence**. Older snapshots and XML-only sources may lack these fields; a fresh native capture is required to recover them.
