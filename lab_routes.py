@@ -379,6 +379,8 @@ def register(owner):
             if identity in cancellations:cancellations[identity].set()
         return jsonify(cancel_requested=True)
 
+    from grid_nudge_routes import register as register_grid_nudge
+    register_grid_nudge(owner)
     from musicbrainz_review import register as register_review
     from onetagger_bridge import register as register_onetagger
     register_onetagger(owner,unlocked)
