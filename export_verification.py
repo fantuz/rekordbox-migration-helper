@@ -129,7 +129,7 @@ def native_state(db, mapping=None, results=None, edits=None, relocations=None):
                 selected[keeper].append(original)
     checks={}
     for table,columns in tables.items():
-        if table not in ('djmdContent','djmdCue','djmdPlaylist','contentCue') and not any(k in columns for k in ('ContentID','ContentID1','ContentID2')):continue
+        if table not in ('djmdContent','djmdCue','djmdPlaylist','contentCue') and table.casefold() != 'hotcuebanklistcue' and not any(k in columns for k in ('ContentID','ContentID1','ContentID2')):continue
         values=Counter()
         source=list(rows(db,table)) if expected and results and table in ('djmdCue','contentCue') else rows(db,table)
         if expected and results and table=='djmdCue':
