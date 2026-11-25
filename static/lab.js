@@ -1,5 +1,5 @@
 /* All library-derived strings are escaped; mutations use the local action token. */
-let labInfo=null,labReport=null,labReportOffset=0,labTrackOffset=0,labTrackRows=[],labEdited=null,labUnlocked=false,labTracksRevision=0;
+let labInfo=null,labReport=null,labReportOffset=0,labReportRevision=0,labTrackOffset=0,labTrackRows=[],labEdited=null,labUnlocked=false,labTracksRevision=0;
 let labBatch=null,labPilotOffset=0,labPilotTimer=null,labPilotStatus=null,labPilotRevision=0,labPilotSnapshot=null,labPilotPreviewDirty=false,labPilotSort=preferences.get('workbench-mb-sort')||'sample',labPilotDirection=preferences.get('workbench-mb-direction')||'asc';
 const labPilotSortChoices=[['sample','Original order'],['title','Title'],['artist','Artist'],['genre','Genre'],['status','Status'],['confidence','Similarity'],['candidate','Candidate title'],['year','Year'],['community','Community rating'],['file_status','File status']];
 if(!labPilotSortChoices.some(([field])=>field===labPilotSort))labPilotSort='sample';
@@ -78,23 +78,65 @@ $('#lab-stems').onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind:'st
   profile:Object.fromEntries(['target','enabled','mode','quality','parts','source_provider','platform','architecture','app_version','engine_version','runtime_version','model_sha256'].map(field=>[field,$('#lab-stems-'+field).value]))}));
 $('#lab-compare-form').onsubmit=wrap(async e=>{e.preventDefault();await labRun('compare',{before:$('#lab-before').value,after:$('#lab-after').value,tolerance_ms:$('#lab-tolerance').value});});
 
+function labFindingName(section) {
+  return section==='recordbox_stems_pair'?I18n.t('Speed and quality pair'):section.replaceAll('_',' ');
+}
+
+function labFindingDetail(row) {
+  if(row.section==='recordbox_stems_pair'){
+    const sizes=I18n.t('Speed {speed} · Sound quality {quality} · Total {total}',{
+      speed:bytes(row.speed_bytes),quality:bytes(row.quality_bytes),total:bytes(row.bytes)
+    });
+    if(row.matching_frame_counts===false){
+      return sizes+' · '+I18n.t('Frame counts differ (Speed {speed}, Sound quality {quality}).',{
+        speed:row.speed_frames,quality:row.quality_frames
+      });
+    }
+    return sizes;
+  }
+  if(row.validation==='recognized' && (row.recordbox_variant==='speed' || row.recordbox_variant==='quality')){
+    const detail=I18n.t('Filename indicates {variant} ({model}).',{
+      variant:row.recordbox_variant==='speed'?I18n.t('Speed'):I18n.t('Sound quality'),model:row.recordbox_model
+    });
+    return row.recordbox_pair_ambiguous?detail+' '+I18n.t('Multiple files name the same model in this folder.'):detail;
+  }
+  return row.detail;
+}
+
+function labRecordboxSummary(saved) {
+  return '<div class="stems-summary" id="lab-recordbox-stems"><h3>'+esc(I18n.t('Recordbox saved STEMS'))+'</h3>'+
+    labSummary({'Speed files':num(saved.speed_files),'Sound quality files':num(saved.quality_files),
+      'Files with unknown variant':num(saved.unidentified_files),'Keys with both variants':num(saved.paired_keys),
+      'Total size of recognized files':bytes(saved.recognized_bytes),
+      ...(saved.ambiguous_keys?{'Ambiguous keys':num(saved.ambiguous_keys)}:{}),
+      ...(saved.unconfirmed_pairs?{'Unconfirmed pairs (partial ZIP scan)':num(saved.unconfirmed_pairs)}:{})})+
+    '<p>'+esc(I18n.t('Variants are identified by filename. Pairs share a cache key and folder.'))+'</p></div>';
+}
+
 async function labLoadReport() {
   const id=$('#lab-report-select').value;if(!id)return;
+  const revision=++labReportRevision;
   const section=$('#lab-report-section').value,q=$('#lab-report-search').value,filters=labReportFilters(),{severity,validation}=filters;
-  labReport=await api('/api/lab/reports/'+encodeURIComponent(id)+'?'+new URLSearchParams({offset:labReportOffset,section,q,...filters,...CollectionSort.args('lab-report')}));
+  const report=await api('/api/lab/reports/'+encodeURIComponent(id)+'?'+new URLSearchParams({offset:labReportOffset,section,q,...filters,...CollectionSort.args('lab-report')}));
+  if(revision!==labReportRevision || id!==$('#lab-report-select').value)return;
+  labReport=report;
   $('#lab-report-summary').innerHTML=labSummary(labReport.summary);
   const summary=labReport.summary;
   if(summary.scopes)$('#lab-report-summary').insertAdjacentHTML('beforeend',("<h4>"+esc(I18n.t("Inspected locations"))+"</h4>")+summary.scopes.map(r=>'<p class="subtle">'+esc(r.kind)+' · <code>'+esc(r.path)+'</code></p>').join('')+("<div class=\"lab-table\"><table><thead><tr><th>"+esc(I18n.t("Analysis extension"))+"</th><th>"+esc(I18n.t("Files"))+"</th><th>"+esc(I18n.t("Logical size"))+"</th></tr></thead><tbody>")+summary.analysis_extensions.map(r=>'<tr><td>'+esc(r.extension)+'</td><td>'+num(r.files)+'</td><td>'+esc(bytes(r.bytes))+'</td></tr>').join('')+'</tbody></table></div>');
   if(summary.stems)$('#lab-report-summary').insertAdjacentHTML('beforeend',("<div class=\"stems-summary\"><h3>"+esc(I18n.t("STEMS evidence"))+"</h3><p>")+esc(summary.stems.preparation_status)+'</p>'+labSummary({prepared_tracks:summary.stems.prepared_tracks,related_candidate_files:summary.stems.related_candidate_files,rbsc_drum_capture_files:summary.stems.rbsc_drum_capture_files})+("<p>"+esc(I18n.t("Related candidate file size:"))+" ")+esc(bytes(summary.stems.related_candidate_bytes))+'. '+esc(summary.stems.note)+'</p></div>');
   if(summary.format_inspection)$('#lab-report-summary').insertAdjacentHTML('beforeend','<div class="stems-summary"><h3>'+esc(I18n.t('Format inspection'))+'</h3>'+labSummary(summary.format_inspection)+'</div>');
+  const saved=summary.format_inspection?.recordbox_saved_stems;
+  if(saved && (saved.recognized_bytes || saved.ambiguous_keys || saved.unconfirmed_pairs)){
+    $('#lab-report-summary').insertAdjacentHTML('beforeend',labRecordboxSummary(saved));
+  }
   if(summary.format_inspection?.provider_cache)$('#lab-report-summary').insertAdjacentHTML('beforeend','<div class="stems-summary"><h3>'+esc(I18n.t('Provider cache evidence'))+'</h3>'+labSummary(summary.format_inspection.provider_cache)+'</div>');
   if(summary.stems_eligibility)$('#lab-report-summary').insertAdjacentHTML('beforeend','<div class="stems-summary"><h3>'+esc(I18n.t('STEMS session evidence'))+'</h3>'+labSummary(summary.stems_eligibility)+'<p>'+esc(I18n.t('Session settings are declared; cache consistency does not establish native preparation.'))+'</p><details><summary>'+esc(I18n.t('Show evidence'))+'</summary><pre>'+esc(JSON.stringify(summary.stems_eligibility.profile,null,2))+'</pre></details></div>');
   if(summary.scope_warnings?.length)$('#lab-report-summary').insertAdjacentHTML('beforeend',summary.scope_warnings.map(w=>'<p class="subtle">'+esc(w)+'</p>').join(''));
-  $('#lab-report-section').innerHTML=("<option value=\"\">"+esc(I18n.t("All findings"))+"</option>")+labReport.sections.map(r=>'<option value="'+esc(r.section)+'">'+esc(r.section.replaceAll('_',' '))+' · '+num(r.count)+'</option>').join('');$('#lab-report-section').value=section;
+  $('#lab-report-section').innerHTML=("<option value=\"\">"+esc(I18n.t("All findings"))+"</option>")+labReport.sections.map(r=>'<option value="'+esc(r.section)+'">'+esc(labFindingName(r.section))+' · '+num(r.count)+'</option>').join('');$('#lab-report-section').value=section;
   $('#lab-report-validation').innerHTML='<option value="">'+esc(I18n.t('All validation states'))+'</option>'+(labReport.validations || []).map(r=>'<option value="'+esc(r.validation)+'">'+esc(I18n.t(({recognized:'Recognized',corrupt:'Corrupt',unsupported:'Unsupported',not_checked:'Not checked'})[r.validation] || r.validation))+' · '+num(r.count)+'</option>').join('');$('#lab-report-validation').value=validation;
   for(const field of labStemsFields){const el=$('#lab-report-'+field);el.innerHTML='<option value="">'+esc(I18n.t(labStemsAll[field]))+'</option>'+(labReport.filter_facets?.[field]||[]).map(row=>'<option value="'+esc(row.value)+'">'+esc(I18n.t(labStemsLabels[field][row.value]||row.value))+' · '+num(row.count)+'</option>').join('');el.value=filters[field];}
   $('#lab-report-download').hidden=false;$('#lab-report-download').href='/api/lab/reports/'+encodeURIComponent(id)+'/download?'+new URLSearchParams({section,q,...filters,...CollectionSort.args('lab-report')});
-  $('#lab-report-rows').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Finding"))+"</th><th>"+esc(I18n.t("Track / group"))+"</th><th>"+esc(I18n.t("Evidence"))+"</th></tr></thead><tbody>")+labReport.rows.map((r,i)=>'<tr><td>'+esc(r.section.replaceAll('_',' '))+'</td><td>'+((labReport.sources?.length===1&&r.track_id)?TrackPlayback.button(labReport.sources[0],r.track_id):'')+'<strong>'+esc(r.title || r.playlist || r.name || I18n.t("Group"))+'</strong>'+'<br><span class="subtle">'+esc(r.artist || '')+'</span></td><td>'+esc(r.detail)+("<details><summary>"+esc(I18n.t("Show evidence"))+"</summary><pre>")+esc(JSON.stringify(r,null,2))+'</pre></details>'+(r.section==='variant'?'<button class="button secondary" data-lab-normalize="'+i+("\">"+esc(I18n.t("Stage"))+" "+"")+num(r.track_ids.length)+' as “'+esc(r.canonical)+'”</button>':'')+'</td></tr>').join('')+'</tbody></table>';
+  $('#lab-report-rows').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Finding"))+"</th><th>"+esc(I18n.t("Track / group"))+"</th><th>"+esc(I18n.t("Evidence"))+"</th></tr></thead><tbody>")+labReport.rows.map((r,i)=>'<tr><td>'+esc(labFindingName(r.section))+'</td><td>'+((labReport.sources?.length===1&&r.track_id)?TrackPlayback.button(labReport.sources[0],r.track_id):'')+'<strong>'+esc(r.title || r.playlist || r.name || I18n.t("Group"))+'</strong>'+'<br><span class="subtle">'+esc(r.artist || '')+'</span></td><td>'+esc(labFindingDetail(r))+("<details><summary>"+esc(I18n.t("Show evidence"))+"</summary><pre>")+esc(JSON.stringify(r,null,2))+'</pre></details>'+(r.section==='variant'?'<button class="button secondary" data-lab-normalize="'+i+("\">"+esc(I18n.t("Stage"))+" "+"")+num(r.track_ids.length)+' as “'+esc(r.canonical)+'”</button>':'')+'</td></tr>').join('')+'</tbody></table>';
   CollectionSort.bind('#lab-report-rows','lab-report',['section',['title','artist'],'detail'],labReport.rows,async()=>{labReportOffset=0;await labLoadReport();});
   $('#lab-report-count').textContent=num(labReport.total)+' findings · '+num(labReport.total?labReportOffset+1:0)+'–'+num(Math.min(labReportOffset+50,labReport.total));
   $('#lab-report-prev').disabled=labReportOffset===0;$('#lab-report-next').disabled=labReportOffset+50>=labReport.total;

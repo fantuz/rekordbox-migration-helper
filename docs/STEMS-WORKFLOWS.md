@@ -22,6 +22,20 @@ A local reference does not prove access, decoding, subscription/plan support, me
 
 For RB Stems Plus, declared speed/EXPORT/disabled settings or Windows/Linux targets conflict with the inspected provider profile. Version combinations outside the reviewed application 7.2.17–7.2.19, STEMS Engine `0002`, ONNX Runtime `1.18.x`, macOS ARM64 quality-mode path remain unverified. A matching declared profile is a comparison against pinned community source, not independent native certification. Three/four-stem selection is recorded as context and does not rewrite cache channel layout.
 
+## Checking a Recordbox STEMS backup
+
+1. In Recordbox v0.7.0, open **Preferences → Extensions → STEMS** and copy the cache folder path. Recordbox's **Backup Library** omits saved separations, so copy that folder separately to preserve them.
+2. In Workbench, select a saved snapshot, open **Library lab → Formats & STEMS**, enter the absolute path of the copied folder or its ZIP, and choose **Inspect formats**. The same findings appear in **STEMS workflows**. Choose **Recordbox** in the provider filter to inspect individual files and pairs.
+3. Check the model counts and recognized bytes. A speed file ends in `-htdemucs.stems`, a quality file in `-htdemucs_ft.stems`. Both store four stereo parts at 44.1 kHz, about **169 MB per four-minute track per model**. The totals count logical file sizes before ZIP compression. A valid file with an unfamiliar name contributes to storage with its variant unidentified.
+
+![Saved STEMS report for three synthetic cache files. One cache key has both speed and quality versions.](screenshots/recordbox-saved-stems.png)
+
+A pair means two structurally recognized files carry the same 24-character cache key in the same directory. Separate folders and archives are counted independently. A difference in their frame counts warrants review. A lone variant is normal when only one model was run. If a ZIP contains ambiguous names or its member inventory stopped early, the report withholds the affected pairs. Reports cover the selected, inspected files and cannot identify a track by title from its cache key.
+
+To reuse the results after a move, preserve the source audio's original path, size and modification time in whole seconds, then select the same model in Recordbox. Export and Performance decks use the same saved files across restarts. The speed and quality versions share a configurable disk budget, **20 GB** by default. **Keep all saved stems** disables automatic eviction. The active preference cannot be read from a copied cache folder. [Recordbox v0.7.0 storage and backup guide](https://github.com/fantuz/recordbox/blob/v0.7.0/docs/LIBRARY-SYNC.md#locate-separated-stems) · [Cache key and writer](https://github.com/fantuz/recordbox/blob/v0.7.0/app/src/stems/mod.rs#L643)
+
+Recordbox uses file access times to choose which saved separations to evict. On Linux, Workbench requests a read that preserves the access time when it inspects or fingerprints a local `.stems` file. Where the filesystem or file ownership prevents this, the filesystem's usual access-time rules apply. Inspecting a backup copy keeps the live cache outside the scan.
+
 ## Native Instruments containers
 
 Discovery recognizes `.stem.m4a`, `.stems.m4a`, `.stem.mp4` and `.stems.mp4`, case-insensitively. The bounded ISO reader skips media payload boxes and checks:
@@ -91,8 +105,10 @@ Operations expose cooperative cancellation checkpoints. Incomplete inventory and
 
 Development research generated small silent NI-like AAC containers and eight-channel FLAC controls, independently decoded with ffprobe. Those probes establish only those generated samples' metadata/decoder behavior, not native acceptance. CI uses synthetic headers, descriptors and manifests with no songs, model weights, vendor binaries or installed DJ applications.
 
+For the v0.7.0 Recordbox comparison, its Rust cache writer saved a one-second synthetic separation for each model and its reader reopened both. Workbench inspected those files through the Formats and STEMS report APIs from both a folder and a ZIP. Each report found the same pair, 1,411,232 logical bytes and matching file fingerprints. Structural inspection parsed the 16-byte header of each file. That count excludes filesystem and ZIP buffering. The optional fingerprints required reading the full files. [Recordbox writer and reader used for comparison](https://github.com/fantuz/recordbox/blob/v0.7.0/app/src/stems/mod.rs#L660)
+
 Unit/API checks cover malformed metadata, unknown revisions, timing/channel/track differences, budgets, cancellation, missing and split caches, expiry, source edits, model/profile changes, symlink and scope boundaries, disconnect/reconnect, service capture/privacy, global filters and saved downloads. The existing real-server Playwright workflow now checks the STEMS tab, 125-track pagination, all five filters, source-only checks, stale/incomplete/unavailable evidence, reconnect, invalid-profile rejection, 13 languages, mobile layout, immutable inputs and report persistence through server restart. It uses real HTTP and SQLite without API interception.
 
 Native live readiness, restored playback, hardware/USB export compatibility, channel audio correctness, headroom, separation quality and resource consumption need dedicated application/audio evidence. They remain unverified; no separated audio is generated or rewritten by these checks.
 
-The [18 November Recordbox follow-up](RECORDBOX-INTEGRITY-REVIEW.md#update-reviewed-on-18-november-2026) records the newer cache-eviction policy. Recognized `PDSTEMS1` evidence now includes a lifecycle advisory; retention and native preparation remain unknown. Cache disappearance alone is not evidence of lost source audio or a damaged library.
+The [18 November Recordbox follow-up](RECORDBOX-INTEGRITY-REVIEW.md#update-reviewed-on-18-november-2026) records the original cache-eviction behavior. For the configurable v0.7.0 policy and its backup implications, see [Checking a Recordbox STEMS backup](#checking-a-recordbox-stems-backup).

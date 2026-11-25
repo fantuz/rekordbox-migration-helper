@@ -3,6 +3,7 @@ from collections import defaultdict
 from contextlib import ExitStack
 from hashlib import sha256
 from pathlib import Path
+import errno
 import os
 import stat
 import time
@@ -14,7 +15,7 @@ from media import file_record,cloud_placeholder
 from asset_formats import format_candidate,inspect_format,PROBE_LIMIT,SETTINGS,CATALOGS,basename
 from task_control import OperationCancelled
 from stems_formats import stem_candidate,cache_candidate,CACHE_FOLDERS,ContainerLimit
-from stems_cache import provider_report
+from stems_cache import provider_report,recordbox_inventory
 from stems_eligibility import context as stems_context
 
 
@@ -54,7 +55,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
         folder['files'].append(record)
         ext=Path(record['name']).suffix.casefold() or '(none)';extension_counts[ext]['files']+=1;extension_counts[ext]['bytes']+=record['bytes']
     with ExitStack() as stack:
-        archive_stamps=[]
+        archive_stamps=[];incomplete_archives=set()
         for root in roots:
             if exceeded():partial=True;warnings.append('Inventory budget reached; selected scopes were only partially inspected.');break
             scope=str(root);scopes.append({'path':scope,'kind':'ZIP' if root.is_file() else 'folder'})
@@ -67,7 +68,10 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                 archive_names=set()
                 for info in archive.infolist():
                     files_seen+=1
-                    if exceeded():partial=True;break
+                    if exceeded():
+                        partial=True
+                        incomplete_archives.add(scope)
+                        break
                     name=info.filename.replace('\\','/');reference=analysis_folder(name)
                     parts=Path(name).parts
                     if name.startswith('/') or '..' in parts or ':' in name or name in archive_names or stat.S_ISLNK(info.external_attr>>16):
@@ -172,6 +176,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
             inspection_summary['tempo_disagreements']=len(comparisons)
             provider_rows,provider_summary=provider_report(inspection_rows,roots,profile or stems_context(),progress,
                 started+max_seconds,inventory_complete=not partial and not warnings,source_aliases=source_aliases)
+            pairs,inspection_summary['recordbox_saved_stems']=recordbox_inventory(inspection_rows,progress,incomplete_archives)
             for record in inspection_rows:
                 for key in list(record):
                     if key.startswith('_'):record.pop(key)
@@ -179,6 +184,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                 if not f['archive'] and asset_stamp(Path(f['source']),True)!=f['stamp']:
                     raise ValueError('An asset changed before report publication; capture again')
             rows.extend(inspection_rows);rows.extend(comparisons);rows.extend(provider_rows);hash_bytes+=used
+            rows.extend(pairs)
             inspection_summary['provider_cache']=provider_summary
         for root,stamp in archive_stamps:
             if asset_stamp(root,inspect)!=stamp:raise ValueError('A backup ZIP changed during the audit; capture again')
@@ -207,7 +213,20 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
     def unchanged(f):
         if not f['archive'] and (Path(f['source']).is_symlink() or asset_stamp(Path(f['source']),True)!=f['stamp']):
             raise ValueError('An asset changed during format inspection; capture again')
-    def stream(f):return f['archive'].open(f['source']) if f['archive'] else Path(f['source']).open('rb')
+    def stream(f):
+        if f['archive']:
+            return f['archive'].open(f['source'])
+        path = Path(f['source'])
+        if path.suffix.lower() == '.stems':
+            if hasattr(os, 'O_NOATIME'):
+                # Recordbox uses last access to choose which saved separations to evict.
+                try:
+                    return open(path, 'rb', buffering=0, opener=lambda name, flags: os.open(name, flags | os.O_NOATIME))
+                except OSError as error:
+                    if error.errno not in (errno.EPERM, errno.EACCES, errno.EINVAL, errno.EOPNOTSUPP):
+                        raise
+            return path.open('rb', buffering=0)
+        return path.open('rb')
     def wanted(f,prefix):
         name=basename(f['name'])
         if prefix.startswith(b'PMAI'):return PROBE_LIMIT
@@ -231,7 +250,7 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
         else:
             unchanged(f)
             try:
-                initial=min(f['bytes'],64,max_inspect_bytes-inspected)
+                initial=min(f['bytes'],16,max_inspect_bytes-inspected)
                 with stream(f) as reader:
                     prefix=reader.read(initial);inspected+=len(prefix)
                     limit=max(len(prefix),min(f['bytes'],wanted(f,prefix),max_inspect_bytes-inspected+len(prefix)))
@@ -245,7 +264,8 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
                         progress(75,'Reading bounded container metadata')
                         reader.seek(offset);value=reader.read(length);inspected+=len(value)
                         return value
-                    ready=len(prefix)==limit and len(prefix)>=min(f['bytes'],64)
+                    minimum=16 if prefix.startswith(b'PDSTEMS1') else 64
+                    ready=len(prefix)==limit and len(prefix)>=min(f['bytes'],minimum)
                     if len(prefix)!=limit:record.update(validation='corrupt',detail='Asset became shorter than its inventoried size')
                     elif not ready:record['detail']='Format inspection byte budget reached before the initial probe was complete'
                     elif prefix[4:8]==b'ftyp':record.update(inspect_format(f['name'],prefix,f['bytes'],read_at=read_at))
@@ -269,7 +289,10 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
                         if complete and actual==f['bytes']:
                             record.update(checksum_status='computed',sha256=digest.hexdigest(),zip_crc_verified=bool(f['archive']),
                                           checksum_basis='SHA-256 fingerprint computed; no trusted reference digest was supplied')
-                        else:record['checksum_status']='time_budget_exceeded' if not complete else 'size_mismatch'
+                        elif complete:
+                            record.update(checksum_status='size_mismatch',validation='corrupt',
+                                          detail=f'Full read returned {actual} bytes. The inventoried size is {f["bytes"]} bytes.')
+                        else:record['checksum_status']='time_budget_exceeded'
             except OperationCancelled:raise
             except (OSError,zipfile.BadZipFile,RuntimeError) as error:
                 record.update(validation='corrupt' if isinstance(error,zipfile.BadZipFile) else 'not_checked',
@@ -280,6 +303,8 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
                          'device_sql':('device_catalog','rekordbox'),'onelibrary_catalog':('device_catalog','rekordbox'),
                          'recordbox_stems_v1':('separation_cache','recordbox'),'rbsc_candidate':('capture','rekordbox')}.get(kind,('candidate','unknown'))
         record.setdefault('asset_family',family);record.setdefault('provider',provider)
+        if record.get('cache_state')=='present' and record['validation']!='recognized':
+            record['cache_state']='unknown'
         if kind=='recordbox_stems_v1':record.setdefault('cache_state','present' if record['validation']=='recognized' else 'unknown')
         record['severity']='info' if record['validation']=='recognized' else 'review'
         record['section']={'anlz':'analysis_format','anlz_3ex':'analysis_format','player_settings':'player_settings','device_sql':'device_catalog',

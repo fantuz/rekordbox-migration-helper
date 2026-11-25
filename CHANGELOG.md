@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Library lab reports how much space saved Recordbox STEMS occupy and which cache keys have both a speed and a quality version. Check a selected folder or ZIP before moving your library.
+
 ## 1.3.0 — 2026-11-25
 
 - Open **Collection cleanup** to see which references belong to each Windows drive or macOS volume, which local files are missing, and which duplicate references have a verified keeper. Cloud, external media and DJ preparation evidence can protect a track. Linux supports the full report.
