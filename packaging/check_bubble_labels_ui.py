@@ -154,9 +154,18 @@ def _check_bubble_labels_ui(page,base,sid,output,store):
         assert style['contrast']>=3,style
         scrollbar_styles[selected_theme]=style
         row=page.locator('#bubble-groups [data-bubble-index="1"]');row.focus()
+        if selected_theme=='light':
+            # Firefox can re-hit-test a stationary pointer as focus scrolls the legend.
+            other=page.locator('#library-bubbles [data-bubble-index="8"]')
+            other.dispatch_event('mouseenter')
+            other.dispatch_event('mousemove',{'movementX':0,'movementY':0})
         assert row.evaluate('(el)=>el.classList.contains("is-selected")')
         assert page.locator('#library-bubbles [data-bubble-index="1"]').evaluate('(el)=>el.classList.contains("is-selected")')
         assert page.locator('#bubble-selected h4').inner_text()==labels[1]
+        if selected_theme=='light':
+            other.hover()
+            assert other.evaluate('(el)=>el.classList.contains("is-selected")')
+            assert row.evaluate('(el)=>el===document.activeElement')
         node=page.locator('#library-bubbles [data-bubble-index="0"]');node.focus()
         assert page.locator('#bubble-groups [data-bubble-index="0"]').evaluate('(el)=>el.classList.contains("is-selected")')
 

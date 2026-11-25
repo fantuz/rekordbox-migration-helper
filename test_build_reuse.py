@@ -68,6 +68,32 @@ class RuntimeCacheTests(unittest.TestCase):
             self.assertTrue(runtime.restore_runtime(self.cache,self.context));validate.assert_called_once()
         self.assertTrue((runtime.PREFIX/'bin/python3.13').is_file())
 
+    def test_runtime_cache_key_follows_installed_toolchain_inputs(self):
+        with patch.dict(runtime.os.environ,{'LIBRARY_WORKBENCH_BUILD_IMAGE':'pinned-image'}), \
+             patch.object(runtime.platform,'machine',return_value='x86_64'), \
+             patch.object(runtime.subprocess,'check_output',side_effect=['gcc 14\n','sqlite-devel-0:3.26.0-21.el8_10.x86_64\n']):
+            context=runtime.runtime_context()
+        self.assertEqual(context['development_packages'],['sqlite-devel-0:3.26.0-21.el8_10.x86_64'])
+        self.assertEqual(context['image'],'pinned-image')
+        self.assertEqual(context['builder_sha256'],sha256(Path(runtime.__file__).read_bytes()).hexdigest())
+        key=runtime.cache_key(context)
+        self.assertEqual(key,runtime.cache_key(dict(reversed(list(context.items())))))
+        for field in context:
+            with self.subTest(field=field):
+                self.assertNotEqual(key,runtime.cache_key({**context,field:'changed'}))
+
+    def test_repaired_checkpoint_reports_its_reason_then_becomes_reusable(self):
+        self.archive()
+        with patch('builtins.print') as log:
+            self.assertFalse(runtime.restore_runtime(self.cache,{**self.context,'compiler':'different'}))
+        self.assertIn('runtime build context changed',str(log.call_args))
+        runtime.PREFIX.mkdir()
+        (runtime.PREFIX/'rebuilt').write_bytes(b'fresh')
+        runtime.save_runtime(self.cache,self.context)
+        with patch.object(runtime,'validate_runtime') as validate:
+            self.assertTrue(runtime.restore_runtime(self.cache,self.context))
+            validate.assert_called_once()
+
     def test_wrong_source_context_corruption_and_escaping_archive_are_rebuilt(self):
         self.archive()
         with patch.object(runtime,'validate_runtime') as validate:

@@ -2,10 +2,16 @@
 
 ## Unreleased
 
-- Review collection references by drive and see which ones have cloud, external media or DJ preparation evidence. A new confirmation flow on the original Windows or macOS computer creates a separate Library Workbench snapshot from the reviewed selection. The original snapshot remains available for recovery.
+## 1.3.0 — 2026-11-25
+
+- Open **Collection cleanup** to see which references belong to each Windows drive or macOS volume, which local files are missing, and which duplicate references have a verified keeper. Cloud, external media and DJ preparation evidence can protect a track. Linux supports the full report.
+- On the original Windows or macOS computer, preview up to 25 selected references and their keepers. Workbench rechecks them before creating a separate snapshot. The original collection and audio stay available for recovery.
 - Preview a 1 ms beat-grid nudge for a track in a paired XML and desktop backup ZIP. Library lab shows the first and last beat times and which analysis files change before you download a separate ZIP for comparison.
 - Recognize populated and cleared desktop secondary beat tables in Formats & STEMS. XML recovery now accounts for the native grid’s signed timing offset when placing tempo entries.
 - Duplicate review compares the effective beat times, tempos and beat numbers captured for each track. Reimport an older XML/ZIP pair to include the timing offset in its comparisons.
+- Native backup export checks Hot Cue Bank entries before applying duplicate merges. If a merge would affect a linked cue, Workbench explains which merge needs review.
+- Keyboard navigation in Library Bubbles keeps the focused category selected when scrolling moves another bubble beneath a stationary pointer.
+- Packaging now uses one runner per Mac architecture for source and application checks, and Linux can reuse a verified Python runtime matched to its compiler and development packages. Browser and connector checks share their installed browsers and run in parallel.
 
 ## 1.2.4 — 2026-11-20
 

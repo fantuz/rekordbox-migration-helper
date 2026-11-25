@@ -37,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-latest, macos-26, macos-15-intel]
+        os: [ubuntu-24.04, windows-latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -92,13 +92,8 @@ jobs:
           python-version: '3.13'
           cache: pip
       - run: python -m pip install -r requirements.txt
-      - name: Use the Ubuntu archive for package downloads
-        run: |
-          for apt_source in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources /etc/apt/apt-mirrors.txt /etc/apt/apt-mirrors-security.txt; do
-            if [ -f "$apt_source" ]; then
-              sudo sed -i -E 's@https?://[a-z0-9.-]+\.ec2\.archive\.ubuntu\.com/ubuntu@https://archive.ubuntu.com/ubuntu@g' "$apt_source"
-            fi
-          done
+      - name: Configure the signed Ubuntu package indexes
+        run: bash .github/scripts/configure-noble-apt.sh
       - name: Install launcher compiler
         run: |
           sudo apt-get update
@@ -109,6 +104,7 @@ jobs:
         with:
           name: windows-portable-assembly
           if-no-files-found: error
+          compression-level: 0
           retention-days: 14
           path: |
             releases/*windows*.zip
@@ -117,6 +113,7 @@ jobs:
         with:
           name: linux-source
           path: releases/*linux-source.tar.gz*
+          compression-level: 0
           if-no-files-found: error
           retention-days: 14
 
@@ -150,6 +147,7 @@ jobs:
         with:
           name: windows-x64-portable
           if-no-files-found: error
+          compression-level: 0
           retention-days: 14
           path: |
             releases/*windows*.zip
@@ -159,7 +157,7 @@ jobs:
   macos-app:
     name: Build and test macOS · ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -176,14 +174,30 @@ jobs:
         with:
           python-version: '3.13'
           cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-build.txt
+            requirements-test.txt
       - run: python -m pip install -r requirements.txt -r requirements-build.txt
       - run: python packaging/build_macos.py
         env:
           LIBRARY_WORKBENCH_EXPECTED_ARCH: ${{ matrix.arch }}
+      # Install test-only tools after bundling to keep them out of the app's build manifest.
+      - run: python -m pip install -r requirements-test.txt
+      - run: python -m unittest discover -v
+      - run: python packaging/smoke_desktop.py --source . --report ci-output/source-smoke.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: source-validation-${{ matrix.os }}-attempt-${{ github.run_attempt }}
+          path: ci-output/*.json
+          retention-days: 14
+          if-no-files-found: error
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: macos-${{ matrix.arch }}-portable
           if-no-files-found: error
+          compression-level: 0
           retention-days: 14
           path: |
             releases/*macos*.zip
@@ -204,26 +218,39 @@ jobs:
           python-version: '3.13'
           cache: pip
       - run: python -m pip install -r requirements.txt
-      - name: Restore pinned shared Python runtime cache
+      - name: Prepare the manylinux builder and identify its Python toolchain
+        id: linux-toolchain
+        run: |
+          docker run --detach --name workbench-linux-builder --volume "$PWD:/work" --workdir /work \
+            --env GITHUB_SHA --env LIBRARY_WORKBENCH_VERSION --env LIBRARY_WORKBENCH_BUILD_IMAGE \
+            --env "WORKBENCH_BUILD_UID=$(id -u)" --env "WORKBENCH_BUILD_GID=$(id -g)" \
+            "$LIBRARY_WORKBENCH_BUILD_IMAGE" sleep infinity
+          docker exec workbench-linux-builder dnf install -y bzip2-devel libffi-devel xz-devel openssl-devel sqlite-devel zlib-devel
+          context=$(docker exec workbench-linux-builder /opt/python/cp313-cp313/bin/python packaging/build_linux_python.py --cache-key)
+          echo "context=$context" >> "$GITHUB_OUTPUT"
+      - name: Restore verified shared Python for this toolchain
         id: linux-runtime-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .build/runtime-cache
-          key: workbench-shared-python-x86_64-${{ hashFiles('packaging/build_linux_python.py', '.github/workflows/check-and-package.yml') }}
+          key: workbench-python-${{ steps.linux-toolchain.outputs.context }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            workbench-python-${{ steps.linux-toolchain.outputs.context }}-
       - name: Bundle Python and dependencies on glibc 2.28
+        id: linux-bundle
         run: |
-          docker run --rm --volume "$PWD:/work" --workdir /work \
-            --env GITHUB_SHA --env LIBRARY_WORKBENCH_VERSION --env LIBRARY_WORKBENCH_BUILD_IMAGE \
-            --env "WORKBENCH_BUILD_UID=$(id -u)" --env "WORKBENCH_BUILD_GID=$(id -g)" \
-            "$LIBRARY_WORKBENCH_BUILD_IMAGE" /bin/bash -eu -c '
-              dnf install -y bzip2-devel libffi-devel xz-devel openssl-devel sqlite-devel zlib-devel
-              /opt/python/cp313-cp313/bin/python packaging/build_linux_python.py
+          docker exec workbench-linux-builder /bin/bash -eu -c '
+              /opt/python/cp313-cp313/bin/python packaging/build_linux_python.py --status-file .build/linux-runtime-status
               /opt/workbench-python/bin/python3.13 -m pip install -r requirements.txt -r requirements-build.txt
               /opt/workbench-python/bin/python3.13 packaging/build_linux.py
               chown -R "$WORKBENCH_BUILD_UID:$WORKBENCH_BUILD_GID" releases .build/runtime-cache
             '
+          echo "runtime=$(cat .build/linux-runtime-status)" >> "$GITHUB_OUTPUT"
+      - name: Remove the manylinux builder
+        if: always()
+        run: docker rm --force workbench-linux-builder || true
       - name: Save verified runtime cache from trusted main builds
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.linux-runtime-cache.outputs.cache-hit != 'true'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.linux-bundle.outputs.runtime == 'built'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .build/runtime-cache
@@ -243,6 +270,7 @@ jobs:
         with:
           name: linux-x86_64-portable
           if-no-files-found: error
+          compression-level: 0
           retention-days: 14
           path: |
             releases/*linux-x86_64.tar.gz*
@@ -266,25 +294,11 @@ jobs:
           python-version: '3.13'
           cache: pip
       - run: python -m pip install -r requirements.txt -r requirements-test.txt -r requirements-browser.txt
-      - name: Use the Ubuntu archive for package downloads
-        run: |
-          for apt_source in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources /etc/apt/apt-mirrors.txt /etc/apt/apt-mirrors-security.txt; do
-            if [ -f "$apt_source" ]; then
-              sudo sed -i -E 's@https?://[a-z0-9.-]+\.ec2\.archive\.ubuntu\.com/ubuntu@https://archive.ubuntu.com/ubuntu@g' "$apt_source"
-            fi
-          done
+      - name: Configure the signed Ubuntu package indexes
+        run: bash .github/scripts/configure-noble-apt.sh
       - run: python -m playwright install --with-deps ${{ matrix.browser }}
-      - name: Check desktop UI, languages and native scrollbars
-        env:
-          GTK_OVERLAY_SCROLLING: '0'
-        run: xvfb-run -a python packaging/check_browser_languages.py --headed --browser ${{ matrix.browser }} --output ci-output/languages
-      - name: Check real-server workflows, formats and STEMS evidence
-        if: matrix.browser == 'chromium'
-        run: python packaging/check_workflow_integrity.py --output ci-output/languages/workflow-integrity
-      - name: Check Dropbox metadata and deliberate single-file downloads
-        run: xvfb-run -a python packaging/check_dropbox_connector_ui.py --headed --browser ${{ matrix.browser }} --output ci-output/languages/dropbox-connector
-      - name: Check guided cloud connections and Google Drive workflows
-        run: xvfb-run -a python packaging/check_cloud_connections_ui.py --headed --browser ${{ matrix.browser }} --output ci-output/languages/cloud-connections
+      - name: Check the desktop UI, languages and cloud connections
+        run: bash .github/scripts/check-browser-suites.sh ${{ matrix.browser }} ci-output/languages
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:

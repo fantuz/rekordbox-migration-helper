@@ -2,9 +2,9 @@
 
 ## Automatic development builds
 
-Every pull request and push to `main` runs source tests on Linux, Windows, Mac Intel and Mac Apple Silicon, then builds and exercises the portable applications. Open the run under **Actions → Check and package** and scroll to **Artifacts**, or follow the download link in the final check summary:
+Every pull request and push to `main` runs source tests and exercises the portable applications on Linux, Windows, Mac Intel and Mac Apple Silicon. Open the run under **Actions → Check and package** and scroll to **Artifacts**, or follow the download link in the final check summary.
 
-Source checks and native builds run independently; a queued platform does not prevent other platform artifacts from being built. The final required check and release workflow still require every source, browser and native package check to pass, then verify the complete five-archive set. Current Mac runners are macOS 15 for Intel and macOS 26 for Apple Silicon; runner versions are recorded in build manifests. Tested runner versions are not a claim that every older operating system has been validated.
+Platforms run independently. On macOS, each architecture uses one runner for the native build, packaged startup, source suite and source startup check. The source diagnostics and validated portable app remain separate downloads. Each browser worker installs Playwright once and runs the language suite alongside its connector and workflow checks, with separate logs in the language validation artifact. The final required check verifies the complete five-archive set after every source, browser and native package check passes. Current Mac runners are macOS 15 for Intel and macOS 26 for Apple Silicon. Build manifests record the tested runner versions.
 
 | Download | Artifact |
 | --- | --- |
@@ -68,8 +68,8 @@ No release is published by a pull request. Source and package tests use syntheti
 
 ## Pinned Linux runtime cache
 
-Linux native builds can restore the shared CPython runtime before assembling the application. The immutable cache key covers the build script, its official source SHA-256 and version, the x86-64 architecture, and the workflow containing the pinned manylinux image digest. Restored bytes must match their stored checksum and their recorded compiler, development-package versions, image, architecture and Python source. The interpreter must import its compression, TLS, SQLite and shared-library modules and report the expected Python version. Any mismatch rebuilds the pinned official source. Only trusted main-push builds save this cache; pull requests can consume the default-branch cache but do not publish one.
+Linux native builds can restore the shared CPython runtime before assembling the application. The cache key includes the build script and the actual inputs used in the pinned manylinux image, including the Python source checksum, compiler, architecture and installed development-package versions. A change to a build dependency therefore selects a new cache entry. Each restore checks the archive digest and build context, then starts the interpreter and imports its compression, TLS, SQLite and shared-library modules. A failed check triggers a build from the pinned source. Only successful trusted `main` builds can save runtime checkpoints. Pull requests can read them.
 
-Application dependencies are installed afresh after runtime validation, and every native archive still passes both container and host startup checks. The cached runtime is an optimization, not permission to reuse an application built from another commit. If development package versions change without the cache key changing, validation rebuilds safely; changing the cache-key generation is then useful to retain the new runtime.
+The job installs application dependencies after runtime validation and checks the Linux application inside the container and on the host. Release publication reuses the five packages from the validated `main` build for the exact release commit and version.
 
 Performance measurements and duplicate-query cache rules are documented in [PERFORMANCE.md](PERFORMANCE.md).
