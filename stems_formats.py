@@ -11,6 +11,8 @@ STEMS_SUFFIXES=('.rbsc','.stem','.stems','.stem.mp4','.stems.mp4','.stem.m4a','.
 STEMS_FOLDERS={'stems','stem','track separation','track_separation','trackseparation'}
 CACHE_FOLDERS={'rbstemsplus','rb stems plus cache.noindex'}
 HEX64=re.compile(r'^[0-9a-f]{64}$')
+# cache_path() emits lowercase SHA-256 prefixes and case-sensitive model IDs.
+RECORDBOX_SAVED_NAME = re.compile(r'([0-9a-f]{24})-(htdemucs|htdemucs_ft)\.stems')
 MAX_REFERENCES=16384
 MAX_METADATA=2*1024**2
 REPORT_FILTERS={

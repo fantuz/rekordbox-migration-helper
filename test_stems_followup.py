@@ -1,6 +1,7 @@
 """Synthetic structures and workflow boundaries; no songs, models or vendor binaries."""
 from copy import deepcopy
 from pathlib import Path
+import errno
 import json
 import math
 import os
@@ -189,6 +190,27 @@ class WorkflowTests(unittest.TestCase):
         return audit_assets({},[str(p) for p in (roots or [self.cache,self.kept,self.audio])],lambda *_:None,inspect=True,**kwargs)
 
     def prep(self,rows):return [r for r in rows if r['section']=='stems_preparation']
+
+    @unittest.skipUnless(hasattr(os, 'O_NOATIME'), 'Linux no-atime reads')
+    def test_inspecting_and_fingerprinting_saved_stems_preserves_last_playback_access(self):
+        path = self.audio / ('a' * 24 + '-htdemucs.stems')
+        path.write_bytes(b'PDSTEMS1' + struct.pack('<Q', 1) + bytes(16))
+        os.utime(path, (1_600_000_000, 1_700_000_000))
+        before = path.stat().st_atime_ns
+        _, rows = self.audit([self.audio], verify=True)
+        cache = next(row for row in rows if row['section'] == 'stems_cache')
+        self.assertEqual(cache['checksum_status'], 'computed')
+        self.assertEqual(path.stat().st_atime_ns, before)
+
+    @unittest.skipUnless(hasattr(os, 'O_NOATIME'), 'Linux no-atime reads')
+    def test_readable_stems_owned_by_another_user_can_still_be_inspected(self):
+        path = self.audio / ('a' * 24 + '-htdemucs.stems')
+        path.write_bytes(b'PDSTEMS1' + struct.pack('<Q', 1) + bytes(16))
+        with patch('analysis_audit.os.open', side_effect=PermissionError(errno.EPERM, 'not the owner')) as attempt:
+            _, rows = self.audit([self.audio], verify=True)
+        cache = next(row for row in rows if row['section'] == 'stems_cache')
+        self.assertEqual(cache['checksum_status'], 'computed')
+        self.assertTrue(any(call.args[1] & os.O_NOATIME for call in attempt.call_args_list))
 
     def test_consistent_source_and_chunk_metadata_are_not_native_readiness(self):
         before={p:p.read_bytes() for p in self.root.rglob('*') if p.is_file()};summary,rows=self.audit()

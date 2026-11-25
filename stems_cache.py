@@ -5,8 +5,61 @@ import stat
 import time
 
 from media import cloud_placeholder
-from stems_formats import HEX64,CACHE_FOLDERS
+from stems_formats import HEX64,CACHE_FOLDERS,RECORDBOX_SAVED_NAME
 from stems_eligibility import namespace_status,cache_profile
+
+
+def recordbox_inventory(rows, progress):
+    """Group observed model filenames within one directory of one folder or ZIP inventory."""
+    summary = {'speed_files': 0, 'quality_files': 0, 'unidentified_files': 0,
+               'recognized_bytes': 0, 'paired_keys': 0, 'ambiguous_keys': 0}
+    groups = defaultdict(lambda: defaultdict(list))
+    for index, row in enumerate(rows):
+        if index % 250 == 0:
+            progress(85, 'Grouping saved Recordbox STEMS')
+        if row['format'] == 'recordbox_stems_v1' and row['validation'] == 'recognized':
+            summary[row.get('recordbox_variant', 'unidentified') + '_files'] += 1
+            summary['recognized_bytes'] += row['bytes']
+        # Include unchecked or damaged canonical names when detecting duplicate ZIP aliases.
+        name = RECORDBOX_SAVED_NAME.fullmatch(row['title'])
+        if name:
+            archive = row['_archive_scope']
+            directory = (PurePosixPath(row['_source'].replace('\\', '/')).parent if archive
+                         else Path(row['_source']).parent)
+            key, model = name.groups()
+            groups[archive, str(directory), key][model].append(row)
+
+    pairs = []
+    for index, ((archive, directory, key), models) in enumerate(groups.items()):
+        if index % 250 == 0:
+            progress(85, 'Checking saved Recordbox model pairs')
+        if any(len(members) > 1 for members in models.values()):
+            summary['ambiguous_keys'] += 1
+            for members in models.values():
+                for row in members:
+                    row['severity'] = 'review'
+                    row['recordbox_pair_ambiguous'] = True
+                    row['detail'] += ' Multiple ZIP members name the same model in this directory. Pairing is ambiguous.'
+            continue
+        if len(models) != 2:
+            continue
+        speed, quality = models['htdemucs'][0], models['htdemucs_ft'][0]
+        if any(row['format'] != 'recordbox_stems_v1' or row['validation'] != 'recognized'
+               for row in (speed, quality)):
+            continue
+        same_frames = speed['frames'] == quality['frames']
+        detail = ('The speed and quality filenames share a cache key in this directory. ' +
+                  ('Their frame counts match.' if same_frames else 'Their frame counts differ. Review the two saved files.'))
+        location = archive + '!/' + ('' if directory == '.' else directory) if archive else directory
+        pairs.append({'section': 'recordbox_stems_pair', 'title': key, 'recordbox_key': key,
+                      'scope': speed['scope'], 'path': location,
+                      'asset_family': 'separation_cache', 'provider': 'recordbox', 'validation': 'recognized',
+                      'severity': 'info' if same_frames else 'review', 'cache_state': 'present' if same_frames else 'unknown',
+                      'speed_frames': speed['frames'], 'quality_frames': quality['frames'], 'matching_frame_counts': same_frames,
+                      'speed_bytes': speed['bytes'], 'quality_bytes': quality['bytes'], 'bytes': speed['bytes'] + quality['bytes'],
+                      'source_association': 'unknown', 'native_stems_readiness': None, 'detail': detail})
+    summary['paired_keys'] = len(pairs)
+    return pairs, summary
 
 
 def source_stamp(path):

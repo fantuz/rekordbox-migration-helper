@@ -3,6 +3,7 @@ from collections import defaultdict
 from contextlib import ExitStack
 from hashlib import sha256
 from pathlib import Path
+import errno
 import os
 import stat
 import time
@@ -14,7 +15,7 @@ from media import file_record,cloud_placeholder
 from asset_formats import format_candidate,inspect_format,PROBE_LIMIT,SETTINGS,CATALOGS,basename
 from task_control import OperationCancelled
 from stems_formats import stem_candidate,cache_candidate,CACHE_FOLDERS,ContainerLimit
-from stems_cache import provider_report
+from stems_cache import provider_report,recordbox_inventory
 from stems_eligibility import context as stems_context
 
 
@@ -172,6 +173,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
             inspection_summary['tempo_disagreements']=len(comparisons)
             provider_rows,provider_summary=provider_report(inspection_rows,roots,profile or stems_context(),progress,
                 started+max_seconds,inventory_complete=not partial and not warnings,source_aliases=source_aliases)
+            pairs,inspection_summary['recordbox_saved_stems']=recordbox_inventory(inspection_rows,progress)
             for record in inspection_rows:
                 for key in list(record):
                     if key.startswith('_'):record.pop(key)
@@ -179,6 +181,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                 if not f['archive'] and asset_stamp(Path(f['source']),True)!=f['stamp']:
                     raise ValueError('An asset changed before report publication; capture again')
             rows.extend(inspection_rows);rows.extend(comparisons);rows.extend(provider_rows);hash_bytes+=used
+            rows.extend(pairs)
             inspection_summary['provider_cache']=provider_summary
         for root,stamp in archive_stamps:
             if asset_stamp(root,inspect)!=stamp:raise ValueError('A backup ZIP changed during the audit; capture again')
@@ -207,7 +210,18 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
     def unchanged(f):
         if not f['archive'] and (Path(f['source']).is_symlink() or asset_stamp(Path(f['source']),True)!=f['stamp']):
             raise ValueError('An asset changed during format inspection; capture again')
-    def stream(f):return f['archive'].open(f['source']) if f['archive'] else Path(f['source']).open('rb')
+    def stream(f):
+        if f['archive']:
+            return f['archive'].open(f['source'])
+        path = Path(f['source'])
+        if path.suffix.lower() == '.stems' and hasattr(os, 'O_NOATIME'):
+            # Recordbox uses last access to choose which saved separations to evict.
+            try:
+                return open(path, 'rb', opener=lambda name, flags: os.open(name, flags | os.O_NOATIME))
+            except OSError as error:
+                if error.errno not in (errno.EPERM, errno.EACCES, errno.EINVAL, errno.EOPNOTSUPP):
+                    raise
+        return path.open('rb')
     def wanted(f,prefix):
         name=basename(f['name'])
         if prefix.startswith(b'PMAI'):return PROBE_LIMIT
@@ -231,7 +245,7 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
         else:
             unchanged(f)
             try:
-                initial=min(f['bytes'],64,max_inspect_bytes-inspected)
+                initial=min(f['bytes'],16,max_inspect_bytes-inspected)
                 with stream(f) as reader:
                     prefix=reader.read(initial);inspected+=len(prefix)
                     limit=max(len(prefix),min(f['bytes'],wanted(f,prefix),max_inspect_bytes-inspected+len(prefix)))
@@ -245,7 +259,8 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
                         progress(75,'Reading bounded container metadata')
                         reader.seek(offset);value=reader.read(length);inspected+=len(value)
                         return value
-                    ready=len(prefix)==limit and len(prefix)>=min(f['bytes'],64)
+                    minimum=16 if prefix.startswith(b'PDSTEMS1') else 64
+                    ready=len(prefix)==limit and len(prefix)>=min(f['bytes'],minimum)
                     if len(prefix)!=limit:record.update(validation='corrupt',detail='Asset became shorter than its inventoried size')
                     elif not ready:record['detail']='Format inspection byte budget reached before the initial probe was complete'
                     elif prefix[4:8]==b'ftyp':record.update(inspect_format(f['name'],prefix,f['bytes'],read_at=read_at))

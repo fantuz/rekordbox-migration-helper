@@ -339,6 +339,28 @@ class FormatTests(unittest.TestCase):
         self.assertIsNone(r['native_stems_readiness'])
         self.assertEqual(self.inspect('name.stems',stems_bytes()[:16],len(stems_bytes()))['validation'],'recognized')
 
+    def test_recordbox_model_evidence_requires_both_a_generated_name_and_recognized_layout(self):
+        key = '0123456789abcdef01234567'
+        data = stems_bytes()
+        for model, variant in [('htdemucs', 'speed'), ('htdemucs_ft', 'quality')]:
+            name = f'{key}-{model}.stems'
+            result = self.inspect(name, data[:16], len(data))
+            self.assertEqual((result['recordbox_key'], result['recordbox_model'], result['recordbox_variant']),
+                             (key, model, variant))
+            self.assertEqual(result['recordbox_model_basis'], 'filename')
+            self.assertEqual(result['source_association'], 'unknown')
+            self.assertIsNone(result['native_stems_readiness'])
+            for invalid in (b'unknown', data[:12], data[:-1]):
+                self.assertNotIn('recordbox_variant', self.inspect(name, invalid))
+        for name in ('renamed.bin', f'{key}-future.stems', f'{key.upper()}-htdemucs.stems',
+                     f'{key}-HTDEMUCS.stems', f'{key}-htdemucs.STEMS',
+                     f'{key}-htdemucs.stems.tmp', f'{key}0-htdemucs.stems'):
+            with self.subTest(name=name):
+                result = self.inspect(name, data[:16], len(data))
+                self.assertEqual(result['validation'], 'recognized')
+                self.assertNotIn('recordbox_variant', result)
+                self.assertNotIn('recordbox_key', result)
+
     def test_recordbox_cache_retention_is_not_a_backup_or_preparation_guarantee(self):
         result=self.inspect('name.stems',stems_bytes())
         self.assertEqual(result['cache_retention'],'unknown')
@@ -392,6 +414,109 @@ class AuditTests(unittest.TestCase):
             for name,raw in self.files.items():z.writestr('PIONEER/'+name,raw)
 
     def audit(self,**kwargs):return audit_assets({'tracks':[]},kwargs.pop('source',str(self.folder)),lambda *_:None,inspect=True,**kwargs)
+
+    def test_recordbox_inventory_tallies_only_observed_layouts_and_reads_headers(self):
+        key = '1234567890abcdef12345678'
+        members = {f'stems/{key}-htdemucs.stems': stems_bytes(20),
+                   f'stems/{key}-htdemucs_ft.stems': stems_bytes(20),
+                   'stems/renamed.bin': stems_bytes(30),
+                   f'stems/{"0"*24}-htdemucs.stems': stems_bytes(5)[:-1]}
+        folder = self.root / 'saved'
+        for name, data in members.items():
+            path = folder / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        with zipfile.ZipFile(self.archive, 'w') as archive:
+            for name, data in members.items():
+                archive.writestr(name, data)
+
+        for source in (folder, self.archive):
+            with self.subTest(source=source):
+                summary, rows = self.audit(source=str(source), max_inspect_bytes=64)
+                inspection = summary['format_inspection']
+                self.assertEqual(inspection['bytes_inspected'], 64)
+                self.assertEqual(inspection['corrupt'], 1)
+                self.assertEqual(inspection['recordbox_saved_stems'],
+                                 {'speed_files': 1, 'quality_files': 1, 'unidentified_files': 1,
+                                  'recognized_bytes': 2*len(stems_bytes(20)) + len(stems_bytes(30)),
+                                  'paired_keys': 1, 'ambiguous_keys': 0})
+                pair, = (r for r in rows if r['section'] == 'recordbox_stems_pair')
+                self.assertEqual(pair['recordbox_key'], key)
+                self.assertTrue(pair['matching_frame_counts'])
+                self.assertEqual(pair['speed_bytes'], len(stems_bytes(20)))
+                self.assertEqual(pair['bytes'], pair['quality_bytes'] + pair['speed_bytes'])
+                self.assertEqual(pair['source_association'], 'unknown')
+                self.assertEqual(pair['cache_state'], 'present')
+                self.assertIsNone(pair['native_stems_readiness'])
+                self.assertFalse(any(k.startswith('_') for k in pair))
+        for name, data in members.items():
+            self.assertEqual((folder / name).read_bytes(), data)
+        summary, rows = self.audit(source=str(folder), max_inspect_bytes=15)
+        self.assertEqual(summary['format_inspection']['recordbox_saved_stems']['recognized_bytes'], 0)
+        self.assertFalse(any(r['section'] == 'recordbox_stems_pair' for r in rows))
+
+    def test_recordbox_pairing_respects_zip_and_directory_boundaries_and_flags_different_frames(self):
+        key = 'a'*24
+        speed, quality = f'{key}-htdemucs.stems', f'{key}-htdemucs_ft.stems'
+        second = self.root / 'second.zip'
+        with zipfile.ZipFile(self.archive, 'w') as archive:
+            archive.writestr('stems/' + speed, stems_bytes(4))
+            archive.writestr('copy/' + quality, stems_bytes(4))
+        with zipfile.ZipFile(second, 'w') as archive:
+            archive.writestr('stems/' + quality, stems_bytes(4))
+        sources = [str(self.archive), str(second)]
+        summary, rows = self.audit(source=sources)
+        self.assertEqual(summary['format_inspection']['recordbox_saved_stems']['paired_keys'], 0)
+        self.assertFalse(any(r['section'] == 'recordbox_stems_pair' for r in rows))
+        with zipfile.ZipFile(second, 'a') as archive:
+            archive.writestr('stems/' + speed, stems_bytes(5))
+        summary, rows = self.audit(source=sources)
+        pair, = (r for r in rows if r['section'] == 'recordbox_stems_pair')
+        self.assertEqual(pair['scope'], str(second))
+        self.assertEqual((pair['speed_frames'], pair['quality_frames']), (5, 4))
+        self.assertFalse(pair['matching_frame_counts'])
+        self.assertEqual((pair['severity'], pair['cache_state']), ('review', 'unknown'))
+        self.assertIn('frame counts differ', pair['detail'])
+        self.assertEqual(summary['format_inspection']['recordbox_saved_stems']['paired_keys'], 1)
+
+    def test_recordbox_zip_aliases_prevent_pairing_even_if_the_duplicate_is_corrupt(self):
+        key = 'b'*24
+        with zipfile.ZipFile(self.archive, 'w') as archive:
+            archive.writestr(f'stems/{key}-htdemucs.stems', stems_bytes())
+            archive.writestr(f'stems/./{key}-htdemucs.stems', b'PDSTEMS1')
+            archive.writestr(f'stems/{key}-htdemucs_ft.stems', stems_bytes())
+        summary, rows = self.audit(source=str(self.archive))
+        inventory = summary['format_inspection']['recordbox_saved_stems']
+        self.assertEqual((inventory['paired_keys'], inventory['ambiguous_keys']), (0, 1))
+        self.assertEqual(inventory['recognized_bytes'], 2*len(stems_bytes()))
+        files = [r for r in rows if r['section'] == 'stems_cache']
+        self.assertEqual(len(files), 3)
+        self.assertTrue(all(r['severity'] == 'review' and 'ambiguous' in r['detail'] for r in files))
+        self.assertTrue(all(r['recordbox_pair_ambiguous'] for r in files))
+        self.assertFalse(any(r['section'] == 'recordbox_stems_pair' for r in rows))
+
+    def test_recordbox_pair_requires_final_validation_after_an_optional_hash_read_fails(self):
+        speed = 'd'*24 + '-htdemucs.stems'
+        quality = 'd'*24 + '-htdemucs_ft.stems'
+        with zipfile.ZipFile(self.archive, 'w') as archive:
+            for member in (speed, quality):
+                archive.writestr(member, stems_bytes())
+        open_member = zipfile.ZipFile.open
+        quality_reads = 0
+        def fail_second_read(archive, member):
+            nonlocal quality_reads
+            if member == quality:
+                quality_reads += 1
+                if quality_reads == 2:
+                    raise OSError('Could not finish reading this member')
+            return open_member(archive, member)
+        with patch.object(zipfile.ZipFile, 'open', fail_second_read):
+            summary, rows = self.audit(source=str(self.archive), verify=True)
+        inventory = summary['format_inspection']['recordbox_saved_stems']
+        self.assertEqual((inventory['speed_files'], inventory['quality_files'], inventory['paired_keys']), (1, 0, 0))
+        failed, = (r for r in rows if r.get('checksum_status') == 'failed')
+        self.assertEqual((failed['title'], failed['validation']), (quality, 'not_checked'))
+        self.assertFalse(any(r['section'] == 'recordbox_stems_pair' for r in rows))
 
     def test_zip_and_folder_parity_hashing_and_preservation(self):
         original=self.archive.read_bytes();left,rows=self.audit(verify=True);right,zrows=self.audit(source=str(self.archive),verify=True)

@@ -1,10 +1,10 @@
 """Bounded, read-only format evidence. Structural validity never proves playback readiness."""
 from collections import Counter
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 import binascii
 import struct
 from native_embedding import embedding_owner
-from stems_formats import inspect_iso,inspect_cache_file,ContainerLimit
+from stems_formats import inspect_iso,inspect_cache_file,ContainerLimit,RECORDBOX_SAVED_NAME
 
 SETTINGS = {'mysetting.dat':40, 'mysetting2.dat':40, 'devsetting.dat':32, 'djmmysetting.dat':52}
 CATALOGS = {'export.pdb', 'exportext.pdb', 'exportlibrary.db'}
@@ -26,7 +26,6 @@ def inspect_format(name, prefix, size,read_at=None,provider_context=False):
     """Inspect a bounded prefix and independently supplied logical size, without allocations from headers."""
     result = {'validation':'unsupported', 'format':'unknown', 'detail':'Filename candidate; binary format is unrecognized',
               'native_stems_readiness':None, 'source_association':'unknown'}
-    name = basename(name)
     def finish(state, kind, detail, **facts):
         return {**result, 'validation':state, 'format':kind, 'detail':detail, **facts}
     if prefix.startswith(b'PDSTEMS1'):
@@ -37,13 +36,22 @@ def inspect_format(name, prefix, size,read_at=None,provider_context=False):
             return finish('corrupt', 'recordbox_stems_v1', 'Invalid STEMS frame count or body length', frames=frames)
         if frames > MAX_STEM_FRAMES:
             return finish('not_checked', 'recordbox_stems_v1', 'STEMS duration exceeds the bounded inspection policy',frames=frames)
-        return finish('recognized', 'recordbox_stems_v1',
-                      'Recordbox four-source cache layout recognized; source audio, model and native readiness are unknown',
+        saved_name = RECORDBOX_SAVED_NAME.fullmatch(Path(str(name)).name)
+        identity = {}
+        detail = 'Recordbox four-source cache layout recognized. The filename does not identify a saved model.'
+        if saved_name:
+            key, model = saved_name.groups()
+            variant = 'speed' if model == 'htdemucs' else 'quality'
+            identity = {'recordbox_key':key, 'recordbox_model':model, 'recordbox_variant':variant,
+                        'recordbox_model_basis':'filename'}
+            detail = f'Recordbox four-source cache layout recognized. The filename identifies the {variant} model ({model}).'
+        return finish('recognized', 'recordbox_stems_v1', detail, **identity,
                       frames=frames, duration_seconds=frames/44100, sample_rate=44100, channels=8,
                       source_order=['drums','bass','other','vocals'], encoding='planar_pcm16_le',
                       payload_verified=False, association_metadata_present=False,
                       cache_retention='unknown', cache_eviction_possible=True,
                       cache_lifecycle_note='Current Recordbox source can evict caches to enforce a disk budget; retention is not recorded in this header')
+    name = basename(name)
     if name in SETTINGS:
         if len(prefix) < 108 or size < 108:
             return finish('corrupt', 'player_settings', 'Truncated player-settings header')
