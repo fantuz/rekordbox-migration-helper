@@ -55,7 +55,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
         folder['files'].append(record)
         ext=Path(record['name']).suffix.casefold() or '(none)';extension_counts[ext]['files']+=1;extension_counts[ext]['bytes']+=record['bytes']
     with ExitStack() as stack:
-        archive_stamps=[]
+        archive_stamps=[];incomplete_archives=set()
         for root in roots:
             if exceeded():partial=True;warnings.append('Inventory budget reached; selected scopes were only partially inspected.');break
             scope=str(root);scopes.append({'path':scope,'kind':'ZIP' if root.is_file() else 'folder'})
@@ -68,7 +68,10 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                 archive_names=set()
                 for info in archive.infolist():
                     files_seen+=1
-                    if exceeded():partial=True;break
+                    if exceeded():
+                        partial=True
+                        incomplete_archives.add(scope)
+                        break
                     name=info.filename.replace('\\','/');reference=analysis_folder(name)
                     parts=Path(name).parts
                     if name.startswith('/') or '..' in parts or ':' in name or name in archive_names or stat.S_ISLNK(info.external_attr>>16):
@@ -173,7 +176,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
             inspection_summary['tempo_disagreements']=len(comparisons)
             provider_rows,provider_summary=provider_report(inspection_rows,roots,profile or stems_context(),progress,
                 started+max_seconds,inventory_complete=not partial and not warnings,source_aliases=source_aliases)
-            pairs,inspection_summary['recordbox_saved_stems']=recordbox_inventory(inspection_rows,progress)
+            pairs,inspection_summary['recordbox_saved_stems']=recordbox_inventory(inspection_rows,progress,incomplete_archives)
             for record in inspection_rows:
                 for key in list(record):
                     if key.startswith('_'):record.pop(key)
@@ -214,13 +217,15 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
         if f['archive']:
             return f['archive'].open(f['source'])
         path = Path(f['source'])
-        if path.suffix.lower() == '.stems' and hasattr(os, 'O_NOATIME'):
-            # Recordbox uses last access to choose which saved separations to evict.
-            try:
-                return open(path, 'rb', opener=lambda name, flags: os.open(name, flags | os.O_NOATIME))
-            except OSError as error:
-                if error.errno not in (errno.EPERM, errno.EACCES, errno.EINVAL, errno.EOPNOTSUPP):
-                    raise
+        if path.suffix.lower() == '.stems':
+            if hasattr(os, 'O_NOATIME'):
+                # Recordbox uses last access to choose which saved separations to evict.
+                try:
+                    return open(path, 'rb', buffering=0, opener=lambda name, flags: os.open(name, flags | os.O_NOATIME))
+                except OSError as error:
+                    if error.errno not in (errno.EPERM, errno.EACCES, errno.EINVAL, errno.EOPNOTSUPP):
+                        raise
+            return path.open('rb', buffering=0)
         return path.open('rb')
     def wanted(f,prefix):
         name=basename(f['name'])
@@ -284,7 +289,10 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
                         if complete and actual==f['bytes']:
                             record.update(checksum_status='computed',sha256=digest.hexdigest(),zip_crc_verified=bool(f['archive']),
                                           checksum_basis='SHA-256 fingerprint computed; no trusted reference digest was supplied')
-                        else:record['checksum_status']='time_budget_exceeded' if not complete else 'size_mismatch'
+                        elif complete:
+                            record.update(checksum_status='size_mismatch',validation='corrupt',
+                                          detail=f'Full read returned {actual} bytes. The inventoried size is {f["bytes"]} bytes.')
+                        else:record['checksum_status']='time_budget_exceeded'
             except OperationCancelled:raise
             except (OSError,zipfile.BadZipFile,RuntimeError) as error:
                 record.update(validation='corrupt' if isinstance(error,zipfile.BadZipFile) else 'not_checked',
@@ -295,6 +303,8 @@ def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,dea
                          'device_sql':('device_catalog','rekordbox'),'onelibrary_catalog':('device_catalog','rekordbox'),
                          'recordbox_stems_v1':('separation_cache','recordbox'),'rbsc_candidate':('capture','rekordbox')}.get(kind,('candidate','unknown'))
         record.setdefault('asset_family',family);record.setdefault('provider',provider)
+        if record.get('cache_state')=='present' and record['validation']!='recognized':
+            record['cache_state']='unknown'
         if kind=='recordbox_stems_v1':record.setdefault('cache_state','present' if record['validation']=='recognized' else 'unknown')
         record['severity']='info' if record['validation']=='recognized' else 'review'
         record['section']={'anlz':'analysis_format','anlz_3ex':'analysis_format','player_settings':'player_settings','device_sql':'device_catalog',

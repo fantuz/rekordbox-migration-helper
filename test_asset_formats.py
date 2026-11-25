@@ -1,6 +1,7 @@
 """Invented binary layouts only; no model weights, personal libraries or audio."""
 from copy import deepcopy
 from hashlib import sha256
+from io import BytesIO
 from pathlib import Path
 import binascii
 import json
@@ -439,7 +440,7 @@ class AuditTests(unittest.TestCase):
                 self.assertEqual(inspection['recordbox_saved_stems'],
                                  {'speed_files': 1, 'quality_files': 1, 'unidentified_files': 1,
                                   'recognized_bytes': 2*len(stems_bytes(20)) + len(stems_bytes(30)),
-                                  'paired_keys': 1, 'ambiguous_keys': 0})
+                                  'paired_keys': 1, 'ambiguous_keys': 0, 'unconfirmed_pairs': 0})
                 pair, = (r for r in rows if r['section'] == 'recordbox_stems_pair')
                 self.assertEqual(pair['recordbox_key'], key)
                 self.assertTrue(pair['matching_frame_counts'])
@@ -517,6 +518,69 @@ class AuditTests(unittest.TestCase):
         failed, = (r for r in rows if r.get('checksum_status') == 'failed')
         self.assertEqual((failed['title'], failed['validation']), (quality, 'not_checked'))
         self.assertFalse(any(r['section'] == 'recordbox_stems_pair' for r in rows))
+
+    def test_truncated_zip_withholds_only_its_own_apparent_recordbox_pair(self):
+        key = 'e'*24
+        speed = f'{key}-htdemucs.stems'
+        quality = f'{key}-htdemucs_ft.stems'
+        second = self.root / 'second.zip'
+        for path in (self.archive, second):
+            with zipfile.ZipFile(path, 'w') as archive:
+                archive.writestr(speed, stems_bytes())
+                archive.writestr(quality, stems_bytes())
+                if path == second:
+                    archive.writestr('./' + quality, stems_bytes())
+        sources = [str(self.archive), str(second)]
+        summary, rows = self.audit(source=sources, max_files=5)
+        inventory = summary['format_inspection']['recordbox_saved_stems']
+        self.assertFalse(summary['inventory_complete'])
+        self.assertEqual((inventory['speed_files'], inventory['quality_files']), (2, 2))
+        self.assertEqual((inventory['paired_keys'], inventory['unconfirmed_pairs'], inventory['ambiguous_keys']), (1, 1, 0))
+        pair, = (r for r in rows if r['section'] == 'recordbox_stems_pair')
+        self.assertEqual(pair['scope'], str(self.archive))
+        summary, rows = self.audit(source=sources)
+        inventory = summary['format_inspection']['recordbox_saved_stems']
+        self.assertTrue(summary['inventory_complete'])
+        self.assertEqual((inventory['paired_keys'], inventory['unconfirmed_pairs'], inventory['ambiguous_keys']), (1, 0, 1))
+
+    def test_completed_verification_with_short_stream_overrides_earlier_format_evidence(self):
+        speed = 'c'*24 + '-htdemucs.stems'
+        quality = 'c'*24 + '-htdemucs_ft.stems'
+        marker = '.rbstemsplus-cache'
+        members = {speed: stems_bytes(), quality: stems_bytes(),
+                   marker: b'id=11111111-2222-4333-8444-555555555555\nformat=rbstems-v1\n'}
+        with zipfile.ZipFile(self.archive, 'w') as archive:
+            for name, data in members.items():
+                archive.writestr(name, data)
+        open_member = zipfile.ZipFile.open
+        opened = set()
+        def read_member(archive, name):
+            if name in opened and name != speed:
+                return BytesIO(members[name][:-1])
+            opened.add(name)
+            return open_member(archive, name)
+        with patch.object(zipfile.ZipFile, 'open', read_member):
+            summary, rows = self.audit(source=str(self.archive), verify=True)
+        inventory = summary['format_inspection']['recordbox_saved_stems']
+        self.assertEqual((inventory['speed_files'], inventory['quality_files'], inventory['paired_keys']), (1, 0, 0))
+        self.assertEqual(inventory['recognized_bytes'], len(members[speed]))
+        short_reads = [r for r in rows if r.get('checksum_status') == 'size_mismatch']
+        self.assertEqual({r['title'] for r in short_reads}, {quality, marker})
+        for row in short_reads:
+            self.assertEqual((row['validation'], row['severity'], row['cache_state']), ('corrupt', 'review', 'unknown'))
+            self.assertIn(f'Full read returned {row["bytes"]-1} bytes', row['detail'])
+            self.assertNotIn('sha256', row)
+
+    def test_unrelated_zip_members_with_recordbox_names_do_not_create_recordbox_findings(self):
+        speed = 'f'*24 + '-htdemucs.stems'
+        quality = 'f'*24 + '-htdemucs_ft.stems'
+        with zipfile.ZipFile(self.archive, 'w') as archive:
+            for name in (speed, './' + speed, quality):
+                archive.writestr(name, b'Plain text')
+        summary, rows = self.audit(source=str(self.archive))
+        self.assertEqual(summary['format_inspection']['unsupported'], 3)
+        self.assertFalse(any(summary['format_inspection']['recordbox_saved_stems'].values()))
+        self.assertFalse(any(r.get('provider') == 'recordbox' or r.get('recordbox_pair_ambiguous') for r in rows))
 
     def test_zip_and_folder_parity_hashing_and_preservation(self):
         original=self.archive.read_bytes();left,rows=self.audit(verify=True);right,zrows=self.audit(source=str(self.archive),verify=True)

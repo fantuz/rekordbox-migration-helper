@@ -9,15 +9,18 @@ from stems_formats import HEX64,CACHE_FOLDERS,RECORDBOX_SAVED_NAME
 from stems_eligibility import namespace_status,cache_profile
 
 
-def recordbox_inventory(rows, progress):
+def recordbox_inventory(rows, progress, incomplete_archives):
     """Group observed model filenames within one directory of one folder or ZIP inventory."""
     summary = {'speed_files': 0, 'quality_files': 0, 'unidentified_files': 0,
-               'recognized_bytes': 0, 'paired_keys': 0, 'ambiguous_keys': 0}
+               'recognized_bytes': 0, 'paired_keys': 0, 'ambiguous_keys': 0, 'unconfirmed_pairs': 0}
     groups = defaultdict(lambda: defaultdict(list))
+    def recognized(row):
+        return row['format'] == 'recordbox_stems_v1' and row['validation'] == 'recognized'
+
     for index, row in enumerate(rows):
         if index % 250 == 0:
             progress(85, 'Grouping saved Recordbox STEMS')
-        if row['format'] == 'recordbox_stems_v1' and row['validation'] == 'recognized':
+        if recognized(row):
             summary[row.get('recordbox_variant', 'unidentified') + '_files'] += 1
             summary['recognized_bytes'] += row['bytes']
         # Include unchecked or damaged canonical names when detecting duplicate ZIP aliases.
@@ -34,6 +37,8 @@ def recordbox_inventory(rows, progress):
         if index % 250 == 0:
             progress(85, 'Checking saved Recordbox model pairs')
         if any(len(members) > 1 for members in models.values()):
+            if not any(recognized(row) for members in models.values() for row in members):
+                continue
             summary['ambiguous_keys'] += 1
             for members in models.values():
                 for row in members:
@@ -44,8 +49,11 @@ def recordbox_inventory(rows, progress):
         if len(models) != 2:
             continue
         speed, quality = models['htdemucs'][0], models['htdemucs_ft'][0]
-        if any(row['format'] != 'recordbox_stems_v1' or row['validation'] != 'recognized'
-               for row in (speed, quality)):
+        if not (recognized(speed) and recognized(quality)):
+            continue
+        if archive in incomplete_archives:
+            # A later member may alias either observed filename.
+            summary['unconfirmed_pairs'] += 1
             continue
         same_frames = speed['frames'] == quality['frames']
         detail = ('The speed and quality filenames share a cache key in this directory. ' +

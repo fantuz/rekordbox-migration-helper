@@ -28,7 +28,7 @@ window.addEventListener('workbench-language',wrap(async()=>{
   try{
     await refresh();
     if(selected)renderDetail();
-    const loaders={musicbrainz:loadMusicBrainz,journeys:()=>GuidedJourneys.load(),investigations:()=>Investigations.load(),review:()=>NativeCollection.update('review'),reference:()=>NativeCollection.update('reference'),history:loadHistory,insights:loadDJInsights,bubbles:loadBubbleExplorer,tonality:loadTonalityInsights,docs:loadDocumentation,intelligence:()=>Intelligence.load()};
+    const loaders={lab:()=>$('#lab-report-select').value && labLoadReport(),musicbrainz:loadMusicBrainz,journeys:()=>GuidedJourneys.load(),investigations:()=>Investigations.load(),review:()=>NativeCollection.update('review'),reference:()=>NativeCollection.update('reference'),history:loadHistory,insights:loadDJInsights,bubbles:loadBubbleExplorer,tonality:loadTonalityInsights,docs:loadDocumentation,intelligence:()=>Intelligence.load()};
     if(loaders[view])await loaders[view]();
     if(track)await openTrackDetails(track.snapshot,track.trackId);
     const titles={'collection-cleanup':'Collection cleanup',musicbrainz:'MusicBrainz',journeys:'Library journeys',investigations:'Saved investigations',files:'Library preparation',analyzer:'Source analysis',storage:'Cloud and local storage',quick:'Share & offline summary',review:'Duplicate review',reference:'File references',activity:'Activity and reports',statistics:'Collection statistics',inventory:'Media inventory',exports:'Library export',lab:'Library lab',intelligence:'Library intelligence',history:'Play history',insights:'DJ insights',bubbles:'Library bubbles',tonality:'Tonality and tempo',docs:'Documentation'};
