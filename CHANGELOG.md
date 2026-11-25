@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-- Library lab reports how much space saved Recordbox STEMS occupy and which cache keys have both a speed and a quality version. Check a selected folder or ZIP before moving your library.
+## 1.3.1 — 2026-11-26
+
+- Before moving a Recordbox library, open **Library lab → Formats & STEMS** or **STEMS workflows** and select the saved STEMS folder or its backup ZIP. The report counts speed and sound-quality files, shows their total uncompressed size, and lists cache keys with both versions in the same folder.
+- Review pairs with different frame counts. Ambiguous ZIP names and incomplete archive scans are flagged. A renamed file with a valid cache header still counts toward the storage total, with its model shown as unknown.
+- On Linux, scanning a local `.stems` file preserves its access time where the filesystem permits, so checking a live cache can leave Recordbox's eviction order intact.
 
 ## 1.3.0 — 2026-11-25
 
