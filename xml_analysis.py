@@ -31,7 +31,11 @@ def analyze_xml(source,output,progress):
                  'size':a.get('Size'),'sample_rate':a.get('SampleRate'),'current_path':a.get('Location'),'manual_cues':len(marks)-auto,'auto_cues':auto,
                  'comment':a.get('Comments'),'tonality':a.get('Tonality'),**xml_colour(a.get('Colour'))})
         t.update(cues=None,raw_tags={'year':a.get('Year'),'bpm':a.get('AverageBpm'),'duration':a.get('TotalTime'),'rating':rating},uuid=None,isrc=a.get('ISRC',''),
-                 xml_bpm=finite(a.get('AverageBpm')),grid_bpms=list(record['grid_bpms']))
+                 xml_bpm=finite(a.get('AverageBpm')),grid_bpms=list(record['grid_bpms']),tempo_markers=record['tempo'])
+        # Preserve distinctions in all exported catalog fields, including ones not displayed by Workbench.
+        fields={k:v for k,v in a.items() if k not in ('TrackID','Location')}
+        t['cleanup_metadata']=sha256(json.dumps(fields,sort_keys=True).encode()).hexdigest()
+        if a.get('Rating') and rating is None:t['cleanup_links']=['unknown_metadata']
         tracks.append(t);by_location[path_key(a.get('Location'))].append(identity)
     lookup={t['id']:t for t in tracks};playlists=[];stack=[];scope='';unresolved=0;unsupported_keys=set()
     parser=expat.ParserCreate()
@@ -64,6 +68,8 @@ def analyze_xml(source,output,progress):
     captured=datetime.now(timezone.utc).isoformat();output.mkdir(parents=True,exist_ok=True)
     metadata={'schema':1,'source_kind':'rekordbox XML metadata export','scope':'xml','version':version or None,'captured':captured,'scope_key':'capture:'+output.name,
               'colour_edit_support':xml_colour_support(),'tracks':tracks,'playlists':playlists,'asset_references':[],'capabilities':{'cue_positions':False,'playlist_order':True,'analysis_references':False,'history_details':False,'history_order':False},
+              'cleanup_coverage':{'version':1,'scope':'xml','complete':not unresolved and not unsupported_keys,
+                                  'gaps':['unresolved_playlist_links'] if unresolved or unsupported_keys else []},
               'cue_basis':'Counts of exported XML markers only; absence in XML does not establish absence in the native library.'}
     for name in ('metadata.json','comparison.json'):(output/name).write_text(json.dumps(metadata,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
     counters={'tracks':len(tracks),'artists':len({t['artist'].casefold() for t in tracks if t['artist']}),'albums':len({t['album'].casefold() for t in tracks if t['album']}),

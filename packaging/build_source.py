@@ -24,7 +24,7 @@ def main():
     files+=[ROOT/"docs"/"screenshots"/name for name in ("readme-library-insights.png","readme-track-editor.png","readme-playlist-explorer.png",
                                                        "musicbrainz-enrichment-real.webp","library-bubbles-real.webp",
                                                        "formats-stems.png","native-source-insights.png","stems-workflows.png","onetagger-results.png","onetagger-page.png",
-                                                       "workflow-map.png","media-inventory.png","library-preparation.png","bubble-navigation.png",
+                                                       "workflow-map.png","media-inventory.png","collection-cleanup.png","library-preparation.png","bubble-navigation.png",
                                                        "compact-bubble-filters.png","collection-statistics-distributions.png",
                                                        "cloud-file-health-filters.png","cloud-track-confirmation.png",
                                                        "dropbox-setup.png","dropbox-confirmation.png","dropbox-play-confirmation.png",

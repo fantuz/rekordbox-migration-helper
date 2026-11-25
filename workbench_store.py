@@ -18,6 +18,21 @@ def now():return datetime.now(timezone.utc).isoformat()
 def encoded(value):return json.dumps(value,ensure_ascii=False,separators=(",",":"),allow_nan=False)
 
 
+def snapshot_record(payload, label, identity=None):
+    """Prepare an immutable snapshot before starting a publication transaction."""
+    identity = identity or uuid4().hex
+    created = now()
+    label = str(label).strip()[:160] or 'Library snapshot'
+    raw = encoded(dict(payload, id=identity, label=label, saved_at=created))
+    return dict(id=identity, label=label, created=created, source_kind=payload.get('source_kind'),
+                scope_key=payload.get('scope_key', identity), digest=sha256(raw.encode()).hexdigest(), payload=raw)
+
+
+def insert_snapshot(db, record):
+    db.execute('''INSERT INTO snapshots(id,label,created,source_kind,scope_key,digest,payload)
+                  VALUES (:id,:label,:created,:source_kind,:scope_key,:digest,:payload)''', record)
+
+
 class Store:
     def __init__(self,path):
         self.path=Path(path);self.path.parent.mkdir(parents=True,exist_ok=True)
@@ -80,12 +95,9 @@ class Store:
         with self.connection() as db:return [dict(r) for r in db.execute('SELECT id,label,created,source_kind,scope_key,digest FROM snapshots ORDER BY created DESC LIMIT 100')]
 
     def save_snapshot(self,payload,label):
-        payload=deepcopy(payload);identity=uuid4().hex;created=now()
-        # Keep the precise save moment separate from any older source-capture time.
-        payload.update(id=identity,label=str(label).strip()[:160] or 'Library snapshot',saved_at=created)
-        raw=encoded(payload);digest=sha256(raw.encode()).hexdigest()
-        with self.connection() as db:db.execute('INSERT INTO snapshots VALUES (?,?,?,?,?,?,?)',(identity,payload['label'],created,payload.get('source_kind'),payload.get('scope_key',identity),digest,raw))
-        return {"id":identity,"label":payload['label'],"created":created,"tracks":len(payload['tracks']),"digest":digest}
+        record=snapshot_record(payload,label)
+        with self.connection() as db:insert_snapshot(db,record)
+        return {**{key:record[key] for key in ('id','label','created','digest')},'tracks':len(payload['tracks'])}
 
     def snapshot(self,identity):
         with self.connection() as db:r=db.execute('SELECT payload FROM snapshots WHERE id=?',(identity,)).fetchone()
@@ -96,11 +108,16 @@ class Store:
         identity=uuid4().hex;created=now()
         with self.connection() as db:
             db.execute('INSERT INTO reports VALUES (?,?,?,?,?)',(identity,kind,created,encoded(sources),encoded(summary)))
-            db.executemany('INSERT INTO report_rows VALUES (?,?,?,?,?,?,?)',[(identity,n,r.get('section','info'),r.get('severity','info'),str(r.get('track_id','')),str(r).casefold(),encoded(r)) for n,r in enumerate(rows)])
+            records = ((identity, n, row.get('section', 'info'), row.get('severity', 'info'),
+                        str(row.get('track_id', '')), str(row).casefold(), encoded(row))
+                       for n, row in enumerate(rows))
+            db.executemany('INSERT INTO report_rows VALUES (?,?,?,?,?,?,?)', records)
         return {"id":identity,"kind":kind,"created":created,"summary":summary,"rows":len(rows)}
 
-    def reports(self):
-        with self.connection() as db:return [{**dict(r),'summary':json.loads(r['summary']),'sources':json.loads(r['sources'])} for r in db.execute('SELECT * FROM reports ORDER BY created DESC LIMIT 50')]
+    def reports(self, exclude_kind=None):
+        with self.connection() as db:
+            rows=db.execute('SELECT * FROM reports WHERE ? IS NULL OR kind!=? ORDER BY created DESC LIMIT 50',(exclude_kind,exclude_kind))
+            return [{**dict(r),'summary':json.loads(r['summary']),'sources':json.loads(r['sources'])} for r in rows]
 
     def report(self,identity,offset=0,section='',query='',all_rows=False,severity='',validation='',**filters):
         if severity not in ('','info','review','error'):raise ValueError('Choose a supported finding severity')

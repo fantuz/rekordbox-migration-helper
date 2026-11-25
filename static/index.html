@@ -11,6 +11,7 @@
 <link href="/static/readability.css" rel="stylesheet"/>
 <link href="/static/insights.css" rel="stylesheet"/><link href="/static/track-details.css" rel="stylesheet"/>
 <script src="/api/i18n.js"></script><script src="/static/i18n.js"></script><link href="/static/i18n.css" rel="stylesheet"/><link href="/static/workflow-map.css" rel="stylesheet"/><link href="/static/workspace-layout.css" rel="stylesheet"/><link href="/static/review-readability.css" rel="stylesheet"/><link href="/static/journeys.css" rel="stylesheet"/><link href="/static/sharing.css" rel="stylesheet"/><link href="/static/feature-entry.css" rel="stylesheet"/><link href="/static/navigation-colours.css" rel="stylesheet"/><link rel="stylesheet" href="/static/collection-views.css"/><link href="/static/language-layout.css" rel="stylesheet"/><link href="/static/header-information.css" rel="stylesheet"/><link href="/static/result-sorting.css" rel="stylesheet"/><link rel="stylesheet" href="/static/audio-paths.css"/><link href="/static/bubble-navigation.css" rel="stylesheet"/><link href="/static/cloud-file-health.css" rel="stylesheet"/><link href="/static/cloud-analysis.css" rel="stylesheet"/><link href="/static/display-preferences.css" rel="stylesheet"/><link href="/static/collection-navigation.css" rel="stylesheet"/><link href="/static/dropbox.css" rel="stylesheet"/><link href="/static/cloud-setup.css" rel="stylesheet"/><link href="/static/media-inventory.css" rel="stylesheet"/><link href="/static/inline-rating.css" rel="stylesheet"/>
+<link href="/static/collection-cleanup.css" rel="stylesheet"/>
 </head>
 <body>
 <aside class="sidebar">
@@ -34,6 +35,7 @@
 <section class="nav-group" data-nav-section="enrich"><h2 class="nav-group-title" data-i18n="Enrich">Enrich</h2><button class="nav" data-view="musicbrainz" data-i18n="MusicBrainz">MusicBrainz</button><button class="nav" data-view="onetagger" data-i18n="OneTagger bridge">OneTagger bridge</button></section>
 <section class="nav-group" data-nav-section="cleanup"><h2 class="nav-group-title" data-i18n="Cleanup &amp; migration">Cleanup &amp; migration</h2>
 <button class="nav" data-view="review"><span data-i18n="Duplicate review"> Duplicate review</span></button>
+<button class="nav" data-view="collection-cleanup" data-i18n="Collection cleanup">Collection cleanup</button>
 <button class="nav" data-view="inventory"><span data-i18n="Media inventory"> Media inventory</span></button>
 <button class="nav" data-view="file-health"><span data-i18n="File health">File health</span></button>
 <button class="nav" data-view="reference"><span data-i18n="File references"> File references</span></button>
@@ -102,6 +104,7 @@
 </section>
 <section class="view" hidden="" id="view-review">
 <div class="section-heading"><div><h2><span data-i18n="Duplicate review">Duplicate review </span><span class="subtle" id="pair-count"></span></h2><p data-i18n="Match the recording. Preserve the preparation.">Match the recording. Preserve the preparation.</p></div><div class="policy-control"><label data-i18n="After cues, prefer" for="policy">After cues, prefer</label><select id="policy"><option data-i18n="Newest added" value="newest">Newest added</option><option data-i18n="Last played" value="last_played">Last played</option><option data-i18n="Highest play count" value="play_count">Highest play count</option></select></div></div>
+<button class="text-button" type="button" data-cleanup-from="review" data-i18n="Collection cleanup">Collection cleanup</button>
 <p class="subtle" id="review-scope"><span data-i18n="All track lengths · change the range in Collection statistics">All track lengths · change the range in Collection statistics</span></p><div class="rule-note"><span>✦</span><div data-i18n="{slot0} A sibling with cues beyond automatic labels takes priority. Dates and usage break ties. {slot1}"><strong data-i18n="Cues guide the keeper.">Cues guide the keeper.</strong> A sibling with cues beyond automatic labels takes priority. Dates and usage break ties. <span class="subtle" data-i18n="Cue origin is inferred from saved labels.">Cue origin is inferred from saved labels.</span></div></div>
 <details class="evidence-panel"><summary data-i18n="Metadata and media filters">Metadata and media filters</summary><div class="advanced-filters">
 <label><span data-i18n="Album">Album</span><input id="filter-album" placeholder="Contains" data-i18n-placeholder="Contains"/></label><label><span data-i18n="Artist / author">Artist / author</span><input id="filter-artist" placeholder="Contains" data-i18n-placeholder="Contains"/></label>
@@ -183,8 +186,49 @@
 </section>
 <section class="view" hidden="" id="view-journeys"><div id="guided-journeys"></div></section>
 <section class="view" hidden="" id="view-investigations"><div class="section-heading"><h2 data-i18n="Saved investigations">Saved investigations</h2></div><div id="investigations-content"></div></section>
+<section class="view" hidden id="view-collection-cleanup">
+  <div class="section-heading"><p data-i18n="Review references by drive before creating a cleaned snapshot. Audio files and the original collection stay in place.">Review references by drive before creating a cleaned snapshot. Audio files and the original collection stay in place.</p></div>
+  <article class="wide-card">
+    <div class="file-health-controls"><label><span data-i18n="Source">Source</span><select id="cc-source"></select></label>
+      <button class="button" id="cc-scan" disabled data-i18n="Scan references">Scan references</button></div>
+    <label id="cc-compare-label" class="cc-check" hidden><input id="cc-compare" type="checkbox"><span data-i18n="My Music folder is always available offline and outside all sync services. Compare complete files of matching size (up to 8 GiB).">My Music folder is always available offline and outside all sync services. Compare complete files of matching size (up to 8 GiB).</span></label>
+    <p id="cc-host-note" class="cc-note" hidden data-i18n="Review only on this host. Open Workbench on the original Windows or macOS computer to create a cleaned snapshot.">Review only on this host. Open Workbench on the original Windows or macOS computer to create a cleaned snapshot.</p>
+    <div id="cc-save-hint" hidden><p data-i18n="Save this source as a snapshot and scan it again to prepare a copy.">Save this source as a snapshot and scan it again to prepare a copy.</p><button class="button secondary small" id="cc-save" data-i18n="Save snapshot">Save snapshot</button></div>
+    <label id="cc-report-label" class="cc-report-select" hidden><span data-i18n="Saved report">Saved report</span><select id="cc-report"></select></label>
+    <p role="status" id="cc-message" class="subtle"></p>
+  </article>
+  <article class="wide-card" id="cc-results" hidden>
+    <div class="section-heading"><h2 data-i18n="File references">File references</h2><span id="cc-time" class="subtle"></span></div>
+    <p id="cc-gates" class="cc-note" hidden></p>
+    <button class="button secondary small" id="cc-parent" hidden data-i18n="Open original snapshot">Open original snapshot</button>
+    <div id="cc-counts" class="cc-counts"></div>
+    <div id="cc-drives" class="native-table"></div>
+    <details id="cc-evidence" class="evidence-panel"><summary data-i18n="Protection reasons">Protection reasons</summary><dl id="cc-reasons"></dl></details>
+    <p id="cc-signals" class="subtle" hidden></p>
+    <p id="cc-hash" class="subtle" hidden></p>
+    <form id="cc-filters" class="file-health-controls">
+      <label><span data-i18n="Drive or volume">Drive or volume</span><select id="cc-volume"></select></label>
+      <label><span data-i18n="File status">File status</span><select id="cc-status"></select></label>
+      <label><span data-i18n="Filter">Filter</span><select id="cc-candidate"></select></label>
+      <label><span data-i18n="Search">Search</span><input id="cc-search" autocomplete="off" maxlength="200"></label>
+      <button class="button secondary" data-i18n="Apply filters">Apply filters</button>
+    </form>
+    <div id="cc-rows" class="native-table"></div>
+    <div class="lab-actions"><button class="button secondary small" id="cc-prev" data-i18n="Previous" disabled>Previous</button><span id="cc-page" aria-live="polite"></span><button class="button secondary small" id="cc-next" data-i18n="Next" disabled>Next</button></div>
+    <div id="cc-selection" class="lab-actions" hidden><span id="cc-selected" aria-live="polite"></span><button class="button secondary small" id="cc-clear" disabled data-i18n="Clear selection">Clear selection</button><button class="button" id="cc-review" data-i18n="Review selected references" disabled>Review selected references</button></div>
+  </article>
+  <article id="cc-output" class="wide-card" hidden><h2 data-i18n="Saved snapshot">Saved snapshot</h2><p id="cc-saved-name"></p><div class="lab-actions"><button class="button" id="cc-open-copy" data-i18n="Open cleaned snapshot">Open cleaned snapshot</button><button class="button secondary" id="cc-open-source" data-i18n="Open original snapshot">Open original snapshot</button></div></article>
+</section>
+<dialog id="cc-confirm-dialog" aria-labelledby="cc-confirm-title"><form id="cc-confirm-form">
+  <h2 id="cc-confirm-title" data-i18n="Create a cleaned snapshot">Create a cleaned snapshot</h2>
+  <p id="cc-confirm-source"></p><p id="cc-preview-counts"></p><ol id="cc-preview-rows"></ol>
+  <label class="cc-check"><input id="cc-original" type="checkbox"><span data-i18n="This is the computer used to import these tracks.">This is the computer used to import these tracks.</span></label>
+  <label class="cc-check"><input id="cc-local" type="checkbox"><span data-i18n="I checked that these paths are in my always-local Music folder outside all sync services.">I checked that these paths are in my always-local Music folder outside all sync services.</span></label>
+  <label><span id="cc-phrase-label"></span><input id="cc-phrase" autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr"></label>
+  <div class="lab-actions"><button class="button secondary" type="button" id="cc-cancel" data-i18n="Cancel">Cancel</button><button class="button" id="cc-apply" type="submit" disabled data-i18n="Create a cleaned snapshot">Create a cleaned snapshot</button></div>
+</form></dialog>
 <section class="view" hidden="" id="view-file-health">
-  <div class="section-heading"><div><span class="eyebrow" data-i18n="Cleanup & migration">Cleanup &amp; migration</span><h2 data-i18n="File health">File health</h2><p data-i18n="Explore file reachability across a saved library. Scan explicitly; nothing is deleted or changed.">Explore file reachability across a saved library. Scan explicitly; nothing is deleted or changed.</p></div></div>
+  <div class="section-heading"><div><span class="eyebrow" data-i18n="Cleanup & migration">Cleanup &amp; migration</span><h2 data-i18n="File health">File health</h2><p data-i18n="Explore file reachability across a saved library. Scan explicitly; nothing is deleted or changed.">Explore file reachability across a saved library. Scan explicitly; nothing is deleted or changed.</p></div><button class="button secondary small" type="button" data-cleanup-from="file-health" data-i18n="Collection cleanup">Collection cleanup</button></div>
   <article class="wide-card"><div class="file-health-controls">
     <label><span data-i18n="Source snapshot">Source snapshot</span><select id="file-health-source"></select></label>
     <label><span data-i18n="Cloud location">Cloud location</span><select id="file-health-provider"><option value="all" data-i18n="All locations">All locations</option><option value="dropbox">Dropbox</option><option value="google_drive">Google Drive</option><option value="other" data-i18n="No cloud match">No cloud match</option><option value="unknown" data-i18n="Not classified">Not classified</option></select></label>
@@ -385,6 +429,7 @@
 <script src="/static/workspace-maintenance.js"></script>
 <script src="/static/collection-views.js"></script>
 <script src="/static/file-health.js"></script>
+<script src="/static/collection-cleanup.js"></script>
 <script src="/static/media-inventory.js"></script>
 <script src="/static/path-display.js"></script>
 <script src="/static/onetagger.js"></script>

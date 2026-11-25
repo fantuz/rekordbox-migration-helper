@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Review collection references by drive and see which ones have cloud, external media or DJ preparation evidence. A new confirmation flow on the original Windows or macOS computer creates a separate Library Workbench snapshot from the reviewed selection. The original snapshot remains available for recovery.
+
 ## 1.2.4 — 2026-11-20
 
 Library Workbench makes cloud scans easier to follow and helps DJs review collections shared across computers.

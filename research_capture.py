@@ -85,6 +85,8 @@ def capture_private_database(db,scope_key):
                                   'history_details':{'ID','DateCreated'}<=columns.get('djmdHistory',set()) and {'ContentID','HistoryID'}<=columns.get('djmdSongHistory',set()),
                                   'history_order':'TrackNo' in columns.get('djmdSongHistory',set()),
                                   'analysis_references':'AnalysisDataPath' in columns['djmdContent'] and 'Path' in columns.get('contentFile',set())})
+    from cleanup_capture import capture_links
+    capture_links(db,columns,snapshot)
     return snapshot
 
 

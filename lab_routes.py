@@ -7,7 +7,8 @@ import json
 import os
 from threading import Event,RLock
 
-from flask import jsonify,request
+from flask import abort,jsonify,request
+from file_health import local_request
 from engine import open_master
 from workbench_store import Store,encoded,now
 from research_capture import capture_private_database,capture_workspace,open_capture
@@ -89,7 +90,7 @@ def register(owner):
             with saved.connection() as db:
                 row=db.execute('SELECT id,label,created,source_kind,scope_key,digest FROM snapshots WHERE id=?',(selected[9:],)).fetchone()
             if row:snapshots.append(dict(row))
-        return jsonify(snapshots=snapshots,reports=saved.reports(),sources=sources,
+        return jsonify(snapshots=snapshots,reports=saved.reports(exclude_kind=None if local_request() else 'collection cleanup'),sources=sources,
                        workspace=current['id'] if current else None,musicbrainz_enabled=enabled(),
                        musicbrainz_forced_off=os.environ.get('LIBRARY_WORKBENCH_MUSICBRAINZ')=='0',speeds=SPEEDS,fields=[f for f in FIELDS if f not in FREE_FIELDS])
 
@@ -158,7 +159,12 @@ def register(owner):
     @app.get('/api/lab/reports/<identity>')
     @app.get('/api/lab/reports/<identity>/download')
     def lab_report(identity):
-        result=store().report(identity,request.args.get('offset',0),request.args.get('section',''),request.args.get('q',''),True,
+        saved=store()
+        if not local_request():
+            with saved.connection() as db:
+                if db.execute('SELECT 1 FROM reports WHERE id=? AND kind=?',(identity,'collection cleanup')).fetchone():
+                    abort(403,'Open this cleanup report on the computer running Library Workbench.')
+        result=saved.report(identity,request.args.get('offset',0),request.args.get('section',''),request.args.get('q',''),True,
                               severity=request.args.get('severity',''),validation=request.args.get('validation',''),
                               **{field:request.args.get(field,'') for field in REPORT_FILTERS})
         result=page_result(result,request.args,('section','severity','validation','title','artist','detail','track_id',*REPORT_FILTERS),full=request.path.endswith('/download'))
