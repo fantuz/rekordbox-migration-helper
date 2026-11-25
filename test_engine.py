@@ -1,8 +1,12 @@
 import tempfile
 import unittest
+import struct
 from collections import defaultdict
+from hashlib import sha256
 from pathlib import Path
-from engine import Catalog, parse_xml, path_key
+from engine import Catalog, GRID_HASH_PREFIX, analysis_fingerprints, parse_xml, path_key
+from native_grid import HASH_BLOCK_BEATS, xml_grid_beats
+from test_asset_formats import anlz_file,pqtz_section
 
 
 def cue(kind=1,start=1000,label="CUE(Auto)"):
@@ -21,6 +25,48 @@ def catalog(cues_a,cues_b):
 
 
 class KeeperTests(unittest.TestCase):
+    def test_bulk_grid_hash_matches_scalar_effective_beats_across_batches(self):
+        sequence=[(i%4+1,12000+i%100,100+i*444) for i in range(HASH_BLOCK_BEATS+2)]
+        for entries,shift in ((sequence,-31),(sequence,31),(sequence,0),
+                              ([(2,24444,0xfffffff0),(3,24000,0xffffffff)],32767)):
+            with self.subTest(shift=shift):
+                data=anlz_file(pqtz_section(entries,shift=shift))
+                expected=sha256()
+                for beat,bpm,ms in xml_grid_beats(data):
+                    expected.update(struct.pack('>HHQ',beat,bpm,ms))
+                self.assertEqual(analysis_fingerprints(data)[1],GRID_HASH_PREFIX+expected.hexdigest())
+
+    def test_bulk_grid_hash_rejects_invalid_later_batch_and_negative_shift(self):
+        prefix=[(i%4+1,12000,100+i*444) for i in range(HASH_BLOCK_BEATS)]
+        t=prefix[-1][2]
+        for entries,shift in ((prefix+[(2,12000,t)],0),(prefix+[(2,12000,t-1)],0),
+                              (prefix+[(2,0,t+444)],0),(prefix+[(5,12000,t+444)],0),
+                              ([(1,12000,1)],-2)):
+            data=anlz_file(pqtz_section(entries,shift=shift))
+            with self.assertRaises(ValueError):
+                list(xml_grid_beats(data))
+            self.assertIsNone(analysis_fingerprints(data)[1])
+
+    def test_duplicate_evidence_compares_effective_grid_timings(self):
+        def fingerprint(ms,shift):
+            return analysis_fingerprints(anlz_file(pqtz_section(((1,12800,ms),),shift=shift)))[1]
+        plain=fingerprint(257,0)
+        shifted=fingerprint(257,-7)
+        equivalent=fingerprint(250,0)
+        legacy='a'*64
+        c,p=catalog([],[])
+        for t in c.tracks.values():
+            t.update(title='Track',artist='',preview_sha256=None,current_path=None)
+        for first,second,agree,differ in ((plain,shifted,False,True),(shifted,equivalent,True,False),
+                                          (legacy,legacy,False,False),(legacy,shifted,False,False),
+                                          (plain,fingerprint(0,-7),False,False)):
+            with self.subTest(first=first,second=second):
+                c.tracks["a"]["grid_sha256"]=first
+                c.tracks["b"]["grid_sha256"]=second
+                row=c.describe(p)
+                self.assertEqual((row["evidence"]["grid_agrees"],row["evidence"]["grid_differs"]),(agree,differ))
+                self.assertEqual(row["grid_differs"],differ)
+
     def test_other_cues_outrank_recent_auto(self):
         c,p=catalog([cue(label="My transition")],[cue(),cue(2,2000)])
         self.assertEqual(c.preferred(p)[0],"a")

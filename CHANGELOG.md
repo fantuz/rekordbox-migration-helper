@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preview a 1 ms beat-grid nudge for a track in a paired XML and desktop backup ZIP. Library lab shows the first and last beat times and which analysis files change before you download a separate ZIP for comparison.
+- Recognize populated and cleared desktop secondary beat tables in Formats & STEMS. XML recovery now accounts for the native grid’s signed timing offset when placing tempo entries.
+- Duplicate review compares the effective beat times, tempos and beat numbers captured for each track. Reimport an older XML/ZIP pair to include the timing offset in its comparisons.
+
 ## 1.2.4 — 2026-11-20
 
 Library Workbench makes cloud scans easier to follow and helps DJs review collections shared across computers.

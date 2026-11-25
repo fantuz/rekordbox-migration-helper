@@ -59,7 +59,7 @@ function renderEvidence(facets) {
 }
 function $$(s) {return [...document.querySelectorAll(s)];}
 async function api(url, options = {}) {
-  const {feedback=true,...requestOptions}=options;
+  const {feedback=true,download=false,...requestOptions}=options;
   const finish=feedback?Activity.begin():()=>{};
   const mutation=options.method && options.method!=='GET';if(mutation)mutatingRequests++;
   try{
@@ -69,6 +69,7 @@ async function api(url, options = {}) {
     if(res.ok && mutation && session?.id===workspace?.id && session?.revision===workspace?.revision &&
        res.headers.get('X-Workbench-Workspace')===workspace?.id)
       session.revision=res.headers.get('X-Workbench-Revision');
+    if(res.ok && download)return await res.blob();
     const body = await res.json();
     if (!res.ok) {
       if(res.status===409 && body.conflict==='workspace')window.dispatchEvent(new CustomEvent('workbench-stale',{detail:{url}}));

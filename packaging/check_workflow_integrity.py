@@ -222,6 +222,8 @@ def main():
             assert response.ok and response.json()['scan']['report']['digest']==bridge['report_digest']
             assert response.json()['scan']['review_revision']==bridge['review_revision']
             bridge['survives_server_restart']=True
+            from check_grid_nudge_ui import check_grid_nudge_ui
+            report['grid_nudge'] = check_grid_nudge_ui(browser, base, root, output)
             assert not errors, errors
             assert not unexpected_network, unexpected_network
             report.update(status='passed', page_errors=errors, unexpected_network_requests=unexpected_network)

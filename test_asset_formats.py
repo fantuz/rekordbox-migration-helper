@@ -111,6 +111,28 @@ class FormatTests(unittest.TestCase):
         self.assertEqual(grid['checksum_validation'],'not_checked')
         self.assertIsNone(result['native_stems_readiness'])
 
+    def test_desktop_extended_table_and_cleared_marker(self):
+        populated = self.inspect('ANLZ0000.EXT', pqt2_bytes(revision=0x02000002))
+        grid = populated['extended_grid_evidence'][0]
+        self.assertEqual((grid['table_state'], grid['beats'], grid['checksum_validation']),
+                         ('populated', 2, 'not_checked'))
+        empty = anlz_file(section('PQT2', struct.pack('>III', 0, 0x02000002, 0) + bytes(32)))
+        grid = self.inspect('ANLZ0000.EXT', empty)['extended_grid_evidence'][0]
+        self.assertEqual((grid['validation'], grid['table_state'], grid['beats']), ('recognized', 'cleared', 0))
+        for at in (12, 20, 24, 32, 44, 48):
+            damaged = bytearray(empty)
+            damaged[28 + at] = 1
+            self.assertEqual(self.inspect('ANLZ0000.EXT', damaged)['validation'], 'corrupt')
+
+    def test_recognized_embedding_requires_the_complete_profile(self):
+        from test_native_embedding import embedding
+        for owner in (b'0', b'123'):
+            data = embedding(owner)
+            report = self.inspect('ANLZ0000.3EX', data)
+            self.assertEqual((report['validation'], report['track_id_assigned']), ('recognized', owner != b'0'))
+            self.assertFalse(report['payload_verified'])
+            self.assertEqual(self.inspect('ANLZ0000.3EX', data[:30], len(data))['validation'], 'unsupported')
+
     def test_extended_grid_rejects_mismatched_huge_counts_and_invalid_fractions(self):
         for count in (0,1,3,2**32-1):
             raw=bytearray(pqt2_bytes());struct.pack_into('>I',raw,28+40,count)
@@ -121,7 +143,7 @@ class FormatTests(unittest.TestCase):
             self.assertEqual(self.inspect('ANLZ0000.EXT',pqt2_bytes((fraction,)))['validation'],'corrupt')
 
     def test_extended_grid_unknown_revision_and_budget_limits_do_not_imply_corruption(self):
-        result=self.inspect('ANLZ0000.EXT',pqt2_bytes((65535,),revision=0x02000002))
+        result=self.inspect('ANLZ0000.EXT',pqt2_bytes((65535,),revision=0x03000002))
         self.assertEqual(result['validation'],'recognized')  # PMAI framing only
         self.assertEqual(result['extended_grid_evidence'][0]['validation'],'unsupported')
         raw=pqt2_bytes()
