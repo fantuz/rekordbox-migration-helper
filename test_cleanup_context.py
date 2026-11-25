@@ -110,6 +110,7 @@ class CleanupContextTests(unittest.TestCase):
         self.snapshot['scope_key'] = 'session:joined'
         tracks = {row['id']:dict(row) for row in self.snapshot['tracks']}
         tracks['0']['xml_marks'] = [{'Name':'New cue'}]
+        tracks['0']['xml_location'] = 'file://localhost/C:/Users/DJ/Music%2F0.wav'
         tracks['1']['xml_tempo_entries'] = 2
         tracks['2']['xml_location'] = 'file://localhost/Volumes/Drive/2.wav'
         tracks['3']['xml_location'] = 'file://localhost/C:/Users/DJ/Music/3.wav'
@@ -123,7 +124,7 @@ class CleanupContextTests(unittest.TestCase):
             'batches': [{'previous_held': {'pair':'Awaiting review'}}]}
         protected = build_context(self.owner, self.store, self.snapshot)['protected_ids']
         self.assertEqual(protected, {
-            '0': {'cues'}, '1': {'analysis'}, '2': {'alternate_reference'},
+            '0': {'cues', 'alternate_reference'}, '1': {'analysis'}, '2': {'alternate_reference'},
             '4': {'alternate_reference'}, '5': {'cloud_reference'}, '6': {'workspace_decision'},
             '7': {'workspace_unavailable'}, '8': {'workspace_decision'}})
 

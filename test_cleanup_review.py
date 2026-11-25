@@ -78,8 +78,9 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(self.review()['rows'][0]['proof'],'same_file')
         with patch('cleanup_review.HASH_BUDGET',1024):
             report = self.review(compare_bytes=True)
-        self.assertEqual((report['hash_bytes'],report['hash_skipped']),(1024,3))
-        self.assertEqual(report['counts']['duplicate'],0)
+        self.assertEqual((report['hash_bytes'],report['hash_skipped']),(1024,2))
+        self.assertEqual(report['counts']['duplicate'],1)
+        self.assertEqual(report['rows'][0]['proof'],'same_file')
         self.assertFalse(report['rows'][2]['candidate'])
 
     def test_alias_proof_is_stable_when_scoped_recheck_can_hash_more_files(self):

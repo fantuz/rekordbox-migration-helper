@@ -42,7 +42,10 @@ def capture_links(db, columns, snapshot):
         for cue in track.get('cues') or ():
             index_cue(cue.get('id'), track['id'])
     unresolved = False
-    uuids = {str(track['uuid']):identity for identity,track in tracks.items() if track.get('uuid')}
+    uuids = {}
+    for identity, track in tracks.items():
+        if track.get('uuid'):
+            uuids.setdefault(str(track['uuid']), []).append(identity)
     linked = {}
     def protect(identity, code):
         if str(identity) in tracks:
@@ -86,16 +89,17 @@ def capture_links(db, columns, snapshot):
             continue
         fields_to_check = [field for field in fields if field.lower() in ('contentid','contentid1','contentid2','contentuuid')]
         if not fields_to_check:
-            if name == 'contentfile' and next(iter(rows(table, [])), None) is not None:
+            if (name == 'contentfile' or name.startswith('djmdsong')) and next(iter(rows(table, [])), None) is not None:
                 unresolved = True
             continue
         code = {'djmdsongplaylist':'playlist','djmdsonghistory':'play_history','djmdcue':'cues','contentfile':'native_link'}.get(name, 'native_link')
         for row in rows(table, fields_to_check):
             found = False
             for field, value in zip(fields_to_check, row):
-                owner = uuids.get(str(value)) if field.lower() == 'contentuuid' else value
-                if protect(owner, code):
-                    found = True
+                owners = uuids.get(str(value), []) if field.lower() == 'contentuuid' else [value]
+                for owner in owners:
+                    if protect(owner, code):
+                        found = True
             if name == 'contentfile' and not found:
                 # Its assets have been captured but their relationship to individual tracks is unknown.
                 unresolved = True

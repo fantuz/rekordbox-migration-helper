@@ -53,11 +53,9 @@ def _report_page(store, identity, source_key, args):
     clauses = ['report_id=?']
     params = [identity]
     if section == 'eligible':
-        clauses.append("json_extract(payload,'$.candidate') IS NOT NULL")
-    elif section == 'protected':
-        clauses.append("json_extract(payload,'$.protected')=1")
+        clauses.append("section IN ('missing','duplicate')")
     elif section:
-        clauses.append("json_extract(payload,'$.candidate')=?")
+        clauses.append('section=?')
         params.append(section)
     for field in ('status', 'volume', 'os', 'q'):
         value = args.get(field, '')

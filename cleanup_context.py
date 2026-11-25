@@ -6,6 +6,7 @@ import json
 from audio_paths import FIELDS, mapping_applies
 from cloud_analysis import classify
 from cloud_file_status import lexical_path
+from cleanup_paths import _path_text
 from collection_views import duplicate_groups, duplicate_review_keys
 
 
@@ -46,6 +47,11 @@ def _hold_separate(snapshot, separate, hold):
                 if group['id'] in separate:
                     for track in group['tracks']:
                         hold(track['id'], 'keep_separate')
+
+
+def _reference_key(path):
+    text, valid = _path_text(path)
+    return text if valid else None
 
 
 def _session_evidence(owner, db, scope, tracks, hold):
@@ -92,8 +98,10 @@ def _session_evidence(owner, db, scope, tracks, hold):
         if len(candidates) < match.get('candidate_count', 0):
             hold(track_id, 'alternate_reference')
         elif alternatives:
-            known = {lexical_path(track.get(field)) for field in FIELDS} - {None}
-            if any(lexical_path(path) not in known for path in alternatives):
+            # Match the eligibility inspector's strict file-URI parser. Windows
+            # can use per-directory case sensitivity, so preserve spelling here.
+            known = {_reference_key(track.get(field)) for field in FIELDS} - {None}
+            if any(_reference_key(path) not in known for path in alternatives):
                 hold(track_id, 'alternate_reference')
         if match.get('status') == 'cloud_only' or any(row.get('cloud_only') for row in candidates):
             hold(track_id, 'cloud_reference')

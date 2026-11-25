@@ -113,8 +113,8 @@ def build_report(snapshot, *, inspector=None, compare_bytes=False, protected_ids
                 continue
             if alt['status'] in LOCATION_REASONS:
                 reasons.add(LOCATION_REASONS[alt['status']])
-            if not (finding.get('identity') and finding['identity'] == alt.get('identity')):
-                reasons.add('alternate_reference')
+            # A distinct alternate can change independently even when it currently aliases the file.
+            reasons.add('alternate_reference')
         if status == 'present' and finding['size'] != track.get('size'):
             reasons.add('size_conflict')
         metadata = _token({k:v for k,v in track.items() if k not in (*PATH_FIELDS, 'id', 'uuid')})
@@ -128,17 +128,19 @@ def build_report(snapshot, *, inspector=None, compare_bytes=False, protected_ids
                          proof=None, signals=[]))
         findings.append((finding, metadata, hint))
 
-    by_size = defaultdict(list)
-    for index, (finding, metadata, _) in enumerate(findings):
+    by_size = defaultdict(dict)
+    for index, (finding, _, _) in enumerate(findings):
         if not rows[index]['protected'] and finding['status'] == 'present' and finding['identity']:
-            by_size[finding['size']].append(index)
+            signature = (tuple(finding['identity']), tuple(finding['stamp']))
+            by_size[finding['size']].setdefault(signature, []).append(index)
     digests = {}
     used = skipped = 0
     if compare_bytes and not gates:
-        for size, indices in sorted(by_size.items()):
-            if len(indices) < 2:
+        for size, files in sorted(by_size.items()):
+            if len(files) < 2:
                 continue
-            for i in indices:
+            for signature, references in files.items():
+                i = references[0]
                 if progress:
                     progress(65 + 30 * used // HASH_BUDGET, 'Comparing eligible local audio files')
                 if size > HASH_BUDGET - used:
@@ -150,18 +152,18 @@ def build_report(snapshot, *, inspector=None, compare_bytes=False, protected_ids
                                                     on_bytes if progress else None)
                 used += consumed
                 if digest:
-                    digests[i] = digest
+                    digests[signature] = digest
                 else:
                     skipped += 1
     # Positive file identity covers aliases without reading bytes. A content comparison
     # also covers distinct local files. Never merge different captured catalog metadata.
     groups = defaultdict(list)
-    for indices in by_size.values():
-        for i in indices:
-            finding = findings[i][0]
-            group = ('sha256', digests[i]) if i in digests else ('same_file', tuple(finding['identity']))
-            groups[group].append(i)
-    for (proof, _), indices in groups.items():
+    for files in by_size.values():
+        for signature, references in files.items():
+            group = ('sha256', digests[signature]) if signature in digests else ('same_file', signature)
+            groups[group].extend(references)
+    content_proofs = {}
+    for (proof, value), indices in groups.items():
         if len(indices) < 2:
             continue
         by_metadata = defaultdict(list)
@@ -174,9 +176,11 @@ def build_report(snapshot, *, inspector=None, compare_bytes=False, protected_ids
                     rows[i]['signals'].append('distinct_metadata')
                 if i != keeper:
                     # File identity remains the same proof when a scoped recheck has more byte budget.
-                    same_file = findings[i][0]['identity'] == findings[keeper][0]['identity']
+                    same_file = findings[i][0] == findings[keeper][0]
                     rows[i].update(candidate='duplicate', keeper_id=rows[keeper]['id'],
                                    keeper_path=rows[keeper]['path'], proof='same_file' if same_file else proof)
+                    if rows[i]['proof'] == 'sha256':
+                        content_proofs[i] = value
     volumes = {}
     statuses, reasons, signals = Counter(), Counter(), Counter()
     counts = dict(total=len(rows), protected=0, eligible=0, missing=0, duplicate=0)
@@ -187,8 +191,7 @@ def build_report(snapshot, *, inspector=None, compare_bytes=False, protected_ids
         if not row['protected'] and row['status'] == 'missing':
             row.update(candidate='missing', proof='absent')
         row['location_evidence'] = location_evidence(finding)
-        digest = digests[i] if row['proof'] == 'sha256' else None
-        row['evidence'] = _token([row['id'], row['path'], metadata, finding, row['reasons'], digest])
+        row['evidence'] = _token([row['id'], row['path'], metadata, finding, row['reasons'], content_proofs.get(i)])
         statuses[row['status']] += 1
         reasons.update(row['reasons'])
         signals.update(row['signals'])

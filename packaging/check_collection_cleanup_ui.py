@@ -77,6 +77,8 @@ def check_collection_cleanup_ui(browser, base, store, output):
         facts = report['summary']
         assert facts['counts']['total']==5 and facts['counts']['eligible']==0
         assert facts['statuses']['cloud'] == 1 and facts['statuses']['external'] == 2
+        for count in ('total','protected','eligible','missing','duplicate'):
+            expect(page.locator(f'[data-cleanup-count="{count}"] strong')).to_have_text(str(facts['counts'][count]))
         assert sum(v['total'] for v in facts['volumes'] if v['os']=='Windows')==3
         assert sum(v['total'] for v in facts['volumes'] if v['os']=='macOS')==2
         # The guide illustrates the real source and drive summary without including any track paths.
