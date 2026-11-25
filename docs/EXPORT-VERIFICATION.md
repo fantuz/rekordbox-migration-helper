@@ -17,3 +17,11 @@ The private `report.json` records the verification basis, comparisons and an exp
 Read-back validation does not decode audio, authenticate third-party metadata or certify a restore in rekordbox. Unchanged archive CRC/size comparisons are not a fresh SHA-256 audit of every analysis or artwork file. Test generated copies in an isolated library on their selected Windows/macOS target before replacing a working library, with Cloud Library Sync paused as described in the recovery guide.
 
 Regression tests generate encrypted fixtures and deliberately alter playlist order, file references, cue labels, metadata and tempo entries after writer validation. They assert that the independent reader blocks publication. Other tests cover preserved repeated playlist entries, merges and native-only playlist recovery.
+
+## Hot Cue Banks and duplicate merges
+
+A Hot Cue Bank can refer to a cue by ID, even when the bank entry omits its track ID. Before a native ZIP export, Workbench checks active bank entries and their serialized copies against the staged duplicate merges. A merge can move a donor cue to the keeper, retire a cue, or change the label or colour on a keeper cue.
+
+If a bank relies on an affected track or cue, Workbench identifies the merge by its donor and keeper track IDs. Unstage that merge in **Duplicate review** to export the rest of the selection. To carry the merge forward, review the linked bank in AlphaTheta Rekordbox, then create a fresh matching backup ZIP and collection XML. An unreadable active bank holds the native merge until Workbench can establish which entries it references.
+
+The check applies to the native ZIP, including a paired XML and ZIP export. A separate XML export remains available. Metadata-only exports and merges with unrelated bank entries continue normally. The independent native reader also compares the active serialized bank records when verifying the generated ZIP.

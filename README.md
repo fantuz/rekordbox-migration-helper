@@ -115,6 +115,7 @@ A factual overview of the current source tree. Release downloads may lag behind 
 - Detect legacy v5 `.edb` files and report their footprint and missing companion files; native legacy records remain undecoded.
 - Distinguish desktop libraries from USB/device exports; device detection does not imply conversion.
 - Load matching XML and Backup Library ZIP inputs for duplicate review and copy preparation.
+- Check native Hot Cue Bank links before exporting a duplicate merge. Workbench identifies the merge to unstage if a bank uses a retiring track or an affected cue. [Native export checks](docs/EXPORT-VERIFICATION.md#hot-cue-banks-and-duplicate-merges)
 
 **Library exploration and preparation**
 
