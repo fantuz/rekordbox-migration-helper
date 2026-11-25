@@ -78,7 +78,8 @@ def check_inline_ratings_ui(browser, base, store, output):
         select_collection(page, '#lab-snapshot', sid)
         lab = widget('#lab-tracks')
         expect(lab.locator('[data-inline-stars="4"]')).to_have_attribute('aria-pressed', 'true')
-        lab.locator('[data-inline-stars="3"]').focus(); page.keyboard.press('Enter')
+        # The saved stars are visible while the editor is still loading their revision.
+        lab.locator('[data-inline-stars="3"]:enabled').press('Enter')
         expect(lab.locator('[data-inline-stars="3"]')).to_have_attribute('aria-pressed', 'true')
         expect(lab.locator('[data-inline-stars="3"]')).to_be_focused()
         assert store.overrides(scope)['stars-one']['rating']['value'] == 3
