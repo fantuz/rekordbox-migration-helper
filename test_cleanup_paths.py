@@ -4,13 +4,21 @@ import os
 from pathlib import Path, PureWindowsPath
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from cleanup_paths import PathInspector, _os_path, _windows_music, _windows_volume
+from cleanup_paths import PathInspector, _os_path, _stamp, _windows_music, _windows_volume
 
 
 class RecordedPaths(unittest.TestCase):
+    def test_windows_path_and_handle_stamps_use_the_same_creation_time(self):
+        common = dict(st_dev=2, st_ino=33, st_size=11, st_mtime_ns=100, st_birthtime_ns=90)
+        path = SimpleNamespace(st_ctime_ns=90, **common)
+        handle = SimpleNamespace(st_ctime_ns=105, **common)
+        with patch('cleanup_paths.os', SimpleNamespace(name='nt')):
+            self.assertEqual(_stamp(path), _stamp(handle))
+
     def test_linux_census_never_probes_files_or_providers(self):
         with patch('cleanup_paths.sys.platform', 'linux'), patch('cleanup_paths.Path.home', side_effect=AssertionError), \
              patch('cleanup_paths.Path.lstat', side_effect=AssertionError), patch('cleanup_paths._open_for_hash', side_effect=AssertionError):
@@ -71,7 +79,9 @@ class RecordedPaths(unittest.TestCase):
             music = root / 'Music'
             music.mkdir()
             os_name = 'Windows' if os.name == 'nt' else 'macOS'
-            inspector = PathInspector(os_name, _os_path(music), music.drive, [root.stat().st_dev])
+            # A macOS temporary profile can traverse the startup and Data volumes.
+            devices = {root.stat().st_dev, Path(root.anchor).stat().st_dev}
+            inspector = PathInspector(os_name, _os_path(music), music.drive, devices)
             audio = music / 'sample.wav'
             # Isolate the on-disk proof from the platform-specific /Users lexical convention.
             def observe():
@@ -89,6 +99,14 @@ class RecordedPaths(unittest.TestCase):
                 observed = []
                 self.assertEqual(inspector.digest(str(audio), seen, len(payload), observed.append), (hashlib.sha256(payload).hexdigest(), len(payload)))
                 self.assertEqual(observed, [len(payload)])
+                # Keep identity, size and write time identical across both
+                # handle samples. A change event during hashing must still count.
+                with audio.open('rb') as stream:
+                    first = os.fstat(stream.fileno())
+                changed = SimpleNamespace(**{k: getattr(first, k) for k in dir(first) if k.startswith('st_')})
+                changed.st_ctime_ns += 100
+                with patch('cleanup_paths.os.fstat', side_effect=[first, changed]):
+                    self.assertEqual(inspector.digest(str(audio), seen, len(payload)), (None, len(payload)))
                 with self.assertRaises(InterruptedError):
                     inspector.digest(str(audio), seen, len(payload), lambda n: self._cancel())
                 audio.write_bytes(payload * 2)
@@ -157,6 +175,8 @@ class RecordedPaths(unittest.TestCase):
                 self.assertEqual(inspector.inspect(audio.as_uri())['status'], 'missing')
                 self.assertEqual(inspector.inspect(str(custom / 'Online.wav'))['status'], 'cloud')
                 audio.write_bytes(b'local bytes')
+                # Use an old last-write timestamp as on newly imported DJ files.
+                os.utime(audio, (946684800, 946684800))
                 info = inspector.inspect(audio.as_uri())
                 self.assertEqual(info['status'], 'present')
                 self.assertEqual(inspector.digest(audio.as_uri(), info, 40), (hashlib.sha256(b'local bytes').hexdigest(), 11))

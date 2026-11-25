@@ -213,7 +213,10 @@ def _finder_alias(path):
 
 
 def _stamp(info):
-    return [info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns]
+    # Windows path stat can report creation time as ctime while fstat reports
+    # NTFS change time. Birth time has the same meaning through both APIs.
+    timestamp = info.st_birthtime_ns if os.name == 'nt' else info.st_ctime_ns
+    return [info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, timestamp]
 
 
 class _CloudParent(OSError):
@@ -398,7 +401,9 @@ class PathInspector:
                     digest.update(chunk)
                     if progress and (count % (8 * 1024 ** 2) < len(chunk) or count == evidence['size']):
                         progress(count)
-                if _stamp(os.fstat(stream.fileno())) == evidence['stamp'] and self.inspect(raw) == evidence:
+                after = os.fstat(stream.fileno())
+                if (_stamp(after) == evidence['stamp'] and after.st_ctime_ns == info.st_ctime_ns
+                        and self.inspect(raw) == evidence):
                     return digest.hexdigest(), count
         except InterruptedError:
             raise
