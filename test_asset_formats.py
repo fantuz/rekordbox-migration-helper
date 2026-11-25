@@ -465,7 +465,8 @@ class AuditTests(unittest.TestCase):
             archive.writestr('copy/' + quality, stems_bytes(4))
         with zipfile.ZipFile(second, 'w') as archive:
             archive.writestr('stems/' + quality, stems_bytes(4))
-        sources = [str(self.archive), str(second)]
+        # Supply an alternate spelling even on runners without Windows short paths.
+        sources = [str(self.archive), str(self.folder / '..' / second.name)]
         summary, rows = self.audit(source=sources)
         self.assertEqual(summary['format_inspection']['recordbox_saved_stems']['paired_keys'], 0)
         self.assertFalse(any(r['section'] == 'recordbox_stems_pair' for r in rows))
@@ -473,7 +474,7 @@ class AuditTests(unittest.TestCase):
             archive.writestr('stems/' + speed, stems_bytes(5))
         summary, rows = self.audit(source=sources)
         pair, = (r for r in rows if r['section'] == 'recordbox_stems_pair')
-        self.assertEqual(pair['scope'], str(second))
+        self.assertEqual(pair['scope'], str(second.resolve()))
         self.assertEqual((pair['speed_frames'], pair['quality_frames']), (5, 4))
         self.assertFalse(pair['matching_frame_counts'])
         self.assertEqual((pair['severity'], pair['cache_state']), ('review', 'unknown'))
@@ -537,7 +538,7 @@ class AuditTests(unittest.TestCase):
         self.assertEqual((inventory['speed_files'], inventory['quality_files']), (2, 2))
         self.assertEqual((inventory['paired_keys'], inventory['unconfirmed_pairs'], inventory['ambiguous_keys']), (1, 1, 0))
         pair, = (r for r in rows if r['section'] == 'recordbox_stems_pair')
-        self.assertEqual(pair['scope'], str(self.archive))
+        self.assertEqual(pair['scope'], str(self.archive.resolve()))
         summary, rows = self.audit(source=sources)
         inventory = summary['format_inspection']['recordbox_saved_stems']
         self.assertTrue(summary['inventory_complete'])
