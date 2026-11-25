@@ -133,12 +133,13 @@ def task_progress(job, amount, text):
             tasks[job].pop('cloud_progress', None)
 
 
-def launch(work, message, pool=None, on_finished=None, cancel_event=None):
+def launch(work, message, pool=None, on_finished=None, cancel_event=None, *, local_only=False):
     job = uuid4().hex
     with lock:
         if shutdown.requested.is_set():raise ValueError('The application is stopping')
         prune_tasks()
         tasks[job] = {"id":job,"status":"running","progress":0,"message":message}
+        if local_only:tasks[job]['_local_only']=True
         task_controls[job] = TaskControl()
         if cancel_event is not None:task_controls[job].event=cancel_event
     def run():
@@ -599,6 +600,9 @@ def task(job):
         prune_tasks()
         if job not in tasks:
             return jsonify(error="Task not found or expired; completed reports and exports remain saved"),404
+        if tasks[job].get('_local_only'):
+            from file_health import local_request
+            if not local_request():return jsonify(error="Open this task on the computer running Library Workbench."),403
         value={k:v for k,v in tasks[job].items() if not k.startswith('_')}
         if 'cloud_progress' in value:
             from file_health import local_request
@@ -613,6 +617,9 @@ def cancel_task(job):
     with lock:
         prune_tasks()
         if job not in tasks:return jsonify(error='Task not found'),404
+        if tasks[job].get('_local_only'):
+            from file_health import local_request
+            if not local_request():return jsonify(error="Open this task on the computer running Library Workbench."),403
         control=task_controls.get(job)
         if control and tasks[job]['status']=='running':
             control.cancel()
@@ -1386,6 +1393,8 @@ from intelligence_routes import register as register_intelligence
 register_intelligence(sys.modules[__name__])
 from collection_views import register as register_collection_views
 register_collection_views(sys.modules[__name__])
+from cleanup_routes import register as register_collection_cleanup
+register_collection_cleanup(sys.modules[__name__])
 from investigations import register as register_investigations
 register_investigations(sys.modules[__name__])
 from journeys_routes import register as register_journeys

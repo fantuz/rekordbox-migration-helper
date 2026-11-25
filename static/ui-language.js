@@ -1,6 +1,8 @@
 /* Refresh translated views without submitting forms or losing working values. */
 let languageRevision=0;
 function languageFieldSelector(node){
+  // Cleanup owns source-bound selections and confirmations across language changes.
+  if(node.closest('#view-collection-cleanup,#cc-confirm-dialog'))return null;
   if(node.id)return '#'+CSS.escape(node.id);
   const parts=[];
   while(node && node!==document.body && !node.id){
@@ -29,7 +31,7 @@ window.addEventListener('workbench-language',wrap(async()=>{
     const loaders={musicbrainz:loadMusicBrainz,journeys:()=>GuidedJourneys.load(),investigations:()=>Investigations.load(),review:()=>NativeCollection.update('review'),reference:()=>NativeCollection.update('reference'),history:loadHistory,insights:loadDJInsights,bubbles:loadBubbleExplorer,tonality:loadTonalityInsights,docs:loadDocumentation,intelligence:()=>Intelligence.load()};
     if(loaders[view])await loaders[view]();
     if(track)await openTrackDetails(track.snapshot,track.trackId);
-    const titles={musicbrainz:'MusicBrainz',journeys:'Library journeys',investigations:'Saved investigations',files:'Library preparation',analyzer:'Source analysis',storage:'Cloud and local storage',quick:'Share & offline summary',review:'Duplicate review',reference:'File references',activity:'Activity and reports',statistics:'Collection statistics',inventory:'Media inventory',exports:'Library export',lab:'Library lab',intelligence:'Library intelligence',history:'Play history',insights:'DJ insights',bubbles:'Library bubbles',tonality:'Tonality and tempo',docs:'Documentation'};
+    const titles={'collection-cleanup':'Collection cleanup',musicbrainz:'MusicBrainz',journeys:'Library journeys',investigations:'Saved investigations',files:'Library preparation',analyzer:'Source analysis',storage:'Cloud and local storage',quick:'Share & offline summary',review:'Duplicate review',reference:'File references',activity:'Activity and reports',statistics:'Collection statistics',inventory:'Media inventory',exports:'Library export',lab:'Library lab',intelligence:'Library intelligence',history:'Play history',insights:'DJ insights',bubbles:'Library bubbles',tonality:'Tonality and tempo',docs:'Documentation'};
     const activeView=document.querySelector('.nav.active')?.dataset.view || 'files';
     $('#page-title').textContent=I18n.t(titles[activeView] || 'Library preparation');
   }catch(error){notify(error.message,true);}

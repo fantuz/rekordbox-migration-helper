@@ -401,6 +401,18 @@ function fitBubbleViewBox(svg,nodes){
 function bubbleActionLabel(group,result){
   return group.label+', '+bubbleWeight(group.value,result.metric)+', '+num(group.entries)+' '+I18n.t('entries')+'. '+(result.dimension==='tracks'?I18n.t('Inspect track'):I18n.t('Drill down'));
 }
+let bubblePointerX, bubblePointerY;
+document.addEventListener('mousemove',event=>{
+  // A focus scroll can put a different category underneath a stationary mouse.
+  // Compare viewport coordinates across targets, including moves outside the chart.
+  const moved=event.clientX!==bubblePointerX || event.clientY!==bubblePointerY;
+  const first=bubblePointerX===undefined;
+  bubblePointerX=event.clientX;bubblePointerY=event.clientY;
+  const result=insightState.bubble.result;
+  if(!moved || !result || $('#view-bubbles').hidden || (first && document.activeElement?.hasAttribute('data-bubble-index')))return;
+  const item=event.target.closest?.('#library-bubbles [data-bubble-index], #bubble-groups [data-bubble-index]');
+  if(item && !item.classList.contains('is-selected'))bubbleSelected(result.groups[Number(item.dataset.bubbleIndex)]);
+});
 function renderBubbleMap(){
   const state=insightState.bubble,r=state.result;if(!r)return;const svg=$('#library-bubbles');svg.replaceChildren();svg.setAttribute('viewBox','0 0 940 680');svg.dataset.state=r.groups.some(g=>g.value>0)?'ready':'empty';
   for(const group of r.groups)if(group.label_is_message){group.original_label=group.original_label||group.label;group.label=I18n.t(group.original_label);}
@@ -413,7 +425,7 @@ function renderBubbleMap(){
       const group=node.data,g=svgNode('g',{class:'bubble-node',transform:'translate('+node.x+','+node.y+')',role:'button',tabindex:'0','aria-label':bubbleActionLabel(group,r)});
       const circle=svgNode('circle',{r:node.r,fill:bubbleColor(group),stroke:'#ffffff','stroke-width':2});g.append(circle);
       g.dataset.bubbleIndex=String(r.groups.indexOf(group));
-      g.addEventListener('mouseenter',()=>bubbleSelected(group));g.addEventListener('focus',()=>bubbleSelected(group));
+      g.addEventListener('focus',()=>bubbleSelected(group));
       g.addEventListener('click',wrap(()=>activateBubbleGroup(group)));
       g.addEventListener('keydown',wrap(async event=>{if(event.key==='Enter' || event.key===' '){event.preventDefault();await activateBubbleGroup(group);}}));svg.append(g);
     }
@@ -423,7 +435,7 @@ function renderBubbleMap(){
   if(r.groups.length>15){const hint=document.createElement('span');hint.className='bubble-scroll-hint';hint.textContent=I18n.t('Scroll for more categories');$('#bubble-group-count').append(hint);}
   $('#bubble-groups').innerHTML=r.groups.map((g,i)=>'<button type="button" class="bubble-group-button" data-bubble-index="'+i+'" aria-label="'+esc(bubbleActionLabel(g,r))+'" title="'+esc(g.label)+'"><i class="bubble-swatch" style="background:'+bubbleColor(g)+'"></i><span>'+esc(g.label)+'</span><b>'+esc(bubbleWeight(g.value,r.metric))+'</b></button>').join('');
   // SVG nodes keep their own listeners; each legend button activates once.
-  $$('#bubble-groups [data-bubble-index]').forEach(button=>{const group=r.groups[Number(button.dataset.bubbleIndex)];button.onclick=wrap(()=>activateBubbleGroup(group));button.onmouseenter=()=>bubbleSelected(group);button.onfocus=()=>bubbleSelected(group);});
+  $$('#bubble-groups [data-bubble-index]').forEach(button=>{const group=r.groups[Number(button.dataset.bubbleIndex)];button.onclick=wrap(()=>activateBubbleGroup(group));button.onfocus=()=>bubbleSelected(group);});
   $('#bubble-groups-prev').disabled=!r.group_offset;$('#bubble-groups-next').disabled=r.group_offset+60>=r.groups_total;
   $('#bubble-map-note').textContent=I18n.t("Area:")+" "+I18n.t(r.metric_label)+'. '+I18n.t('Showing')+' '+num(r.groups.length)+" "+I18n.t("of")+" "+num(r.groups_total)+(" "+I18n.t("Categories")+"")+(r.groups_total>60?" "+I18n.t("on this page; use Next groups to see the rest"):'')+'. '+num(r.zero_weight_groups)+" "+I18n.t("categories have zero/unknown weight and remain in the list. Compare circle areas within this page; full track length is not time played.");
   if(r.excluded_unknown)$('#bubble-map-note').textContent+=' '+I18n.t('{count} unknown hidden',{count:num(r.excluded_unknown)});

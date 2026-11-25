@@ -98,6 +98,14 @@ def duplicate_groups(snapshot, basis='path'):
     return sorted(result, key=lambda g: (-g['count'], g['id']))
 
 
+def duplicate_review_keys(source, scope):
+    """Workspace decisions used one shared key before review ownership was captured."""
+    keys = ['duplicate_reviews:' + source]
+    if source == 'workspace' and scope.startswith('session:'):
+        keys.append('duplicate_reviews:' + scope)
+    return keys
+
+
 def sidecar_groups(groups, hide=False):
     """Retain candidate identities/review notes while hiding sidecar members."""
     hiding=metadata_sidecars.enabled(hide)
@@ -149,8 +157,12 @@ def register(owner):
         query = normalized(request.args.get('q', ''))
         return not query or query in normalized(' '.join(str(track.get(f) or '') for f in
                                                         ('id', 'title', 'artist', 'current_path', 'original_path', 'analysis_path')))
-    def reviews(key):
-        return Store(owner.DATA / 'workbench-sidecar.sqlite3').setting('duplicate_reviews:' + key, {})
+    def reviews(key,snapshot):
+        saved = Store(owner.DATA / 'workbench-sidecar.sqlite3')
+        values = {}
+        for name in duplicate_review_keys(key,snapshot.get('scope_key','')):
+            values.update(saved.setting(name, {}))
+        return values
 
     def cloud_context():return cloud_analysis.context(owner,request.args.get('source',''))
     def cloud_signature():return cloud_analysis.signature(cloud_context())
@@ -175,7 +187,7 @@ def register(owner):
         groups,sidecars = sidecar_groups(original_groups,request.args.get('hide_metadata_sidecars',False))
         provider=cloud_analysis.checked_provider(request.args.get('provider','all'));configuration=cloud_context()
         def provider_match(track):return cloud_analysis.matches(cloud_analysis.classify(track,configuration),provider)
-        saved = reviews(key)
+        saved = reviews(key,snapshot)
         rows = [{'id': g['id'], 'basis': g['basis'], 'count': g['count'], 'duration_spread': g['duration_spread'],
                  'title': g['tracks'][0].get('title'), 'artist': g['tracks'][0].get('artist'),
                  'review': saved.get(g['id'], 'unreviewed'), 'flags': sorted({f for t in g['tracks'] for f in flags(t)})} for g in groups if any(matches(t) for t in g['tracks']) and any(provider_match(t) for t in g['tracks'])]
@@ -198,7 +210,7 @@ def register(owner):
         if group is None:
             raise ValueError('This candidate group is no longer available')
         from track_flags import flags
-        return jsonify(source=key, sidecars=sidecars,id=identity, count=group['count'], review=reviews(key).get(identity, 'unreviewed'), **page([{**t,'flags':flags(t)} for t in group['tracks']]))
+        return jsonify(source=key, sidecars=sidecars,id=identity, count=group['count'], review=reviews(key,snapshot).get(identity, 'unreviewed'), **page([{**t,'flags':flags(t)} for t in group['tracks']]))
 
     @app.post('/api/collection/duplicates/<identity>/review')
     def review_duplicate(identity):
@@ -213,9 +225,11 @@ def register(owner):
         if not any(g['id'] == identity for g in duplicate_groups(snapshot, b.get('basis', 'path'))):
             raise ValueError('This candidate group is no longer available')
         with owner.lock:
-            saved = reviews(key)
+            store = Store(owner.DATA / 'workbench-sidecar.sqlite3')
+            name = duplicate_review_keys(key,snapshot.get('scope_key',''))[-1]
+            saved = store.setting(name,{})
             saved[identity] = status
-            Store(owner.DATA / 'workbench-sidecar.sqlite3').set_setting('duplicate_reviews:' + key, saved)
+            store.set_setting(name,saved)
         return jsonify(saved=True, source_writes=False)
 
     @app.get('/api/collection/references')

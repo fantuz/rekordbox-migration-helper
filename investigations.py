@@ -40,6 +40,9 @@ def register(owner):
                     refs = []
                     if kind == 'reports':
                         refs = [str(s) for s in json.loads(row['sources'])]
+                    if kind == 'snapshots' and str(row.get('scope_key')).startswith('cleanup:'):
+                        lineage = json.loads(row['payload']).get('cleanup_lineage', {})
+                        refs = ['snapshot:' + lineage.get('parent_snapshot_id',''), 'reports:' + lineage.get('report_id','')]
                     if kind == 'batches':
                         refs = ['snapshot:' + row['snapshot_id']]
                     result.append({'key': kind + ':' + identity, 'kind': kind, 'id': identity,
@@ -166,6 +169,7 @@ def register(owner):
                         rollback.callback(dst.rename, src)
                         payload['files'].append([r['kind'], r['id']])
                 with saved.connection() as db:
+                    cleanup_previews = db.execute("SELECT 1 FROM sqlite_schema WHERE name='collection_cleanup_previews'").fetchone()
                     if fresh:
                         for table in ('overrides','override_history'):
                             payload['tables'][table]=[dict(row) for row in db.execute('SELECT * FROM '+table)]
@@ -173,6 +177,8 @@ def register(owner):
                     plans = saved.setting('journey_plans', {})
                     for r in chosen:
                         kind, item = r['kind'], r['id']
+                        if cleanup_previews and kind in ('reports','snapshots'):
+                            db.execute('DELETE FROM collection_cleanup_previews WHERE parent=? OR report=? OR result_id=?', (item,item,item))
                         if kind in TABLES:
                             for table, field in [TABLES[kind], *RELATED.get(kind, [])]:
                                 rows = [dict(v) for v in db.execute('SELECT * FROM ' + table + ' WHERE ' + field + '=?', (item,))]

@@ -174,6 +174,8 @@ def main():
                 report['activity_ui']=check_activity_ui(browser,base,args.output)
                 from check_preparation_inventory_ui import check_preparation_inventory_ui
                 report['preparation_inventory_ui']=check_preparation_inventory_ui(browser,base,store,root,args.output)
+                from check_collection_cleanup_ui import check_collection_cleanup_ui
+                report['collection_cleanup_ui']=check_collection_cleanup_ui(browser,base,store,args.output)
                 page.goto(Path(offline['directory']).joinpath('library.html').as_uri(),wait_until='load')
                 page.select_option('#offline-bubble-dimension','artists')
                 for code in LANGUAGES:
