@@ -14,6 +14,7 @@ import zipfile
 from xml.etree import ElementTree
 
 from engine import decision_map, open_master, position
+from hot_cue_banks import check_bank_merges
 from metadata_overrides import plan as override_plan,apply_native,change_summary
 
 
@@ -189,6 +190,7 @@ def export_native(catalog,decisions,relocations,destination,progress):
             changed+=count
 
         with db:
+            check_bank_merges(db, tables, mapping, results)
             for donor,keeper in mapping.items():
                 keep_uuid=db.execute("SELECT UUID FROM djmdContent WHERE ID=?",(keeper,)).fetchone()[0]
                 # Retire registration/gain rows belonging to discarded source assets.

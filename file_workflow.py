@@ -9,6 +9,18 @@ import shutil
 import zipfile
 
 
+def archive_index_digest(archive):
+    """Match the stored JSON index without building a second copy of a large directory."""
+    digest = sha256(b'[')
+    for index, member in enumerate(archive.infolist()):
+        if index:
+            digest.update(b', ')
+        row = (member.filename, member.file_size, member.CRC)
+        digest.update(json.dumps(row, ensure_ascii=False).encode())
+    digest.update(b']')
+    return digest.hexdigest()
+
+
 def pair_signature(backup,xml,xml_sha256=None,master=None):
     """Identity for reattaching originals after disposable uploads are removed."""
     def digest(stream):
@@ -18,7 +30,7 @@ def pair_signature(backup,xml,xml_sha256=None,master=None):
     if not xml_sha256:
         with Path(xml).open('rb') as stream:xml_sha256=digest(stream)
     with zipfile.ZipFile(backup) as archive:
-        index=sha256(json.dumps([(i.filename,i.file_size,i.CRC) for i in archive.infolist()],ensure_ascii=False).encode()).hexdigest()
+        index=archive_index_digest(archive)
         if master:
             with Path(master).open('rb') as stream:native=digest(stream)
         else:

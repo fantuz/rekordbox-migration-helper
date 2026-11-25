@@ -3,6 +3,7 @@ from collections import Counter
 from pathlib import PurePosixPath
 import binascii
 import struct
+from native_embedding import embedding_owner
 from stems_formats import inspect_iso,inspect_cache_file,ContainerLimit
 
 SETTINGS = {'mysetting.dat':40, 'mysetting2.dat':40, 'devsetting.dat':32, 'djmmysetting.dat':52}
@@ -82,8 +83,12 @@ def inspect_format(name, prefix, size,read_at=None,provider_context=False):
     if prefix.startswith(b'PMAI'):
         return inspect_anlz(prefix, size, result)
     if name.startswith('anlz') and name.endswith('.3ex'):
-        # Recordbox's RB7 observation is a prefix sniff, not a MessagePack validator.
-        embedding = prefix.startswith(b'\x81\xa9embedding')
+        owner = embedding_owner(prefix) if len(prefix) == size else None
+        if owner is not None:
+            return finish('recognized', 'anlz_3ex', 'Known desktop embedding layout checked',
+                          embedding_signature=True, embedding_profile_validated=True,
+                          track_id_assigned=owner != '0', payload_verified=False)
+        embedding = prefix.startswith((b'\x81\xa9embedding', b'\x81\xd9\x09embedding'))
         return finish('unsupported', 'anlz_3ex',
                       'Possible MessagePack embedding signature; payload is not decoded' if embedding else
                       'Non-PMAI .3EX analysis variant; payload is not decoded',
@@ -103,6 +108,35 @@ def inspect_format(name, prefix, size,read_at=None,provider_context=False):
     return result
 
 
+def anlz_sections(data, size):
+    """Return bounded section positions and distinguish malformed input from an incomplete probe."""
+    sections = []
+    if len(data) < 12 or data[:4] != b'PMAI':
+        return sections, 'corrupt', 'Invalid or truncated PMAI header'
+    header, total = struct.unpack_from('>II', data, 4)
+    if not 12 <= header <= total or total != size:
+        return sections, 'corrupt', 'Invalid PMAI header or declared file length'
+    offset = header
+    while offset < total:
+        if len(sections) >= 1024:
+            return sections, 'not_checked', 'Analysis section-count budget reached'
+        if offset + 12 > total:
+            return sections, 'corrupt', 'Truncated analysis section header'
+        if offset + 12 > len(data):
+            return sections, 'not_checked', 'Analysis section headers exceed the inspection byte budget'
+        raw_tag = data[offset:offset+4]
+        if any(c < 32 or c > 126 for c in raw_tag):
+            return sections, 'corrupt', 'Invalid analysis section identifier'
+        tag = raw_tag.decode('ascii')
+        hlen, length = struct.unpack_from('>II', data, offset+4)
+        if not 12 <= hlen <= length or offset + length > total:
+            return sections, 'corrupt', 'Invalid analysis section length'
+        section = {'tag':tag, 'offset':offset, 'header_bytes':hlen, 'bytes':length}
+        sections.append(section)
+        offset += length
+    return sections, 'recognized', ''
+
+
 def inspect_anlz(data, size, base):
     result = {**base, 'format':'anlz', 'sections':[], 'cue_groups':[], 'tempo_evidence':[], 'extended_grid_evidence':[],
               'beat_grid_evidence':[], 'phrase_structure_evidence':[],
@@ -110,28 +144,11 @@ def inspect_anlz(data, size, base):
     def finish(state, detail):
         result.update(validation=state, detail=detail)
         return result
-    if len(data) < 12:
-        return finish('corrupt', 'Truncated PMAI header')
-    header, total = struct.unpack_from('>II', data, 4)
-    if not 12 <= header <= total or total != size:
-        return finish('corrupt', 'Invalid PMAI header or declared file length')
-    offset = header
+    sections, framing, detail = anlz_sections(data, size)
     counts = Counter()
-    while offset < total:
-        if len(result['sections']) >= 1024:
-            return finish('not_checked', 'Analysis section-count budget reached')
-        if offset + 12 > total:
-            return finish('corrupt', 'Truncated analysis section header')
-        if offset + 12 > len(data):
-            return finish('not_checked', 'Analysis section headers exceed the inspection byte budget')
-        raw_tag = data[offset:offset+4]
-        if any(c < 32 or c > 126 for c in raw_tag):
-            return finish('corrupt', 'Invalid analysis section identifier')
-        tag = raw_tag.decode('ascii')
-        hlen, length = struct.unpack_from('>II', data, offset+4)
-        if not 12 <= hlen <= length or offset + length > total:
-            return finish('corrupt', 'Invalid analysis section length')
-        section = {'tag':tag, 'offset':offset, 'header_bytes':hlen, 'bytes':length}
+    for section in sections:
+        tag, offset = section['tag'], section['offset']
+        hlen, length = section['header_bytes'], section['bytes']
         result['sections'].append(section);counts[tag] += 1
         # Read semantic fields only within this section, never from a following one.
         available = min(offset+length, len(data))
@@ -142,16 +159,22 @@ def inspect_anlz(data, size, base):
             if hlen == 56 and offset+56 <= available:
                 revision = struct.unpack_from('>I', data, offset+16)[0]
                 grid['revision'] = revision
-                if revision == 0x01000002:
+                if revision in (0x01000002, 0x02000002):
                     n, checksum = struct.unpack_from('>II', data, offset+40)
                     grid.update(beats=n, stored_checksum=checksum)
                     if 56 + n*2 != length:
                         grid.update(validation='corrupt', detail='PQT2 beat count disagrees with section length')
                         return finish('corrupt', 'PQT2 beat count disagrees with section length')
+                    if revision == 0x02000002:
+                        reserved = data[offset+12:offset+16] + data[offset+20:offset+24] + data[offset+48:offset+56]
+                        if any(reserved) or (not n and any(data[offset+24:offset+56])):
+                            grid.update(validation='corrupt', detail='Invalid desktop PQT2 header or empty-table marker')
+                            return finish('corrupt', grid['detail'])
+                        grid['table_state'] = 'populated' if n else 'cleared'
                     grid.update(validation='not_checked', detail='Extended-grid fractions exceed the inspection byte budget')
                     if offset+length <= len(data):
                         low = high = None
-                        for (value,) in struct.iter_unpack('>H', data[offset+56:offset+length]):
+                        for (value,) in struct.iter_unpack('>H', memoryview(data)[offset+56:offset+length]):
                             if value > 999:
                                 grid.update(validation='corrupt', detail='PQT2 contains an invalid sub-millisecond fraction')
                                 return finish('corrupt', 'PQT2 contains an invalid sub-millisecond fraction')
@@ -159,7 +182,7 @@ def inspect_anlz(data, size, base):
                             high = value if high is None else max(high, value)
                         grid.update(validation='recognized', fraction_unit='microseconds within a millisecond',
                                     min_fraction=low, max_fraction=high,
-                                    detail='Known extended-grid count and fractions checked; checksum and multi-tempo semantics are not verified')
+                                    detail='Extended-grid count and fractions checked; matching its checksum requires the companion DAT')
             elif offset+hlen > available:
                 grid.update(validation='not_checked', detail='Extended-grid header exceeds the inspection byte budget')
         if tag == 'PQTZ':
@@ -180,7 +203,7 @@ def inspect_anlz(data, size, base):
                 first = last = None
                 for at in range(offset+hlen, offset+length, 8):
                     beat, bpm100, ms = struct.unpack_from('>HHI', data, at)
-                    if not 1 <= beat <= 4 or bpm100 == 0 or ms < previous:
+                    if not 1 <= beat <= 4 or bpm100 == 0 or ms <= previous:
                         grid.update(validation='corrupt', detail='PQTZ contains invalid beats, tempo or nonmonotonic times')
                         return finish('corrupt', 'PQTZ contains invalid beats, tempo or nonmonotonic times')
                     tempos.add(bpm100/100);previous = ms
@@ -213,7 +236,8 @@ def inspect_anlz(data, size, base):
             result['phrase_structure_evidence'].append(phrases)
             if phrases['validation'] == 'corrupt':return finish('corrupt', phrases['detail'])
         result['vocal_activity_evidence'] |= tag == 'PVDI'
-        offset += length
+    if framing != 'recognized':
+        return finish(framing, detail)
     result['section_counts'] = dict(counts)
     return finish('recognized', 'Analysis section framing recognized; phrase and vocal-activity tags do not establish STEMS readiness')
 

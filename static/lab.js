@@ -31,6 +31,7 @@ function labSelect(selector,items,label,empty=I18n.t("Choose a snapshot")) {
 }
 async function loadLab() {
   labInfo=await api('/api/lab');
+  window.GridNudge?.setWorkspace(labInfo.workspace);
   const sources=[...(labInfo.workspace?[{id:'session',get label(){return I18n.t("Loaded XML + ZIP workspace");}},{id:'orphans',get label(){return I18n.t("Unreferenced local tags (scan Media inventory first)");}}]:[]),...labInfo.sources.map(r=>({...r,label:I18n.t("Source capture ·")+" "+snapshotMoment(r.created)+' · '+r.label}))];
   labSelect('#lab-source',sources,r=>r.label,I18n.t("Choose input capture"));
   const label=r=>r.label+' · '+snapshotMoment(r.created);

@@ -11,13 +11,16 @@ import ntpath
 import os
 import re
 import sqlite3
-import struct
 import zipfile
 from tempfile import TemporaryDirectory
+from asset_formats import anlz_sections
 from migration_readiness import finite
+from native_grid import MAX_FILE_BYTES as MAX_GRID_DAT, grid_timing_digest, xml_grid_beats
 
 AUTO_LABELS = {"cue(auto)", "1.1bars"}
 HOT_NUMBERS = dict(zip((1, 2, 3, 5, *range(6, 18)), range(16)))
+MAX_CATALOG_DAT = 20 * 1024**2
+GRID_HASH_PREFIX = "pqtz-timing-v1:"
 
 
 def is_auto(cue):
@@ -52,21 +55,44 @@ def norm(value):
     return " ".join((value or "").split()).casefold()
 
 
-def read_tags(archive, member):
-    data = archive.read(member)
-    if len(data) < 12 or data[:4] != b"PMAI":
-        return {}
-    offset, total = struct.unpack_from(">II", data, 4)
-    if total != len(data) or offset < 12:
-        return {}
-    tags = {}
-    while offset + 12 <= total:
-        tag, header, length = struct.unpack_from(">4sII", data, offset)
-        if not 12 <= header <= length or offset + length > total:
-            return {}
-        tags[tag] = data[offset + header:offset + length]
-        offset += length
-    return tags
+def analysis_dat_index(members):
+    index = {}
+    for member in members:
+        key = asset_key(member.filename)
+        if key.endswith(".dat"):
+            index[key] = None if key in index else member
+    return index
+
+
+def restored_grid_beats(archive, index, path):
+    key = asset_key(path)
+    if key not in index:
+        return
+    member = index[key]
+    if member is None:
+        raise ValueError("Multiple analysis DAT files match the restored track")
+    if member.file_size > MAX_GRID_DAT:
+        raise ValueError("Restored analysis DAT exceeds the size limit")
+    yield from xml_grid_beats(archive.read(member))
+
+
+def analysis_fingerprints(data):
+    sections, state, _ = anlz_sections(data, len(data))
+    if state != "recognized":
+        return None, None
+    previews = {}
+    for section in sections:
+        tag = section["tag"]
+        if tag in ("PWAV", "PWV2"):
+            start = section["offset"]
+            previews[tag] = data[start + section["header_bytes"]:start + section["bytes"]]
+    a, b = previews.get("PWAV"), previews.get("PWV2")
+    signal = sha256(a + b).hexdigest() if a and b and len(set(a)) > 1 else None
+    try:
+        digest = grid_timing_digest(data, sections)
+    except ValueError:
+        return signal, None
+    return signal, GRID_HASH_PREFIX + digest if digest else None
 
 
 def primary_cues_equal(a, b):
@@ -212,6 +238,9 @@ class Catalog:
         pa={path_key(ta[k]) for k in ("current_path","original_path","xml_location") if ta.get(k)}
         pb={path_key(tb[k]) for k in ("current_path","original_path","xml_location") if tb.get(k)}
         ca,cb=self.cue_summary(pair["a"]),self.cue_summary(pair["b"])
+        grid_a,grid_b=ta["grid_sha256"],tb["grid_sha256"]
+        # Older saved catalogs hashed only the raw records and omitted the signed grid shift.
+        comparable_grids=all((value or "").startswith(GRID_HASH_PREFIX) for value in (grid_a,grid_b))
         evidence={
             "preview_agrees":bool(ta["preview_sha256"]) and ta["preview_sha256"]==tb["preview_sha256"],
             "current_path_agrees":bool(ta["current_path"]) and path_key(ta["current_path"])==path_key(tb["current_path"]),
@@ -220,8 +249,8 @@ class Catalog:
             "cue_set_agrees":equal,"no_cues_both":ca["total"]==cb["total"]==0,
             "auto_only_both":ca["total"]>0 and cb["total"]>0 and ca["other"]==cb["other"]==0,
             "manual_present":bool(ca["other"] or cb["other"]),
-            "grid_agrees":bool(ta["grid_sha256"]) and ta["grid_sha256"]==tb["grid_sha256"],
-            "grid_differs":bool(ta["grid_sha256"] and tb["grid_sha256"]) and ta["grid_sha256"]!=tb["grid_sha256"],
+            "grid_agrees":comparable_grids and grid_a==grid_b,
+            "grid_differs":comparable_grids and grid_a!=grid_b,
             "rated":bool(ta["rating"] or tb["rating"]),
             "rating_conflict":bool(ta["rating"] and tb["rating"]) and ta["rating"]!=tb["rating"],
             "played":bool(ta["play_count"] or tb["play_count"]),
@@ -233,7 +262,7 @@ class Catalog:
                 "title": self.tracks[keeper]["title"], "artist": self.tracks[keeper]["artist"],
                 "cue_equal": equal, "rating": self.tracks[keeper]["rating"],
                 "cue_a": self.cue_summary(pair["a"]), "cue_b": self.cue_summary(pair["b"]),
-                "conflicts": conflicts, "grid_differs": ta["grid_sha256"] != tb["grid_sha256"]}
+                "conflicts": conflicts, "grid_differs": evidence["grid_differs"]}
 
     def refresh_counts(self):
         rows = [self.describe(p) for p in self.pairs.values()]
@@ -408,15 +437,11 @@ def _analyze(backup, xml, folder, progress, scratch=None):
                 raise ValueError(f"{mismatches} XML file lengths differ from the backup. Select a matching pair.")
             progress(40, "Fingerprinting saved preview waveforms")
             assets = {}
-            dats = [i for i in infos if "/USBANLZ/" in i.filename and i.filename.lower().endswith(".dat")]
-            for n, member in enumerate(dats):
-                if member.file_size > 20 * 1024**2:
+            dats = analysis_dat_index(infos)
+            for n, (key, member) in enumerate(dats.items()):
+                if "/usbanlz/" not in "/" + key or member is None or member.file_size > MAX_CATALOG_DAT:
                     continue
-                tags = read_tags(archive, member)
-                a, b, g = (tags.get(k) for k in (b"PWAV", b"PWV2", b"PQTZ"))
-                signal = sha256(a + b).hexdigest() if a and b and len(set(a)) > 1 else None
-                grid = sha256(g).hexdigest() if g else None
-                assets[asset_key(member.filename)] = signal, grid
+                assets[key] = analysis_fingerprints(archive.read(member))
                 if n % 1000 == 0:
                     progress(40 + int(35*n/max(len(dats), 1)), f"Fingerprinting analysis {n:,} / {len(dats):,}")
             output = folder / "catalog.sqlite3"
@@ -629,7 +654,7 @@ def export_xml(catalog, decisions, relocations, destination, progress):
     working = destination.parent
     master = working / "export-master.db"
     with zipfile.ZipFile(backup) as archive:
-        member_index = {asset_key(i.filename):i for i in archive.infolist()}
+        member_index = analysis_dat_index(archive.infolist())
         with archive.open("master.db") as src, master.open("wb") as dst:
             while chunk := src.read(2*1024*1024):
                 dst.write(chunk)
@@ -658,14 +683,8 @@ def export_xml(catalog, decisions, relocations, destination, progress):
                     if row[column] is None:attrs.pop(attr)
                 element=etree.Element("TRACK",{k:str(v) for k,v in attrs.items()})
                 if row.get('ReleaseYear'):element.set('Year',str(row['ReleaseYear']))
-                member=member_index.get(asset_key(t["analysis_path"]))
-                if member:
-                    grid=read_tags(archive,member).get(b"PQTZ",b"")
-                    for offset in range(0,len(grid)-7,8):
-                        beat,bpm,ms=struct.unpack_from(">HHI",grid,offset)
-                        if beat not in (1,2,3,4) or bpm==0:
-                            raise ValueError("A saved grid has an unsupported beat entry")
-                        etree.SubElement(element,"TEMPO",Inizio=f"{ms/1000:.3f}",Bpm=f"{bpm/100:.2f}",Metro="4/4",Battito=str(beat))
+                for beat,bpm,ms in restored_grid_beats(archive,member_index,t["analysis_path"]):
+                    etree.SubElement(element,"TEMPO",Inizio=f"{ms/1000:.3f}",Bpm=f"{bpm/100:.2f}",Metro="4/4",Battito=str(beat))
                 apply_cues(element, results.get(i,{"cues":catalog.cues[i],"rating":row["Rating"] or 0}))
                 apply_xml(element,field_edits.get(i,{}))
                 return element
