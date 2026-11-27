@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 1.3.2 — 2026-11-27
+
+- Raise the minimum NumPy version to 2.5.5. Update GitHub’s dependency review action to 5.0.1 and the Hypothesis test dependency to 6.170.17.
+- Inspect recorded PSSI phrase fields in read-only Workbench reports.
+- See classic and OneLibrary catalog names for each USB export folder. Path comparisons use resolved host paths.
+
 ## 1.3.1 — 2026-11-26
 
 - Before moving a Recordbox library, open **Library lab → Formats & STEMS** or **STEMS workflows** and select the saved STEMS folder or its backup ZIP. The report counts speed and sound-quality files, shows their total uncompressed size, and lists cache keys with both versions in the same folder.
