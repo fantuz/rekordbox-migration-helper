@@ -103,6 +103,30 @@ function labFindingDetail(row) {
   return row.detail;
 }
 
+function labPhraseSections(row, rowIndex) {
+  if(row.validation !== 'recognized')return '';
+  return (row.phrase_structure_evidence || []).map((section,index)=>{
+    if(section.validation !== 'recognized' || !Array.isArray(section.phrase_rows))return '';
+    return '<details data-phrase-row="'+rowIndex+'" data-phrase-section="'+index+'"><summary>'+
+      esc(I18n.t('Phrase entries'))+' · '+num(section.phrase_rows.length)+' / '+num(section.entries)+'</summary></details>';
+  }).join('');
+}
+
+function labPhraseTable(section) {
+  const warning=section.starts_in_order_and_range===false
+    ? '<p>'+esc(I18n.t('Check phrase order against the source grid.'))+'</p>' : '';
+  const rows=section.phrase_rows.map(row=>{
+    const verse=/^Verse ([1-6])$/.exec(row.kind_label);
+    const label=verse ? I18n.t('Verse {number}',{number:num(Number(verse[1]))}) : I18n.t(row.kind_label || 'Unknown');
+    return '<tr><td>'+num(row.index)+'</td><td>'+num(row.start_beat)+'</td><td>'+
+      esc(label)+' ('+num(row.kind)+')</td><td><code>'+
+      esc(row.extra_words.map(word=>word.toString(16).padStart(4,'0')).join(' '))+'</code></td></tr>';
+  });
+  return '<p><code>PSSI[28] = '+num(section.header_byte_28)+' · PSSI[29] = '+num(section.header_byte_29)+'</code></p>'+warning+
+    '<div class="lab-table"><table><thead><tr><th>#</th><th>'+esc(I18n.t('Start beat (source grid)'))+'</th><th>'+
+    esc(I18n.t('Phrase type'))+'</th><th>'+esc(I18n.t('Raw words (hex)'))+'</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div>';
+}
+
 function labRecordboxSummary(saved) {
   return '<div class="stems-summary" id="lab-recordbox-stems"><h3>'+esc(I18n.t('Recordbox saved STEMS'))+'</h3>'+
     labSummary({'Speed files':num(saved.speed_files),'Sound quality files':num(saved.quality_files),
@@ -136,7 +160,15 @@ async function labLoadReport() {
   $('#lab-report-validation').innerHTML='<option value="">'+esc(I18n.t('All validation states'))+'</option>'+(labReport.validations || []).map(r=>'<option value="'+esc(r.validation)+'">'+esc(I18n.t(({recognized:'Recognized',corrupt:'Corrupt',unsupported:'Unsupported',not_checked:'Not checked'})[r.validation] || r.validation))+' · '+num(r.count)+'</option>').join('');$('#lab-report-validation').value=validation;
   for(const field of labStemsFields){const el=$('#lab-report-'+field);el.innerHTML='<option value="">'+esc(I18n.t(labStemsAll[field]))+'</option>'+(labReport.filter_facets?.[field]||[]).map(row=>'<option value="'+esc(row.value)+'">'+esc(I18n.t(labStemsLabels[field][row.value]||row.value))+' · '+num(row.count)+'</option>').join('');el.value=filters[field];}
   $('#lab-report-download').hidden=false;$('#lab-report-download').href='/api/lab/reports/'+encodeURIComponent(id)+'/download?'+new URLSearchParams({section,q,...filters,...CollectionSort.args('lab-report')});
-  $('#lab-report-rows').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Finding"))+"</th><th>"+esc(I18n.t("Track / group"))+"</th><th>"+esc(I18n.t("Evidence"))+"</th></tr></thead><tbody>")+labReport.rows.map((r,i)=>'<tr><td>'+esc(labFindingName(r.section))+'</td><td>'+((labReport.sources?.length===1&&r.track_id)?TrackPlayback.button(labReport.sources[0],r.track_id):'')+'<strong>'+esc(r.title || r.playlist || r.name || I18n.t("Group"))+'</strong>'+'<br><span class="subtle">'+esc(r.artist || '')+'</span></td><td>'+esc(labFindingDetail(r))+("<details><summary>"+esc(I18n.t("Show evidence"))+"</summary><pre>")+esc(JSON.stringify(r,null,2))+'</pre></details>'+(r.section==='variant'?'<button class="button secondary" data-lab-normalize="'+i+("\">"+esc(I18n.t("Stage"))+" "+"")+num(r.track_ids.length)+' as “'+esc(r.canonical)+'”</button>':'')+'</td></tr>').join('')+'</tbody></table>';
+  $('#lab-report-rows').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Finding"))+"</th><th>"+esc(I18n.t("Track / group"))+"</th><th>"+esc(I18n.t("Evidence"))+"</th></tr></thead><tbody>")+labReport.rows.map((r,i)=>'<tr><td>'+esc(labFindingName(r.section))+'</td><td>'+((labReport.sources?.length===1&&r.track_id)?TrackPlayback.button(labReport.sources[0],r.track_id):'')+'<strong>'+esc(r.title || r.playlist || r.name || I18n.t("Group"))+'</strong>'+'<br><span class="subtle">'+esc(r.artist || '')+'</span></td><td>'+esc(labFindingDetail(r))+labPhraseSections(r,i)+'<details data-lab-evidence="'+i+'"><summary>'+esc(I18n.t("Show evidence"))+'</summary></details>'+(r.section==='variant'?'<button class="button secondary" data-lab-normalize="'+i+("\">"+esc(I18n.t("Stage"))+" "+"")+num(r.track_ids.length)+' as “'+esc(r.canonical)+'”</button>':'')+'</td></tr>').join('')+'</tbody></table>';
+  $$('#lab-report-rows [data-phrase-section]').forEach(el=>el.ontoggle=()=>{
+    if(el.open && !el.querySelector('table'))el.insertAdjacentHTML('beforeend',
+      labPhraseTable(report.rows[Number(el.dataset.phraseRow)].phrase_structure_evidence[Number(el.dataset.phraseSection)]));
+  });
+  $$('#lab-report-rows [data-lab-evidence]').forEach(el=>el.ontoggle=()=>{
+    if(!el.open || el.querySelector('pre'))return;
+    const pre=document.createElement('pre');pre.textContent=JSON.stringify(report.rows[Number(el.dataset.labEvidence)],null,2);el.append(pre);
+  });
   CollectionSort.bind('#lab-report-rows','lab-report',['section',['title','artist'],'detail'],labReport.rows,async()=>{labReportOffset=0;await labLoadReport();});
   $('#lab-report-count').textContent=num(labReport.total)+' findings · '+num(labReport.total?labReportOffset+1:0)+'–'+num(Math.min(labReportOffset+50,labReport.total));
   $('#lab-report-prev').disabled=labReportOffset===0;$('#lab-report-next').disabled=labReportOffset+50>=labReport.total;

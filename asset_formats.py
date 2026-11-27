@@ -12,6 +12,12 @@ PROBE_LIMIT = 2 * 1024**2
 MAX_STEM_FRAMES = 44100 * 60 * 60 * 12
 # Observed PSSI format bytes, rotated by version and adjusted by the entry count.
 PSSI_MASK = bytes.fromhex('cb e1 ee fa e5 ee ad ee e9 d2 e9 eb e1 e9 f3 e8 e9 f4 e1')
+MAX_PHRASE_DETAILS = 64  # total retained rows per ANLZ file, including repeated PSSI sections
+PHRASE_KINDS = {
+    1: ('Intro', 'Up', 'Down', None, 'Chorus', 'Outro'),
+    2: ('Intro', 'Verse 1', 'Verse 2', 'Verse 3', 'Verse 4', 'Verse 5', 'Verse 6', 'Bridge', 'Chorus', 'Outro'),
+    3: ('Intro', 'Verse 1', 'Verse 1', 'Verse 1', 'Verse 2', 'Verse 2', 'Verse 2', 'Bridge', 'Chorus', 'Outro'),
+}
 
 
 def basename(name):
@@ -154,6 +160,7 @@ def inspect_anlz(data, size, base):
         return result
     sections, framing, detail = anlz_sections(data, size)
     counts = Counter()
+    remaining_phrase_details = MAX_PHRASE_DETAILS
     for section in sections:
         tag, offset = section['tag'], section['offset']
         hlen, length = section['header_bytes'], section['bytes']
@@ -240,7 +247,8 @@ def inspect_anlz(data, size, base):
                         return finish('corrupt',group['entry_detail'])
         if tag == 'PSSI':
             result['phrase_evidence'] = True
-            phrases = inspect_phrase_structure(data, offset, hlen, length)
+            phrases = inspect_phrase_structure(data, offset, hlen, length, remaining_phrase_details)
+            remaining_phrase_details -= len(phrases.get('phrase_rows', ()))
             result['phrase_structure_evidence'].append(phrases)
             if phrases['validation'] == 'corrupt':return finish('corrupt', phrases['detail'])
         result['vocal_activity_evidence'] |= tag == 'PVDI'
@@ -250,8 +258,8 @@ def inspect_anlz(data, size, base):
     return finish('recognized', 'Analysis section framing recognized; phrase and vocal-activity tags do not establish STEMS readiness')
 
 
-def inspect_phrase_structure(data, start, header, length):
-    """Check known PSSI header semantics without decoding phrase entries or guessing future revisions."""
+def inspect_phrase_structure(data, start, header, length, detail_limit):
+    """Report recorded fields of known PSSI layouts. Beat positions are one-based grid indices."""
     result = {'tag':'PSSI', 'validation':'unsupported', 'detail':'Phrase-structure header revision is not decoded',
               'entry_semantics_decoded':False, 'native_stems_readiness':None}
     if header != 32:return result
@@ -269,19 +277,47 @@ def inspect_phrase_structure(data, start, header, length):
     mood = struct.unpack_from('>H', body)[0]
     encoding = 'unmasked'
     if mood not in (1,2,3):
-        # Only the fixed-size header is decoded. The mask is inferred from mood, not authenticated.
-        body = bytes(value ^ ((PSSI_MASK[(i+version)%len(PSSI_MASK)]+count)&255)
-                     for i,value in enumerate(body))
+        # The mask is inferred from the mood. Its phase runs continuously from byte 18.
+        body = _unmask_phrase_bytes(body, version, count, 0)
         mood = struct.unpack_from('>H', body)[0]
         encoding = 'xor_mask_inferred'
     if mood not in (1,2,3):
         return {**result, 'validation':'corrupt', 'detail':'PSSI mood is invalid for the known plain or masked profile'}
+    end_beat = struct.unpack_from('>H', body, 8)[0]
     result.update(mood=mood, mood_name={1:'high',2:'mid',3:'low'}[mood], body_encoding=encoding,
-                  end_beat=struct.unpack_from('>H', body, 8)[0], bank=body[12])
+                  end_beat=end_beat, header_byte_28=body[10], header_byte_29=body[11], bank=body[12],
+                  decoded_header_hex=(data[start:start+18] + body).hex())
     if start+length > len(data):
         return {**result, 'validation':'not_checked', 'detail':'Phrase entries exceed the inspection byte budget'}
-    return {**result, 'validation':'recognized',
-            'detail':'Known phrase header, count and mood checked; phrase-entry semantics and STEMS readiness are not established'}
+    if count > 4096:
+        return {**result, 'validation':'not_checked', 'detail':'Phrase entry-count inspection limit reached'}
+    rows = []
+    previous = 0
+    ordered = True
+    kinds = PHRASE_KINDS[mood]
+    for i in range(count):
+        offset = 32 + 24 * i
+        # Beyond the display limit we need only the beat to check the remaining order.
+        width = 24 if i < detail_limit else 4
+        entry = data[start+offset:start+offset+width]
+        if encoding == 'xor_mask_inferred':
+            entry = _unmask_phrase_bytes(entry, version, count, offset - 18)
+        index, beat = struct.unpack_from('>HH', entry)
+        ordered &= previous < beat <= end_beat
+        previous = beat
+        if i < detail_limit:
+            kind, *words = struct.unpack_from('>10H', entry, 4)
+            rows.append({'index':index, 'start_beat':beat, 'kind':kind,
+                         'kind_label':kinds[kind-1] if 1 <= kind <= len(kinds) else None,
+                         'extra_words':words})
+    return {**result, 'validation':'recognized', 'entry_semantics_decoded':True, 'phrase_rows':rows, 'rows_omitted':count-len(rows),
+            'starts_in_order_and_range':ordered if count else None,
+            'detail':'Checked recorded phrase fields and start beats. Beat numbers refer to the source grid.'}
+
+
+def _unmask_phrase_bytes(raw, version, count, offset):
+    return bytes(value ^ ((PSSI_MASK[(offset + i + version) % len(PSSI_MASK)] + count) & 255)
+                 for i, value in enumerate(raw))
 
 
 def inspect_cues(data,start,end,tag,count):
