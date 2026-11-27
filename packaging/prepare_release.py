@@ -8,7 +8,10 @@ import urllib.error
 import urllib.request
 from urllib.parse import quote
 
-from release_tools import ROOT, commit_history, full_commit_log, release_is_preview, release_notes, release_plan, verify_assets
+from release_tools import (
+    ROOT, changelog_notes, commit_history, full_commit_log,
+    release_is_preview, release_notes, release_plan, verify_assets,
+)
 
 
 def github_reader(repo):
@@ -57,12 +60,21 @@ def validate_expected_source(expected, commit):
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument("--assets",type=Path)
+    mode=parser.add_mutually_exclusive_group()
+    mode.add_argument("--assets",type=Path)
+    mode.add_argument("--check-notes",action="store_true",help="Validate the changelog section matching VERSION")
     args=parser.parse_args()
+    changelog=(ROOT/"CHANGELOG.md").read_text(encoding="utf-8")
+    if args.check_notes:
+        version=(ROOT/"VERSION").read_text(encoding="utf-8").strip()
+        changelog_notes(version,changelog)
+        print("Validated changelog section for",version)
+        return
     validate_expected_source(os.environ.get("EXPECTED_SOURCE_COMMIT", ""), os.environ["GITHUB_SHA"])
     ref=os.environ["GITHUB_REF"]
     default_branch=os.environ.get("RELEASE_DEFAULT_BRANCH") or "main"
     plan=release_plan(os.environ.get("REQUESTED_RELEASE_VERSION",""),ref,default_branch)
+    changelog_notes(plan["version"],changelog)
     validate_release_target(plan,ref,os.environ["GITHUB_SHA"],github_reader(os.environ["GITHUB_REPOSITORY"]),default_branch)
     if args.assets:
         names=verify_assets(args.assets,plan["version"],os.environ["GITHUB_SHA"])
@@ -71,8 +83,7 @@ def main():
         except urllib.error.HTTPError as error:
             if error.code!=404:raise
             previous_tag=None
-        changelog=ROOT/"CHANGELOG.md"
-        notes=release_notes(plan["version"],os.environ["GITHUB_SHA"],changelog.read_text(encoding="utf-8") if changelog.is_file() else "",history,previous_tag)
+        notes=release_notes(plan["version"],os.environ["GITHUB_SHA"],changelog,history,previous_tag)
         (args.assets/"COMMIT-LOG.txt").write_text(full_commit_log(plan["version"],os.environ["GITHUB_SHA"],history),encoding="utf-8")
         (args.assets/"RELEASE-NOTES.md").write_text(notes,encoding="utf-8")
         print("Verified",len(names),"archives from the release commit")

@@ -1,6 +1,5 @@
 """Dispatch the existing release workflow after a reviewed version bump passes CI."""
 import base64
-from datetime import date
 import json
 import os
 from pathlib import Path
@@ -11,7 +10,7 @@ import urllib.error
 import urllib.request
 
 from prepare_release import github_reader
-from release_tools import normalized_version
+from release_tools import changelog_notes, normalized_version
 from select_release_build import REQUIRED_ARTIFACTS
 
 
@@ -65,13 +64,7 @@ def automatic_release(read, run_id, repository, branch='main'):
         return None, 'VERSION did not change against the first parent.'
     if version_key(version) <= version_key(previous):
         raise ValueError('Automatic releases require an increasing version')
-    changelog = source_text(read, 'CHANGELOG.md', commit)
-    match = re.search(r'(?m)^## ' + re.escape(version) + r' — (\d{4}-\d{2}-\d{2})\s*\n', changelog)
-    if not match:
-        raise ValueError('The version bump needs a dated changelog section')
-    date.fromisoformat(match.group(1))
-    if not re.split(r'(?m)^## ', changelog[match.end():], maxsplit=1)[0].strip():
-        raise ValueError('The release notes must not be empty')
+    changelog_notes(version, source_text(read, 'CHANGELOG.md', commit))
     tag = quote('v' + version, safe='')
     if exists(read, 'releases/tags/' + tag) or exists(read, 'git/ref/tags/' + tag):
         return None, 'This release or tag already exists; it will never be overwritten.'

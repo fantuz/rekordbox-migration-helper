@@ -4,9 +4,16 @@
 
 ## 1.3.2 — 2026-11-27
 
-- Raise the minimum NumPy version to 2.5.5. Update GitHub’s dependency review action to 5.0.1 and the Hypothesis test dependency to 6.170.17.
-- Inspect recorded PSSI phrase fields in read-only Workbench reports.
-- See classic and OneLibrary catalog names for each USB export folder. Path comparisons use resolved host paths.
+This release updates dependencies and gives DJs more detail when inspecting saved rekordbox analysis files and USB exports.
+
+### Dependency updates
+
+- Require NumPy 2.5.5 or newer in native packages and Linux source installs. Update GitHub’s dependency review action to 5.0.1 and the Hypothesis test dependency to 6.170.17.
+
+### Analysis files and USB exports
+
+- In **Library lab → Formats & STEMS**, open a PSSI finding and expand **Phrase entries** to see the recorded start beats, phrase types and raw values. Workbench reads the original analysis without changing it. A matching source grid is needed to convert beat positions to playback times.
+- Inspect a USB export folder or backup ZIP and filter for **USB catalog folder** to see whether each `PIONEER/rekordbox` directory contains the classic Device Library catalog, OneLibrary or both. Partial scans can miss sibling files. The report identifies observed catalog names. Catalog contents, agreement and playback on a physical player need separate verification.
 
 ## 1.3.1 — 2026-11-26
 

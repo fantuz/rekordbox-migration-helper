@@ -46,6 +46,9 @@ jobs:
         with:
           python-version: '3.13'
           cache: pip
+      - name: Validate the changelog against VERSION
+        if: runner.os == 'Linux'
+        run: python packaging/prepare_release.py --check-notes
       - run: python -m pip install -r requirements.txt -r requirements-test.txt
       - name: Check English interface and documentation spelling
         if: runner.os == 'Linux'
