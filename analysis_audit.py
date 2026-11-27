@@ -177,6 +177,7 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
             provider_rows,provider_summary=provider_report(inspection_rows,roots,profile or stems_context(),progress,
                 started+max_seconds,inventory_complete=not partial and not warnings,source_aliases=source_aliases)
             pairs,inspection_summary['recordbox_saved_stems']=recordbox_inventory(inspection_rows,progress,incomplete_archives)
+            rows.extend(usb_catalog_folders(inspection_rows))
             for record in inspection_rows:
                 for key in list(record):
                     if key.startswith('_'):record.pop(key)
@@ -201,6 +202,53 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
                 'ownership_unknown_folders':sum(not f['reference_key'] or not complete for f in folders.values()),
                 'duplicate_candidate_groups':candidates,'verified_duplicate_groups':verified_groups,'verified_extra_logical_bytes':verified_bytes,
                 'bytes_hashed':hash_bytes,'verification_skipped':skipped,'inventory_complete':not partial and not warnings,'source_writes':False,'scope_warnings':warnings[:100]},rows
+
+
+def usb_catalog_folders(records):
+    """Group observed catalog names within their own device directory or ZIP member prefix."""
+    folders = {}
+    for row in records:
+        name = row['title']
+        if name.casefold() not in CATALOGS:
+            continue
+        archive = row['_archive_scope']
+        if archive:
+            # ZIP names are literal. Do not combine aliases such as a/./PIONEER and a/PIONEER.
+            parent = row['_source'].replace('\\', '/').rpartition('/')[0]
+            parts = parent.rsplit('/', 2)[-2:]
+        else:
+            directory = Path(row['_source']).parent
+            parent = str(directory)
+            parts = directory.parts[-2:]
+        if tuple(part.casefold() for part in parts) != ('pioneer', 'rekordbox'):
+            continue
+        # Keep the directory spelling: case-distinct folders can coexist in a ZIP or on Linux.
+        members = folders.setdefault((archive, parent), {})
+        # Keep one spelling per role even for case-sensitive archives with many variants.
+        label, count = members.get(name.casefold(), (name, 0))
+        members[name.casefold()] = (min(label, name), count + 1)
+
+    for (archive, parent), members in sorted(folders.items()):
+        classic = 'export.pdb' in members
+        onelibrary = 'exportlibrary.db' in members
+        if classic and onelibrary:
+            layout = 'mixed'
+            detail = 'Both catalog names were found. Their playlists and histories can differ.'
+        elif classic:
+            layout = 'classic'
+            detail = 'Found the classic Device Library catalog name.'
+        elif onelibrary:
+            layout = 'onelibrary'
+            detail = 'Found the OneLibrary catalog name.'
+        else:
+            layout = 'companion'
+            detail = 'Found the classic companion file without an observed main catalog.'
+        location = archive + '!/' + parent if archive else parent
+        yield {'section':'usb_catalog_folder', 'severity':'info', 'asset_family':'device_catalog',
+               'provider':'rekordbox', 'title':location, 'path':location, 'detail':detail,
+               'source_kind':'ZIP' if archive else 'folder', 'catalog_directory':parent,
+               'catalog_layout':layout, 'catalog_filenames':dict(sorted(members.values())), 'records_decoded':False,
+               'player_compatibility':None}
 
 
 def inspect_records(records,progress,verify,max_inspect_bytes,max_hash_bytes,deadline):

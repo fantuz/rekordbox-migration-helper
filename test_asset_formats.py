@@ -636,6 +636,40 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(self.archive.read_bytes(),original)
         for name,raw in self.files.items():self.assertEqual((self.folder/name).read_bytes(),raw)
 
+    def test_usb_catalogs_group_by_exact_device_directory_even_without_content_reads(self):
+        catalog = self.folder/'drive A'/'PIONEER'/'rekordbox'
+        catalog.mkdir(parents=True)
+        (catalog/'export.pdb').write_bytes(b'invalid but named as a catalog')
+        (catalog/'exportLibrary.db').write_bytes(b'uninspected')
+        companion = self.folder/'drive B'/'PIONEER'/'rekordbox'
+        companion.mkdir(parents=True)
+        (companion/'exportExt.pdb').write_bytes(b'companion')
+        with zipfile.ZipFile(self.archive, 'w') as z:
+            for member in ('A/PIONEER/rekordbox/export.pdb', 'A/PIONEER/rekordbox/EXPORT.PDB',
+                           'a/PIONEER/rekordbox/exportLibrary.db',
+                           'A/./PIONEER/rekordbox/exportLibrary.db', 'orphan/exportExt.pdb'):
+                z.writestr(member,b'uninspected')
+        other = self.root/'separate.zip'
+        with zipfile.ZipFile(other, 'w') as z:
+            z.writestr('A/PIONEER/rekordbox/exportLibrary.db',b'uninspected')
+        scopes = list(map(str,(self.folder, catalog, self.archive, other)))
+        summary,rows = self.audit(source=scopes,max_inspect_bytes=0)
+        self.assertEqual(summary['format_inspection']['bytes_inspected'],0)
+        layouts = {r['path']:r for r in rows if r['section']=='usb_catalog_folder'}
+        # The scanner resolves host paths. ZIP member names retain their literal spelling.
+        catalog_path = str(catalog.resolve())
+        archive_path = str(self.archive.resolve())
+        self.assertEqual({p:r['catalog_layout'] for p,r in layouts.items()}, {
+            catalog_path:'mixed', str(companion.resolve()):'companion',
+            archive_path+'!/A/PIONEER/rekordbox':'classic',
+            archive_path+'!/A/./PIONEER/rekordbox':'onelibrary',
+            archive_path+'!/a/PIONEER/rekordbox':'onelibrary',
+            str(other.resolve())+'!/A/PIONEER/rekordbox':'onelibrary'})
+        self.assertEqual(layouts[catalog_path]['catalog_filenames'],{'export.pdb':1,'exportLibrary.db':1})
+        self.assertEqual(layouts[archive_path+'!/A/PIONEER/rekordbox']['catalog_filenames'],{'EXPORT.PDB':2})
+        self.assertTrue(all(not r['records_decoded'] and r['player_compatibility'] is None
+                            for r in layouts.values()))
+
     def test_header_and_hash_budgets_keep_unchecked_separate(self):
         summary,rows=self.audit(verify=True,max_inspect_bytes=0,max_hash_bytes=0)
         self.assertEqual(summary['format_inspection']['not_checked'],7);self.assertEqual(summary['bytes_hashed'],0)

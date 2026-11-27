@@ -79,10 +79,15 @@ $('#lab-stems').onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind:'st
 $('#lab-compare-form').onsubmit=wrap(async e=>{e.preventDefault();await labRun('compare',{before:$('#lab-before').value,after:$('#lab-after').value,tolerance_ms:$('#lab-tolerance').value});});
 
 function labFindingName(section) {
+  if(section==='usb_catalog_folder')return I18n.t('USB catalog folder');
   return section==='recordbox_stems_pair'?I18n.t('Speed and quality pair'):section.replaceAll('_',' ');
 }
 
 function labFindingDetail(row) {
+  if(row.section==='usb_catalog_folder'){
+    const names=Object.entries(row.catalog_filenames).map(([name,count])=>count>1?name+' × '+num(count):name);
+    return I18n.t(row.detail)+' '+names.join(', ');
+  }
   if(row.section==='recordbox_stems_pair'){
     const sizes=I18n.t('Speed {speed} · Sound quality {quality} · Total {total}',{
       speed:bytes(row.speed_bytes),quality:bytes(row.quality_bytes),total:bytes(row.bytes)

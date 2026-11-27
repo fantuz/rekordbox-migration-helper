@@ -23,7 +23,9 @@ def check_format_insights_ui(browser,base,store,root,output):
     for name,raw in files.items():(folder/name).write_bytes(raw)
     archive=root/'format fixtures.zip'
     with zipfile.ZipFile(archive,'w') as z:
-        for name,raw in files.items():z.writestr('PIONEER/'+name,raw)
+        for name,raw in files.items():
+            prefix = 'PIONEER/rekordbox/' if name in ('export.pdb','exportLibrary.db') else 'PIONEER/'
+            z.writestr(prefix+name,raw)
     original={p:sha256(p.read_bytes()).hexdigest() for p in [*folder.iterdir(),archive]}
     context=browser.new_context(locale='en-US',viewport={'width':1440,'height':1050})
     context.add_init_script("if(location.protocol==='http:')localStorage.setItem('library-workbench.language.v1','en')")
@@ -82,6 +84,12 @@ def check_format_insights_ui(browser,base,store,root,output):
         assert len(embeddings)==2 and all(r['validation']=='unsupported' and r['asset_family']=='analysis'
                                         and r['provider']=='rekordbox' and r['embedding_signature'] for r in embeddings)
         page.screenshot(path=str(output/'formats-stems.png'),full_page=True)
+        layouts = filter_report('section','usb_catalog_folder')
+        layout, = layouts['rows']
+        assert layout['catalog_layout']=='mixed' and layout['title'].endswith('!/PIONEER/rekordbox')
+        expect(page.locator('#lab-report-rows')).to_contain_text('Both catalog names were found.')
+        expect(page.locator('#lab-report-rows')).to_contain_text('export.pdb, exportLibrary.db')
+        filter_report('section','')
         filtered=filter_report('validation','corrupt')
         assert len(filtered['rows'])==4 and all(r['validation']=='corrupt' for r in filtered['rows'])
         expect(page.locator('#lab-report-rows tbody tr')).to_have_count(4)
