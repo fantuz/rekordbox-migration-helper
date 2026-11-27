@@ -56,23 +56,21 @@ def check_inline_ratings_ui(browser, base, store, output):
         expect(bubble.locator('[data-inline-stars="4"]')).to_have_attribute('aria-pressed', 'true')
         # A failed metadata read gives a visible explanation and a bounded retry,
         # instead of silently leaving the stars disabled until navigation.
-        read = {'fail': True}
-        def fail_read_once(route):
-            if read['fail']:
-                read['fail'] = False
-                route.fulfill(status=503, json={'error': 'Synthetic rating refresh unavailable'})
-            else:
-                route.continue_()
-        page.route('**/api/ratings?*', fail_read_once)
+        # A view transition can issue more than one refresh. Keep the simulated
+        # outage active until we observe its effect on the destination widget.
+        def fail_read(route):
+            route.fulfill(status=503, json={'error': 'Synthetic rating refresh unavailable'})
+        page.route('**/api/ratings?*', fail_read)
         page.locator('.nav[data-view="insights"]').click()
         refreshed = widget('#dj-tracks')
         expect(refreshed.locator('.inline-rating-state')).to_have_text('Unavailable')
         assert 'Synthetic rating refresh unavailable' in refreshed.get_attribute('title')
         expect(refreshed.locator('[data-inline-stars="4"]')).to_be_disabled()
-        refreshed.locator('[data-inline-rating-retry]').click()
+        page.unroute('**/api/ratings?*', fail_read)
+        with page.expect_request('**/api/ratings?*'):
+            refreshed.locator('[data-inline-rating-retry]').click()
         expect(refreshed.locator('[data-inline-stars="4"]')).to_have_attribute('aria-pressed', 'true')
         expect(refreshed.locator('[data-inline-stars="4"]')).to_be_enabled()
-        page.unroute('**/api/ratings?*', fail_read_once)
         page.locator('.nav[data-view="lab"]').click()
         page.locator('[data-lab-tab="editor"]').click()
         select_collection(page, '#lab-snapshot', sid)

@@ -9,13 +9,14 @@ import zipfile
 
 def check_format_insights_ui(browser,base,store,root,output):
     from playwright.sync_api import expect
-    from test_asset_formats import anlz_bytes,stems_bytes,settings_bytes,pdb_bytes,pqt2_bytes
+    from test_asset_formats import anlz_bytes,anlz_file,stems_bytes,settings_bytes,pdb_bytes,pqt2_bytes,phrase_rows_section
     from test_source_insights import native_snapshot
     source=native_snapshot();sid=store.save_snapshot(source,'Format insights 日本')['id']
     captured=store.snapshot(sid)
     folder=root/'format fixtures 日本';folder.mkdir()
     bad=bytearray(settings_bytes('DEVSETTING.DAT'));bad[104]^=1
-    files={'ANLZ0000.DAT':anlz_bytes((12800,13000)),'ANLZ0000.EXT':pqt2_bytes(),
+    phrase=phrase_rows_section([(1, 8, 5, *range(9)), (2, 64, 9, *range(9,18))], version=1, masked=True)
+    files={'ANLZ0000.DAT':anlz_bytes((12800,13000)),'ANLZ0000.EXT':anlz_file(pqt2_bytes()[28:],phrase),
            'ANLZ0000.3EX':b'\x81\xa9embedding\x80','valid.stems':stems_bytes(),
            'broken.stems':stems_bytes()[:-1],'MYSETTING.DAT':settings_bytes(),'DEVSETTING.DAT':bytes(bad),
            'export.pdb':pdb_bytes(),'exportLibrary.db':b'opaque OneLibrary candidate','drums.rbsc':b'candidate'}
@@ -67,6 +68,16 @@ def check_format_insights_ui(browser,base,store,root,output):
         assert all(r['section_counts']['PCOB']==2 and r['tempo_evidence'][0]['bpms']==[128,130] for r in anlz)
         grids=[r['extended_grid_evidence'][0] for r in evidence if r.get('extended_grid_evidence')]
         assert len(grids)==2 and all(g['validation']=='recognized' and g['checksum_validation']=='not_checked' for g in grids)
+        sections=[p for r in evidence for p in r.get('phrase_structure_evidence',[]) if 'phrase_rows' in p]
+        assert len(sections)==2 and all(p['phrase_rows'][1]['extra_words']==list(range(9,18)) for p in sections)
+        detail=page.locator('#lab-report-rows [data-phrase-section]').first
+        detail.locator('summary').click()
+        expect(detail.get_by_role('cell',name='Verse 2 (5)',exact=True)).to_be_visible()
+        expect(detail.get_by_role('cell',name='64',exact=True)).to_be_visible()
+        expect(detail.locator('table tbody tr')).to_have_count(2)
+        expect(detail.locator('p code')).to_contain_text('PSSI[29] = 52')
+        detail.screenshot(path=str(output/'phrase-entries.png'))
+        detail.locator('summary').click()
         embeddings=[r for r in evidence if r['format']=='anlz_3ex']
         assert len(embeddings)==2 and all(r['validation']=='unsupported' and r['asset_family']=='analysis'
                                         and r['provider']=='rekordbox' and r['embedding_signature'] for r in embeddings)
@@ -83,6 +94,7 @@ def check_format_insights_ui(browser,base,store,root,output):
         page.reload(wait_until='networkidle');page.locator('.nav[data-view="lab"]').click()
         page.select_option('#lab-report-select',format_id)
         expect(page.locator('#lab-report-download')).to_have_attribute('href',re.compile('/'+format_id+'/download'))
+        expect(page.locator('#lab-report-rows [data-phrase-section]')).to_have_count(2)
         page.locator('[data-lab-tab="source-insights"]').click()
         _,native=report('source-insights')
         assert native['summary']['resolved_artist_roles']==3

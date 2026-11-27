@@ -67,8 +67,10 @@ copied:
 - [Pyrekordbox PSSI schema](https://github.com/dylanljones/pyrekordbox/blob/50b4604d98dfd52740aa9e76d80c3a32dfa451ba/pyrekordbox/anlz/structs.py#L246-L260)
   and [mask handling](https://github.com/dylanljones/pyrekordbox/blob/50b4604d98dfd52740aa9e76d80c3a32dfa451ba/pyrekordbox/anlz/file.py#L123-L142)
   distinguish version and entry size and rotate the mask for version 1.
-  Workbench checks bounded structure and header values, keeping phrase records
-  opaque and unknown revisions unsupported.
+  Workbench checks bounded structure and header values and reads the twelve
+  big-endian words of each retained record. Its kind labels follow the
+  [mood-specific recordbox mapping](https://github.com/adamsardo/recordbox/blob/3cc12d95cd5da40925491b20ec1220925c4cd3c1/app/src/phrase.rs#L186).
+  Extra words retain their numeric values. Unknown revisions remain unsupported.
 - [Rekordcrate cue-comment correction](https://github.com/RobinMcCorkell/rekordcrate/blob/85f25448950b8cb665449a305e71eb61d332df5b/src/anlz.rs#L285-L315)
   corroborates byte counts and final UTF-16 NUL handling. A generated missing-NUL
   entry reproduced the earlier overpermissive Workbench classification.

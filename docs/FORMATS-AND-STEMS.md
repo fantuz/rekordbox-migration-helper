@@ -13,7 +13,7 @@ Select a saved snapshot, enter one or more absolute folder or backup-ZIP paths, 
 | PQTZ tempo | Known 24-byte header, beat count, increasing raw times, beat/BPM values, distinct tempos in BPM, signed header shift and effective first/last timestamps | Negative effective times remain preroll evidence. Unknown headers retain Unsupported nested evidence. Saved BPM comparisons require one unambiguous captured file reference. A path match does not independently establish audio identity. Variable grids need review rather than automatic correction. |
 | PQT2 extended grid | For revisions `0x01000002` and `0x02000002`, checks the declared count and fractions (0–999 microseconds within a millisecond). For the desktop revision `0x02000002`, identifies populated and cleared tables. | A standalone EXT cannot establish which DAT it mirrors. Previewing a nudge checks a populated desktop table against the companion DAT. Unknown revisions remain unsupported. |
 | PCOB / PCO2 cues | Separate hot/memory groups; declared entry counts and bounds; known cue/loop times; extended UTF-16 comments including required final NUL for nonempty known-profile comments | Legacy active-loop evidence is retained separately from extended comments. Missing extended active-loop data stays unknown. Unsupported entry revisions are shown rather than guessed. |
-| PSSI phrase structure | Known versions 0 and 1, 32-byte header, 24-byte entry stride, declared count/body agreement and mood range after the version-dependent mask | Phrase entries remain opaque. Masking is inferred from known header values; structural recognition is not phrase-boundary, source-association, audio or native STEMS validation. Unknown profiles retain Unsupported nested evidence. |
+| PSSI phrase structure | Versions 0 and 1, 32-byte header, 24-byte entries, count, mood, end beat and bank. Each retained entry includes its stored index, one-based start beat, numeric kind and nine additional 16-bit words. | The mood determines the displayed phrase type. An unrecognized kind retains its number. The mask is inferred from the header. Beat positions refer to the source grid. |
 | Player settings | Recognized MYSETTING.DAT, MYSETTING2.DAT, DEVSETTING.DAT and DJMMYSETTING.DAT layouts, lengths and CRC16/XMODEM | DJMMYSETTING covers header plus payload; the others cover payload only. Unknown payload revisions remain unsupported. No settings are written. |
 | Classic `export.pdb` / `exportExt.pdb` | File/page alignment, header, table count, unique table types and initial/final page pointers | Header recognition does not decode device tracks or validate every page, row, relationship or player. |
 | `exportLibrary.db` | Separate OneLibrary filename evidence | Encryption, schema and records are not decoded. Classic catalog changes cannot be assumed to update OneLibrary. |
@@ -27,9 +27,16 @@ Validation states are **Recognized**, **Corrupt**, **Unsupported** and **Not che
 PQTZ reports retain raw timestamps and the signed header shift separately, with
 effective endpoints calculated once. PSSI presence remains a separate boolean
 from its nested structural checks. A framing-recognized container can therefore
-contain an unsupported or budget-limited nested revision; inspect **Show
-evidence** before drawing conclusions about its payload. These inspectors do
-not rewrite grids, decode phrase entries or import them into the library.
+contain an unsupported or budget-limited nested revision. Expand **Phrase
+entries** to inspect the original beat numbers and header bytes 28 and 29.
+The report checks that starts increase and fall between beat 1 and the
+declared end beat. **Show evidence** includes the complete decoded header
+in hex. Converting a start beat to a playback time requires a matching source
+grid. The meaning of header bytes 28 and 29 remains unknown. STEMS readiness
+requires separate evidence. The inspector reads up to 4,096 phrase
+entries per section and retains details for up to 64 across the file.
+
+![Expanded PSSI report for two synthetic phrases, showing their start beats, types and raw words.](screenshots/phrase-entries.png)
 
 The inspector reads at most 2 MiB per prefix and 8 MiB of metadata per run. Local NI containers additionally support sparse metadata seeks within that actual-byte budget; ZIPs retain prefix-only inspection. It never allocates PCM buffers from a cache's declared frame count. A length-consistent Recordbox cache above the inspection policy's 12-hour limit stays Not checked; a policy limit alone does not establish corruption. Analysis inspection allows at most 1,024 sections and 4,096 entries per cue group; retained position details are capped at 64 per group. Inventory retains the existing directory, entry and time limits. Inspection checks a soft deadline between operations; a slow operating-system read can still delay cancellation until the next checkpoint.
 

@@ -52,6 +52,16 @@ def pssi_section(version=0,count=1,mood=3,entry_size=24,masked=False):
                    bytes(entry_size*count))
 
 
+def phrase_rows_section(rows, version=0, mood=3, masked=False):
+    header = struct.pack('>H6sH4B', mood, b'abcdef', 120, 37, 52, 7, 19)
+    body = header + b''.join(struct.pack('>12H', *row) for row in rows)
+    if masked:
+        seed = b'Kanzen-niRikaishita'
+        body = bytes(byte ^ ((128 + seed[(version+i) % len(seed)] + len(rows)) & 255)
+                     for i, byte in enumerate(body))
+    return section('PSSI', struct.pack('>HHH', version, 24, len(rows)) + body[:14], body[14:])
+
+
 def extended_cue_file(comment):
     entry=bytearray(88+len(comment));entry[:4]=b'PCP2'
     struct.pack_into('>II',entry,4,16,len(entry));entry[16]=1
@@ -221,7 +231,7 @@ class FormatTests(unittest.TestCase):
             if result['beat_grid_evidence']:
                 self.assertEqual(result['beat_grid_evidence'][0]['validation'],'not_checked')
 
-    def test_phrase_known_versions_plain_and_rotated_mask_report_only_header_semantics(self):
+    def test_phrase_known_versions_plain_and_rotated_mask_report_known_layout(self):
         for version in (0,1):
             for masked in (False,True):
                 for count in (1,257):
@@ -233,11 +243,42 @@ class FormatTests(unittest.TestCase):
                         self.assertEqual((phrase['version'],phrase['entry_bytes'],phrase['entries']),(version,24,count))
                         self.assertEqual((phrase['mood'],phrase['mood_name'],phrase['end_beat'],phrase['bank']),(3,'low',16,7))
                         self.assertEqual(phrase['body_encoding'],'xor_mask_inferred' if masked else 'unmasked')
-                        self.assertFalse(phrase['entry_semantics_decoded']);self.assertIsNone(phrase['native_stems_readiness'])
+                        self.assertTrue(phrase['entry_semantics_decoded']);self.assertIsNone(phrase['native_stems_readiness'])
                         self.assertIsNone(result['native_stems_readiness']);self.assertEqual(raw,before)
         for mood in (1,2,3):
             phrase=self.inspect('ANLZ0000.EXT',anlz_file(pssi_section(mood=mood)))['phrase_structure_evidence'][0]
             self.assertEqual(phrase['mood'],mood)
+
+    def test_phrase_rows_preserve_every_word_and_report_source_beat_indices_only(self):
+        words = (1234, 65535, 0, 77, 88, 99, 17, 23, 4)
+        rows = [(4, 1, 5, *words), (9, 39, 199, *reversed(words))]
+        for version in (0, 1):
+            for mood, label in ((1, 'Chorus'), (2, 'Verse 4'), (3, 'Verse 2')):
+                plain = phrase_rows_section(rows, version, mood)
+                for masked in (True, False):
+                    raw = anlz_file(phrase_rows_section(rows, version, mood, masked))
+                    phrase = self.inspect('ANLZ0000.EXT', raw)['phrase_structure_evidence'][0]
+                    self.assertEqual(bytes.fromhex(phrase['decoded_header_hex']), plain[:32])
+                    self.assertEqual((phrase['header_byte_28'], phrase['header_byte_29'], phrase['bank']), (37, 52, 7))
+                    self.assertTrue(phrase['starts_in_order_and_range'])
+                    self.assertEqual([r['kind_label'] for r in phrase['phrase_rows']], [label, None])
+                    for i, observed in enumerate(phrase['phrase_rows']):
+                        self.assertEqual((observed['index'], observed['start_beat'], observed['kind'], *observed['extra_words']), rows[i])
+                        self.assertNotIn('time', observed)
+        invalid = [(1, 0, 5, *words), (2, 121, 5, *words)]
+        evidence = self.inspect('test.EXT', anlz_file(phrase_rows_section(invalid)))['phrase_structure_evidence'][0]
+        self.assertFalse(evidence['starts_in_order_and_range'])
+
+    def test_phrase_details_share_one_limit_and_late_disorder_is_still_reported(self):
+        rows = [(i, i+1, 5, *([0]*9)) for i in range(95)] + [(96, 2, 1, *([0]*9))]
+        part = phrase_rows_section(rows, 1, masked=True)
+        first, second = self.inspect('test.EXT', anlz_file(part, part))['phrase_structure_evidence']
+        self.assertEqual([len(p['phrase_rows']) for p in (first, second)], [64, 0])
+        self.assertEqual([p['rows_omitted'] for p in (first, second)], [32, 96])
+        self.assertTrue(all(p['starts_in_order_and_range'] is False for p in (first, second)))
+        large = self.inspect('test.EXT', anlz_file(pssi_section(count=4097)))['phrase_structure_evidence'][0]
+        self.assertEqual(large['validation'], 'not_checked')
+        self.assertNotIn('phrase_rows', large)
 
     def test_phrase_unknown_profiles_remain_presence_evidence(self):
         unknown_header=section('PSSI',bytes(24),bytes(24))
