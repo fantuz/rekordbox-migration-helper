@@ -130,7 +130,22 @@ class ReleaseTests(unittest.TestCase):
         notes=release.release_notes('0.4.5',self.commit,changelog)
         for value in ('Colour cloud','Staged comments','### Details','Library Workbench.exe','Apple Silicon','SHA256SUMS','experimental',self.commit):self.assertIn(value,notes)
         for value in ('Unreleased feature','Old feature'):self.assertNotIn(value,notes)
-        self.assertIn('local library analyzer',release.release_notes('0.4.7',self.commit,changelog))
+        with self.assertRaisesRegex(ValueError,'dated changelog section'):
+            release.release_notes('0.4.7',self.commit,changelog)
+
+    def test_release_notes_require_one_dated_section_without_template_headings(self):
+        valid = '## 1.3.2 — 2026-11-27\n\n- Update NumPy.\n'
+        for changelog, error in (
+            (valid + '\n' + valid, 'exactly one'),
+            (valid.replace('2026-11-27', '2026-02-30'), 'valid changelog date'),
+            (valid.replace(' — 2026-11-27', ''), 'dated changelog heading'),
+            (valid.split('\n', 1)[0] + '\n\n## 1.3.1 — 2026-11-26\n\nOlder notes.', 'must not be empty'),
+            (valid + '\n### Downloads\n\nPlaceholder link.', 'release template'),
+            (valid + '\n### Full commit log\n\nPlaceholder log.', 'release template'),
+        ):
+            with self.subTest(error=error, changelog=changelog):
+                with self.assertRaisesRegex(ValueError,error):
+                    release.release_notes('1.3.2',self.commit,changelog)
 
     def test_real_source_packager_allows_gitattributes_but_excludes_private_workspaces(self):
         import sys
@@ -169,7 +184,9 @@ class ReleaseTests(unittest.TestCase):
             'Library-Workbench-0.4.6-rc.1-macos-arm64.zip',
             'Library-Workbench-0.4.6-rc.1-linux-x86_64.tar.gz',
             'Library-Workbench-0.4.6-rc.1-linux-source.tar.gz'])
-        with patch.dict('os.environ',{'GITHUB_REPOSITORY':'example/workbench'}):notes=release.release_notes('0.4.6-rc.1',self.commit)
+        changelog = '## 0.4.6-rc.1 — 2026-11-13\n\nPreview notes.\n'
+        with patch.dict('os.environ',{'GITHUB_REPOSITORY':'example/workbench'}):
+            notes=release.release_notes('0.4.6-rc.1',self.commit,changelog)
         self.assertEqual(notes.count('[Download now]('),5)
         for name in names:self.assertIn('https://github.com/example/workbench/releases/download/v0.4.6-rc.1/'+name,notes)
         self.assertNotIn('-preview.zip',notes)
@@ -200,8 +217,9 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn(message,text)
         for record in history:
             for key in ('sha','author','date','message'):self.assertIn(record[key],text)
+        changelog = '## 1.0.0 — 2026-11-13\n\nStable release notes.\n'
         with patch.dict('os.environ',{'GITHUB_REPOSITORY':'example/workbench'}):
-            notes=release.release_notes('1.0.0',head,'',history,'v0.4.5')
+            notes=release.release_notes('1.0.0',head,changelog,history,'v0.4.5')
         for record in history:self.assertIn('/commit/'+record['sha'],notes)
         self.assertIn('Full commit log',notes);self.assertIn('Show all 4 commits',notes)
         self.assertIn('/compare/v0.4.5...v1.0.0',notes)

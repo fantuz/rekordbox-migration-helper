@@ -25,13 +25,13 @@ The README download buttons always open the latest stable release's **Downloads*
 Treat each release as a reviewed source milestone, not merely a version override.
 
 1. Confirm the previous stable tag, the intended `main` commit, and that the target release and tag do not already exist. Merge feature PRs before starting release preparation.
-2. Open a separate **release-preparation PR**. Set the root `VERSION` file to the target version. Move completed entries under **Unreleased** into a dated `## <version> — YYYY-MM-DD` section in `CHANGELOG.md`; attribute earlier released features to their historical release instead of duplicating them. Preserve `Unreleased` for new development.
-3. Use GitHub Actions to validate the PR: source checks across Linux/Windows/macOS, browser tests across Chromium/Firefox/WebKit, native packaging, aggregate checks and security. Merge only after checks pass.
+2. Open the **release-preparation PR** and set the root `VERSION` file to the target version. Move completed entries under **Unreleased** into one nonempty `## <version> — YYYY-MM-DD` section in `CHANGELOG.md`. Explain what users can do, where to find it and any relevant compatibility or evidence limits. Preserve `Unreleased` for new development and keep previously released features in their historical sections. The release renderer supplies the download table, installation and compatibility notes, source link, checksums and full commit history.
+3. Run `python packaging/prepare_release.py --check-notes` locally. **Check and package** validates the same dated notes alongside the source, browser and native-package tests. Merge after these checks and the security checks pass.
 4. After merging, **Release merged version** automatically follows the successful main-push **Check and package** run. It requires an increasing `VERSION` change against the merge's first parent, a dated non-empty changelog section, all validated artifacts, and successful **Security checks** and CodeQL analysis for the same source commit.
 5. Keep `main` at that commit until publication finishes. The trigger starts the existing **Create release** workflow with the version and expected source SHA, publishes stable versions as latest, and keeps alpha/beta/rc versions as prereleases. The workflow reuses the exact validated main build and repeats the dependency audit and archive verification before creating the tag and release.
 6. Verify that `v<version>` points to the validated commit, that the release is the latest stable, and that all five archives, `SHA256SUMS`, `COMMIT-LOG.txt` and release notes are present. Do not consider a release published merely because a development run passed.
 
-The release workflow technically supports an explicit version override, but use it only for deliberate exceptional releases—not as a substitute for updating `VERSION` on `main`. Do not create hand-written releases, overwrite existing tags or bypass the release workflow.
+An explicit release version override is for exceptional releases and requires its own reviewed changelog section on `main`. The usual release starts with a change to `VERSION` on `main`. The release workflow generates the GitHub release body from the changelog and protects existing tags.
 
 ## Automatic trigger and recovery
 

@@ -1,4 +1,5 @@
 """Release planning and artifact verification, also used by the web-run workflow."""
+from datetime import date
 from hashlib import sha256
 from html import escape
 import json
@@ -72,14 +73,31 @@ def full_commit_log(version,commit,history):
     return header+'\n'.join('commit '+r['sha']+'\nAuthor: '+r['author']+'\nDate: '+r['date']+'\n\n'+r['message'] for r in history)
 
 
-def release_notes(version, commit, changelog="", history=None, previous_tag=None):
+def changelog_notes(version, changelog):
+    """Return the reviewed notes for one dated version section."""
     version=normalized_version(version)
-    match=re.search(r"(?m)^## "+re.escape(version)+r"(?:[ \t].*)?$",changelog)
-    changes=""
-    if match:
-        tail=changelog[match.end():]
-        changes=re.split(r"(?m)^## ",tail,maxsplit=1)[0].strip()
-    intro=changes or "A local library analyzer, duplicate-review utility and offline metadata explorer."
+    headings = list(re.finditer(r"(?m)^## " + re.escape(version) + r"(?:[ \t].*)?$", changelog))
+    if len(headings) != 1:
+        raise ValueError(f"Add exactly one dated changelog section for {version}: ## {version} — YYYY-MM-DD")
+    heading = headings[0]
+    dated = re.fullmatch(r"## " + re.escape(version) + r" — ([0-9]{4}-[0-9]{2}-[0-9]{2})[ \t]*", heading.group())
+    if dated is None:
+        raise ValueError(f"Use a dated changelog heading: ## {version} — YYYY-MM-DD")
+    try:
+        date.fromisoformat(dated.group(1))
+    except ValueError as error:
+        raise ValueError(f"Use a valid changelog date for {version}") from error
+    notes = re.split(r"(?m)^## ", changelog[heading.end():], maxsplit=1)[0].strip()
+    if not notes:
+        raise ValueError(f"The release notes for {version} must not be empty")
+    if re.search(r"(?im)^###[ \t]+(?:Downloads|Full commit log)[ \t]*#*[ \t]*$", notes):
+        raise ValueError("The release template adds the Downloads and Full commit log sections")
+    return notes
+
+
+def release_notes(version, commit, changelog, history=None, previous_tag=None):
+    version=normalized_version(version)
+    intro=changelog_notes(version, changelog)
     repository=os.environ.get('GITHUB_REPOSITORY','fantuz/rekordbox-migration-helper')
     base='https://github.com/'+repository
     asset=base+'/releases/download/v'+version+'/'

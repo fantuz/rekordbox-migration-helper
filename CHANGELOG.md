@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 1.3.2 — 2026-11-27
+
+This release updates dependencies and gives DJs more detail when inspecting saved rekordbox analysis files and USB exports.
+
+### Dependency updates
+
+- Require NumPy 2.5.5 or newer in native packages and Linux source installs. Update GitHub’s dependency review action to 5.0.1 and the Hypothesis test dependency to 6.170.17.
+
+### Analysis files and USB exports
+
+- In **Library lab → Formats & STEMS**, open a PSSI finding and expand **Phrase entries** to see the recorded start beats, phrase types and raw values. Workbench reads the original analysis without changing it. A matching source grid is needed to convert beat positions to playback times.
+- Inspect a USB export folder or backup ZIP and filter for **USB catalog folder** to see whether each `PIONEER/rekordbox` directory contains the classic Device Library catalog, OneLibrary or both. Partial scans can miss sibling files. The report identifies observed catalog names. Catalog contents, agreement and playback on a physical player need separate verification.
+
 ## 1.3.1 — 2026-11-26
 
 - Before moving a Recordbox library, open **Library lab → Formats & STEMS** or **STEMS workflows** and select the saved STEMS folder or its backup ZIP. The report counts speed and sound-quality files, shows their total uncompressed size, and lists cache keys with both versions in the same folder.
