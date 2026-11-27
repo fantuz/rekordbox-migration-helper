@@ -31690,6 +31690,76 @@
       "ar": "المقطع {number}",
       "pt-PT": "Estrofe {number}",
       "pt-BR": "Estrofe {number}"
+    },
+    "USB catalog folder": {
+      "de": "USB-Katalogordner",
+      "fr": "Dossier de catalogues USB",
+      "it": "Cartella dei cataloghi USB",
+      "es": "Carpeta de catálogos USB",
+      "el": "Φάκελος καταλόγων USB",
+      "pl": "Folder katalogów USB",
+      "cs": "Složka katalogů USB",
+      "ru": "Папка каталогов USB",
+      "ja": "USB カタログフォルダー",
+      "ar": "مجلد كتالوجات USB",
+      "pt-PT": "Pasta de catálogos USB",
+      "pt-BR": "Pasta de catálogos USB"
+    },
+    "Both catalog names were found. Their playlists and histories can differ.": {
+      "de": "Beide Katalognamen wurden gefunden. Wiedergabelisten und Verläufe können voneinander abweichen.",
+      "fr": "Les deux noms de catalogue ont été trouvés. Leurs listes de lecture et leurs historiques peuvent différer.",
+      "it": "Sono stati trovati entrambi i nomi di catalogo. Le playlist e le cronologie possono essere diverse.",
+      "es": "Se encontraron los nombres de ambos catálogos. Sus listas de reproducción e historiales pueden diferir.",
+      "el": "Βρέθηκαν τα ονόματα και των δύο καταλόγων. Οι λίστες αναπαραγωγής και τα ιστορικά τους μπορεί να διαφέρουν.",
+      "pl": "Znaleziono nazwy obu katalogów. Ich listy odtwarzania i historie mogą się różnić.",
+      "cs": "Byly nalezeny názvy obou katalogů. Jejich seznamy skladeb a historie se mohou lišit.",
+      "ru": "Найдены имена обоих каталогов. Их плейлисты и истории воспроизведения могут различаться.",
+      "ja": "両方のカタログ名が見つかりました。プレイリストや再生履歴が異なる場合があります。",
+      "ar": "عُثر على اسمي الكتالوجين. قد تختلف قوائم التشغيل وسجلات التشغيل بينهما.",
+      "pt-PT": "Foram encontrados os nomes de ambos os catálogos. As listas de reprodução e os históricos podem ser diferentes.",
+      "pt-BR": "Os nomes dos dois catálogos foram encontrados. As playlists e os históricos podem ser diferentes."
+    },
+    "Found the classic Device Library catalog name.": {
+      "de": "Der Katalogname der klassischen Device Library wurde gefunden.",
+      "fr": "Le nom du catalogue Device Library classique a été trouvé.",
+      "it": "È stato trovato il nome del catalogo Device Library classico.",
+      "es": "Se encontró el nombre del catálogo Device Library clásico.",
+      "el": "Βρέθηκε το όνομα του κλασικού καταλόγου Device Library.",
+      "pl": "Znaleziono nazwę klasycznego katalogu Device Library.",
+      "cs": "Byl nalezen název klasického katalogu Device Library.",
+      "ru": "Найдено имя классического каталога Device Library.",
+      "ja": "従来の Device Library のカタログ名が見つかりました。",
+      "ar": "عُثر على اسم كتالوج Device Library التقليدي.",
+      "pt-PT": "Foi encontrado o nome do catálogo Device Library clássico.",
+      "pt-BR": "O nome do catálogo Device Library clássico foi encontrado."
+    },
+    "Found the OneLibrary catalog name.": {
+      "de": "Der Name des OneLibrary-Katalogs wurde gefunden.",
+      "fr": "Le nom du catalogue OneLibrary a été trouvé.",
+      "it": "È stato trovato il nome del catalogo OneLibrary.",
+      "es": "Se encontró el nombre del catálogo OneLibrary.",
+      "el": "Βρέθηκε το όνομα του καταλόγου OneLibrary.",
+      "pl": "Znaleziono nazwę katalogu OneLibrary.",
+      "cs": "Byl nalezen název katalogu OneLibrary.",
+      "ru": "Найдено имя каталога OneLibrary.",
+      "ja": "OneLibrary のカタログ名が見つかりました。",
+      "ar": "عُثر على اسم كتالوج OneLibrary.",
+      "pt-PT": "Foi encontrado o nome do catálogo OneLibrary.",
+      "pt-BR": "O nome do catálogo OneLibrary foi encontrado."
+    },
+    "Found the classic companion file without an observed main catalog.": {
+      "de": "Die Begleitdatei der klassischen Bibliothek wurde gefunden. Ein Hauptkatalog wurde nicht gefunden.",
+      "fr": "Le fichier complémentaire du catalogue classique a été trouvé. Aucun catalogue principal n’a été observé.",
+      "it": "È stato trovato il file complementare del catalogo classico. Non è stato rilevato un catalogo principale.",
+      "es": "Se encontró el archivo complementario clásico. No se observó ningún catálogo principal.",
+      "el": "Βρέθηκε το συνοδευτικό αρχείο του κλασικού καταλόγου. Δεν εντοπίστηκε κύριος κατάλογος.",
+      "pl": "Znaleziono plik towarzyszący klasycznemu katalogowi. Nie zaobserwowano katalogu głównego.",
+      "cs": "Byl nalezen doprovodný soubor klasického katalogu. Žádný hlavní katalog nebyl zaznamenán.",
+      "ru": "Найден вспомогательный файл классического каталога. Основной каталог не обнаружен.",
+      "ja": "従来形式の補助ファイルが見つかりました。メインカタログは確認できていません。",
+      "ar": "عُثر على الملف المرافق للكتالوج التقليدي. لم يُرصد كتالوج رئيسي.",
+      "pt-PT": "Foi encontrado o ficheiro complementar do catálogo clássico. Não foi observado um catálogo principal.",
+      "pt-BR": "O arquivo complementar do catálogo clássico foi encontrado. Nenhum catálogo principal foi observado."
     }
   }
 }

@@ -44,6 +44,14 @@ The optional SHA-256 checkbox reads selected candidate bytes within the shared 2
 
 The [official rekordbox FAQ](https://rekordbox.com/en/support/faq/rekordbox7/) describes three-stem and four-stem modes. It also identifies `.rbsc` as DRUM CAPTURE samples with account and export restrictions. PSSI phrases and PVDI vocal activity are analysis evidence, not separated audio. This feature does not download models, perform separation, rewrite caches or delete assets.
 
+### Which USB catalog did Workbench find?
+
+In **Formats & STEMS**, inspect the drive folder or its backup ZIP. Choose **USB catalog folder** in the findings filter to see the observed filenames in each `PIONEER/rekordbox` directory. For ZIPs the path before `!/` identifies the archive. If a directory has multiple spellings of a catalog name, the count follows one example. Loose catalog files elsewhere retain their individual findings.
+
+`export.pdb` names the classic Device Library catalog, `exportExt.pdb` is its companion, and `exportLibrary.db` names OneLibrary (formerly Device Library Plus). A mixed directory has both main catalog names. The two catalogs can contain different playlist orders and histories. Check the specific player and firmware against AlphaTheta’s list. [Official USB export compatibility](https://rekordbox.com/en/support/usb-export/) · [AlphaTheta OneLibrary FAQ](https://rekordbox.com/en/support/faq/onelibrary-7/)
+
+The folder finding uses filenames already observed in this scan, including when the content-read budget runs out. A partial scan can miss siblings. Individual classic-file findings give the available header checks. OneLibrary records, catalog agreement and player playback remain unverified. For a public example, the rbox v0.3.1 mixed export contains both catalogs under the same directory. [rbox v0.3.1 fixture](https://github.com/dylanljones/rbox/tree/9677e21448fe3a8462111b7df099b5608efcba90/.testdata/RBv7/demo/export/PIONEER/rekordbox)
+
 ## Preview a beat-grid nudge
 
 1. Load the collection XML and its matching desktop **Backup Library** ZIP using **Use XML/ZIP backup**. Open **Library lab → Formats & STEMS → Shift a beat grid**. Search by title, artist or track ID and choose a track.
