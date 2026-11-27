@@ -656,14 +656,17 @@ class AuditTests(unittest.TestCase):
         summary,rows = self.audit(source=scopes,max_inspect_bytes=0)
         self.assertEqual(summary['format_inspection']['bytes_inspected'],0)
         layouts = {r['path']:r for r in rows if r['section']=='usb_catalog_folder'}
+        # The scanner resolves host paths. ZIP member names retain their literal spelling.
+        catalog_path = str(catalog.resolve())
+        archive_path = str(self.archive.resolve())
         self.assertEqual({p:r['catalog_layout'] for p,r in layouts.items()}, {
-            str(catalog):'mixed', str(companion):'companion',
-            str(self.archive)+'!/A/PIONEER/rekordbox':'classic',
-            str(self.archive)+'!/A/./PIONEER/rekordbox':'onelibrary',
-            str(self.archive)+'!/a/PIONEER/rekordbox':'onelibrary',
-            str(other)+'!/A/PIONEER/rekordbox':'onelibrary'})
-        self.assertEqual(layouts[str(catalog)]['catalog_filenames'],{'export.pdb':1,'exportLibrary.db':1})
-        self.assertEqual(layouts[str(self.archive)+'!/A/PIONEER/rekordbox']['catalog_filenames'],{'EXPORT.PDB':2})
+            catalog_path:'mixed', str(companion.resolve()):'companion',
+            archive_path+'!/A/PIONEER/rekordbox':'classic',
+            archive_path+'!/A/./PIONEER/rekordbox':'onelibrary',
+            archive_path+'!/a/PIONEER/rekordbox':'onelibrary',
+            str(other.resolve())+'!/A/PIONEER/rekordbox':'onelibrary'})
+        self.assertEqual(layouts[catalog_path]['catalog_filenames'],{'export.pdb':1,'exportLibrary.db':1})
+        self.assertEqual(layouts[archive_path+'!/A/PIONEER/rekordbox']['catalog_filenames'],{'EXPORT.PDB':2})
         self.assertTrue(all(not r['records_decoded'] and r['player_compatibility'] is None
                             for r in layouts.values()))
 
