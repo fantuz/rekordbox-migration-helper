@@ -128,6 +128,18 @@ class CleanupContextTests(unittest.TestCase):
             '4': {'alternate_reference'}, '5': {'cloud_reference'}, '6': {'workspace_decision'},
             '7': {'workspace_unavailable'}, '8': {'workspace_decision'}})
 
+    def test_isrc_review_holds_distinct_paths_on_the_linked_workspace(self):
+        self.snapshot['scope_key'] = 'session:joined'
+        self.snapshot['tracks'][0]['isrc'] = 'US-ABC-24-00123'
+        self.snapshot['tracks'][1]['isrc'] = 'USABC2400123'
+        group = duplicate_groups(self.snapshot, 'isrc')[0]['id']
+        self.owner.active = 'joined'
+        tracks = {row['id']: dict(row) for row in self.snapshot['tracks']}
+        self.owner.sessions['joined'] = {'id': 'joined', 'catalog': SimpleNamespace(tracks=tracks, pairs={})}
+        self.store.set_setting('duplicate_reviews:session:joined', {group: 'keep_separate'})
+        self.assertEqual(build_context(self.owner, self.store, self.snapshot)['protected_ids'],
+                         {'0': {'keep_separate'}, '1': {'keep_separate'}})
+
     def test_older_duplicate_reviews_can_be_superseded_only_in_the_current_workspace(self):
         self.store = Store(self.owner.DATA / 'workbench-sidecar.sqlite3')
         self.owner.active = 'one'

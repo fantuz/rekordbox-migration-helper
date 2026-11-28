@@ -12,7 +12,7 @@ from workbench_store import Store
 from track_playback import inspect_audio_details
 from cloud_file_status import provider_context
 
-SCHEMA = 'file-status-v3-cloud-metadata'
+SCHEMA = 'file-status-v4-location-evidence'
 MAX_ENTRIES = 20000
 TTL = {
     'playable': 3600,

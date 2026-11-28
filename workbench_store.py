@@ -70,9 +70,11 @@ class Store:
             ''')
             additions={
                 'file_status_cache':{'evidence':'TEXT'},
+                'file_health_scans':{'mapping_revision':'TEXT','source_revision':'TEXT',
+                    'evidence_revision':'INTEGER NOT NULL DEFAULT 0'},
                 'file_health_records':{'providers':'INTEGER NOT NULL DEFAULT 0',
                     'provider_checked':'INTEGER NOT NULL DEFAULT 0','cloud_state':"TEXT NOT NULL DEFAULT 'not_checked'",
-                    'logical_size':'INTEGER','filename':"TEXT NOT NULL DEFAULT ''",
+                    'logical_size':'INTEGER','observed_location':'TEXT','filename':"TEXT NOT NULL DEFAULT ''",
                     'provider_evidence':"TEXT NOT NULL DEFAULT '[]'",'metadata_sidecar':'INTEGER'},
             }
             for table,columns in additions.items():

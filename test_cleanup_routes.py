@@ -57,3 +57,34 @@ class CleanupRouteTests(unittest.TestCase):
         self.assertEqual(self.client.get(base, query_string=other).json['reports'], [])
         self.assertEqual(self.client.get(scoped_url, query_string=other).status_code, 404)
         self.assertEqual(self.client.get(scoped_url, query_string=body, environ_overrides=self.remote).status_code, 403)
+
+    def test_saved_report_filters_combine_evidence_and_recorded_size(self):
+        rows = [
+            dict(id='proof', section='duplicate', reasons=[], signals=['same_name_size'],
+                 proof='sha256', recorded_size=1048576, observed_size=1048576),
+            dict(id='conflict', section='protected', reasons=['size_conflict'], signals=['same_name_size'],
+                 proof=None, recorded_size=1048576, observed_size=2097152),
+            dict(id='unknown', section='protected', reasons=['unknown_metadata'], signals=['same_name_size']),
+        ]
+        report = self.store.save_report('collection cleanup', [self.source[9:]], {},
+                                        [{**row, 'track_id':row['id']} for row in rows])
+        url = '/api/collection-cleanup/' + report['id']
+
+        def matches(**filters):
+            response = self.client.get(url, query_string={'source':self.source, **filters})
+            self.assertEqual(response.status_code, 200, response.json)
+            return [row['id'] for row in response.json['rows']]
+
+        self.assertEqual(matches(signal='same_name_size'), ['proof', 'conflict', 'unknown'])
+        self.assertEqual(matches(signal='same_name_size', size_min='0'), ['proof', 'conflict'])
+        self.assertEqual(matches(reason='size_conflict', candidate='protected', size_min='1048576',
+                                 size_max='1048576'), ['conflict'])
+        self.assertEqual(matches(proof='sha256', candidate='duplicate'), ['proof'])
+        self.assertEqual(matches(reason='size_conflict', candidate='eligible'), [])
+        self.assertEqual(matches(reason='size'), [])
+        self.assertEqual(matches(size_max='1048575'), [])
+        self.assertEqual(matches(size_min='1048577'), [])
+        for invalid in ({'size_min':'2','size_max':'1'}, {'size_min':'-1'}, {'size_max':'9223372036854775808'},
+                        {'size_min':'5.5'}):
+            response = self.client.get(url, query_string={'source':self.source, **invalid})
+            self.assertEqual(response.status_code, 400, response.json)

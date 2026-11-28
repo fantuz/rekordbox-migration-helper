@@ -14,6 +14,7 @@ import sqlite3
 import zipfile
 from tempfile import TemporaryDirectory
 from asset_formats import anlz_sections
+from duplicate_evidence import recorded_comparisons
 from migration_readiness import finite
 from native_grid import MAX_FILE_BYTES as MAX_GRID_DAT, grid_timing_digest, xml_grid_beats
 
@@ -242,6 +243,7 @@ class Catalog:
         # Older saved catalogs hashed only the raw records and omitted the signed grid shift.
         comparable_grids=all((value or "").startswith(GRID_HASH_PREFIX) for value in (grid_a,grid_b))
         evidence={
+            **recorded_comparisons((ta, tb))['evidence'],
             "preview_agrees":bool(ta["preview_sha256"]) and ta["preview_sha256"]==tb["preview_sha256"],
             "current_path_agrees":bool(ta["current_path"]) and path_key(ta["current_path"])==path_key(tb["current_path"]),
             "recorded_path_agrees":bool(pa & pb),
@@ -542,6 +544,10 @@ def enrich_usage(catalog, backup, working, progress):
         from track_tags import native_colour,native_colour_support
         tables={r[0] for r in db.execute("SELECT name FROM sqlite_schema WHERE type='table'")}
         content_columns={r[1] for r in db.execute('PRAGMA table_info(djmdContent)')}
+        if 'ISRC' in content_columns:
+            for identity, isrc in db.execute('SELECT ID,ISRC FROM djmdContent'):
+                if identity in catalog.tracks:
+                    catalog.tracks[identity]['isrc'] = isrc or ''
         if 'djmdKey' in tables and 'KeyID' in content_columns:
             for identity,key in db.execute('SELECT c.ID,k.ScaleName FROM djmdContent c LEFT JOIN djmdKey k ON k.ID=c.KeyID'):
                 if identity in catalog.tracks:catalog.tracks[identity]['tonality']=key or ''

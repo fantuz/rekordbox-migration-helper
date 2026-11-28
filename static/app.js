@@ -15,11 +15,17 @@ const snapshotMoment = value => {
   const localDay=dateOnly?new Date(Number(dateOnly[1]),Number(dateOnly[2])-1,Number(dateOnly[3])):value;
   return I18n.date(localDay,options);
 };
-const bytes = value => {const n=Number(value || 0);const unit=n>=1024**3?3:n>=1024**2?2:n>=1024?1:0;return I18n.number(n/1024**unit,{maximumFractionDigits:1})+" "+["B","KiB","MiB","GiB"][unit];};
+const bytes = value => {
+  const n=Number(value || 0),units=["B","KiB","MiB","GiB","TiB","PiB"];
+  let unit=0;
+  while(n>=1024**(unit+1) && unit<units.length-1)unit++;
+  return I18n.number(n/1024**unit,{maximumFractionDigits:1})+" "+units[unit];
+};
 const autoCue = c => ["cue(auto)", "1.1bars"].includes((c.Comment || "").trim().toLowerCase());
 let token = "", session = null, filter = "all", offset = 0, total = 0, selected = null, chosen = null, batchMode = null, busy = false;
 let searchTimer;
 let currentGroup=null, groupMode=false;
+let pairLoadRevision=0;
 let workspace=null,analyzerInfo=null,storageAudit=null,storageOffset=0;
 let resumeTarget=null,uploadAttempt=null;
 const activeUploads=new Set();
@@ -48,14 +54,27 @@ const evidenceLabels={
   get both_in_xml(){return I18n.t("Both siblings appear in the XML");},
   get input_mismatch(){return I18n.t("ZIP / XML cue versions differ");}
 };
+const recordedEvidenceMessages={
+  isrc_agrees:"Same recorded ISRC",
+  isrc_differs:"Recorded ISRCs differ",
+  duration_close:"Recorded durations within 2 seconds",
+  duration_differs:"Recorded durations differ by more than 2 seconds",
+  size_agrees:"Same recorded size",
+  size_differs:"Recorded sizes differ",
+  extension_differs:"Recorded file extensions differ"
+};
+const recordedEvidenceLabels=()=>Object.entries(recordedEvidenceMessages).map(([key,label])=>[key,I18n.t(label)]);
 let evidenceSelected=new Set();
 function evidenceValue() {return [...evidenceSelected].join(",");}
-function renderEvidence(facets) {
-  $("#evidence-filters").innerHTML=Object.entries(evidenceLabels).map(([key,label])=>'<label><input type="checkbox" data-evidence="'+key+'" '+(evidenceSelected.has(key)?"checked":"")+'><span>'+esc(label)+'</span><b>'+num(facets[key] || 0)+'</b></label>').join("");
-  $$("[data-evidence]").forEach(el=>el.onchange=wrap(async()=>{
+function renderEvidence(facets={}) {
+  const host=$("#evidence-filters");
+  const focused=host.contains(document.activeElement) && document.activeElement.dataset.evidence;
+  host.innerHTML=[...Object.entries(evidenceLabels),...recordedEvidenceLabels()].map(([key,label])=>'<label><input type="checkbox" data-evidence="'+key+'" '+(evidenceSelected.has(key)?"checked":"")+'><span>'+esc(label)+'</span><b>'+num(facets[key] || 0)+'</b></label>').join("");
+  host.querySelectorAll("[data-evidence]").forEach(el=>el.onchange=wrap(async()=>{
     if (el.checked) evidenceSelected.add(el.dataset.evidence);else evidenceSelected.delete(el.dataset.evidence);
     offset=0;await loadPairs();
   }));
+  if(focused)host.querySelector('[data-evidence="'+CSS.escape(focused)+'"]')?.focus({preventScroll:true});
 }
 function $$(s) {return [...document.querySelectorAll(s)];}
 async function api(url, options = {}) {
@@ -245,8 +264,10 @@ async function loadWorkspace() {
 }
 async function loadPairs() {
   if (!session || window.NativeCollection?.active()) return;
+  const revision=++pairLoadRevision,workspaceId=session.id;
   const scope=new URLSearchParams({...scopeValues(),filter,offset,view:groupMode?"groups":"pairs",...CollectionSort.args("pairs")});
   const result=await api("/api/pairs?"+scope);
+  if(revision!==pairLoadRevision || session?.id!==workspaceId || window.NativeCollection?.active())return;
   CollectionSort.list("#pair-list","pairs",["title","artist","category"],async()=>{offset=0;await loadPairs();});
   total=result.total;
   renderEvidence(result.facets);
@@ -285,11 +306,38 @@ function lane(track, index) {
   const dots=track.cues.map(c=>'<i class="cue-dot '+(autoCue(c)?"auto":"")+'" style="left:'+Math.max(0,Math.min(99,100*(c.InMsec || 0)/duration))+'%" title="'+esc((c.Comment || I18n.t("Cue"))+" · "+((c.InMsec || 0)/1000).toFixed(2)+" s")+'"></i>').join("");
   return ("<div class=\"cue-lane\"><label>"+esc(I18n.t("Sibling"))+" "+"")+String.fromCharCode(65+index)+'</label><div class="cue-track">'+dots+'</div></div>';
 }
+function recordedTrackFacts(track) {
+  const seconds=Number(track.duration_seconds),size=Number(track.size_bytes);
+  const unknown=I18n.t("Unknown");
+  const fields=[
+    [I18n.t("Duration (seconds)"),Number.isFinite(seconds) && seconds>0 ? I18n.number(seconds) : unknown],
+    [I18n.t("Recorded size (bytes)"),Number.isSafeInteger(size) && size>0 ? num(size) : unknown]
+  ];
+  if(track.isrc)fields.push([I18n.t("ISRC"),track.isrc]);
+  return fields.map(([name,value])=>'<dt>'+esc(name)+'</dt><dd>'+esc(value)+'</dd>').join("");
+}
 function renderDetail() {
   const r=selected;
   if (!r) return;
   const names=["A","B"];
-  const trackCards=r.tracks.map((t,i)=>'<article class="sibling '+(chosen===t.track_id?"chosen":"")+'" data-keeper="'+esc(t.track_id)+'" tabindex="0" role="button" aria-label="'+esc(I18n.t("Choose sibling {id}",{id:names[i]}))+("\"><div class=\"sibling-top\">"+esc(I18n.t("Sibling"))+" "+"")+names[i]+'<span>'+(chosen===t.track_id?I18n.t("◉ KEEPER"):"○")+'</span></div><div class="title">'+TrackPlayback.button('',t.track_id,session.id)+esc(t.title)+'</div>'+InlineRating.render(t.track_id,t.rating,'session:'+session.id)+("<dl><dt>"+esc(I18n.t("Album"))+"</dt><dd>")+esc(t.album || I18n.t("Unknown"))+("</dd><dt>"+esc(I18n.t("Cues"))+"</dt><dd>")+t.cue_summary.auto+(" "+I18n.t("Auto cues")+" \u00b7 ")+t.cue_summary.other+(" "+esc(I18n.t("Other cues"))+"</dd><dt>"+esc(I18n.t("Added"))+"</dt><dd>")+esc(date(t.date_added))+("</dd><dt>"+esc(I18n.t("Last played"))+"</dt><dd>")+esc(date(t.last_played))+("</dd><dt>"+esc(I18n.t("Play count"))+"</dt><dd>")+num(t.play_count)+("</dd><dt>"+esc(I18n.t("File size"))+"</dt><dd>")+(t.size_bytes/1e6).toFixed(1)+(" MB</dd><dt>"+esc(I18n.t("Source"))+"</dt><dd>")+(t.october_xml?I18n.t("XML + backup"):I18n.t("Backup"))+'</dd></dl><div class="path">'+esc(t.xml_location || t.original_path || t.current_path)+'</div><button class="ref-link" data-file-detail="'+esc(t.track_id)+("\">"+esc(I18n.t("File view / comments"))+"</button><button class=\"ref-link\" data-ref=\"")+esc(t.track_id)+("\">"+esc(I18n.t("Prepare this reference ↗"))+"</button></article>")).join("");
+  const trackCards=r.tracks.map((t,i)=>`
+    <article class="sibling ${chosen===t.track_id?"chosen":""}" data-keeper="${esc(t.track_id)}" tabindex="0" role="button" aria-label="${esc(I18n.t("Choose sibling {id}",{id:names[i]}))}">
+      <div class="sibling-top">${esc(I18n.t("Sibling"))} ${names[i]}<span>${chosen===t.track_id?esc(I18n.t("◉ KEEPER")):"○"}</span></div>
+      <div class="title">${TrackPlayback.button('',t.track_id,session.id)}${esc(t.title)}</div>
+      ${InlineRating.render(t.track_id,t.rating,'session:'+session.id)}
+      <dl>
+        <dt>${esc(I18n.t("Album"))}</dt><dd>${esc(t.album || I18n.t("Unknown"))}</dd>
+        <dt>${esc(I18n.t("Cues"))}</dt><dd>${num(t.cue_summary.auto)} ${esc(I18n.t("Auto cues"))} · ${num(t.cue_summary.other)} ${esc(I18n.t("Other cues"))}</dd>
+        <dt>${esc(I18n.t("Added"))}</dt><dd>${esc(date(t.date_added))}</dd>
+        <dt>${esc(I18n.t("Last played"))}</dt><dd>${esc(date(t.last_played))}</dd>
+        <dt>${esc(I18n.t("Play count"))}</dt><dd>${num(t.play_count)}</dd>
+        ${recordedTrackFacts(t)}
+        <dt>${esc(I18n.t("Source"))}</dt><dd>${esc(t.october_xml?I18n.t("XML + backup"):I18n.t("Backup"))}</dd>
+      </dl>
+      <div class="path">${esc(t.xml_location || t.original_path || t.current_path)}</div>
+      <button class="ref-link" data-file-detail="${esc(t.track_id)}">${esc(I18n.t("File view / comments"))}</button>
+      <button class="ref-link" data-ref="${esc(t.track_id)}">${esc(I18n.t("Prepare this reference ↗"))}</button>
+    </article>`).join("");
   const ratingConflict=r.conflicts.some(c=>c.type==="rating");
   const autoConflicts=r.conflicts.filter(c=>c.type==="cue_slot" && c.auto);
   const other=r.conflicts.filter(c=>!autoConflicts.includes(c) && c.type!=="rating");
@@ -298,6 +346,9 @@ function renderDetail() {
     other.length?I18n.t("Some cue differences need a choice. Swapping the keeper may preserve the preferred preparation."):I18n.t("These cue sets can be combined without a slot conflict.");
   if (r.group_note) note+=" "+I18n.t("Group review ·")+" "+r.group_note;
   if (r.grid_differs) note+=" "+I18n.t("The selected keeper's grid will be used.");
+  for(const [key,label] of recordedEvidenceLabels()){
+    if(key.endsWith("_differs") && r.evidence?.[key])note+=" "+label+".";
+  }
   $("#detail-panel").innerHTML=("<div class=\"detail-head\"><span class=\"eyebrow\">"+esc(I18n.t("PAIR INSPECTION"))+"</span><h3>")+esc(r.title)+'</h3><p>'+esc(r.artist)+("</p><span class=\"subtle\">"+esc(I18n.t("Suggested keeper ·"))+" ")+esc(r.keeper_reason)+'</span></div><div class="sibling-cards">'+trackCards+("</div><div class=\"cue-comparison\"><h4>"+esc(I18n.t("Saved cue positions"))+"</h4><div class=\"legend\"><span><i></i>"+" "+esc(I18n.t("Automatic labels"))+"</span><span><i class=\"manual\"></i>"+" "+esc(I18n.t("Other cues"))+"</span></div>")+r.tracks.map(lane).join("")+'<div class="cue-time"><span>0:00</span><span>'+Math.floor(Math.max(...r.tracks.map(t=>t.duration_seconds))/60)+(" "+esc("minutes")+"</span></div><div class=\"conflict-note\">")+esc(note)+'</div></div><div class="detail-actions"><label><input type="checkbox" id="accept-auto" '+(r.decision?.prefer_auto?"checked":"")+(">"+" "+esc(I18n.t("Keep selected sibling’s cue when the other cue has an automatic label"))+"</label>")+(ratingConflict?("<label><input type=\"checkbox\" id=\"accept-rating\" "+(r.decision?.prefer_rating?"checked":"")+">"+" "+esc(I18n.t("Keep selected sibling’s rating"))+"</label>"):"")+("<div class=\"action-row\"><button class=\"button\" id=\"stage-pair\">"+esc(I18n.t("Stage merge"))+"</button><button class=\"button secondary\" id=\"skip-pair\">"+esc(I18n.t("Skip"))+"</button>")+(r.decision?("<button class=\"button secondary\" id=\"undo-pair\">"+esc(I18n.t("Undo"))+"</button>"):"")+'</div></div>';
   $$("[data-file-detail]").forEach(button=>{button.onclick=wrap(async event=>{event.stopPropagation();await openWorkspaceTrack(button.dataset.fileDetail);});button.onkeydown=event=>event.stopPropagation();});
   $$("[data-keeper]").forEach(el=>{
@@ -522,7 +573,7 @@ async function renderStatistics() {
   const preferenceHost=$('#stats-display-preferences');
   if(preferenceHost&&!preferenceHost.children.length){preferenceHost.innerHTML=preferences.controls({keys:false,sidecars:true});$('#stats-apply').before(preferenceHost);preferences.sync();}
   const native=window.NativeCollection?.active();
-  if (!session && !native){for(const id of ['stats-cards','length-histogram','added-histogram','release-histogram','genre-histogram','stats-omitted'])$('#'+id).innerHTML='';if($('#stats-source-note'))$('#stats-source-note').hidden=true;if($('#statistics-release-order'))$('#statistics-release-order').disabled=true;$('#stats-cohort').disabled=false;return;}
+  if (!session && !native){for(const id of ['stats-cards','length-histogram','added-histogram','release-histogram','genre-histogram','stats-omitted'])$('#'+id).innerHTML='';window.CollectionStorage.render(null);if($('#stats-source-note'))$('#stats-source-note').hidden=true;if($('#statistics-release-order'))$('#statistics-release-order').disabled=true;$('#stats-cohort').disabled=false;return;}
   const params=new URLSearchParams({min:$("#stats-min").value || "0",max:$("#stats-max").value,cohort:$("#stats-cohort").value,provider:$('#stats-provider').value,...preferences.args()});
   const selectedSource=window.NativeCollection?.source();
   if(native)params.set('source',selectedSource);
@@ -530,6 +581,7 @@ async function renderStatistics() {
   const data=await api((native?'/api/collection/statistics?':'/api/statistics?')+params);
   if(revision!==statsRevision || selectedSource!==window.NativeCollection?.source())return;
   CloudAnalysis.statisticsPaint(data);
+  window.CollectionStorage.render(data.storage, native ? selectedSource : '');
   $("#review-scope").textContent=I18n.t("Review scope ·")+" "+($("#stats-min").value || "0")+"–"+($("#stats-max").value || I18n.t("Unlimited"))+" "+I18n.t("Minutes")+" · "+($("#stats-cohort").value==="xml"?I18n.t("XML siblings"):I18n.t("All backup tracks"));
   if(native)$('#review-scope').textContent=I18n.t('Captured collection')+' · '+data.note;
   const labels=[

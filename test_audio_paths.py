@@ -111,7 +111,7 @@ class MountedAudioTests(unittest.TestCase):
                 response=client.post('/api/playback/open',json={'snapshot':self.sid,'track_id':'1'},headers=headers)
                 self.assertEqual(response.status_code,200,response.json);launch.assert_called_once();self.assertTrue(launch.call_args.args[0].samefile(self.audio))
             with self.store.connection() as db:
-                db.execute('INSERT INTO file_health_scans VALUES (?,?,?,?,?)',(source,1,1,1,'complete'))
+                db.execute('INSERT INTO file_health_scans (source,total,done,checked_at,state) VALUES (?,?,?,?,?)',(source,1,1,1,'complete'))
                 db.execute('INSERT INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text) VALUES (?,?,?,?,?,?,?,?)',(source,'1','Title','DJ','House','playable',1,'title'))
             response=client.post('/api/audio-paths',json={'source':source,'revision':info['revision'],'mappings':[]},headers=headers)
             self.assertEqual(response.status_code,200,response.json)

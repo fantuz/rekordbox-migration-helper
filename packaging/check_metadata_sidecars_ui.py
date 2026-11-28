@@ -21,7 +21,7 @@ def check_metadata_sidecars_ui(browser, base, store, output):
                               'playlists':[],'capabilities':{}},'Another captured collection')['id']
     source='snapshot:'+sid;before=deepcopy(store.snapshot(sid))
     with store.connection() as db:
-        db.execute('INSERT OR REPLACE INTO file_health_scans VALUES (?,?,?,?,?)',(source,len(rows),len(rows),1,'complete'))
+        db.execute('INSERT OR REPLACE INTO file_health_scans (source,total,done,checked_at,state) VALUES (?,?,?,?,?)',(source,len(rows),len(rows),1,'complete'))
         for row in rows:
             db.execute('INSERT OR REPLACE INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text,filename,metadata_sidecar) VALUES (?,?,?,?,?,?,?,?,?,?)',
                        (source,row['id'],row['title'],row['artist'],'House','unverified',1,row['title'],'',int(is_sidecar(row))))

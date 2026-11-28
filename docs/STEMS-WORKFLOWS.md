@@ -24,7 +24,7 @@ For RB Stems Plus, declared speed/EXPORT/disabled settings or Windows/Linux targ
 
 ## Checking a Recordbox STEMS backup
 
-1. In Recordbox v0.7.0, open **Preferences → Extensions → STEMS** and copy the cache folder path. Recordbox's **Backup Library** omits saved separations, so copy that folder separately to preserve them.
+1. In Recordbox, open **Preferences → Extensions → STEMS** and copy the cache folder path. Recordbox's **Backup Library** omits saved separations, so copy that folder separately to preserve them.
 2. In Workbench, select a saved snapshot, open **Library lab → Formats & STEMS**, enter the absolute path of the copied folder or its ZIP, and choose **Inspect formats**. The same findings appear in **STEMS workflows**. Choose **Recordbox** in the provider filter to inspect individual files and pairs.
 3. Check the model counts and recognized bytes. A speed file ends in `-htdemucs.stems`, a quality file in `-htdemucs_ft.stems`. Both store four stereo parts at 44.1 kHz, about **169 MB per four-minute track per model**. The totals count logical file sizes before ZIP compression. A valid file with an unfamiliar name contributes to storage with its variant unidentified.
 
@@ -32,9 +32,23 @@ For RB Stems Plus, declared speed/EXPORT/disabled settings or Windows/Linux targ
 
 A pair means two structurally recognized files carry the same 24-character cache key in the same directory. Separate folders and archives are counted independently. A difference in their frame counts warrants review. A lone variant is normal when only one model was run. If a ZIP contains ambiguous names or its member inventory stopped early, the report withholds the affected pairs. Reports cover the selected, inspected files and cannot identify a track by title from its cache key.
 
-To reuse the results after a move, preserve the source audio's original path, size and modification time in whole seconds, then select the same model in Recordbox. Export and Performance decks use the same saved files across restarts. The speed and quality versions share a configurable disk budget, **20 GB** by default. **Keep all saved stems** disables automatic eviction. The active preference cannot be read from a copied cache folder. [Recordbox v0.7.0 storage and backup guide](https://github.com/fantuz/recordbox/blob/v0.7.0/docs/LIBRARY-SYNC.md#locate-separated-stems) · [Cache key and writer](https://github.com/fantuz/recordbox/blob/v0.7.0/app/src/stems/mod.rs#L643)
+To reuse the results after a move, preserve the source audio's exact path, size and modification time in whole seconds, then select the same model and MP3 timeline in Recordbox. In v0.9.1, the Rekordbox MP3 timeline adds a marker to the cache key. Legacy MP3 and other file types retain the original key calculation. Recordbox can look in the other timeline's collection directory for a cache with the same key. The speed and quality versions share a configurable disk budget, **20 GB** by default. **Keep all saved stems** disables automatic eviction. The active preference cannot be read from a copied cache folder. [Recordbox storage and backup guide](https://github.com/fantuz/recordbox/blob/f55a7cf4e6611bdbe5f9665b8b31c9c608ea70b9/docs/LIBRARY-SYNC.md#locate-separated-stems) · [MP3 timeline and cache keys](https://github.com/fantuz/recordbox/blob/f55a7cf4e6611bdbe5f9665b8b31c9c608ea70b9/app/src/stems/mod.rs#L739-L764)
 
 Recordbox uses file access times to choose which saved separations to evict. On Linux, Workbench requests a read that preserves the access time when it inspects or fingerprints a local `.stems` file. Where the filesystem or file ownership prevents this, the filesystem's usual access-time rules apply. Inspecting a backup copy keeps the live cache outside the scan.
+
+### Compare cache keys with a saved collection
+
+In **STEMS workflows**, enter the cache folder or ZIP and add the original audio
+folders under **Recordbox source folders**. Workbench checks the saved collection's
+current paths inside those explicitly selected folders and derives the filename
+keys from observed size and modification time. For MP3 it checks both timelines.
+Source audio is left unopened. A matching key identifies compatible path and
+file metadata. File contents and separation quality require separate evidence.
+
+The report shows the matching timeline and the extent of the source check. A
+path shared by more than one library entry leaves the track identity open. Use
+**Recordbox model** to narrow the report to speed, quality or unidentified files.
+Leave the source folders empty when checking a standalone backup's structure.
 
 ## Native Instruments containers
 

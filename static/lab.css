@@ -3,3 +3,4 @@
 #onetagger-report-summary pre,#onetagger-review pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto}#onetagger-report-summary p{overflow-wrap:anywhere}#onetagger-report-file{max-width:100%}
 
 #lab-grid-nudge{margin-top:16px}#grid-search-form .button{margin-bottom:12px}#grid-form .lab-controls label{min-width:min(195px,100%)}#grid-form .lab-controls select{min-width:0;max-width:100%}#grid-form #grid-status:empty{display:none}#grid-result .lab-table td{min-width:auto}#grid-result bdi,#grid-workspace{overflow-wrap:anywhere}
+.recordbox-source-match{overflow-wrap:anywhere}

@@ -1,5 +1,6 @@
 """STEMS workflow boundaries, saved reports and API contracts on synthetic data."""
 from copy import deepcopy
+from hashlib import sha256
 from pathlib import Path
 from types import SimpleNamespace
 import json
@@ -13,13 +14,113 @@ import zipfile
 
 from analysis_audit import audit_assets
 from metadata_export import capture_catalog,capture_database,payload
-from stems_cache import provider_report,source_stamp
+from stems_cache import provider_report,recordbox_source_folders,recordbox_source_matches,source_stamp
 from stems_eligibility import context,cache_profile
 from stems_report import stems_report
 from task_control import OperationCancelled
+from test_asset_formats import stems_bytes
 from test_stems_followup import MODEL,KEY,OTHER_KEY,ni_bytes,manifest,write_cache
 from test_support import workspace_client
 from workbench_store import Store
+
+
+def recordbox_fixture_key(source, rekordbox_clock=False):
+    """The original metadata bytes and the v0.9.1 MP3 clock discriminator."""
+    stamp = source.stat()
+    seconds = stamp.st_mtime_ns // 1_000_000_000
+    identity = str(source).encode() + stamp.st_size.to_bytes(8, 'little') + seconds.to_bytes(8, 'little')
+    if rekordbox_clock:
+        identity += b'\0mp3-rekordbox-timeline-v1'
+    return sha256(identity).hexdigest()[:24]
+
+
+class RecordboxAssociationTests(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.audio = self.root / 'Audio'
+        self.audio.mkdir()
+        self.source = self.audio / 'Invented 日本.MP3'
+        self.source.write_bytes(b'synthetic source metadata only')
+        self.cache = self.root / 'stems'
+        self.cache.mkdir()
+        self.keys = (recordbox_fixture_key(self.source), recordbox_fixture_key(self.source, True))
+        for key, model in zip(self.keys, ('htdemucs', 'htdemucs_ft')):
+            (self.cache / f'{key}-{model}.stems').write_bytes(stems_bytes())
+        self.snapshot = {'tracks': [
+            {'id': 'a', 'title': 'Invented track', 'current_path': str(self.source)},
+            {'id': 'outside', 'current_path': str(self.root / 'Not selected.mp3')},
+        ]}
+
+    def report(self, source_folders=None):
+        return stems_report(self.snapshot, [str(self.cache)], {}, lambda *_: None,
+                            recordbox_sources=source_folders)
+
+    def test_opt_in_matches_both_mp3_timelines_without_opening_audio(self):
+        before, _ = self.report()
+        self.assertNotIn('recordbox_source_matches', before['format_inspection'])
+        open_path = Path.open
+
+        def guarded_open(path, *args, **kwargs):
+            self.assertFalse(path.is_relative_to(self.audio), 'Source content opened during metadata matching')
+            return open_path(path, *args, **kwargs)
+
+        with patch.object(Path, 'open', guarded_open):
+            summary, rows = self.report([str(self.audio)])
+        facts = summary['format_inspection']['recordbox_source_matches']
+        self.assertEqual(facts['source_paths_checked'], 1)
+        self.assertEqual(facts['matched_cache_files'], 2)
+        self.assertTrue(facts['source_check_complete'])
+        self.assertEqual(facts['source_bytes_read'], 0)
+        files = {r['recordbox_key']: r for r in rows if r.get('format') == 'recordbox_stems_v1'}
+        for key, timeline in zip(self.keys, ('legacy', 'rekordbox')):
+            row = files[key]
+            self.assertEqual(row['source_association'], 'metadata_match')
+            self.assertEqual(row['recordbox_source_timeline'], timeline)
+            self.assertEqual(row['track_id'], 'a')
+            self.assertIsNone(row['native_stems_readiness'])
+            self.assertFalse(row['payload_verified'])
+
+    def test_moved_or_changed_sources_do_not_associate_and_missing_scopes_are_disclosed(self):
+        outside, _ = self.report([str(self.cache), str(self.root / 'unmounted')])
+        facts = outside['format_inspection']['recordbox_source_matches']
+        self.assertEqual(facts['source_paths_checked'], 0)
+        self.assertEqual(facts['matched_cache_files'], 0)
+        self.assertFalse(facts['source_check_complete'])
+        self.assertFalse(facts['source_folders'][1]['available'])
+        self.source.write_bytes(b'Different captured length')
+        changed, rows = self.report([str(self.audio)])
+        self.assertEqual(changed['format_inspection']['recordbox_source_matches']['matched_cache_files'], 0)
+        self.assertTrue(all(r['source_association'] == 'unknown' for r in rows if r.get('recordbox_key')))
+
+    def test_repeated_track_paths_do_not_pick_a_track_and_source_changes_abort(self):
+        self.snapshot['tracks'].append({'id': 'duplicate', 'current_path': str(self.source)})
+        _, rows = self.report([str(self.audio)])
+        files = [row for row in rows if row.get('recordbox_source_path')]
+        self.assertEqual(len(files), 2)
+        self.assertTrue(all('track_id' not in row for row in files))
+        before = ('checked', self.source, source_stamp(self.source))
+        with patch('stems_cache.selected_source', side_effect=[before, ('unavailable', None, None)]):
+            with self.assertRaisesRegex(ValueError, 'A referenced source changed'):
+                self.report([str(self.audio)])
+
+    def test_bounded_source_check_keeps_unvisited_paths_unknown(self):
+        second = self.audio / 'second.wav'
+        second.write_bytes(b'other invented source')
+        key = recordbox_fixture_key(second)
+        rows = [{'recordbox_key': key, 'format': 'recordbox_stems_v1', 'validation': 'recognized',
+                 'source_association': 'unknown'}]
+        self.snapshot['tracks'].append({'id': 'b', 'current_path': str(second)})
+        report = recordbox_source_matches(self.snapshot, rows, recordbox_source_folders([str(self.audio)]),
+                                          lambda *_: None, time.monotonic() + 20, max_sources=1)
+        self.assertFalse(report['source_check_complete'])
+        self.assertEqual(report['source_paths_checked'], 1)
+        self.assertEqual(rows[0]['source_association'], 'unknown')
+        report = recordbox_source_matches(self.snapshot, rows, recordbox_source_folders([str(self.audio)]),
+                                          lambda *_: None, time.monotonic() + 20)
+        self.assertTrue(report['source_check_complete'])
+        self.assertEqual(rows[0]['recordbox_source_timeline'], 'standard')
 
 
 class ScopeTests(unittest.TestCase):
@@ -220,7 +321,7 @@ class ApiTests(unittest.TestCase):
                 'kind':'stems','snapshot':self.sid,'profile':{'model_sha256':'short'}})
         self.assertEqual(response.status_code,400)
         identity=self.run_report();endpoint='/api/lab/reports/'+identity
-        for field in ('asset_family','provider','cache_state','eligibility','source_provider'):
+        for field in ('asset_family','provider','cache_state','eligibility','source_provider','recordbox_variant'):
             self.assertEqual(self.client.get(endpoint,query_string={field:"' OR 1=1"}).status_code,400)
         self.assertEqual(self.client.post('/api/lab/check',json={'kind':'stems','snapshot':self.sid}).status_code,403)
 

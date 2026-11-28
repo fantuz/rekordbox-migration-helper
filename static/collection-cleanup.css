@@ -8,6 +8,13 @@
 #cc-reasons { display: grid; grid-template-columns: 1fr auto; gap: 5px 12px; }
 #cc-reasons dd { margin: 0; }
 #cc-filters { margin-block: 16px 10px; }
+.cc-presets { margin-block-start: 16px; }
+.cc-advanced { flex-basis: 100%; }
+.cc-advanced > summary { cursor: pointer; }
+.cc-advanced > .file-health-controls { margin-block-start: 8px; }
+.cc-file-sizes { margin: 0; }
+.cc-file-sizes dt { font-size: .88em; }
+.cc-file-sizes dd { margin: 0 0 5px; }
 #cc-rows { min-height: 4rem; }
 #cc-rows table, #cc-drives table { width: 100%; }
 #cc-rows th, #cc-drives th { text-align: start; }

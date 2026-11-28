@@ -40,6 +40,15 @@ def _read_snapshot(store, identity):
     return json.loads(record['payload']), record['digest']
 
 
+def _size_bound(args, field):
+    value = args.get(field, '')
+    if not value:
+        return None
+    if len(value) > 19 or not value.isascii() or not value.isdecimal() or int(value) >= 2 ** 63:
+        raise ValueError('Use non-negative limits, with the minimum no greater than the maximum.')
+    return int(value)
+
+
 def _report_page(store, identity, source_key, args):
     try:
         offset, limit = int(args.get('offset', 0)), int(args.get('limit', 50))
@@ -57,7 +66,7 @@ def _report_page(store, identity, source_key, args):
     elif section:
         clauses.append('section=?')
         params.append(section)
-    for field in ('status', 'volume', 'os', 'q'):
+    for field in ('status', 'volume', 'os', 'proof', 'reason', 'signal', 'q'):
         value = args.get(field, '')
         if len(value) > 512:
             raise ValueError('Choose a shorter cleanup filter.')
@@ -65,9 +74,22 @@ def _report_page(store, identity, source_key, args):
             if field == 'q':
                 clauses.append('instr(search_text,?)>0')
                 params.append(value.casefold())
+            elif field in ('reason', 'signal'):
+                clauses.append('EXISTS (SELECT 1 FROM json_each(report_rows.payload,?) WHERE value=?)')
+                params.extend(('$.' + field + 's', value))
             else:
                 clauses.append('json_extract(payload,?)=?')
                 params.extend(('$.' + field, value))
+    size_min = _size_bound(args, 'size_min')
+    size_max = _size_bound(args, 'size_max')
+    if size_min is not None and size_max is not None and size_min > size_max:
+        raise ValueError('Use non-negative limits, with the minimum no greater than the maximum.')
+    if size_min is not None or size_max is not None:
+        clauses.append("json_type(payload,'$.recorded_size')='integer'")
+    for bound, comparison in ((size_min, '>='), (size_max, '<=')):
+        if bound is not None:
+            clauses.append("json_extract(payload,'$.recorded_size')" + comparison + '?')
+            params.append(bound)
     with store.connection() as db:
         db.execute('BEGIN')
         record = db.execute('SELECT summary,created FROM reports WHERE id=? AND kind=? AND sources=?',

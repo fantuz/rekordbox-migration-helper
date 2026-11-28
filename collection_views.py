@@ -10,10 +10,12 @@ from result_cache import cached_collection
 from flask import jsonify, request
 
 from collection_sources import resolve, source_report
+from duplicate_evidence import EVIDENCE_KEYS, isrc_key, recorded_comparisons
 from history_browser import added_years
 from workbench_store import Store
 from chart_views import collection_charts,hide_unknown
 import cloud_analysis
+import collection_storage
 import metadata_sidecars
 
 
@@ -27,7 +29,8 @@ def path_key(value):
     return ntpath.normpath(value).casefold() if re.match(r'^[A-Za-z]:/', value) or value.startswith('//') else value
 
 
-def statistics(snapshot, minimum=0, maximum=math.inf, report=None, hide=False, provider="all", cloud_context=None, hide_sidecars=False):
+def statistics(snapshot, minimum=0, maximum=math.inf, report=None, hide=False, provider="all",
+               cloud_context=None, hide_sidecars=False, *, owner=None, source=''):
     hide=hide_unknown(hide)
     if not math.isfinite(minimum) or minimum < 0 or maximum < minimum or math.isnan(maximum):
         raise ValueError('Enter a finite, non-negative length range')
@@ -35,7 +38,11 @@ def statistics(snapshot, minimum=0, maximum=math.inf, report=None, hide=False, p
               (t.get('duration') is None and minimum == 0 and maximum == math.inf) or
               (t.get('duration') is not None and minimum <= t['duration'] <= maximum)]
     tracks,sidecars=metadata_sidecars.select(tracks,hide_sidecars)
-    tracks,cloud=cloud_analysis.select(tracks,provider,cloud_context)
+    selected,cloud=cloud_analysis.select_with_evidence(tracks,provider,cloud_context)
+    tracks = [track for track, _ in selected]
+    storage = collection_storage.recorded_storage(selected)
+    storage['observed'] = collection_storage.observed_storage(
+        owner, source, tracks, (cloud_context or {}).get('mappings', []))
     def count(fields, predicate):
         return None if any(any(t.get(f) is None for f in fields) for t in tracks) else sum(predicate(t) for t in tracks)
     counters = {'total': len(tracks), 'dropbox_paths':cloud['selected_counts']['dropbox'],
@@ -72,19 +79,29 @@ def statistics(snapshot, minimum=0, maximum=math.inf, report=None, hide=False, p
                 break
     histogram=[{'label': label, 'count': n} for (_, label), n in zip(bins, counts)]
     additions=added_years(tracks)
-    return {'counters': counters, 'sidecars':sidecars,'cloud':cloud,'histogram':histogram,
+    return {'counters': counters, 'sidecars':sidecars,'cloud':cloud,'storage':storage,'histogram':histogram,
             'addition_dates':additions,'charts':collection_charts(tracks,histogram,additions,hide),'hide_unknown':hide,
             'unknown_duration': sum(t.get('duration') is None for t in tracks),
             'scope': 'captured', 'note': 'Captured metadata; unknown fields stay unverified. Relationship counts cover the full source. Audio availability requires a local scan.'}
 
 
+DUPLICATE_BASES = ('path', 'metadata', 'isrc')
+DUPLICATE_REVIEW_STATES = ('unreviewed', 'keep_separate', 'candidate')
+
+
 def duplicate_groups(snapshot, basis='path'):
-    if basis not in ('path', 'metadata'):
-        raise ValueError('Choose recorded paths or artist and title')
+    if basis not in DUPLICATE_BASES:
+        raise ValueError('Choose a supported duplicate grouping basis')
     buckets = defaultdict(list)
     for t in snapshot['tracks']:
-        key = path_key(t.get('current_path')) if basis == 'path' else (normalized(t.get('artist')), normalized(t.get('title')))
-        if (basis == 'path' and key) or (basis == 'metadata' and all(key)):
+        if basis == 'path':
+            key = path_key(t.get('current_path'))
+        elif basis == 'isrc':
+            key = isrc_key(t.get('isrc'))
+        else:
+            fields = (normalized(t.get('artist')), normalized(t.get('title')))
+            key = fields if all(fields) else None
+        if key:
             buckets[key].append(t)
     result = []
     for members in buckets.values():
@@ -92,9 +109,8 @@ def duplicate_groups(snapshot, basis='path'):
             continue
         members.sort(key=lambda t: t['id'])
         identity = sha256((basis + '\0' + '\0'.join(t['id'] for t in members)).encode()).hexdigest()[:32]
-        durations = [t['duration'] for t in members if t.get('duration') is not None]
         result.append({'id': identity, 'basis': basis, 'tracks': members, 'count': len(members),
-                       'duration_spread': max(durations) - min(durations) if durations else None})
+                       **recorded_comparisons(members)})
     return sorted(result, key=lambda g: (-g['count'], g['id']))
 
 
@@ -116,9 +132,7 @@ def sidecar_groups(groups, hide=False):
     for group in groups:
         tracks=[t for t in group['tracks'] if not metadata_sidecars.is_sidecar(t)]
         if len(tracks)<2:continue
-        durations=[t['duration'] for t in tracks if t.get('duration') is not None]
-        result.append({**group,'tracks':tracks,'count':len(tracks),
-                       'duration_spread':max(durations)-min(durations) if durations else None})
+        result.append({**group, 'tracks':tracks, 'count':len(tracks), **recorded_comparisons(tracks)})
     return result,summary
 
 
@@ -153,10 +167,6 @@ def register(owner):
     def page(rows):
         offset = max(0, int(request.args.get('offset', 0)))
         return {'rows': rows[offset:offset + 50], 'total': len(rows), 'offset': offset}
-    def matches(track):
-        query = normalized(request.args.get('q', ''))
-        return not query or query in normalized(' '.join(str(track.get(f) or '') for f in
-                                                        ('id', 'title', 'artist', 'current_path', 'original_path', 'analysis_path')))
     def reviews(key,snapshot):
         saved = Store(owner.DATA / 'workbench-sidecar.sqlite3')
         values = {}
@@ -166,37 +176,64 @@ def register(owner):
 
     def cloud_context():return cloud_analysis.context(owner,request.args.get('source',''))
     def cloud_signature():return cloud_analysis.signature(cloud_context())
+    def statistics_signature():
+        return [cloud_signature(), collection_storage.observation_signature(owner, request.args.get('source',''))]
 
     @app.get('/api/collection/statistics')
-    @cached_collection(owner,vary=cloud_signature)
+    @cached_collection(owner,vary=statistics_signature)
     def collection_statistics():
         key, snapshot = source()
         minimum = float(request.args.get('min') or 0) * 60
         maximum = float(request.args['max']) * 60 if request.args.get('max') else math.inf
         if request.args.get('max') and not math.isfinite(maximum):
             raise ValueError('Enter a finite maximum length')
-        return jsonify(source=key, **statistics(snapshot, minimum, maximum, source_report(owner, snapshot),request.args.get('hide_unknown',False),request.args.get('provider','all'),cloud_context(),request.args.get('hide_metadata_sidecars',False)))
+        return jsonify(source=key, **statistics(
+            snapshot, minimum, maximum, source_report(owner, snapshot),
+            request.args.get('hide_unknown',False), request.args.get('provider','all'),
+            cloud_context(), request.args.get('hide_metadata_sidecars',False), owner=owner, source=key))
 
     @app.get('/api/collection/duplicates')
     @cached_collection(owner,vary=cloud_signature)
     def collection_duplicates():
         from track_flags import flags,checked_flag,FLAGS
-        flag=checked_flag(request.args.get('flag',''))
+        flag = checked_flag(request.args.get('flag', ''))
+        criterion = request.args.get('criterion', '')
+        review_filter = request.args.get('review_status', '')
+        if criterion and criterion not in EVIDENCE_KEYS:
+            raise ValueError('Choose a supported duplicate evidence criterion')
+        if review_filter and review_filter not in DUPLICATE_REVIEW_STATES:
+            raise ValueError('Choose a supported review status')
         key, snapshot = source()
         original_groups = duplicate_groups(snapshot, request.args.get('basis', 'path'))
         groups,sidecars = sidecar_groups(original_groups,request.args.get('hide_metadata_sidecars',False))
         provider=cloud_analysis.checked_provider(request.args.get('provider','all'));configuration=cloud_context()
         def provider_match(track):return cloud_analysis.matches(cloud_analysis.classify(track,configuration),provider)
+        query = normalized(request.args.get('q', ''))
+        identifier = isrc_key(query)
+        def matches(track):
+            return (not query or bool(identifier and identifier == isrc_key(track.get('isrc')))
+                    or query in normalized(' '.join(str(track.get(field) or '') for field in (
+                        'id', 'title', 'artist', 'album', 'isrc', 'current_path', 'original_path', 'analysis_path'))))
         saved = reviews(key,snapshot)
-        rows = [{'id': g['id'], 'basis': g['basis'], 'count': g['count'], 'duration_spread': g['duration_spread'],
-                 'title': g['tracks'][0].get('title'), 'artist': g['tracks'][0].get('artist'),
-                 'review': saved.get(g['id'], 'unreviewed'), 'flags': sorted({f for t in g['tracks'] for f in flags(t)})} for g in groups if any(matches(t) for t in g['tracks']) and any(provider_match(t) for t in g['tracks'])]
+        rows = []
+        for group in groups:
+            review = saved.get(group['id'], 'unreviewed')
+            tracks = group['tracks']
+            if review_filter and review != review_filter or criterion and not group['evidence'][criterion]:
+                continue
+            if not any(matches(t) for t in tracks) or not any(provider_match(t) for t in tracks):
+                continue
+            rows.append({'id': group['id'], 'basis': group['basis'], 'count': group['count'],
+                         'duration_spread': group['duration_spread'], 'evidence': group['evidence'],
+                         'title': tracks[0].get('title'), 'artist': tracks[0].get('artist'),
+                         'review': review, 'flags': sorted({f for t in tracks for f in flags(t)})})
         flag_counts={key:sum(key in r['flags'] for r in rows) for key in FLAGS}
         if flag:rows=[r for r in rows if flag in r['flags']]
         sorting = request.args.get('sort', 'count')
         direction = request.args.get('direction', 'desc')
         rows = sort_collection_rows(rows, 'duplicates', sorting, direction)
         return jsonify(source=key, **page(rows), sidecars=sidecars,sort=sorting, direction=direction, flag=flag,flag_counts=flag_counts,
+                       criterion=criterion, review_status=review_filter,
                        groups=len(rows), tracks=sum(r['count'] for r in rows),source_groups=len(original_groups),
                        source_tracks=sum(g['count'] for g in original_groups),provider=provider,cloud_note=cloud_analysis.NOTE,
                        note='Candidates only. Paths and matching tags do not prove identical audio; versions, durations and cues need review. No merge or source write is performed.')
@@ -219,7 +256,7 @@ def register(owner):
             raise ValueError('Supply a JSON object')
         key = b.get('source', '')
         status = b.get('status')
-        if status not in ('unreviewed', 'keep_separate', 'candidate'):
+        if status not in DUPLICATE_REVIEW_STATES:
             raise ValueError('Choose a supported review status')
         snapshot = resolve(owner, key)
         if not any(g['id'] == identity for g in duplicate_groups(snapshot, b.get('basis', 'path'))):
@@ -233,24 +270,29 @@ def register(owner):
         return jsonify(saved=True, source_writes=False)
 
     @app.get('/api/collection/references')
-    @cached_collection(owner,vary=cloud_signature)
+    @cached_collection(owner, vary=lambda: ['reference-groups-v1', cloud_signature()])
     def collection_references():
+        from reference_views import group_references, reference_rows
+
         key, snapshot = source()
         mode = request.args.get('mode', 'all')
-        if mode not in ('all', 'changed', 'missing_path'):
-            raise ValueError('Choose a reference filter')
-        def changed(t):
-            return bool(t.get('original_path')) and path_key(t['original_path']) != path_key(t.get('current_path'))
-        tracks = snapshot['tracks']
-        matching=[t for t in tracks if matches(t) and (mode == 'all' or mode == 'changed' and changed(t) or mode == 'missing_path' and not t.get('current_path'))]
-        matching,sidecars=metadata_sidecars.select(matching,request.args.get('hide_metadata_sidecars',False))
-        selected,cloud=cloud_analysis.select(matching,request.args.get('provider','all'),cloud_context())
-        rows = [{f: t.get(f) for f in ('id', 'title', 'artist', 'current_path', 'original_path', 'analysis_path', 'size')}
-                for t in selected]
+        grouping = request.args.get('group_by', 'none')
+        query = normalized(request.args.get('q', '')).replace('\\', '/')
+        fields = ('id', 'title', 'artist', 'current_path', 'original_path', 'analysis_path', 'xml_location')
+
+        def search(track):
+            return not query or query in normalized(' '.join(str(track.get(field) or '') for field in fields)).replace('\\', '/')
+
+        rows, counts, sidecars, cloud = reference_rows(
+            snapshot, search, mode, grouping, request.args.get('provider', 'all'),
+            cloud_context(), request.args.get('hide_metadata_sidecars', False)
+        )
         sorting = request.args.get('sort', 'title')
         direction = request.args.get('direction', 'asc')
-        rows = sort_collection_rows(rows, 'references', sorting, direction)
-        return jsonify(source=key, **page(rows), sidecars=sidecars,sort=sorting, direction=direction,
-                       tracks=len(selected),source_tracks=len(tracks),cloud=cloud, changed=sum(changed(t) for t in selected),
-                       missing_path=sum(not t.get('current_path') for t in selected),
+        rows = group_references(sort_collection_rows(rows, 'references', sorting, direction), grouping)
+        return jsonify(source=key, **page(rows), sidecars=sidecars, sort=sorting, direction=direction,
+                       mode=mode, group_by=grouping, counts=counts, tracks=len(rows),
+                       source_tracks=len(snapshot['tracks']), cloud=cloud,
+                       changed=sum('changed' in row['flags'] for row in rows),
+                       missing_path=sum('missing_path' in row['flags'] for row in rows),
                        note='Recorded current, original and analysis paths. An empty path is not proof of a missing audio file. Playback checks availability on this computer only.')

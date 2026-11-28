@@ -1,7 +1,9 @@
 """Read-only provider associations. Never join incomplete caches across physical/ZIP scopes."""
 from collections import Counter,defaultdict
+from hashlib import sha256
 from pathlib import Path,PurePosixPath
 import stat
+import struct
 import time
 
 from media import cloud_placeholder
@@ -21,7 +23,8 @@ def recordbox_inventory(rows, progress, incomplete_archives):
         if index % 250 == 0:
             progress(85, 'Grouping saved Recordbox STEMS')
         if recognized(row):
-            summary[row.get('recordbox_variant', 'unidentified') + '_files'] += 1
+            variant = row.setdefault('recordbox_variant', 'unidentified')
+            summary[variant + '_files'] += 1
             summary['recognized_bytes'] += row['bytes']
         # Include unchecked or damaged canonical names when detecting duplicate ZIP aliases.
         name = RECORDBOX_SAVED_NAME.fullmatch(row['title'])
@@ -97,6 +100,135 @@ def selected_source(value,roots):
         if stamp['cloud_only']:return 'unavailable',None,None
         return 'checked',resolved,stamp
     except OSError:return 'unavailable',None,None
+
+
+def recordbox_source_folders(values):
+    """Parse explicit audio scopes without traversing their contents."""
+    if values is None:
+        return []
+    if not isinstance(values, list) or len(values) > 20:
+        raise ValueError('Choose at most twenty Recordbox source folders')
+    folders = {}
+    for value in values:
+        if not isinstance(value, str) or '\0' in value:
+            raise ValueError('Choose absolute Recordbox source folders')
+        try:
+            alias = Path(value.strip().strip('"')).expanduser()
+        except RuntimeError as error:
+            raise ValueError('Choose absolute Recordbox source folders') from error
+        if not alias.is_absolute() or '..' in alias.parts:
+            raise ValueError('Choose absolute Recordbox source folders')
+        folders[alias] = None
+    return list(folders)
+
+
+def recordbox_source_scopes(folders):
+    """Keep selected aliases tied to their approved physical roots."""
+    scopes = {}
+    for alias in folders:
+        try:
+            scope = alias.resolve(strict=True)
+            attributes = scope.stat()
+            available = stat.S_ISDIR(attributes.st_mode) and not cloud_placeholder(attributes)
+        except (OSError, RuntimeError):
+            available = False
+        scopes[alias] = scope if available else None
+    return scopes
+
+
+def recordbox_source_keys(path, size, mtime_ns):
+    """Metadata keys from Recordbox v0.9.1. A clock marker is only used for MP3."""
+    if mtime_ns < 0:
+        return {}
+    try:
+        encoded = path.encode('utf-8')
+    except UnicodeError:
+        return {}
+    digest = sha256(encoded + struct.pack('<QQ', size, mtime_ns // 1_000_000_000))
+    if Path(path).suffix.casefold() != '.mp3':
+        return {'standard': digest.hexdigest()[:24]}
+    legacy = digest.hexdigest()[:24]
+    digest.update(b'\0mp3-rekordbox-timeline-v1')
+    return {'legacy': legacy, 'rekordbox': digest.hexdigest()[:24]}
+
+
+def recordbox_source_matches(snapshot, rows, folders, progress, deadline, max_sources=10000):
+    """Associate recognized file names with selected, unchanged source metadata."""
+    scopes = recordbox_source_scopes(folders)
+    roots = [(alias, scope) for alias, scope in scopes.items() if scope is not None]
+    cache_rows = [row for row in rows if row.get('recordbox_key') and row.get('validation') == 'recognized']
+    keys = {row['recordbox_key'] for row in cache_rows}
+    sources = {}
+    complete = bool(roots and keys) and len(roots) == len(folders)
+    for index, track in enumerate(snapshot.get('tracks', []) if roots and keys else ()):
+        if index % 250 == 0:
+            progress(88, 'Checking selected Recordbox source metadata')
+        if time.monotonic() >= deadline:
+            complete = False
+            break
+        raw_path = track.get('current_path')
+        if not isinstance(raw_path, str) or '\0' in raw_path or not Path(raw_path).is_absolute():
+            continue
+        if raw_path in sources:
+            sources[raw_path]['tracks'] += 1
+            continue
+        if not any(Path(raw_path).is_relative_to(alias) for alias, _ in roots):
+            continue
+        if len(sources) >= max_sources:
+            complete = False
+            break
+        status, path, stamp = selected_source(raw_path, roots)
+        sources[raw_path] = {'status': status, 'path': path, 'stamp': stamp, 'tracks': 1, 'track': track}
+
+    candidates = defaultdict(list)
+    for index, (raw_path, source) in enumerate(sources.items()):
+        if index % 250 == 0:
+            progress(88, 'Comparing Recordbox cache filename keys')
+        stamp = source['stamp']
+        if not stamp:
+            continue
+        for timeline, key in recordbox_source_keys(raw_path, stamp['size'], stamp['mtime_ns']).items():
+            if key in keys:
+                candidates[key].append((raw_path, timeline))
+
+    matched = ambiguous = 0
+    rechecked = set()
+    for index, row in enumerate(cache_rows):
+        if index % 250 == 0:
+            progress(88, 'Confirming Recordbox source matches')
+        matches = candidates.get(row['recordbox_key'], [])
+        is_file = row.get('format') == 'recordbox_stems_v1'
+        if row.get('recordbox_pair_ambiguous') or len(matches) > 1:
+            row['source_association'] = 'ambiguous'
+            ambiguous += is_file
+            continue
+        if not matches:
+            continue
+        raw_path, timeline = matches[0]
+        source = sources[raw_path]
+        if raw_path not in rechecked:
+            if time.monotonic() >= deadline:
+                complete = False
+                break
+            expected = (source['status'], source['path'], source['stamp'])
+            if selected_source(raw_path, roots) != expected:
+                raise ValueError('A referenced source changed during the STEMS audit. Run the check again.')
+            rechecked.add(raw_path)
+        if source['tracks'] != 1 or not complete:
+            # The same path can occur in several tracks, including beyond a scan limit.
+            row.update(source_association='metadata_match', recordbox_source_path=raw_path,
+                       recordbox_source_timeline=timeline)
+        else:
+            track = source['track']
+            row.update(source_association='metadata_match', recordbox_source_path=raw_path,
+                       recordbox_source_timeline=timeline, recordbox_source_title=track.get('title'),
+                       recordbox_source_artist=track.get('artist'), track_id=track.get('id'))
+        matched += is_file
+    checked = sum(source['status'] == 'checked' for source in sources.values())
+    return {'source_folders': [{'path': str(alias), 'available': scope is not None} for alias, scope in scopes.items()],
+            'source_paths_checked': checked, 'source_paths_unavailable': len(sources) - checked,
+            'matched_cache_files': matched, 'ambiguous_cache_files': ambiguous,
+            'source_check_complete': complete, 'source_bytes_read': 0}
 
 
 def provider_report(rows,roots,profile,progress,deadline,inventory_complete=True,max_rows=10000,now=None,source_aliases=None):
@@ -203,7 +335,7 @@ def provider_report(rows,roots,profile,progress,deadline,inventory_complete=True
     # Recheck metadata checked through manifest references; nothing outside selected roots was opened.
     for index,(path,stamp) in enumerate(checked_sources.items()):
         if index%250==0:progress(88,'Rechecking selected source metadata')
-        if source_stamp(Path(path))!=stamp:raise ValueError('A referenced source changed during the STEMS audit; capture again')
+        if source_stamp(Path(path))!=stamp:raise ValueError('A referenced source changed during the STEMS audit. Run the check again.')
     return reports,{'cache_locations':len(caches),'chunk_sets_present':counts['chunks_present'],
                     'chunk_sets_incomplete':counts['chunks_incomplete'],'chunk_sets_unknown':counts['chunks_unknown'],
                     'manifest_associations_consistent':counts['manifest_consistent'],'manifest_associations_incomplete':counts['manifest_incomplete'],

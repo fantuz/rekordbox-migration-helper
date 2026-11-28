@@ -108,6 +108,16 @@ class ReviewTests(unittest.TestCase):
         self.tracks[0]['size'] = None
         self.assertIn('unknown_metadata',self.review()['rows'][0]['reasons'])
 
+    def test_size_evidence_distinguishes_recorded_present_absent_and_cloud(self):
+        self.tracks[0]['size'] = None
+        self.fs.facts[self.tracks[1]['current_path']] = ('present', 2, 2048)
+        self.fs.facts[self.tracks[2]['current_path']] = ('missing', 3, None)
+        rows = self.review(cloud_ids={'d'})['rows']
+        self.assertEqual([(row['recorded_size'], row['observed_size']) for row in rows],
+                         [(None, 1024), (1024, 2048), (1024, None), (1024, None)])
+        self.assertIn('size_conflict', rows[1]['reasons'])
+        self.assertEqual([row['candidate'] for row in rows], [None, None, 'missing', None])
+
     def test_incomplete_or_migrated_sources_linux_and_unsaved_inputs_are_read_only(self):
         self.snapshot.pop('cleanup_coverage')
         self.assertEqual(self.review(compare_bytes=True)['gates'],['incomplete_capture'])

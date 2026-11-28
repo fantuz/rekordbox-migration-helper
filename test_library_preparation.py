@@ -88,7 +88,7 @@ class PreparationTests(unittest.TestCase):
     def test_scan_state_is_bound_to_the_exact_snapshot(self):
         prepared = self.prepare()
         with self.saved.connection() as db:
-            db.execute('INSERT INTO file_health_scans VALUES (?,?,?,?,?)',
+            db.execute('INSERT INTO file_health_scans (source,total,done,checked_at,state) VALUES (?,?,?,?,?)',
                        ('snapshot:' + prepared['id'], 10, 3, 1, 'partial'))
         response = self.client.get('/api/library-preparation', query_string={'source': 'workspace', 'workspace': self.session['id']})
         self.assertEqual(response.json['file_health']['state'], 'partial')

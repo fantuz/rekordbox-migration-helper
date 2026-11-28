@@ -143,7 +143,7 @@ class SidecarAPIs(unittest.TestCase):
 
     def test_file_health_uses_indexed_hints_and_preserves_unknown_legacy_rows(self):
         with self.store.connection() as db:
-            db.execute('INSERT INTO file_health_scans VALUES (?,?,?,?,?)',(self.key,7,7,1,'complete'))
+            db.execute('INSERT INTO file_health_scans (source,total,done,checked_at,state) VALUES (?,?,?,?,?)',(self.key,7,7,1,'complete'))
             for row in self.source['tracks']:
                 # Old rows without a filename/flag are genuinely unknown; their
                 # titles alone must never cause exclusion.

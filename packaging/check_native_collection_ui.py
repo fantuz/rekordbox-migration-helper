@@ -14,6 +14,9 @@ def check_native_collection_ui(browser, base, data, output, root):
     with native_fixture(original) as db:
         db.execute("INSERT INTO djmdContent VALUES('copy','Track A','/Music/a.mp3','artist',243,'2023-03-01',0)")
         db.executescript("""CREATE TABLE djmdPlaylist(ID TEXT,Name TEXT,Attribute INTEGER);
+            ALTER TABLE djmdContent ADD COLUMN ISRC TEXT;
+            UPDATE djmdContent SET ISRC='US-ABC-24-00123' WHERE ID='a';
+            UPDATE djmdContent SET ISRC='USABC2400123' WHERE ID='copy';
             CREATE TABLE djmdSongPlaylist(ID TEXT,PlaylistID TEXT,ContentID TEXT,TrackNo INTEGER);
             INSERT INTO djmdPlaylist VALUES('p','Synthetic set',0),('q','Related set',0);
             INSERT INTO djmdSongPlaylist VALUES('1','p','a',1),('2','p','b',2),('3','p','a',3),('4','q','b',1),('5','q','a',2);""")
@@ -98,6 +101,27 @@ def check_native_collection_ui(browser, base, data, output, root):
         page.select_option('.native-status', 'keep_separate')
         page.locator('.native-save').click()
         page.wait_for_function("document.querySelector('.native-status')?.value==='keep_separate'")
+        review_form = page.locator('#view-review .native-filter')
+        review_form.locator('select[name=mode]').select_option('isrc')
+        review_form.locator('.native-review-more summary').press('Enter')
+        review_form.locator('select[name=criterion]').select_option('duration_close')
+        review_form.get_by_role('button', name='Apply', exact=True).click()
+        page.wait_for_function('document.querySelector("#view-review .native-result-count")?.textContent.includes("0 candidate groups")')
+        review_form.locator('select[name=criterion]').select_option('duration_differs')
+        review_form.locator('select[name=review_status]').select_option('unreviewed')
+        review_form.get_by_role('button', name='Apply', exact=True).click()
+        page.locator('[data-native-group]').click()
+        page.wait_for_selector('.native-compare-record')
+        assert page.locator('.native-compare-record').count() == 2
+        assert 'US-ABC-24-00123' in page.locator('.native-compare-record').first.inner_text()
+        page.select_option('.native-status', 'keep_separate')
+        page.locator('.native-save').click()
+        page.wait_for_function('document.querySelector("#view-review .native-result-count")?.textContent.includes("0 candidate groups")')
+        review_form.locator('select[name=mode]').select_option('path')
+        review_form.locator('select[name=criterion]').select_option('')
+        review_form.locator('select[name=review_status]').select_option('')
+        review_form.get_by_role('button', name='Apply', exact=True).click()
+        page.wait_for_selector('[data-native-group]')
         page.locator('.nav[data-view=reference]').click()
         page.wait_for_selector('#view-reference .native-table tbody tr')
         assert page.locator('#view-reference .native-table tbody tr').count() == 3
@@ -166,6 +190,17 @@ def check_native_collection_ui(browser, base, data, output, root):
         page.wait_for_selector('#view-reference .native-collection [data-native-sort=current_path]')
         page.locator('#view-reference .native-collection [data-native-sort=current_path]').click()
         page.wait_for_function('document.querySelector("#view-reference .native-collection th[aria-sort=ascending] [data-native-sort=current_path]")!==null')
+        references = page.locator('#view-reference .reference-browser')
+        references.locator('select[name=group_by]').select_option('folder')
+        references.get_by_role('button', name='Apply', exact=True).click()
+        page.wait_for_function('document.querySelector("[data-reference-group]")?.textContent.includes("/Synthetic · 120")')
+        references.get_by_label('Quick search').fill('Sort 059')
+        references.locator('[data-reference-mode=shared_path]').click()
+        page.wait_for_function('document.querySelectorAll("#view-reference [data-reference-track]").length===2')
+        assert references.locator('[data-reference-group]').inner_text().strip() == '/Synthetic · 2 tracks'
+        assert references.locator('[data-reference-mode=shared_path]').get_attribute('aria-pressed') == 'true'
+        references.get_by_role('button', name='File health', exact=True).click()
+        page.wait_for_function('(id)=>document.querySelector("#file-health-source")?.value==="snapshot:"+id',arg=sorted_snapshot['id'])
         assert not errors, errors
         assert not failures, failures
         return {'direct_intelligence':True,'native_statistics':True, 'candidate_review':True, 'recorded_references':True,

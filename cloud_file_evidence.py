@@ -13,25 +13,10 @@ from types import SimpleNamespace
 
 from audio_paths import signature
 from file_health import selected_source
+from storage_sizes import byte_count
 from workbench_store import Store
 
 STATUSES=('present','not_found','unmapped','ambiguous','unverified')
-
-
-def _byte_count(value,minimum=0):
-    """Captured/provider byte counts must be exact, finite and JSON-safe.
-
-    A saved zero is not a useful expected media size. Booleans, fractional
-    values and malformed metadata cannot establish a size agreement.
-    """
-    if isinstance(value,str):
-        value=value.strip()
-        if not value or len(value)>16 or not value.isascii() or not value.isdecimal():return None
-        value=int(value)
-    if type(value) is float:
-        if not math.isfinite(value) or not value.is_integer():return None
-        value=int(value)
-    return value if type(value) is int and minimum<=value<=2**53-1 else None
 
 
 def size_evidence(track,remote):
@@ -41,8 +26,8 @@ def size_evidence(track,remote):
     Provider content hashes validate an approved transfer against that remote
     revision, and are not hashes of the original Rekordbox library recording.
     """
-    expected=_byte_count(track.get('size',track.get('size_bytes')),1)
-    actual=_byte_count(remote.get('size')) if isinstance(remote,dict) else None
+    expected=byte_count(track.get('size',track.get('size_bytes')),1)
+    actual=byte_count(remote.get('size')) if isinstance(remote,dict) else None
     comparison='unknown' if expected is None or actual is None else 'match' if expected==actual else 'mismatch'
     return {'expected_size':expected,'remote_size':actual,'size_comparison':comparison}
 
@@ -94,9 +79,12 @@ def refresh_download(profile,source,identity,track,mappings):
     statuses,_,details=inspect(bound,{identity:track},refresh=True,mappings=mappings,details=True)
     info=details[identity];checked=time.time()
     with Store(bound.DATA/'workbench-sidecar.sqlite3').connection() as db:
-        updated=db.execute('UPDATE file_health_records SET status=?,checked_at=?,providers=?,provider_checked=1,cloud_state=?,logical_size=?,filename=?,provider_evidence=? WHERE source=? AND track_id=?',
+        updated=db.execute('UPDATE file_health_records SET status=?,checked_at=?,providers=?,provider_checked=1,cloud_state=?,logical_size=?,filename=?,provider_evidence=?,observed_location=? WHERE source=? AND track_id=?',
             (statuses[identity],checked,info.get('providers',0),info.get('cloud_state','unknown'),
-             info.get('logical_size'),info.get('filename',''),json.dumps(info.get('provider_evidence',[])),source,identity)).rowcount
+             info.get('logical_size'),info.get('filename',''),json.dumps(info.get('provider_evidence',[])),
+             info.get('observed_location'),source,identity)).rowcount
+        if updated:
+            db.execute('UPDATE file_health_scans SET evidence_revision=evidence_revision+1 WHERE source=?',(source,))
     return {'status':statuses[identity],'checked_at':checked,'file_health_updated':bool(updated)}
 
 

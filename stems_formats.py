@@ -20,7 +20,8 @@ REPORT_FILTERS={
     'provider':('unknown','native_instruments','rbstemsplus','recordbox','rekordbox'),
     'cache_state':('unknown','present','consistent','incomplete','stale','profile_mismatch','unavailable'),
     'eligibility':('unknown','candidate','blocked'),
-    'source_provider':('unknown','local','apple_music','spotify','other_streaming')}
+    'source_provider':('unknown','local','apple_music','spotify','other_streaming'),
+    'recordbox_variant':('speed','quality','unidentified')}
 
 
 def stem_candidate(path):
