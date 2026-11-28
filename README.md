@@ -8,10 +8,15 @@
   <a href="https://github.com/fantuz/rekordbox-migration-helper/releases/latest"><img src="https://img.shields.io/github/v/release/fantuz/rekordbox-migration-helper?label=release" alt="Latest stable release" height="20"></a>
   <a href="https://github.com/fantuz/rekordbox-migration-helper/releases"><img src="https://img.shields.io/github/downloads/fantuz/rekordbox-migration-helper/total?label=downloads" alt="GitHub release downloads" height="20"></a>
   <br>
+  <!-- Release package architectures -->
+  <a href="#start"><img src="https://img.shields.io/badge/Windows-x64-0078d4" alt="Windows x64 portable package" height="20"></a>
+  <a href="#start"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20ARM64%20%7C%20Intel%20x86--64-333333" alt="macOS portable packages for Apple Silicon ARM64 and Intel x86-64" height="20"></a>
+  <a href="#start"><img src="https://img.shields.io/badge/Linux-x86--64-6e5719" alt="Linux x86-64 portable package" height="20"></a>
+  <br>
   <!-- Why a DJ might use the project -->
   <a href="#feature-inventory"><img src="https://img.shields.io/badge/DJ_library-health-72509a" alt="DJ library health and maintenance" height="20"></a>
   <a href="SECURITY.md"><img src="https://img.shields.io/badge/privacy-local--first-176d5e" alt="Local-first: files and libraries stay on this computer" height="20"></a>
-  <a href="#start"><img src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-507269" alt="Linux, Windows and macOS" height="20"></a>
+  <a href="docs/ONETAGGER-RESULTS.md"><img src="https://img.shields.io/badge/OneTagger-bridge-365aa2" alt="OneTagger selection and results bridge" height="20"></a>
   <a href="docs/LOCALIZATION.md"><img src="https://img.shields.io/badge/interface-13%20languages-2e7d32" alt="Thirteen interface languages" height="20"></a>
   <br>
   <!-- Openness, contribution and source details -->
