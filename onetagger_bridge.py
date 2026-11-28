@@ -1,5 +1,6 @@
 """Explicit local playlist handoff, tag read-back and reviewed sidecar edits."""
 from hashlib import sha256
+from datetime import date
 import json
 from pathlib import Path
 import re
@@ -20,6 +21,7 @@ from workbench_store import Store,encoded,now
 FIELDS=EXTENDED_FIELDS
 LIMIT=500
 TAGGABLE={'.mp3','.flac','.aif','.aiff','.m4a','.wav','.ogg','.opus'}
+SCALAR_LIST_FORMATS={'.mp3','.aif','.aiff','.m4a','.wav'}
 
 
 def stamp(path):
@@ -33,18 +35,25 @@ def read_tags(path):
     try:tag=TinyTag.get(path,duration=False,image=False)
     except TinyTagException as error:raise ValueError('Could not read file tags: '+str(error)) from error
     values={};warnings=[]
-    mp4=tag.as_dict() if path.suffix.lower()=='.m4a' else {}
+    extension=path.suffix.lower()
+    lists=tag.as_dict() if extension in SCALAR_LIST_FORMATS else {}
     for field in FIELDS:
         raw=getattr(tag,field,None)
         if field=='label':
-            label_values=tag.other.get('label' if path.suffix.lower()=='.m4a' else 'publisher',[])
-            raw=(', '.join(label_values) if path.suffix.lower() not in ('.flac','.ogg','.opus') else label_values[0]) if label_values else None
-        if field!='year' and isinstance(mp4.get(field),list):raw=', '.join(mp4[field])
+            label_values=tag.other.get('label' if extension=='.m4a' else 'publisher',[])
+            raw=(', '.join(label_values) if extension in SCALAR_LIST_FORMATS else label_values[0]) if label_values else None
+        elif field!='year' and isinstance(lists.get(field),list):
+            raw=', '.join(lists[field])
         # Absent tags do not silently erase captured library metadata.
         if raw in (None,''):continue
         # OneTagger's report reads the year component of stored release dates.
-        if field=='year' and isinstance(raw,str) and re.fullmatch(r'[0-9]{4}(?:-[0-9]{2}(?:-[0-9]{2})?)?(?:T.*)?',raw):raw=raw[:4]
-        try:values[field]=validate(field,raw)
+        try:
+            if field=='year' and isinstance(raw,str):
+                match=re.fullmatch(r'([0-9]{4})(?:([-/])([0-9]{2})(?:\2([0-9]{2})(?:[T ].*)?)?)?',raw.strip())
+                if match:
+                    year,_,month,day=match.groups()
+                    raw=date(int(year),int(month or 1),int(day or 1)).year
+            values[field]=validate(field,raw)
         except ValueError as error:warnings.append({'field':field,'reason':str(error)})
     if stamp(path)!=before:raise Conflict('An audio file changed while its tags were being read. Rescan it.')
     return values,before,warnings
