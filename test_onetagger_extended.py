@@ -3,6 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 import json
 import sqlite3
+import struct
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
@@ -73,6 +74,38 @@ class ExtendedResultsTests(TestCase):
             ReadBatch().read(self.audio);self.assertEqual(reader.call_count,2)
             with self.audio.open('ab') as stream:stream.write(b'changed')
             with self.assertRaises(Conflict):batch.read(self.audio)
+
+    def test_native_id3_lists_and_wav_info_mirror_match_the_producer_scalar(self):
+        self.audio=self.root/'native-values.mp3'
+        self.track={**self.track,'current_path':'D:/Music/native-values.mp3'}
+        self.sid=self.store.save_snapshot({'scope_key':self.before['scope_key'],'tracks':[self.track]},'Native values')['id']
+        self.before=self.store.snapshot(self.sid)
+        first='Artist, Jr.'
+        artists=f'{first}\0Second Artist'
+        fixtures.mp3_tags(self.audio,{'title':'Tagged title','artist':artists,'year':'2024-02'})
+        original=self.audio.read_bytes()
+        values,_,warnings=read_tags(self.audio)
+        self.assertEqual(values['artist'],'Artist, Jr., Second Artist')
+        self.assertEqual(values['year'],2024)
+        self.assertFalse(warnings)
+        identifier=self.export()
+        report=self.results_report(identifier,values)
+        self.assertEqual(self.raw_import(identifier,json.dumps(report)).status_code,200)
+        self.assertTrue(any(change['field']=='artist' for change in self.review(identifier)['rows'][0]['changes']))
+
+        def chunk(identifier,payload):
+            return identifier+struct.pack('<I',len(payload))+payload+bytes(len(payload)%2)
+        wav=self.root/'tag-values.wav'
+        wave=(b'WAVE'+chunk(b'fmt ',struct.pack('<HHIIHH',1,1,8000,16000,2,16))
+              +chunk(b'data',bytes(4))+chunk(b'id3 ',original[:-64])
+              +chunk(b'LIST',b'INFO'+chunk(b'IART',first.encode()+b'\0')))
+        wav.write_bytes(chunk(b'RIFF',wave))
+        self.assertEqual(read_tags(wav)[0],values)
+
+        fixtures.mp3_tags(self.audio,{'artist':artists,'year':'2023-02-29'})
+        malformed,_,warnings=read_tags(self.audio)
+        self.assertNotIn('year',malformed)
+        self.assertEqual([warning['field'] for warning in warnings],['year'])
 
     def test_extended_metadata_exports_use_existing_native_lookup_tables(self):
         fields={'label':'Independent label','composer':'Composer'}
