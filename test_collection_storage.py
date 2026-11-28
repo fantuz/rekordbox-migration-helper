@@ -5,6 +5,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import app as application
+from audio_paths import validate as validate_audio_paths
 from cloud_analysis import select_with_evidence
 from cloud_file_evidence import refresh_download
 from collection_storage import recorded_storage
@@ -46,8 +47,8 @@ class StorageObservationTests(TestCase):
         profile = self.root / 'profile'
         folder = self.root / 'Dropbox'
         folder.mkdir()
-        mappings = [{'recorded_root': 'R:/Legacy', 'local_root': str(folder),
-                     'device': folder.stat().st_dev, 'inode': folder.stat().st_ino}]
+        mappings = validate_audio_paths(
+            [{'recorded_root': 'R:/Legacy', 'local_root': str(folder)}], [self.root])
         self.current = self.root / 'current.mp3'
         self.current.write_bytes(b'1234')
         alternate = self.root / 'alternate.mp3'

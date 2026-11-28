@@ -31,11 +31,12 @@ window.NativeCollection=(()=>{
     return '<label>'+text(label)+'<select name="'+name+'">'+options.map(([value,caption])=>
       '<option value="'+value+'"'+(value===current?' selected':'')+'>'+text(caption)+'</option>').join('')+'</select></label>';
   }
-  function reviewList(result,values){
+  function reviewList(result,values,advancedOpen){
     const basis=[['path','Same recorded path'],['metadata','Same artist and title'],['isrc','Same recorded ISRC']];
     const filters=selectFilter('mode','Evidence',basis,values.basis)+
-      '<label>'+text('Search')+'<input name="query" value="'+esc(values.q)+'"></label>'+
-      CloudAnalysis.control('native-review-provider',values.provider)+
+      '<label>'+text('Search')+'<input name="query" value="'+esc(values.q)+'"></label>';
+    const selected=[recordedEvidenceMessages[values.criterion],labels[values.review_status]].filter(Boolean);
+    const advancedFilters=CloudAnalysis.control('native-review-provider',values.provider)+
       selectFilter('criterion','Evidence criteria',[['','Any'],...Object.entries(recordedEvidenceMessages)],values.criterion)+
       selectFilter('review_status','Review status',[['','Any review status'],...Object.entries(labels)],values.review_status);
     const rows=result.rows.map(row=>`
@@ -51,7 +52,13 @@ window.NativeCollection=(()=>{
         <article class="wide-card review-candidates">
           <h2>${text('Captured duplicate candidates')}</h2>
           <details class="native-review-note"><summary>${text('Details')}</summary><p>${esc(result.note)}</p></details>
-          <form class="native-filter">${filters}<button type="submit" class="button">${text('Apply')}</button></form>
+          <form class="native-filter">
+            ${filters}<button type="submit" class="button">${text('Apply')}</button>
+            <details class="native-review-more"${advancedOpen?' open':''}>
+              <summary>${text('Metadata and media filters')}${selected.length?' <span class="subtle">'+selected.map(text).join(' · ')+'</span>':''}</summary>
+              <div class="native-review-more-controls">${advancedFilters}</div>
+            </details>
+          </form>
           <p class="native-result-count">${num(result.groups)} ${text('candidate groups')} · ${num(result.tracks)} ${text('tracks')}</p>
           <div class="native-table">
             <table data-sort-scope="server"><thead><tr>
@@ -85,9 +92,10 @@ window.NativeCollection=(()=>{
       if(revision===revisions.review)panel.removeAttribute('aria-busy');
     }
     if(scope!==source() || revision!==revisions.review)return;
+    const advancedOpen=panel.querySelector('.native-review-more')?.open;
     ReviewWorkspace.dispose(panel.querySelector('.review-workspace'));
     panel.dataset.loadedScope=scope;
-    panel.innerHTML=reviewList(r,values);
+    panel.innerHTML=reviewList(r,values,advancedOpen);
     const link=document.createElement('button');link.type='button';link.className='text-button';link.dataset.cleanupFrom='review';link.textContent=I18n.t('Collection cleanup');
     panel.querySelector('h2').after(link);
     const filters=document.createElement('div');filters.className='native-metadata-filters';filters.innerHTML=MetadataFlags.controls(r.flag_counts,values.flag);
@@ -97,7 +105,9 @@ window.NativeCollection=(()=>{
       values.flag=button.dataset.metadataFlag;values.offset=0;BrowseState.set('native-zero-filter',values.flag);await load();
     }));
     const providerControl=panel.querySelector('[data-cloud-analysis-provider]');CloudAnalysis.paint(providerControl,r.cloud?.counts);
-    const display=document.createElement('div');display.innerHTML=DisplayPreferences.controls({keys:false,unknown:false,sidecars:true});panel.querySelector('.native-filter').append(display);DisplayPreferences.sync();
+    const display=document.createElement('div');
+    display.innerHTML=DisplayPreferences.controls({keys:false,unknown:false,sidecars:true});
+    panel.querySelector('.native-review-more-controls').append(display);DisplayPreferences.sync();
     const explanation=document.createElement('p');
     explanation.textContent=I18n.t(CloudAnalysis.note);
     panel.querySelector('.native-review-note').append(explanation);

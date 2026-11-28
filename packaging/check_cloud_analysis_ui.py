@@ -74,6 +74,7 @@ def check_cloud_analysis_ui(browser,base,store,output):
             expect(rows).to_have_count(1)
             expect(rows.first).to_contain_text('drive')
         navigate('review')
+        page.locator('#view-review .native-review-more summary').press('Enter')
         page.wait_for_selector('#native-review-provider')
         page.select_option('#view-review .native-filter [name=mode]','metadata')
         page.select_option('#native-review-provider','dropbox')

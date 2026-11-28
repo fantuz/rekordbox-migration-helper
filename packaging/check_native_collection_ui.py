@@ -103,6 +103,7 @@ def check_native_collection_ui(browser, base, data, output, root):
         page.wait_for_function("document.querySelector('.native-status')?.value==='keep_separate'")
         review_form = page.locator('#view-review .native-filter')
         review_form.locator('select[name=mode]').select_option('isrc')
+        review_form.locator('.native-review-more summary').press('Enter')
         review_form.locator('select[name=criterion]').select_option('duration_close')
         review_form.get_by_role('button', name='Apply', exact=True).click()
         page.wait_for_function('document.querySelector("#view-review .native-result-count")?.textContent.includes("0 candidate groups")')
