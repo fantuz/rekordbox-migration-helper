@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.3.3 — 2026-11-28
+
+- In **Enrich → OneTagger bridge**, import or rescan ID3 tags that contain separate artist, genre or composer values. Workbench reads the values from the source file and verifies the combined text before offering it for review.
+- Validate the calendar portion of recorded release dates before proposing a year. Invalid dates remain visible as read warnings. Saved selections and OneTagger results versions 1 and 2 continue to work.
+
 ## 1.3.2 — 2026-11-27
 
 This release updates dependencies and gives DJs more detail when inspecting saved rekordbox analysis files and USB exports.
