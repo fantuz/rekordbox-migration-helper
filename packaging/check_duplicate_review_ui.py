@@ -38,13 +38,15 @@ def review_fixture():
             'album':'Synthetic album · édition longue / complete collection',
             'rating':4 if sibling=='a' else 2,
             'cue_summary':{'auto':1,'other':1},'date_added':'2026-10-17','last_played':'2026-10-20',
-            'play_count':12,'size_bytes':28_000_000,'october_xml':True,'duration_seconds':360,
+            'play_count':12,'size_bytes':28_000_000,'october_xml':True,'duration_seconds':360 if sibling=='a' else 364,
+            'isrc':'USABC2400123',
             'xml_location':'file://localhost/C:/Synthetic%20Music/Dropbox/Long%20collection%20folder/'+('nested%20folder/'*5)+sibling+'.flac',
             'cues':[{'Comment':'Cue(auto)','InMsec':0},{'Comment':'Synthetic manual cue','InMsec':65_000}],
         })
     pair={'id':'synthetic-pair','title':title,'artist':'Synthetic artist · Автор & Édition',
           'keeper':'synthetic-a','keeper_reason':'Synthetic manual cue evidence','cue_equal':False,
-          'grid_differs':False,'tracks':tracks,'conflicts':[{'type':'rating'},{'type':'cue_slot','auto':True}]}
+          'grid_differs':False,'tracks':tracks,'conflicts':[{'type':'rating'},{'type':'cue_slot','auto':True}],
+          'evidence':{'isrc_agrees':True,'duration_differs':True}}
     session={'name':'Synthetic duplicate review','metadata':{'input_check':'Synthetic responses only','version':'7.0','import_mode':'linked',
               'zip_path':'/synthetic/not-opened/library.zip','xml_path':'/synthetic/not-opened/library.xml','playlist_options':[]},
              'counts':{'tracks':2,'xml_tracks':2,'pairs':1,'ready':0,'auto':0},'staged':0,'relocations':0,
@@ -80,7 +82,8 @@ def check_duplicate_review_ui(browser,base,output):
             row={key:pair[key] for key in ('id','title','artist','cue_equal')}
             row.update(category='review',cue_a={'total':2},cue_b={'total':2},decision=pair.get('decision'))
             route.fulfill(json={'rows':[row],'total':1,'groups':1,'tracks':2,'pair_count':1,'review_groups':1,'potential_reduction':1,
-                                'facets':{'files_found_both':1,'manual_present':1,'rating_conflict':1}});return
+                                'facets':{'files_found_both':1,'manual_present':1,'rating_conflict':1,
+                                          'isrc_agrees':1,'duration_differs':1}});return
         if path=='/api/pair/synthetic-pair':
             if hold_pair:pending_pairs.append(route);return
             route.fulfill(json=deepcopy(pair));return
@@ -147,6 +150,14 @@ def check_duplicate_review_ui(browser,base,output):
             evidence.locator('span').click()
         assert page.locator('[data-evidence="files_found_both"]').is_checked()
         assert any('files_found_both' in query.split(',') for query in evidence_queries)
+        duration=page.locator('[data-evidence="duration_differs"]')
+        with page.expect_response(lambda response:urlsplit(response.url).path=='/api/pairs'):
+            duration.press('Space')
+        page.wait_for_function('document.querySelector(\'[data-evidence="duration_differs"]\')===document.activeElement')
+        assert duration.is_checked()
+        assert any({'files_found_both','duration_differs'}<=set(query.split(',')) for query in evidence_queries)
+        assert 'Recorded durations differ by more than 2 seconds' in page.locator('.conflict-note').inner_text()
+        assert 'USABC2400123' in page.locator('.sibling dl').first.inner_text()
 
         candidates=page.locator('#view-review .list-panel').bounding_box()
         detail=page.locator('#detail-panel').bounding_box()

@@ -18,6 +18,19 @@ Open **Cleanup & migration → Collection cleanup** to review a library that has
 | Preparation or another possible copy | Playlists, cue and Hot Cue Bank links, play history, ratings, analysis, working edits, staged decisions and alternate locations can all protect a reference. Differing captured metadata can distinguish two references to identical audio. |
 | Unknown evidence | Ambiguous track IDs, incomplete relationship coverage, unresolved smart playlist membership and older captures keep the report read-only. Individual tracks with unknown size, conflicting paths or metadata sidecars are held. |
 
+## Filter a saved report
+
+Use a preset to open eligible missing references, verified duplicates, protected
+missing references, cloud locations, name-and-size leads or size conflicts.
+For a narrower review, combine drive, status and text search with a protection
+reason, comparison signal, proof type or a minimum and maximum recorded size in
+MiB. Older reports can show their saved findings while leaving size unknown.
+Run a fresh scan to populate the recorded and observed byte columns.
+
+When copying is available, **Select eligible references on this page** adds only
+eligible rows from the displayed page, up to the remaining selection capacity.
+Review the selection and exact paths before confirming the copy.
+
 ## Create a cleaned Workbench snapshot
 
 Use a newly captured Rekordbox XML collection or supported detached desktop database with relationship coverage. Choose **Save snapshot** for a workspace or source capture, then scan that saved snapshot. For an older capture, import the original source again first. A source that lacks the required evidence, including a USB export, can still be reviewed. Open the original linked workspace if the report marks its preparation state unavailable.

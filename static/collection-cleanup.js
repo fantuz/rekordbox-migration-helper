@@ -2,7 +2,7 @@
 window.CollectionCleanup = (() => {
   const base = '/api/collection-cleanup';
   const node = id => document.getElementById('cc-' + id);
-  const pageSize = 50, maxSelection = 25;
+  const pageSize = 50, maxSelection = 25, bytesPerMiB = 1024 ** 2;
   const selected = new Set();
   const statuses = {
     present:'Present', missing:'File absent in a verified local folder', cloud:'Cloud location',
@@ -34,6 +34,16 @@ window.CollectionCleanup = (() => {
   const musicUnavailable = 'The local Music folder is unavailable on this computer. This report is read-only.';
   const proofs = {absent:statuses.missing, same_file:'Same resolved file', sha256:'Identical bytes verified'};
   const signals = {same_name_size:'Matching name and size only', distinct_metadata:'Identical media with different metadata'};
+  const recipes = {
+    missing: {labels:['Eligible','Missing'], filters:{candidate:'missing'}},
+    duplicates: {labels:['Verified duplicates'], filters:{candidate:'duplicate'}},
+    protected_missing: {labels:['Protected','Missing'], filters:{candidate:'protected',status:'missing'}},
+    cloud: {labels:[statuses.cloud], filters:{status:'cloud'}},
+    names: {labels:[signals.same_name_size], filters:{signal:'same_name_size'}},
+    sizes: {labels:[reasons.size_conflict], filters:{reason:'size_conflict'}}
+  };
+  const advancedFilters = ['reason','signal','proof','size-min','size-max'];
+  const filters = ['volume','status','candidate','search',...advancedFilters];
   const text = key => I18n.t(key);
   const label = (map, key) => text(map[key] || 'Unknown');
   const html = key => esc(text(key));
@@ -45,6 +55,9 @@ window.CollectionCleanup = (() => {
   let report = '', page = null, offset = 0, preview = null, result = null, working = false;
   const canCopy = () => Boolean(hostInfo?.can_apply && page?.summary.can_apply && source.startsWith('snapshot:')
     && hostInfo.host === page.summary.host);
+  const selectable = row => Boolean(row.candidate && !row.protected);
+  const remainingSelection = () => Math.max(0, Math.min(maxSelection, (page?.summary.counts.total ?? 1) - 1) - selected.size);
+  const addableRows = () => (page?.rows || []).filter(row => selectable(row) && !selected.has(row.id));
   const current = generationAtStart => generationAtStart === generation && isOpen();
   function setOptions(id, first, choices, value = '') {
     const select = node(id);
@@ -58,13 +71,17 @@ window.CollectionCleanup = (() => {
     node('phrase').value = '';
     node('apply').disabled = true;
   }
+  function clearFilters() {
+    for(const id of [...filters,'recipe']) node(id).value = '';
+    node('advanced').open = false;
+  }
   function resetReport() {
     pageRequest++;
     selected.clear();
     resetPreview();
     page = null;
     offset = 0;
-    node('search').value = '';
+    clearFilters();
     setOptions('volume','All locations',[]);
     setOptions('status','All statuses',[]);
     setOptions('candidate','All tracks',[]);
@@ -93,9 +110,12 @@ window.CollectionCleanup = (() => {
     node('selection').hidden = !canCopy();
     node('clear').disabled = node('review').disabled = !canCopy() || !selected.size || working;
     node('selected').textContent = I18n.t('{count} of 25 selected',{count:num(selected.size)});
+    const batch = Math.min(remainingSelection(), addableRows().length);
+    node('select-page').textContent = text('Select eligible references on this page') + (batch ? ' · '+num(batch) : '');
+    node('select-page').disabled = !canCopy() || working || !batch;
     for(const box of node('rows').querySelectorAll('input[type=checkbox]')) {
       box.checked = selected.has(box.value);
-      box.disabled = working || !canCopy() || (!box.checked && selected.size >= maxSelection);
+      box.disabled = working || !canCopy() || (!box.checked && !remainingSelection());
     }
   }
   function reportList(info, chosen) {
@@ -164,8 +184,14 @@ window.CollectionCleanup = (() => {
         ['total','present','missing','protected','eligible'].map(k=>'<td>'+num(v[k])+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
     // Keep each drive's origin alongside its name in the request as well as the label.
     setOptions('volume','All locations',drives.map(v=>[JSON.stringify([v.os,v.volume]),driveName(v)]),node('volume').value);
-    setOptions('status','All statuses',Object.entries(s.statuses || {}).map(([k,n])=>[k,label(statuses,k)+' · '+num(n)]),node('status').value);
+    const counted = (names, counts = {}, extra = []) => [...new Set([...Object.keys(counts),...extra])]
+      .map(k=>[k,label(names,k)+' · '+num(counts[k] || 0)]);
+    setOptions('status','All statuses',counted(statuses,s.statuses,['missing','cloud']),node('status').value);
     setOptions('candidate','All tracks',Object.entries(candidates).map(([k,n])=>[k,text(n)]),node('candidate').value);
+    setOptions('reason','Any',counted(reasons,s.reasons,['size_conflict']),node('reason').value);
+    setOptions('signal','Any',counted(signals,s.signals,['same_name_size']),node('signal').value);
+    setOptions('proof','Any',Object.keys(proofs).map(k=>[k,label(proofs,k)]),node('proof').value);
+    setOptions('recipe','Choose a preset',Object.entries(recipes).map(([k,recipe])=>[k,recipe.labels.map(text).join(' · ')]),node('recipe').value);
     const reasonsByCount = Object.entries(s.reasons || {}).sort((a,b)=>b[1]-a[1]);
     node('evidence').hidden = !reasonsByCount.length;
     node('reasons').innerHTML = reasonsByCount.map(([k,n])=>'<dt>'+esc(label(reasons,k))+'</dt><dd>'+num(n)+'</dd>').join('');
@@ -176,7 +202,8 @@ window.CollectionCleanup = (() => {
     renderRows();
   }
   function renderRows() {
-    const headers = ['Track','Drive or volume','File status','Evidence'];
+    const headers = ['Track','Drive or volume','File status','File size','Evidence'];
+    const sizeText = size => Number.isInteger(size) && size >= 0 ? bytes(size) : text('Unknown / not captured');
     const detail = row => {
       const labels = [
         ...(row.proof ? [label(proofs,row.proof)] : []),
@@ -188,13 +215,15 @@ window.CollectionCleanup = (() => {
     node('rows').innerHTML = page.rows.length ? '<table data-result-sort="off"><thead><tr>'+headers.map(n=>'<th scope="col">'+html(n)+'</th>').join('')+
       '</tr></thead><tbody>'+page.rows.map(row=>{
         const title = row.title || text('Untitled');
-        const input = canCopy() && row.candidate ? '<input type="checkbox" value="'+esc(row.id)+'" aria-label="'+esc(title+' · '+row.id)+'"> ' : '';
+        const input = canCopy() && selectable(row) ? '<input type="checkbox" value="'+esc(row.id)+'" aria-label="'+esc(title+' · '+row.id)+'"> ' : '';
         const finding = row.protected ? text('Protected') : row.candidate ? label(candidates,row.candidate) : '';
         const badge = finding ? '<span class="cc-finding">'+esc(finding)+'</span>' : '';
         const keeper = row.keeper_id != null ? '<span class="cc-keeper">'+html('Keeper')+' · '+esc(row.keeper_id)+'</span><code>'+esc(row.keeper_path)+'</code>' : '';
+        const sizes = '<dl class="cc-file-sizes"><dt>'+html('Recorded size')+'</dt><dd>'+esc(sizeText(row.recorded_size))+
+          '</dd><dt>'+html('Observed file size')+'</dt><dd>'+esc(sizeText(row.observed_size))+'</dd></dl>';
         return '<tr data-track-id="'+esc(row.id)+'"><td>'+input+'<strong>'+esc(title)+'</strong><small> · '+esc(row.id)+'</small>'+
           (row.artist?'<br>'+esc(row.artist):'')+'<code>'+esc(row.path)+'</code></td><td>'+esc(row.volume)+'</td><td>'+esc(label(statuses,row.status))+
-          '</td><td>'+badge+esc(detail(row))+keeper+'</td></tr>';
+          '</td><td>'+sizes+'</td><td>'+badge+esc(detail(row))+keeper+'</td></tr>';
       }).join('')+'</tbody></table>' : '<p class="subtle">'+html('No matching references')+'</p>';
     node('page').textContent = num(page.total) + ' ' + text('results') + (page.total?' · '+num(page.offset+1)+'–'+num(page.offset+page.rows.length):'');
     node('prev').disabled = page.offset === 0;
@@ -203,9 +232,16 @@ window.CollectionCleanup = (() => {
   }
   async function loadPage() {
     if(!report) return;
+    if(!node('filters').reportValidity()) return;
     const at = generation, request = ++pageRequest;
     const [os,volume] = node('volume').value ? JSON.parse(node('volume').value) : ['',''];
+    const bound = (field, round) => node(field).value ? round(node(field).valueAsNumber * bytesPerMiB) : '';
+    const size_min = bound('size-min',Math.ceil), size_max = bound('size-max',Math.floor);
+    if(size_min !== '' && size_max !== '' && size_min > size_max) {
+      throw new Error(text('Use non-negative limits, with the minimum no greater than the maximum.'));
+    }
     const args = new URLSearchParams({source,os,volume,status:node('status').value,candidate:node('candidate').value,
+      reason:node('reason').value,signal:node('signal').value,proof:node('proof').value,size_min,size_max,
       q:node('search').value.trim(),offset:String(offset),limit:String(pageSize)});
     const next = await api(base+'/'+encodeURIComponent(report)+'?'+args,{feedback:false});
     if(!current(at) || request !== pageRequest || next.id !== report || next.source !== source) return;
@@ -243,8 +279,27 @@ window.CollectionCleanup = (() => {
     await Promise.all([loading,syncing]);
   });
   node('save').onclick = wrap(()=>LibraryPreparation.open(source,'collection-cleanup'));
+  node('recipe').onchange = wrap(()=>{
+    const recipe = node('recipe').value;
+    clearFilters();
+    const values = recipes[recipe]?.filters || {};
+    for(const [id,value] of Object.entries(values)) node(id).value = value;
+    node('recipe').value = recipe;
+    node('advanced').open = advancedFilters.some(id=>id in values);
+    offset = 0;
+    return loadPage();
+  });
+  node('reset-filters').onclick = wrap(()=>{
+    clearFilters();
+    offset = 0;
+    return loadPage();
+  });
   node('filters').onsubmit = wrap(event=>{event.preventDefault();offset=0;return loadPage();});
-  for(const field of ['volume','status','candidate']) node(field).onchange = wrap(()=>{offset=0;return loadPage();});
+  for(const id of filters) {
+    const control = node(id);
+    if(control.matches('select')) control.onchange = wrap(()=>{node('recipe').value='';offset=0;return loadPage();});
+    else control.oninput = ()=>{node('recipe').value='';};
+  }
   node('prev').onclick = wrap(()=>{offset=Math.max(0,page.offset-pageSize);return loadPage();});
   node('next').onclick = wrap(()=>{offset=page.offset+pageSize;return loadPage();});
   node('clear').onclick = ()=>{
@@ -252,10 +307,16 @@ window.CollectionCleanup = (() => {
     resetPreview();
     refreshControls();
   };
+  node('select-page').onclick = ()=>{
+    if(working || !canCopy()) return;
+    for(const row of addableRows().slice(0,remainingSelection())) selected.add(row.id);
+    resetPreview();
+    refreshControls();
+  };
   node('rows').onchange = event=>{
     const box = event.target;
     if(!box.matches('input[type=checkbox]') || working || !canCopy()) return;
-    if(box.checked && selected.size < maxSelection) selected.add(box.value);
+    if(box.checked && remainingSelection()) selected.add(box.value);
     else selected.delete(box.value);
     resetPreview();
     refreshControls();

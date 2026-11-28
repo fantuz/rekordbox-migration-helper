@@ -34,14 +34,17 @@ def recorded_path(value):
     return path
 
 
-def candidate_paths(track, mappings=None):
+def _located_candidates(track, mappings=None):
     from audio_paths import mapped_path,mapping_applies
     for key in ('current_path','xml_location','original_path'):
         value=track.get(key)
         if not value:continue
         # A replaced/disconnected mapped volume must not fall back to another
         # file at the recorded POSIX location and bypass the volume identity.
-        yield mapped_path(value,mappings) if mapping_applies(value,mappings) else recorded_path(value)
+        if mapping_applies(value,mappings):
+            yield mapped_path(value,mappings),'mapped'
+        else:
+            yield recorded_path(value),'current' if key=='current_path' else 'alternate'
 
 
 def available_audio(track, mappings=None):
@@ -68,7 +71,7 @@ def inspect_audio_details(track, mappings=None, roots=None):
     from media import cloud_placeholder
     result={'status':'unverified','path':None,'open_candidate':None,'providers':0,
             'provider_checked':True,'provider_evidence':[],'cloud_state':'unknown',
-            'logical_size':None,'filename':'','playback_cloud':False,'cloud_openable':False}
+            'logical_size':None,'observed_location':None,'filename':'','playback_cloud':False,'cloud_openable':False}
     if not isinstance(track,dict):return result
     roots=provider_context() if roots is None else roots
     matches=track_providers(track,mappings,roots)
@@ -76,7 +79,7 @@ def inspect_audio_details(track, mappings=None, roots=None):
     seen=set()
     evidence=[]
     placeholders=[]
-    for path in candidate_paths(track,mappings):
+    for path,location in _located_candidates(track,mappings):
         if path is None:
             evidence.append('unverified')
             continue
@@ -89,18 +92,18 @@ def inspect_audio_details(track, mappings=None, roots=None):
             # evidence of resident audio even when they expose a logical size.
             info=path.lstat()
             if stat.S_ISREG(info.st_mode) and cloud_placeholder(info):
-                placeholders.append((path,info));continue
+                placeholders.append((path,info,location));continue
             target=path.resolve(strict=True)
             info=target.stat()
             if target.suffix.lower() not in AUDIO_EXTENSIONS or not stat.S_ISREG(info.st_mode):
                 evidence.append('unverified')
             elif cloud_placeholder(info):
-                placeholders.append((target,info))
+                placeholders.append((target,info,location))
             elif info.st_size==0:
                 evidence.append('unverified')
             elif os.access(target,os.R_OK):
                 result.update(status='playable',path=target,open_candidate=target,cloud_state='local',
-                              logical_size=info.st_size,filename=target.name,
+                              logical_size=info.st_size,observed_location=location,filename=target.name,
                               playback_cloud=bool(path_providers(target,roots)))
                 result['cloud_openable']=result['playback_cloud']
                 return result
@@ -125,9 +128,9 @@ def inspect_audio_details(track, mappings=None, roots=None):
         except (OSError,ValueError,RuntimeError):
             evidence.append('unverified')
     if placeholders:
-        path,info=placeholders[0]
+        path,info,location=placeholders[0]
         result.update(open_candidate=path,cloud_state='online_only',logical_size=info.st_size,
-                      filename=path.name,playback_cloud=True,cloud_openable=True)
+                      observed_location=location,filename=path.name,playback_cloud=True,cloud_openable=True)
         return result
     if 'inaccessible' in evidence:result['status']='inaccessible'
     elif 'unverified' not in evidence and evidence:result['status']='missing'

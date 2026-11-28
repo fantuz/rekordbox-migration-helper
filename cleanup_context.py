@@ -7,7 +7,7 @@ from audio_paths import FIELDS, mapping_applies
 from cloud_analysis import classify
 from cloud_file_status import lexical_path
 from cleanup_paths import _path_text
-from collection_views import duplicate_groups, duplicate_review_keys
+from collection_views import DUPLICATE_BASES, duplicate_groups, duplicate_review_keys
 
 
 def _setting(db, name, default):
@@ -42,7 +42,7 @@ def workspace_stamp(owner, snapshot):
 
 def _hold_separate(snapshot, separate, hold):
     if separate:
-        for basis in ('path', 'metadata'):
+        for basis in DUPLICATE_BASES:
             for group in duplicate_groups(snapshot, basis):
                 if group['id'] in separate:
                     for track in group['tracks']:
@@ -72,7 +72,7 @@ def _session_evidence(owner, db, scope, tracks, hold):
     separate = {key for key, value in reviews.items() if value == 'keep_separate'}
     if separate:
         members = [{'id':identity, 'current_path':item.get('current_path'),
-                    'artist':item.get('artist'), 'title':item.get('title')}
+                    'artist':item.get('artist'), 'title':item.get('title'), 'isrc':item.get('isrc')}
                    for identity, item in catalog.tracks.items()]
         _hold_separate({'tracks':members}, separate, hold)
     inventory = (session.get('inventory') or {}).get('matches', {})

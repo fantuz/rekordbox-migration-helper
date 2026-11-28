@@ -145,7 +145,9 @@ def register(owner):
             elif kind=='coverage':summary,rows=collection_coverage(working,b.get('min_cues',1),b.get('min_manual',0),b.get('require_analysis',True) is True)
             elif kind=='assets':summary,rows=audit_assets(s,b.get('paths') or b.get('path',''),progress,b.get('verify') is True)
             elif kind=='formats':summary,rows=audit_assets(s,b.get('paths') or b.get('path',''),progress,b.get('verify') is True,inspect=True)
-            elif kind=='stems':summary,rows=stems_report(s,b.get('paths') or b.get('path',''),b.get('profile'),progress,b.get('verify') is True)
+            elif kind=='stems':
+                summary,rows=stems_report(s,b.get('paths') or b.get('path',''),b.get('profile'),progress,
+                                          b.get('verify') is True,recordbox_sources=b.get('recordbox_sources'))
             elif kind=='source_insights':summary,rows=source_insights(s,progress)
             elif kind=='backup':summary,rows=backup_manifest(s,b.get('path',''),progress,b.get('verify') is True)
             elif kind=='readiness':summary,rows=export_readiness(working,b.get('profile','generic'),b.get('filesystem','not_checked'))

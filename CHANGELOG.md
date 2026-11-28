@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Group and search File references across the selected collection, with quick filters for shared, changed, empty and cross-platform paths.
+- Compare recorded and observed byte totals in Collection statistics, with path deduplication, cloud references and File Health scan coverage.
+- Review duplicates with recorded ISRC, duration, size and extension evidence. Apply Collection cleanup presets or combine detailed filters and review a bounded page selection.
+- Inspect Recordbox STEMS by model and optionally compare cache keys with observed source metadata, including both MP3 timeline modes.
+
 ## 1.3.3 — 2026-11-28
 
 - In **Enrich → OneTagger bridge**, import or rescan ID3 tags that contain separate artist, genre or composer values. Workbench reads the values from the source file and verifies the combined text before offering it for review.

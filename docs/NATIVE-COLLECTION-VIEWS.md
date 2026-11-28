@@ -13,21 +13,42 @@ Playlist membership is a separate capability from playlist ordering. If a native
   counts, playlists, library addition dates, release years and saved genres.
   Hide unknown excludes missing values independently in each histogram. Unknown fields remain unverified.
   Relationship counts cover the whole captured source, regardless of length filters.
+  Storage figures follow the active track filters.
 - **Play history:** native history sessions and recorded entry order, including
   repeats and entries absent from the active collection. An additional Library lab
   snapshot is optional for these views. History dates are not individual play times.
-- **Duplicate review:** candidate groups by recorded path or normalized artist and
-  title, with paginated record comparisons and saved review classifications. Version
+- **Duplicate review:** candidate groups by recorded path, normalized artist and
+  title, or recorded ISRC, with paginated comparisons and saved review classifications. Version
   labels in titles remain significant. Neither matching metadata nor paths proves
   identical audio. Native review does not merge tracks or change the source database.
-- **File references:** searchable current, original and analysis paths, plus filters
-  for changed originals and empty current paths. Missing audio cannot be inferred
-  from these records alone. Playback uses files available on this computer.
+- **File references:** searchable current, original and analysis paths, with quick
+  filters for changed, shared and empty references, absent recorded analysis paths
+  and differing path platforms. Group the filtered results by folder, volume,
+  extension, cloud location or platform. Use File Health to check actual availability.
 
 The **Save a snapshot for insight tools** button creates a retained snapshot from
 the selected source and selects it in the shared header. This is an explicit action,
 not a new snapshot created on every visit. Merging and staging path changes for a
 copy export continue to require the XML + ZIP workspace.
+
+## Compare storage evidence
+
+In **Collection statistics**, recorded sizes come from the selected library
+records. The distinct-path estimate counts a shared recorded path once and
+identifies inconsistent recorded sizes separately. Missing or zero recorded
+sizes limit the coverage of both figures.
+
+Run **File health → Scan local files** to populate observed sizes. The report
+distinguishes files found at their declared paths, at recorded alternate paths,
+and through a mapping. Compare recorded and measured totals for the same observed
+records, and use the size mismatch count to decide what to inspect. Reachable
+files and placeholders contribute their observed logical sizes. Previously
+saved scans may need refreshing to supply the path origin and byte evidence.
+
+Cloud-referenced totals sum the known recorded sizes of tracks with provider
+path hints. A record with multiple provider hints counts once in that subtotal.
+Online-only placeholders have separate evidence. Streaming references can carry
+a recorded size even where the audio has no local file size to measure.
 
 ## Cloud path analysis
 

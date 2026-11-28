@@ -17,7 +17,7 @@ def check_collection_cleanup_ui(browser, base, store, output):
     specimens = [
         ('local', 'Night Signal', r'C:\Users\FixtureDJ\Music\Night Signal.wav'),
         ('cloud', 'Cloud Echo', r'C:\Users\FixtureDJ\Dropbox\Sessions\Cloud Echo.wav'),
-        ('external', 'Road Set', '/Volumes/Synthetic Tour SSD/DJ/Road Set.wav'),
+        ('external', 'Road Set', '/Volumes/Synthetic Tour SSD/DJ/Night Signal.wav'),
         ('other', 'Mac Edit', '/Users/FixtureDJ/Music/Mac Edit.wav'),
         ('share', '<img data-cleanup-fixture> Café 🎧', r'\\fixture-server\archive\Mix.wav'),
     ]
@@ -100,6 +100,29 @@ def check_collection_cleanup_ui(browser, base, store, output):
         expect(rows).to_have_count(2)
         expect(page.locator('#cc-rows')).to_contain_text('Road Set')
         page.screenshot(path=str(output/'collection-cleanup-drives.png'))
+        page.select_option('#cc-recipe', 'cloud')
+        expect(rows).to_have_count(1)
+        expect(rows).to_contain_text('Cloud Echo')
+        expect(page.locator('#cc-status')).to_have_value('cloud')
+        page.select_option('#cc-recipe', 'names')
+        expect(rows).to_have_count(2)
+        expect(page.locator('#cc-rows')).to_contain_text('Night Signal')
+        expect(page.locator('#cc-rows')).to_contain_text('Road Set')
+        expect(page.locator('#cc-signal')).to_have_value('same_name_size')
+        page.select_option('#cc-reason', 'size_conflict')
+        expect(rows).to_have_count(0)
+        expect(page.locator('#cc-recipe')).to_have_value('')
+        page.locator('#cc-reset-filters').click()
+        expect(rows).to_have_count(len(specimens))
+        page.locator('#cc-advanced summary').click()
+        page.locator('#cc-size-min').fill('1')
+        page.locator('#cc-filters button').click()
+        expect(rows).to_have_count(0)
+        page.locator('#cc-size-min').fill('0')
+        page.locator('#cc-size-max').fill('0.0005')
+        page.locator('#cc-filters button').click()
+        expect(rows).to_have_count(len(specimens))
+        expect(rows.first.locator('.cc-file-sizes')).to_contain_text('512')
         assert len(scans) == 1
 
         if sys.platform.startswith('linux'):
@@ -169,6 +192,14 @@ def _check_confirmation_controls(page, base, source, report_id, output):
     expect(check).to_be_visible()
     expect(check).not_to_be_checked()
     expect(page.locator('#cc-review')).to_be_disabled()
+    select_page = page.locator('#cc-select-page')
+    expect(select_page).to_be_enabled()
+    select_page.click()
+    expect(check).to_be_checked()
+    expect(select_page).to_be_disabled()
+    expect(page.locator('#cc-confirm-dialog')).to_be_hidden()
+    page.locator('#cc-clear').click()
+    expect(check).not_to_be_checked()
     check.check()
     page.locator('#cc-review').click()
     dialog = page.locator('#cc-confirm-dialog')

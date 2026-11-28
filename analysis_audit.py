@@ -15,7 +15,7 @@ from media import file_record,cloud_placeholder
 from asset_formats import format_candidate,inspect_format,PROBE_LIMIT,SETTINGS,CATALOGS,basename
 from task_control import OperationCancelled
 from stems_formats import stem_candidate,cache_candidate,CACHE_FOLDERS,ContainerLimit
-from stems_cache import provider_report,recordbox_inventory
+from stems_cache import provider_report,recordbox_inventory,recordbox_source_matches
 from stems_eligibility import context as stems_context
 
 
@@ -28,7 +28,8 @@ def asset_stamp(path,strong=False):
 
 
 def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**2,
-                 max_directories=160000,max_files=300000,max_seconds=45,inspect=False,max_inspect_bytes=8*1024**2,profile=None,allow_empty=False):
+                 max_directories=160000,max_files=300000,max_seconds=45,inspect=False,
+                 max_inspect_bytes=8*1024**2,profile=None,allow_empty=False,recordbox_sources=()):
     values=source if isinstance(source,list) else [source]
     if not 1<=len(values)<=20:raise ValueError('Choose between one and twenty analysis folders or backup ZIPs')
     roots=[];root_keys=set();source_aliases=[]
@@ -177,6 +178,9 @@ def audit_assets(snapshot,source,progress,verify=False,max_hash_bytes=256*1024**
             provider_rows,provider_summary=provider_report(inspection_rows,roots,profile or stems_context(),progress,
                 started+max_seconds,inventory_complete=not partial and not warnings,source_aliases=source_aliases)
             pairs,inspection_summary['recordbox_saved_stems']=recordbox_inventory(inspection_rows,progress,incomplete_archives)
+            if recordbox_sources:
+                inspection_summary['recordbox_source_matches'] = recordbox_source_matches(
+                    snapshot, inspection_rows + pairs, recordbox_sources, progress, started + max_seconds)
             rows.extend(usb_catalog_folders(inspection_rows))
             for record in inspection_rows:
                 for key in list(record):

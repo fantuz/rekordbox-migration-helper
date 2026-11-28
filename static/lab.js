@@ -13,16 +13,17 @@ function pilotFileStatus(status){
 }
 const labPost=(url,data)=>api('/api/lab/'+url,{method:'POST',body:JSON.stringify(data)});
 const labSnapshot=()=>$('#lab-snapshot').value;
-const labStemsFields=['asset_family','provider','cache_state','eligibility','source_provider'];
+const labStemsFields=['asset_family','provider','cache_state','eligibility','source_provider','recordbox_variant'];
 const labReportFilterFields=['severity','validation',...labStemsFields];
 const labStemsLabels={
   asset_family:{candidate:'Candidate assets',stem_container:'Stem containers',separation_cache:'Separation caches',preparation_manifest:'Preparation manifests',retention_set:'Retention sets',source_eligibility:'STEMS eligibility',analysis:'Analysis',capture:'DRUM CAPTURE',player_settings:'Player settings',device_catalog:'Device catalogs'},
   provider:{unknown:'Unknown',native_instruments:'Native Instruments',rbstemsplus:'RB Stems Plus',recordbox:'Recordbox',rekordbox:'rekordbox'},
   cache_state:{unknown:'Unknown',present:'Present',consistent:'Manifest consistent',incomplete:'Incomplete',stale:'Stale',profile_mismatch:'Profile mismatch',unavailable:'Unavailable'},
   eligibility:{unknown:'Unknown',candidate:'Candidate',blocked:'Blocked'},
-  source_provider:{unknown:'Unknown',local:'Local files',apple_music:'Apple Music',spotify:'Spotify',other_streaming:'Other streaming'}
+  source_provider:{unknown:'Unknown',local:'Local files',apple_music:'Apple Music',spotify:'Spotify',other_streaming:'Other streaming'},
+  recordbox_variant:{speed:'Speed',quality:'Sound quality',unidentified:'Unknown'}
 };
-const labStemsAll={asset_family:'All asset families',provider:'All asset providers',cache_state:'All cache states',eligibility:'All eligibility states',source_provider:'All source providers'};
+const labStemsAll={asset_family:'All asset families',provider:'All asset providers',cache_state:'All cache states',eligibility:'All eligibility states',source_provider:'All source providers',recordbox_variant:'All Recordbox models'};
 const labReportFilters=()=>Object.fromEntries(labReportFilterFields.map(field=>[field,$('#lab-report-'+field).value]));
 const labSummary=data=>'<div class="lab-summary">'+Object.entries(data || {}).filter(([,v])=>v===null || typeof v!=='object').map(([k,v])=>'<div><span>'+esc(I18n.t(k.replaceAll('_',' ')))+'</span><b>'+esc(v===null?I18n.t("Unknown"):v===true?I18n.t("Yes"):v===false?I18n.t("No"):v)+'</b></div>').join('')+'</div>';
 function labSelect(selector,items,label,empty=I18n.t("Choose a snapshot")) {
@@ -75,6 +76,7 @@ for(const kind of ['backup','readiness','tempo'])$('#lab-'+kind).onclick=wrap(()
 $('#lab-formats').onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind:'formats',paths:pathLines($('#lab-formats-path').value),verify:$('#lab-formats-verify').checked}));
 $('#lab-source-insights').onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind:'source_insights'}));
 $('#lab-stems').onclick=wrap(()=>labRun('check',{snapshot:labSnapshot(),kind:'stems',paths:pathLines($('#lab-stems-path').value),verify:$('#lab-stems-verify').checked,
+  recordbox_sources:pathLines($('#lab-stems-recordbox-sources').value),
   profile:Object.fromEntries(['target','enabled','mode','quality','parts','source_provider','platform','architecture','app_version','engine_version','runtime_version','model_sha256'].map(field=>[field,$('#lab-stems-'+field).value]))}));
 $('#lab-compare-form').onsubmit=wrap(async e=>{e.preventDefault();await labRun('compare',{before:$('#lab-before').value,after:$('#lab-after').value,tolerance_ms:$('#lab-tolerance').value});});
 
@@ -142,6 +144,26 @@ function labRecordboxSummary(saved) {
     '<p>'+esc(I18n.t('Variants are identified by filename. Pairs share a cache key and folder.'))+'</p></div>';
 }
 
+function labRecordboxSourceSummary(matches) {
+  return '<div class="stems-summary" id="lab-recordbox-source-matches"><h3>'+esc(I18n.t('Recordbox source matches'))+'</h3>'+
+    labSummary({'Source paths checked':num(matches.source_paths_checked),
+      'Source paths unavailable':num(matches.source_paths_unavailable),'Matched cache files':num(matches.matched_cache_files),
+      'Ambiguous cache files':num(matches.ambiguous_cache_files),'Source check complete':matches.source_check_complete})+
+    matches.source_folders.filter(folder=>!folder.available).map(folder=>
+      '<p class="subtle recordbox-source-match">'+esc(I18n.t('Unavailable'))+' · <code>'+esc(folder.path)+'</code></p>').join('')+
+    '</div>';
+}
+
+function labRecordboxSourceMatch(row) {
+  const timelines={legacy:'Legacy MP3 timeline',rekordbox:'Rekordbox MP3 timeline',standard:'Standard timeline'};
+  const timeline=timelines[row.recordbox_source_timeline];
+  if(!timeline || !row.recordbox_source_path)return '';
+  const title=[row.recordbox_source_title,row.recordbox_source_artist].filter(Boolean).join(' · ') || row.recordbox_source_path;
+  return '<div class="subtle recordbox-source-match">'+esc(I18n.t('Source metadata match: {title} ({timeline})',{
+    title,timeline:I18n.t(timeline)
+  }))+'</div>';
+}
+
 async function labLoadReport() {
   const id=$('#lab-report-select').value;if(!id)return;
   const revision=++labReportRevision;
@@ -158,6 +180,8 @@ async function labLoadReport() {
   if(saved && (saved.recognized_bytes || saved.ambiguous_keys || saved.unconfirmed_pairs)){
     $('#lab-report-summary').insertAdjacentHTML('beforeend',labRecordboxSummary(saved));
   }
+  const matches=summary.format_inspection?.recordbox_source_matches;
+  if(matches)$('#lab-report-summary').insertAdjacentHTML('beforeend',labRecordboxSourceSummary(matches));
   if(summary.format_inspection?.provider_cache)$('#lab-report-summary').insertAdjacentHTML('beforeend','<div class="stems-summary"><h3>'+esc(I18n.t('Provider cache evidence'))+'</h3>'+labSummary(summary.format_inspection.provider_cache)+'</div>');
   if(summary.stems_eligibility)$('#lab-report-summary').insertAdjacentHTML('beforeend','<div class="stems-summary"><h3>'+esc(I18n.t('STEMS session evidence'))+'</h3>'+labSummary(summary.stems_eligibility)+'<p>'+esc(I18n.t('Session settings are declared; cache consistency does not establish native preparation.'))+'</p><details><summary>'+esc(I18n.t('Show evidence'))+'</summary><pre>'+esc(JSON.stringify(summary.stems_eligibility.profile,null,2))+'</pre></details></div>');
   if(summary.scope_warnings?.length)$('#lab-report-summary').insertAdjacentHTML('beforeend',summary.scope_warnings.map(w=>'<p class="subtle">'+esc(w)+'</p>').join(''));
@@ -165,7 +189,7 @@ async function labLoadReport() {
   $('#lab-report-validation').innerHTML='<option value="">'+esc(I18n.t('All validation states'))+'</option>'+(labReport.validations || []).map(r=>'<option value="'+esc(r.validation)+'">'+esc(I18n.t(({recognized:'Recognized',corrupt:'Corrupt',unsupported:'Unsupported',not_checked:'Not checked'})[r.validation] || r.validation))+' · '+num(r.count)+'</option>').join('');$('#lab-report-validation').value=validation;
   for(const field of labStemsFields){const el=$('#lab-report-'+field);el.innerHTML='<option value="">'+esc(I18n.t(labStemsAll[field]))+'</option>'+(labReport.filter_facets?.[field]||[]).map(row=>'<option value="'+esc(row.value)+'">'+esc(I18n.t(labStemsLabels[field][row.value]||row.value))+' · '+num(row.count)+'</option>').join('');el.value=filters[field];}
   $('#lab-report-download').hidden=false;$('#lab-report-download').href='/api/lab/reports/'+encodeURIComponent(id)+'/download?'+new URLSearchParams({section,q,...filters,...CollectionSort.args('lab-report')});
-  $('#lab-report-rows').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Finding"))+"</th><th>"+esc(I18n.t("Track / group"))+"</th><th>"+esc(I18n.t("Evidence"))+"</th></tr></thead><tbody>")+labReport.rows.map((r,i)=>'<tr><td>'+esc(labFindingName(r.section))+'</td><td>'+((labReport.sources?.length===1&&r.track_id)?TrackPlayback.button(labReport.sources[0],r.track_id):'')+'<strong>'+esc(r.title || r.playlist || r.name || I18n.t("Group"))+'</strong>'+'<br><span class="subtle">'+esc(r.artist || '')+'</span></td><td>'+esc(labFindingDetail(r))+labPhraseSections(r,i)+'<details data-lab-evidence="'+i+'"><summary>'+esc(I18n.t("Show evidence"))+'</summary></details>'+(r.section==='variant'?'<button class="button secondary" data-lab-normalize="'+i+("\">"+esc(I18n.t("Stage"))+" "+"")+num(r.track_ids.length)+' as “'+esc(r.canonical)+'”</button>':'')+'</td></tr>').join('')+'</tbody></table>';
+  $('#lab-report-rows').innerHTML=("<table><thead><tr><th>"+esc(I18n.t("Finding"))+"</th><th>"+esc(I18n.t("Track / group"))+"</th><th>"+esc(I18n.t("Evidence"))+"</th></tr></thead><tbody>")+labReport.rows.map((r,i)=>'<tr><td>'+esc(labFindingName(r.section))+'</td><td>'+((labReport.sources?.length===1&&r.track_id)?TrackPlayback.button(labReport.sources[0],r.track_id):'')+'<strong>'+esc(r.title || r.playlist || r.name || I18n.t("Group"))+'</strong>'+'<br><span class="subtle">'+esc(r.artist || '')+'</span></td><td>'+esc(labFindingDetail(r))+labRecordboxSourceMatch(r)+labPhraseSections(r,i)+'<details data-lab-evidence="'+i+'"><summary>'+esc(I18n.t("Show evidence"))+'</summary></details>'+(r.section==='variant'?'<button class="button secondary" data-lab-normalize="'+i+("\">"+esc(I18n.t("Stage"))+" "+"")+num(r.track_ids.length)+' as “'+esc(r.canonical)+'”</button>':'')+'</td></tr>').join('')+'</tbody></table>';
   $$('#lab-report-rows [data-phrase-section]').forEach(el=>el.ontoggle=()=>{
     if(el.open && !el.querySelector('table'))el.insertAdjacentHTML('beforeend',
       labPhraseTable(report.rows[Number(el.dataset.phraseRow)].phrase_structure_evidence[Number(el.dataset.phraseSection)]));

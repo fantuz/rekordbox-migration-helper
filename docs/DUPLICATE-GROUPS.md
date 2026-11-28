@@ -4,6 +4,18 @@ Choose **Duplicate review → Review as → Groups** to inspect a recording with
 
 The group panel lists **every member**, its title/artist/ID, manual/automatic cue counts, rating, addition date and reference path. Select one keeper, then use the member checkboxes to include or exclude donors. Exclude an alternate mix, edit or remaster that should remain a separate track. Selecting a keeper here applies to the group plan; choosing a card in the pair inspector applies to that individual comparison.
 
+## Narrow candidates by recorded evidence
+
+In an XML/ZIP workspace, combine the existing review filters with evidence from
+both records. Compare recorded ISRC, duration (within or beyond two seconds),
+size, and file extensions. The filters require evidence from both records for
+the chosen comparison. Inspect the keeper and each donor before staging.
+
+In a saved collection, **Same recorded ISRC** builds its own candidate groups.
+Use the evidence and review-status filters to find groups worth examining.
+Different editions can share an ISRC. Preserve distinct edits with
+**Keep separate**, which also protects those references during Collection cleanup.
+
 ## Read the plan before staging
 
 The plan runs the same rules as staging, on a separate decision copy:

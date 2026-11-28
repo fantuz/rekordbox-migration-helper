@@ -19,6 +19,10 @@
 .native-table code{overflow-wrap:anywhere;display:block;min-width:150px;max-width:360px}
 .native-detail{margin-top:16px}
 .native-status{max-width:420px;margin:12px 0}
+.reference-group-row th{background:var(--panel2);overflow-wrap:anywhere}
+.reference-row-flags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.reference-row-flags .metadata-flag{margin:0}
+.reference-quick-filters button:disabled{cursor:default;opacity:.66}
 #view-investigations fieldset{border:1px solid var(--line,#bdcddd);border-radius:16px;margin:16px 0;padding:14px}
 .investigation-row{display:flex;align-items:center;gap:12px;padding:10px;border-bottom:1px solid var(--line,#bdcddd)}
 .investigation-row small{display:block;opacity:.75;margin-top:4px;overflow-wrap:anywhere}

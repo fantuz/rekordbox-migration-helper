@@ -124,6 +124,8 @@ def build_report(snapshot, *, inspector=None, compare_bytes=False, protected_ids
             name_sizes[hint] += 1
         rows.append(dict(id=identity, title=track.get('title',''), artist=track.get('artist',''), path=path,
                          os=finding['os'], volume=finding['volume'], status=status, reasons=sorted(reasons),
+                         recorded_size=size if type(size) is int and size >= 0 else None,
+                         observed_size=finding.get('size') if status == 'present' else None,
                          protected=bool(reasons), candidate=None, keeper_id=None, keeper_path=None,
                          proof=None, signals=[]))
         findings.append((finding, metadata, hint))

@@ -14,8 +14,10 @@ def check_stems_workflows_ui(browser,base,store,root,output):
     from localization import LANGUAGES
     from test_asset_formats import stems_bytes
     from test_stems_followup import MODEL,KEY,ni_bytes,manifest,write_cache
+    from test_stems_workflows import recordbox_fixture_key
     folder=root/'stems workflow 日本';folder.mkdir()
     source=folder/'Invented audio.wav';source.write_bytes(b'synthetic metadata association only; no audio')
+    mp3=folder/'Invented clock 日本.MP3';mp3.write_bytes(b'synthetic MP3 path metadata only')
     cache=write_cache(folder/'RB Stems Plus Cache.noindex')
     meta=folder/'metadata';meta.mkdir();(meta/'test.manifest').write_bytes(manifest(source))
     (meta/'test.kept').write_text(f'rbstemsplus-kept 1\nuntil 1\n{MODEL} {KEY}\n')
@@ -36,7 +38,7 @@ def check_stems_workflows_ui(browser,base,store,root,output):
     with zipfile.ZipFile(archive,'w') as z:z.writestr('unicode 日本/producer.stem.mp4',ni_bytes())
     captured_source={'scope_key':'synthetic:stems:followup','capabilities':{},'tracks':[
         {'id':str(i),'title':f'STEM example {i:03} 日本 <mix>','artist':'Invented artist',
-         'current_path':'spotify:track:invented' if i%2==0 else str(source)} for i in range(125)]}
+         'current_path':'spotify:track:invented' if i%2==0 else str(mp3 if i==1 else source)} for i in range(125)]}
     sid=store.save_snapshot(captured_source,'STEMS workflows 日本')['id'];original=store.snapshot(sid)
     # Persist the first two ZIP members under a small inventory budget.
     partial_summary,partial_rows=audit_assets(original,str(recordbox_zip),lambda *_:None,max_files=3,inspect=True)
@@ -113,6 +115,9 @@ def check_stems_workflows_ui(browser,base,store,root,output):
         expect(findings.locator('tbody tr')).to_have_count(1)
         expect(findings).to_contain_text('Speed 144 B · Sound quality 144 B · Total 288 B',use_inner_text=True)
         apply_filter('section','');apply_filter('provider','')
+        quality=apply_filter('recordbox_variant','quality')
+        assert [r['title'] for r in quality['rows']]==[quality_name]
+        apply_filter('recordbox_variant','')
         page.locator('#lab-stems-path').evaluate('el=>{el.scrollTop=0;el.scrollLeft=0}')
         page.locator('#lab-panel-stems').screenshot(path=str(output/'stems-workflows.png'))
         filtered=apply_filter('asset_family','preparation_manifest')
@@ -160,6 +165,25 @@ def check_stems_workflows_ui(browser,base,store,root,output):
         _,reconnected=run();assert reconnected['summary']['unavailable_scopes']==0
         descriptor=cache/MODEL/KEY[:2]/(KEY+'.desc');descriptor.unlink();originals.pop(descriptor)
         _,incomplete=run();assert any(r.get('cache_state')=='incomplete' for r in incomplete['rows'])
+        # The latest Recordbox filename includes a distinct MP3 clock key. Use
+        # a separate source scope and confirm both clocks without reading audio.
+        clock_cache=root/'timeline stem cache';clock_cache.mkdir()
+        for rekordbox_clock,model in ((False,'htdemucs'),(True,'htdemucs_ft')):
+            clock_file=clock_cache/(recordbox_fixture_key(mp3,rekordbox_clock)+'-'+model+'.stems')
+            clock_file.write_bytes(stems_bytes())
+        page.fill('#lab-stems-path',str(clock_cache))
+        page.fill('#lab-stems-recordbox-sources',str(folder))
+        _,clock_report=run()
+        matches=clock_report['summary']['format_inspection']['recordbox_source_matches']
+        assert matches['source_paths_checked']==2 and matches['matched_cache_files']==2 and matches['source_bytes_read']==0
+        linked=[r for r in clock_report['rows'] if r.get('source_association')=='metadata_match']
+        assert {r['recordbox_source_timeline'] for r in linked}=={'legacy','rekordbox'}
+        assert all(r['track_id']=='1' and r['native_stems_readiness'] is None for r in linked)
+        expect(page.locator('#lab-recordbox-source-matches')).to_contain_text('Matched cache files')
+        quality=apply_filter('recordbox_variant','quality')
+        assert len(quality['rows'])==1 and quality['rows'][0]['recordbox_source_timeline']=='rekordbox'
+        expect(findings).to_contain_text('Source metadata match: STEM example 001 日本 <mix> · Invented artist (Rekordbox MP3 timeline)')
+        apply_filter('recordbox_variant','')
         page.locator('[data-lab-tab="formats"]').click()
         page.fill('#lab-formats-path',str(recordbox_zip))
         _,zipped=run('#lab-formats')

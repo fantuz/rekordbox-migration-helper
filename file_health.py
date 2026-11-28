@@ -150,8 +150,10 @@ def register(owner):
         if not isinstance(force,bool):raise ValueError('Choose a supported refresh mode')
         snapshot=resolve(owner,source)
         from audio_paths import mappings_for, signature
+        from collection_storage import capture_revision, scan_row
         mappings=mappings_for(store(),snapshot)
         mapping_revision=signature(mappings)
+        source_revision=capture_revision(owner,source)
         tracks=snapshot['tracks']
         if len(tracks)>250000:raise ValueError('This library exceeds the file-health scan limit')
         if len({str(t['id']) for t in tracks})!=len(tracks):
@@ -166,11 +168,13 @@ def register(owner):
             saved=store()
             progress(0,'Preparing local file-health inspection')
             with saved.connection() as db:
-                if force:
+                previous=scan_row(db,source)
+                if (force or previous is None or previous['mapping_revision']!=mapping_revision
+                        or previous['source_revision']!=source_revision):
                     db.execute('DELETE FROM file_health_records WHERE source=?',(source,))
                 prior={row[0] for row in db.execute('SELECT track_id FROM file_health_records WHERE source=? AND provider_checked=1',(source,))}
-                db.execute('INSERT OR REPLACE INTO file_health_scans (source,total,done,checked_at,state) VALUES (?,?,?,?,?)',
-                           (source,len(tracks),len(prior),started,'running'))
+                db.execute('INSERT OR REPLACE INTO file_health_scans (source,total,done,checked_at,state,mapping_revision,source_revision) VALUES (?,?,?,?,?,?,?)',
+                           (source,len(tracks),len(prior),started,'running',mapping_revision,source_revision))
             from cloud_file_status import provider_context
             roots=provider_context()
             remaining=[t for t in tracks if str(t['id']) not in prior]
@@ -185,12 +189,13 @@ def register(owner):
                     # evidence, never merely a replay of the status TTL.
                     states,_,details=cached_inspect(owner,probes,refresh=True,mappings=mappings,details=True,roots=roots)
                     with saved.connection() as db:
-                        db.executemany('INSERT OR REPLACE INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text,providers,provider_checked,cloud_state,logical_size,filename,provider_evidence,metadata_sidecar) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                        db.executemany('INSERT OR REPLACE INTO file_health_records (source,track_id,title,artist,genre,status,checked_at,search_text,providers,provider_checked,cloud_state,logical_size,filename,provider_evidence,metadata_sidecar,observed_location) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                             [(source,identity,str(t.get('title') or ''),str(t.get('artist') or ''),
                               str(t.get('genre') or ''),states[identity],time.time(),
                               ' '.join(str(t.get(k) or '') for k in ('id','title','artist','genre')).casefold(),
                               details[identity]['providers'],1,details[identity]['cloud_state'],
-                              details[identity]['logical_size'],details[identity]['filename'],json.dumps(details[identity]['provider_evidence']),int(metadata_sidecars.is_sidecar({**t,'filename':details[identity].get('filename') or t.get('filename')})))
+                              details[identity]['logical_size'],details[identity]['filename'],json.dumps(details[identity]['provider_evidence']),int(metadata_sidecars.is_sidecar({**t,'filename':details[identity].get('filename') or t.get('filename')})),
+                              details[identity].get('observed_location'))
                              for identity,t in probes.items()])
                         done=len(prior)+index+len(batch)
                         db.execute('UPDATE file_health_scans SET done=?,checked_at=? WHERE source=?',(done,time.time(),source))

@@ -114,12 +114,18 @@ def counts(records):
     return result
 
 
-def select(tracks, provider='all', configuration=None):
-    """Return original track objects and scope counts without mutating tracks."""
+def select_with_evidence(tracks, provider='all', configuration=None):
+    """Return filtered tracks paired with their lexical location evidence."""
     provider = checked_provider(provider)
     pairs = [(track, classify(track, configuration)) for track in tracks]
     selected = [(track, record) for track, record in pairs if matches(record, provider)]
-    return [track for track, _ in selected], {
+    return selected, {
         'provider': provider, 'counts': counts(record for _, record in pairs),
         'selected_counts': counts(record for _, record in selected), 'note': NOTE,
     }
+
+
+def select(tracks, provider='all', configuration=None):
+    """Return original track objects and scope counts without mutating tracks."""
+    selected, summary = select_with_evidence(tracks, provider, configuration)
+    return [track for track, _ in selected], summary

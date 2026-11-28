@@ -9,7 +9,7 @@ from workbench_store import Store,encoded
 
 MAX_BYTES=16*1024**2
 MAX_ENTRIES=64
-SCHEMA='collection-results-v1'
+SCHEMA='collection-results-v2'
 
 
 def file_stamp(path):
